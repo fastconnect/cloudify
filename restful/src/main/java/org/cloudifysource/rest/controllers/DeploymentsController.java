@@ -13,6 +13,7 @@
 package org.cloudifysource.rest.controllers;
 
 
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -26,19 +27,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
 import net.jini.core.discovery.LookupLocator;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.cloudifysource.dsl.ComputeDetails;
 import org.cloudifysource.dsl.Service;
 import org.cloudifysource.dsl.cloud.Cloud;
-import org.cloudifysource.dsl.internal.CloudifyConstants;
-import org.cloudifysource.dsl.internal.CloudifyMessageKeys;
-import org.cloudifysource.dsl.internal.DSLServiceCompilationResult;
-import org.cloudifysource.dsl.internal.DSLUtils;
-import org.cloudifysource.dsl.internal.ServiceReader;
+import org.cloudifysource.dsl.internal.*;
 import org.cloudifysource.dsl.internal.packaging.FileAppender;
 import org.cloudifysource.dsl.internal.packaging.Packager;
 import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
@@ -58,12 +53,16 @@ import org.cloudifysource.dsl.rest.response.ServiceInstanceDetails;
 import org.cloudifysource.dsl.rest.response.ServiceInstanceMetricsData;
 import org.cloudifysource.dsl.rest.response.ServiceInstanceMetricsResponse;
 import org.cloudifysource.dsl.rest.response.ServiceMetricsResponse;
+import org.cloudifysource.dsl.rest.request.*;
+import org.cloudifysource.dsl.rest.response.*;
 import org.cloudifysource.dsl.utils.ServiceUtils;
 import org.cloudifysource.rest.RestConfiguration;
 import org.cloudifysource.rest.deploy.DeploymentConfig;
 import org.cloudifysource.rest.deploy.ElasticDeploymentCreationException;
 import org.cloudifysource.rest.deploy.ElasticProcessingUnitDeploymentFactory;
 import org.cloudifysource.rest.deploy.ElasticProcessingUnitDeploymentFactoryImpl;
+import org.cloudifysource.rest.events.cache.EventsCache;
+import org.cloudifysource.rest.events.cache.EventsCacheKey;
 import org.cloudifysource.rest.interceptors.ApiVersionValidationAndRestResponseBuilderInterceptor;
 import org.cloudifysource.rest.repo.UploadRepo;
 import org.cloudifysource.rest.util.IsolationUtils;
@@ -86,13 +85,16 @@ import org.openspaces.admin.pu.elastic.topology.ElasticDeploymentTopology;
 import org.openspaces.admin.space.ElasticSpaceDeployment;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 
-import com.sun.mail.iap.Response;
+import javax.annotation.PostConstruct;
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 
 //import com.sun.mail.iap.Response;
 
@@ -122,8 +124,9 @@ import com.sun.mail.iap.Response;
 @RequestMapping(value = "/{version}/deployments")
 public class DeploymentsController extends BaseRestContoller {
 
-	private static final Logger logger = Logger
-			.getLogger(DeploymentsController.class.getName());
+	private static final Logger logger = Logger.getLogger(DeploymentsController.class.getName());
+    private static final String MAX_NUMBER_OF_EVENTS = "100";
+    private EventsCache eventsCache;
 
 	@Autowired
 	private UploadRepo repo;
@@ -140,18 +143,30 @@ public class DeploymentsController extends BaseRestContoller {
 	@Autowired(required = false)
 	private CustomPermissionEvaluator permissionEvaluator;
 
-	/**
-	 * This method provides metadata about a service belonging to a specific application.
-	 * 
-	 * @param appName
-	 *            - the application name the service belongs to.
-	 * @param serviceName
-	 *            - the service name.
-	 * @return - A {@link ServiceDetails} instance containing various metadata about the service.
-	 * @throws RestErrorException
-	 *             - In case an error happened while trying to retrieve the service.
-	 */
-	@RequestMapping(value = "/{appName}/service/{serviceName}/metadata", method = RequestMethod.GET)
+    /**
+     * Initializing the uploadRepo which responsible for uploading and retrieving the files.
+     * @throws java.io.IOException .
+     */
+    @PostConstruct
+    public void init() throws IOException {
+        this.eventsCache = new EventsCache(admin);
+    }
+
+    /**
+     * This method provides metadata about a service belonging to a specific
+     * application.
+     *
+     * @param appName
+     *            - the application name the service belongs to.
+     * @param serviceName
+     *            - the service name.
+     * @return - A {@link ServiceDetails} instance containing various metadata
+     *         about the service.
+     * @throws RestErrorException
+     *             - In case an error happened while trying to retrieve the
+     *             service.
+     */
+    @RequestMapping(value = "/{appName}/service/{serviceName}/metadata", method = RequestMethod.GET)
 	public ServiceDetails getServiceDetails(@PathVariable final String appName,
 			@PathVariable final String serviceName) throws RestErrorException {
 
@@ -1396,4 +1411,81 @@ public class DeploymentsController extends BaseRestContoller {
 		this.uninstallServiceValidators = uninstallServiceValidators;
 	}
 
+
+    @RequestMapping(value = "applications/{appName}/service/{serviceName}/events", method = RequestMethod.GET)
+    public ServiceDeploymentEvents getServiceDeploymentEventsByFullServiceName(@PathVariable final String appName,
+                                                                               @PathVariable final String serviceName,
+                                                                               @RequestParam(required = false, defaultValue = "0") final String from,
+                                                                               @RequestParam(required = false, defaultValue = MAX_NUMBER_OF_EVENTS) final String to) throws InterruptedException {
+
+        EventsCacheKey key = new EventsCacheKey(appName, serviceName);
+        ServiceDeploymentEvents events = eventsCache.getIfPresent(key);
+        if (events == null) {
+            // no events were found. load them.
+            // this is synchronous. one thread will load while others await result.
+            try {
+                events = eventsCache.get(key);
+            } catch (final ExecutionException e) {
+                // indicating no events were loaded. probably means the service has no containers yet.
+                throw new RuntimeException("asd"); // TODO elip - pretty obvious this cant be here.
+            }
+        }
+
+        // we don't want another request to modify our object during this calculation.
+        // all threads requesting events for this service, will use the same ServiceDeploymentEvents instance.
+        // so we can use a mutex defined in the object as a shared resource across threads.
+        synchronized (events.mutex()) {
+
+            if (!eventsPresent(events, Integer.parseInt(from), Integer.parseInt(to))) {
+
+                // enforce time restriction on refresh operations.
+                long now = System.currentTimeMillis();
+                if (now - events.getLastRefreshedTimestamp() > 1000) {
+                    // refresh the cache for this deployment.
+                    eventsCache.refresh(key);
+                    events = eventsCache.getIfPresent(key);
+                }
+            }
+
+            // return the events. this MAY or MAY NOT be the complete set of events requested.
+            // request for specific events is treated as best effort. no guarantees all events are returned.
+            return extractDesiredEvents(events, Integer.parseInt(from), Integer.parseInt(to));
+        }
+    }
+
+    private ServiceDeploymentEvents extractDesiredEvents(final ServiceDeploymentEvents events,
+                                                         final int from,
+                                                         final int to) {
+        ServiceDeploymentEvents desiredEvents = new ServiceDeploymentEvents();
+        for (Map.Entry<String, InstanceDeploymentEvents> instanceEntry : events.getEventsPerInstance().entrySet()) {
+            desiredEvents.getEventsPerInstance().put(instanceEntry.getKey(), new InstanceDeploymentEvents());
+            for (Map.Entry<Integer, InstanceDeploymentEvent> eventEntry : instanceEntry.getValue().getEventPerIndex().entrySet()) {
+                if (eventEntry.getKey() >= from && eventEntry.getKey() <= to) {
+                    desiredEvents.getEventsPerInstance().get(instanceEntry.getKey()).getEventPerIndex().put(eventEntry.getKey(), eventEntry.getValue());
+                }
+            }
+        }
+        desiredEvents.setLastRefreshedTimestamp(events.getLastRefreshedTimestamp());
+        return desiredEvents;
+    }
+
+    private boolean eventsPresent(final ServiceDeploymentEvents events,
+                                  final int from,
+                                  final int to) {
+        for (InstanceDeploymentEvents instanceDeploymentEvents : events.getEventsPerInstance().values()) {
+            for (int i = from; i <= to; i++) {
+                if (!instanceDeploymentEvents.getEventPerIndex().containsKey(i)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    @RequestMapping(value = "{deploymentId}/events", method = RequestMethod.GET)
+    public ServiceDeploymentEvents getServiceDeploymentEventsByDeploymentId(@PathVariable final String deploymentId,
+                                                                            @RequestParam(required = false, defaultValue = "0") final String from,
+                                                                            @RequestParam(required = false, defaultValue = MAX_NUMBER_OF_EVENTS) final String to) {
+        return null;
+    }
 }

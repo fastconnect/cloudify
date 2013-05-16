@@ -8,6 +8,7 @@ cloudify/.idea/*
 /esc-commands/transaction.log
 
 /USM/bin/
+/security/bin
 /dsl/bin/
 /esc-commands/bin/
 /esc/bin/
@@ -15,6 +16,8 @@ cloudify/.idea/*
 /restful/bin/
 /CLI/bin
 
+/security/target
+/security-ldap/target
 
 #/cloudify/CLI/target
 /CLI/nodes.properties

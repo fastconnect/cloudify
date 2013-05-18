@@ -49,14 +49,9 @@ public class LogEntriesCacheLoader extends CacheLoader<GridServiceContainer, Log
     @Override
     public ListenableFuture<LogEntries> reload(final GridServiceContainer container, final LogEntries oldValue) throws Exception {
 
-        AfterEntryLogEntryMatcher afterEntryLogEntryMatcher = null;
-        try {
-            afterEntryLogEntryMatcher = new AfterEntryLogEntryMatcher(oldValue,
+        AfterEntryLogEntryMatcher afterEntryLogEntryMatcher = new AfterEntryLogEntryMatcher(oldValue,
                 oldValue.getEntries().get(oldValue.getEntries().size() - 1),
                 regexMatcher);
-        } catch (final Exception e) {
-            e.printStackTrace();
-        }
 
         System.out.println(EventsUtils.getThreadId() + "Reloading logs cache entry for container " + container.getUid());
         // get latest logs.
@@ -66,7 +61,15 @@ public class LogEntriesCacheLoader extends CacheLoader<GridServiceContainer, Log
         System.out.println(EventsUtils.getThreadId() + "Retrieved latest logs for container " + container.getUid()
                 + " : " + StringUtils.join(toStrings(entries), "\n"));
 
-        // add to existing.
+        // remove old logs. they are not needed anymore.
+        for (LogEntry entry : new ArrayList<LogEntry>(oldValue.getEntries())) {
+            if (entry.isLog()) {
+                // only remove logs. not file markers.
+                oldValue.getEntries().remove(entry);
+            }
+        }
+
+        // now add the new ones.
         oldValue.getEntries().addAll(entries);
         System.out.println(EventsUtils.getThreadId() + "New value for container " + container.getUid() + " : "
                 + StringUtils.join(toStrings(oldValue.getEntries()), "\n"));

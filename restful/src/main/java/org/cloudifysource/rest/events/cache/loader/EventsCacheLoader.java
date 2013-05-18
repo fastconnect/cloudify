@@ -5,6 +5,7 @@ import com.gigaspaces.log.LogEntry;
 import com.google.common.cache.CacheLoader;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import edu.emory.mathcs.backport.java.util.Collections;
 import org.cloudifysource.dsl.rest.response.InstanceDeploymentEvent;
 import org.cloudifysource.dsl.rest.response.InstanceDeploymentEvents;
 import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvents;
@@ -52,7 +53,7 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, ServiceDeploy
         Set<GridServiceContainer> containersForDeployment = getContainersForDeployment(fullServiceName);
         for (GridServiceContainer container : containersForDeployment) {
             LogEntries logEntries = logEntriesCache.get(container);
-            InstanceDeploymentEvents instanceDeploymentEvents = toEvents(logEntries);
+            InstanceDeploymentEvents instanceDeploymentEvents = toEvents(logEntries, 0);
             events.getEventsPerInstance().put(container.getProcessingUnitInstances()[0].getProcessingUnitInstanceName(),
                     instanceDeploymentEvents);
 
@@ -70,11 +71,19 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, ServiceDeploy
         // pickup any new containers along with the old ones
         Set<GridServiceContainer> containersForDeployment = getContainersForDeployment(ServiceUtils.getAbsolutePUName(key.getAppName(), key.getServiceName()));
         for (GridServiceContainer container : containersForDeployment) {
-            // refresh each container logs
+
+            // refresh each container logs.
             logEntriesCache.refresh(container);
+
+            // this will give us just the new logs.
             LogEntries logEntries = logEntriesCache.get(container);
-            InstanceDeploymentEvents instanceDeploymentEvents = toEvents(logEntries);
-            oldValue.add(container.getProcessingUnitInstances()[0].getProcessingUnitInstanceName(), instanceDeploymentEvents);
+
+            // retrieve the latest event for this instance
+            String processingUnitInstanceName = container.getProcessingUnitInstances()[0].getProcessingUnitInstanceName();
+            int lastEventForInstance = getLastEventForInstance(oldValue.getEventsPerInstance()
+                    .get(processingUnitInstanceName));
+            InstanceDeploymentEvents instanceDeploymentEvents = toEvents(logEntries, lastEventForInstance);
+            oldValue.add(processingUnitInstanceName, instanceDeploymentEvents);
         }
 
         checkNotNull(key);
@@ -82,6 +91,10 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, ServiceDeploy
         oldValue.setLastRefreshedTimestamp(System.currentTimeMillis());
         System.out.println(EventsUtils.getThreadId() + "Finished Reloading events cache for entry with key : " + key);
         return Futures.immediateFuture(oldValue);
+    }
+
+    private int getLastEventForInstance(final InstanceDeploymentEvents instanceDeploymentEvents) {
+        return (Integer) Collections.max(instanceDeploymentEvents.getEventPerIndex().keySet());
     }
 
     private Set<GridServiceContainer> getContainersForDeployment(final String fullServiceName) {
@@ -96,11 +109,11 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, ServiceDeploy
         return containers;
     }
 
-    private InstanceDeploymentEvents toEvents(final LogEntries logEntries) {
+    private InstanceDeploymentEvents toEvents(final LogEntries logEntries, final int lastEventIndex) {
         InstanceDeploymentEvents events = new InstanceDeploymentEvents();
         String hostName = logEntries.getHostName();
         String hostAddress = logEntries.getHostAddress();
-        int index = 0;
+        int index = lastEventIndex;
         for (LogEntry logEntry : logEntries) {
             if (logEntry.isLog()) {
                 events.getEventPerIndex().put(index++, toEvent(logEntry, hostAddress, hostName));

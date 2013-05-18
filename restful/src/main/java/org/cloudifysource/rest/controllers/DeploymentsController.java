@@ -64,6 +64,7 @@ import org.cloudifysource.rest.deploy.ElasticProcessingUnitDeploymentFactoryImpl
 import org.cloudifysource.rest.events.cache.EventsCache;
 import org.cloudifysource.rest.events.cache.EventsCacheKey;
 import org.cloudifysource.rest.events.cache.EventsUtils;
+import org.cloudifysource.rest.exceptions.MissingServiceException;
 import org.cloudifysource.rest.interceptors.ApiVersionValidationAndRestResponseBuilderInterceptor;
 import org.cloudifysource.rest.repo.UploadRepo;
 import org.cloudifysource.rest.util.IsolationUtils;
@@ -1417,19 +1418,23 @@ public class DeploymentsController extends BaseRestContoller {
     public ServiceDeploymentEvents getServiceDeploymentEventsByFullServiceName(@PathVariable final String appName,
                                                                                @PathVariable final String serviceName,
                                                                                @RequestParam(required = false, defaultValue = "0") final String from,
-                                                                               @RequestParam(required = false, defaultValue = MAX_NUMBER_OF_EVENTS) final String to) throws InterruptedException {
+                                                                               @RequestParam(required = false, defaultValue = MAX_NUMBER_OF_EVENTS) final String to)
+                                                                               throws InterruptedException, MissingServiceException {
 
         EventsCacheKey key = new EventsCacheKey(appName, serviceName);
-        ServiceDeploymentEvents events = eventsCache.getIfPresent(key);
-        if (events == null) {
-            // no events were found. load them.
-            // this is synchronous. one thread will load while others await result.
-            try {
-                System.out.println(EventsUtils.getThreadId() + "Retrieving events from cache for key : " + key);
-                events = eventsCache.get(key);
-            } catch (final ExecutionException e) {
-                // indicating no events were loaded. probably means the service has no containers yet.
-                throw new RuntimeException("asd"); // TODO elip - pretty obvious this cant be here.
+        ServiceDeploymentEvents events;
+        try {
+            System.out.println(EventsUtils.getThreadId() + "Retrieving events from cache for key : " + key);
+            events = eventsCache.get(key);
+        } catch (final ExecutionException e) {
+            final Throwable cause = e.getCause();
+            if (cause instanceof MissingServiceException) {
+                // the load execution threw this exception. indicating no containers were found yet for this service.
+                MissingServiceException exception = (MissingServiceException) cause;
+                throw new MissingServiceException(exception.getServiceName());
+            } else {
+                // unexpected error.
+                throw new IllegalStateException(cause);
             }
         }
 

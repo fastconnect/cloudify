@@ -11,6 +11,8 @@ public enum CloudifyMessageKeys {
 	SERVICE_WAIT_TIMEOUT("service_wait_timeout"),
 	
 	APPLICATION_WAIT_TIMEOUT("application_wait_timeout"),
+
+    MISSING_RESOURCE("missing_resource"),
 	
 	MISSING_SERVICE("missing_service"),
 

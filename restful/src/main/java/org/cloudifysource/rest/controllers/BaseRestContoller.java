@@ -34,6 +34,8 @@ import org.cloudifysource.dsl.internal.CloudifyErrorMessages;
 import org.cloudifysource.dsl.internal.CloudifyMessageKeys;
 import org.cloudifysource.dsl.rest.response.Response;
 import org.cloudifysource.dsl.utils.ServiceUtils;
+import org.cloudifysource.rest.exceptions.MissingServiceException;
+import org.cloudifysource.rest.exceptions.ResourceNotFoundException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.openspaces.admin.Admin;
 import org.openspaces.admin.application.Application;
@@ -44,6 +46,7 @@ import org.openspaces.core.context.GigaSpaceContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.converter.HttpMessageNotWritableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
@@ -333,7 +336,38 @@ public abstract class BaseRestContoller {
 		response.getOutputStream().write(responseString.getBytes());
 	}
 
-	/**
+    @ExceptionHandler(ResourceNotFoundException.class)
+    @ResponseStatus(value = HttpStatus.NOT_FOUND)
+    public void handleResourceNotFoundException(final HttpServletResponse response,
+                                     final ResourceNotFoundException e) throws IOException {
+
+        String messageId;
+        Object[] messageArgs;
+        if (e instanceof MissingServiceException) {
+            messageId = CloudifyMessageKeys.MISSING_SERVICE.getName();
+            messageArgs = new Object[] {((MissingServiceException) e).getServiceName()};
+        } else {
+            messageId = CloudifyMessageKeys.MISSING_RESOURCE.getName();
+            messageArgs = new Object[] {e.getResourceName()};
+        }
+        String formattedMessage = messageSource.getMessage(messageId,
+                messageArgs, Locale.US);
+
+        Response<Void> finalResponse = new Response<Void>();
+        finalResponse.setStatus("Failed");
+        finalResponse.setMessage(formattedMessage);
+        finalResponse.setMessageId(messageId);
+        finalResponse.setResponse(null);
+        finalResponse.setVerbose(ExceptionUtils.getFullStackTrace(e));
+
+        String responseString = OBJECT_MAPPER.writeValueAsString(finalResponse);
+        response.getOutputStream().write(responseString.getBytes());
+    }
+
+
+
+
+    /**
 	 * Handles unexpected exceptions from the controller, and wrappes it nicely
 	 * with a {@link Response} object.
 	 * 

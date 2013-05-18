@@ -55,4 +55,12 @@ public class EventsCacheKey {
         result = 31 * result + serviceName.hashCode();
         return result;
     }
+
+    @Override
+    public String toString() {
+        return "EventsCacheKey{" +
+                "appName='" + appName + '\'' +
+                ", serviceName='" + serviceName + '\'' +
+                '}';
+    }
 }

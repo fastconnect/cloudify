@@ -3,12 +3,14 @@ package org.cloudifysource.rest.events.cache.loader;
 import com.gigaspaces.log.LogEntries;
 import com.gigaspaces.log.LogEntry;
 import com.google.common.cache.CacheLoader;
+import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import org.cloudifysource.dsl.rest.response.InstanceDeploymentEvent;
 import org.cloudifysource.dsl.rest.response.InstanceDeploymentEvents;
 import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvents;
 import org.cloudifysource.dsl.utils.ServiceUtils;
 import org.cloudifysource.rest.events.cache.EventsCacheKey;
+import org.cloudifysource.rest.events.cache.EventsUtils;
 import org.cloudifysource.rest.events.cache.LogEntriesCache;
 import org.openspaces.admin.Admin;
 import org.openspaces.admin.gsc.GridServiceContainer;
@@ -17,6 +19,8 @@ import org.openspaces.admin.pu.ProcessingUnitInstance;
 
 import java.util.HashSet;
 import java.util.Set;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Created with IntelliJ IDEA.
@@ -38,6 +42,8 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, ServiceDeploy
     @Override
     public ServiceDeploymentEvents load(final EventsCacheKey key) throws Exception {
 
+        System.out.println(EventsUtils.getThreadId() + "Loading events cache for entry with key : " + key);
+
         ServiceDeploymentEvents events = new ServiceDeploymentEvents();
 
         // initial load. no events are present in the cache for this deployment.
@@ -52,12 +58,30 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, ServiceDeploy
 
         }
         events.setLastRefreshedTimestamp(System.currentTimeMillis());
+        System.out.println(EventsUtils.getThreadId() + "Finished loading events cache for entry with key : " + key);
         return events;
     }
 
     @Override
     public ListenableFuture<ServiceDeploymentEvents> reload(final EventsCacheKey key, final ServiceDeploymentEvents oldValue) throws Exception {
-        return super.reload(key, oldValue);    //To change body of overridden methods use File | Settings | File Templates.
+
+        System.out.println(EventsUtils.getThreadId() + "Reloading events cache entry for key " + key);
+
+        // pickup any new containers along with the old ones
+        Set<GridServiceContainer> containersForDeployment = getContainersForDeployment(ServiceUtils.getAbsolutePUName(key.getAppName(), key.getServiceName()));
+        for (GridServiceContainer container : containersForDeployment) {
+            // refresh each container logs
+            logEntriesCache.refresh(container);
+            LogEntries logEntries = logEntriesCache.get(container);
+            InstanceDeploymentEvents instanceDeploymentEvents = toEvents(logEntries);
+            oldValue.add(container.getProcessingUnitInstances()[0].getProcessingUnitInstanceName(), instanceDeploymentEvents);
+        }
+
+        checkNotNull(key);
+        checkNotNull(oldValue);
+        oldValue.setLastRefreshedTimestamp(System.currentTimeMillis());
+        System.out.println(EventsUtils.getThreadId() + "Finished Reloading events cache for entry with key : " + key);
+        return Futures.immediateFuture(oldValue);
     }
 
     private Set<GridServiceContainer> getContainersForDeployment(final String fullServiceName) {
@@ -78,7 +102,9 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, ServiceDeploy
         String hostAddress = logEntries.getHostAddress();
         int index = 0;
         for (LogEntry logEntry : logEntries) {
-            events.getEventPerIndex().put(index++, toEvent(logEntry, hostAddress, hostName));
+            if (logEntry.isLog()) {
+                events.getEventPerIndex().put(index++, toEvent(logEntry, hostAddress, hostName));
+            }
         }
         return events;
     }
@@ -86,14 +112,6 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, ServiceDeploy
     private InstanceDeploymentEvent toEvent(final LogEntry logEntry,
                                             final String hostAddress,
                                             final String hostName) {
-        String text = logEntry.getText();
-        String textWithoutLogger = text.split(" - ")[1];
-        String instanceName = textWithoutLogger.split(" ")[0].split("\\.")[1];
-        String eventText = textWithoutLogger.split(" ")[1];
-        String actualEvent = instanceName + " " + eventText;
-        InstanceDeploymentEvent event = new InstanceDeploymentEvent();
-        event.setDescirption("[" + hostName + "/" + hostAddress + "] - " + actualEvent);
-        return event;
+        return EventsUtils.logToEvent(logEntry, hostName, hostAddress);
     }
-
 }

@@ -5,6 +5,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.lang.StringUtils;
+import org.cloudifysource.rest.events.cache.EventsUtils;
 import org.openspaces.admin.gsc.GridServiceContainer;
 
 import java.text.MessageFormat;
@@ -36,33 +37,40 @@ public class LogEntriesCacheLoader extends CacheLoader<GridServiceContainer, Log
     @Override
     public LogEntries load(final GridServiceContainer container) throws Exception {
 
+        System.out.println(EventsUtils.getThreadId() + "Loading logs cache for container " + container.getUid());
+
         // first time loading logs from this container. use a brand new matcher.
-        System.out.println("Loading logs cache entry for container " + container.getUid());
         LogEntries logEntries = container.logEntries(regexMatcher);
-        removeFirstEntry(logEntries);
-        System.out.println("First retrieved logs from container are : \n"  + StringUtils.join(toStrings(logEntries.getEntries()), "\n"));
+        System.out.println(EventsUtils.getThreadId() + "Finished loading logs cache for container " + container.getUid()
+                + " : \n" + StringUtils.join(toStrings(logEntries.getEntries()), "\n"));
         return logEntries;
     }
 
     @Override
     public ListenableFuture<LogEntries> reload(final GridServiceContainer container, final LogEntries oldValue) throws Exception {
 
-        AfterEntryLogEntryMatcher afterEntryLogEntryMatcher = new AfterEntryLogEntryMatcher(oldValue,
+        AfterEntryLogEntryMatcher afterEntryLogEntryMatcher = null;
+        try {
+            afterEntryLogEntryMatcher = new AfterEntryLogEntryMatcher(oldValue,
                 oldValue.getEntries().get(oldValue.getEntries().size() - 1),
                 regexMatcher);
+        } catch (final Exception e) {
+            e.printStackTrace();
+        }
 
-        System.out.println("Reloading logs cache entry for container " + container.getUid());
+        System.out.println(EventsUtils.getThreadId() + "Reloading logs cache entry for container " + container.getUid());
         // get latest logs.
 
         LogEntries logEntries = container.logEntries(afterEntryLogEntryMatcher);
-        removeFirstEntry(logEntries);
         List<LogEntry> entries = logEntries.getEntries();
-        System.out.println("Retrieved latest logs for container " + container.getUid() + " : " + StringUtils.join(toStrings(entries), "\n"));
+        System.out.println(EventsUtils.getThreadId() + "Retrieved latest logs for container " + container.getUid()
+                + " : " + StringUtils.join(toStrings(entries), "\n"));
 
         // add to existing.
-        System.out.println("Adding to existing logs");
         oldValue.getEntries().addAll(entries);
-        System.out.println("New value for container " + container.getUid() + " : " + StringUtils.join(toStrings(oldValue.getEntries()), "\n"));
+        System.out.println(EventsUtils.getThreadId() + "New value for container " + container.getUid() + " : "
+                + StringUtils.join(toStrings(oldValue.getEntries()), "\n"));
+        System.out.println(EventsUtils.getThreadId() + "Finished Reloading logs cache entry for container " + container.getUid());
         return Futures.immediateFuture(oldValue);
     }
 
@@ -78,11 +86,5 @@ public class LogEntriesCacheLoader extends CacheLoader<GridServiceContainer, Log
         final String regex = MessageFormat.format(USM_EVENT_LOGGER_NAME, new Object() {});
         RegexLogEntryMatcher matcher = regex(regex);
         return matcher;
-    }
-
-    private void removeFirstEntry(final LogEntries logEntries) {
-        if (!logEntries.getEntries().get(0).isLog()) {
-            logEntries.getEntries().remove(0);
-        }
     }
 }

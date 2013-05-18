@@ -23,14 +23,10 @@ public class LogEntriesCache {
     }
 
     public LogEntries get(final GridServiceContainer container) {
-        LogEntries logEntries = logsLoadingCache.getIfPresent(container);
-        if (logEntries == null) {
-            // cache was cleaned for this key, or never existed. in any case, load it again.
-            return logsLoadingCache.getUnchecked(container);
-        } else {
-            // reload cache with latest logs.
-            logsLoadingCache.refresh(container);
-            return logsLoadingCache.getIfPresent(container);
-        }
+        return logsLoadingCache.getUnchecked(container);
+    }
+
+    public void refresh(final GridServiceContainer container) {
+        logsLoadingCache.refresh(container);
     }
 }

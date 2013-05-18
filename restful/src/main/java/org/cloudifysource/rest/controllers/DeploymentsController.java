@@ -63,6 +63,7 @@ import org.cloudifysource.rest.deploy.ElasticProcessingUnitDeploymentFactory;
 import org.cloudifysource.rest.deploy.ElasticProcessingUnitDeploymentFactoryImpl;
 import org.cloudifysource.rest.events.cache.EventsCache;
 import org.cloudifysource.rest.events.cache.EventsCacheKey;
+import org.cloudifysource.rest.events.cache.EventsUtils;
 import org.cloudifysource.rest.interceptors.ApiVersionValidationAndRestResponseBuilderInterceptor;
 import org.cloudifysource.rest.repo.UploadRepo;
 import org.cloudifysource.rest.util.IsolationUtils;
@@ -1424,6 +1425,7 @@ public class DeploymentsController extends BaseRestContoller {
             // no events were found. load them.
             // this is synchronous. one thread will load while others await result.
             try {
+                System.out.println(EventsUtils.getThreadId() + "Retrieving events from cache for key : " + key);
                 events = eventsCache.get(key);
             } catch (final ExecutionException e) {
                 // indicating no events were loaded. probably means the service has no containers yet.
@@ -1434,13 +1436,14 @@ public class DeploymentsController extends BaseRestContoller {
         // we don't want another request to modify our object during this calculation.
         // all threads requesting events for this service, will use the same ServiceDeploymentEvents instance.
         // so we can use a mutex defined in the object as a shared resource across threads.
+        System.out.println(EventsUtils.getThreadId() + "Retrieved events from cache : " + events.hashCode() + " . Waiting on mutex " + events.mutex());
         synchronized (events.mutex()) {
-
+            System.out.println(EventsUtils.getThreadId() + "Calculating events to be returned for request");
             if (!eventsPresent(events, Integer.parseInt(from), Integer.parseInt(to))) {
-
                 // enforce time restriction on refresh operations.
                 long now = System.currentTimeMillis();
                 if (now - events.getLastRefreshedTimestamp() > 1000) {
+                    System.out.println(EventsUtils.getThreadId() + "Some events are not present in events cache. Refreshing...");
                     // refresh the cache for this deployment.
                     eventsCache.refresh(key);
                     events = eventsCache.getIfPresent(key);
@@ -1449,7 +1452,9 @@ public class DeploymentsController extends BaseRestContoller {
 
             // return the events. this MAY or MAY NOT be the complete set of events requested.
             // request for specific events is treated as best effort. no guarantees all events are returned.
-            return extractDesiredEvents(events, Integer.parseInt(from), Integer.parseInt(to));
+            ServiceDeploymentEvents desiredEvents = extractDesiredEvents(events, Integer.parseInt(from), Integer.parseInt(to));
+            System.out.println(EventsUtils.getThreadId() + "Finished calculation. Returning events " + events.hashCode() + " : " + desiredEvents);
+            return desiredEvents;
         }
     }
 

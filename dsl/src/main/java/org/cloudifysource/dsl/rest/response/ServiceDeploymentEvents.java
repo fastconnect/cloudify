@@ -14,7 +14,7 @@ public class ServiceDeploymentEvents {
 
     private Map<String, InstanceDeploymentEvents> eventsPerInstance = new HashMap<String, InstanceDeploymentEvents>();
     private long lastRefreshedTimestamp;
-    private transient Object mutex;
+    private volatile Object mutex = new Object();
 
     public long getLastRefreshedTimestamp() {
         return lastRefreshedTimestamp;
@@ -33,9 +33,17 @@ public class ServiceDeploymentEvents {
     }
 
     public Object mutex() {
-        if (mutex == null) {
-            mutex = new Object();
-        }
         return mutex;
+    }
+
+    public void add(final String processingUnitInstanceName, InstanceDeploymentEvents instanceDeploymentEvents) {
+        eventsPerInstance.get(processingUnitInstanceName).add(instanceDeploymentEvents);
+    }
+
+    @Override
+    public String toString() {
+        return "ServiceDeploymentEvents{"
+                + "eventsPerInstance=" + eventsPerInstance
+                + ", lastRefreshedTimestamp=" + lastRefreshedTimestamp + '}';
     }
 }

@@ -22,6 +22,20 @@ public class InstanceDeploymentEvents {
         this.eventPerIndex = eventPerIndex;
     }
 
+    @Override
+    public String toString() {
+        return "InstanceDeploymentEvents{"
+                + "eventPerIndex=" + eventPerIndex + '}';
+    }
+
+    public void add(final InstanceDeploymentEvents instanceDeploymentEvents) {
+        for (Map.Entry<Integer, InstanceDeploymentEvent> entry : instanceDeploymentEvents.getEventPerIndex().entrySet()) {
+            if (!eventPerIndex.containsKey(entry.getKey())) {
+                eventPerIndex.put(entry.getKey(), entry.getValue());
+            }
+        }
+    }
+
     private class MaxSizeMap<K, V> extends LinkedHashMap<K, V> {
 
         private int maxSize;

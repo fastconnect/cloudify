@@ -20,4 +20,11 @@ public class InstanceDeploymentEvent {
     public void setDescirption(final String descirption) {
         this.descirption = descirption;
     }
+
+    @Override
+    public String toString() {
+        return "InstanceDeploymentEvent{" +
+                "descirption='" + descirption + '\'' +
+                '}';
+    }
 }

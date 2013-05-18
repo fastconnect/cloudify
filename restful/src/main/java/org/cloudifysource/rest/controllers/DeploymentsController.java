@@ -1419,7 +1419,7 @@ public class DeploymentsController extends BaseRestContoller {
                                                                                @PathVariable final String serviceName,
                                                                                @RequestParam(required = false, defaultValue = "0") final String from,
                                                                                @RequestParam(required = false, defaultValue = MAX_NUMBER_OF_EVENTS) final String to)
-                                                                               throws InterruptedException, MissingServiceException {
+                                                                               throws Throwable {
 
         EventsCacheKey key = new EventsCacheKey(appName, serviceName);
         ServiceDeploymentEvents events;
@@ -1427,15 +1427,7 @@ public class DeploymentsController extends BaseRestContoller {
             System.out.println(EventsUtils.getThreadId() + "Retrieving events from cache for key : " + key);
             events = eventsCache.get(key);
         } catch (final ExecutionException e) {
-            final Throwable cause = e.getCause();
-            if (cause instanceof MissingServiceException) {
-                // the load execution threw this exception. indicating no containers were found yet for this service.
-                MissingServiceException exception = (MissingServiceException) cause;
-                throw new MissingServiceException(exception.getServiceName());
-            } else {
-                // unexpected error.
-                throw new IllegalStateException(cause);
-            }
+            throw e.getCause();
         }
 
         // we don't want another request to modify our object during this calculation.

@@ -13,6 +13,15 @@ import java.util.Map;
 public class InstanceDeploymentEvents {
 
     private Map<Integer, InstanceDeploymentEvent> eventPerIndex = new MaxSizeMap<Integer, InstanceDeploymentEvent>(100);
+    private String containerUid;
+
+    public String getContainerUid() {
+        return containerUid;
+    }
+
+    public void setContainerUid(String containerUid) {
+        this.containerUid = containerUid;
+    }
 
     public Map<Integer, InstanceDeploymentEvent> getEventPerIndex() {
         return eventPerIndex;

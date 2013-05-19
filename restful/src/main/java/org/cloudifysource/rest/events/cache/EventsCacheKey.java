@@ -15,6 +15,7 @@ public class EventsCacheKey {
     private String serviceName;
 
 
+
     public EventsCacheKey(final String appName, final String serviceName) {
         this.appName = appName;
         this.serviceName = serviceName;

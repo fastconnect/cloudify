@@ -21,20 +21,23 @@ import org.cloudifysource.dsl.internal.CloudifyMessageKeys;
 import org.cloudifysource.rest.controllers.RestErrorException;
 import org.springframework.stereotype.Component;
 
+/**
+ * 
+ * @author yael
+ *
+ */
 @Component
 public class ValidateTemplate implements InstallServiceValidator {
 
 	@Override
 	public void validate(final InstallServiceValidationContext validationContext) throws RestErrorException {
 		Cloud cloud = validationContext.getCloud();
-		if (cloud == null) {
+		String templateName = validationContext.getTemplateName();
+		if (cloud == null || templateName == null) {
 			// no template validation for local cloud
 			return;
 		}
-		String templateName = validationContext.getTemplateName();
-		if (templateName == null) {
-			throw new RestErrorException(CloudifyMessageKeys.VALIDATOR_TEMPLATE_NAME_MISSING.getName());
-		}
+		
 		// validate that the template exist at cloud's template list
 		final ComputeTemplate template = cloud.getCloudCompute().getTemplates().get(templateName);
 		if (template == null) {

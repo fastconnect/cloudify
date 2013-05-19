@@ -710,7 +710,7 @@ public class GSRestClient {
 	 *             Reporting failure to post the file.
 	 */
 	public final Object postFiles(final String relativeUrl, final Properties props,
-			final Map<String, String> params, Map<String, File> additionalFiles)
+			final Map<String, String> params, final Map<String, File> additionalFiles)
 			throws RestException {
 		final MultipartEntity reqEntity = new MultipartEntity();
 

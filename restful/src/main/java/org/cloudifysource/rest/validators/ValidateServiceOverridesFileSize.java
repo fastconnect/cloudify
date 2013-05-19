@@ -21,9 +21,10 @@ public class ValidateServiceOverridesFileSize implements InstallServiceValidator
 	public void validate(final InstallServiceValidationContext validationContext) throws RestErrorException {
 		File serviceOverridesFile = validationContext.getServiceOverridesFile();
 		if (serviceOverridesFile != null) {
-			if (serviceOverridesFile.length() > serviceOverridesFileSizeLimit) {
+			long length = serviceOverridesFile.length();
+			if (length > serviceOverridesFileSizeLimit) {
 				throw new RestErrorException(CloudifyMessageKeys.SERVICE_OVERRIDES_SIZE_LIMIT_EXCEEDED.getName(), 
-						serviceOverridesFile.getAbsolutePath());
+						serviceOverridesFile.getAbsolutePath(), length, serviceOverridesFileSizeLimit);
 			}
 		}
 

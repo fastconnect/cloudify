@@ -36,9 +36,9 @@ public class ValidateInstallServiceRequest implements InstallServiceValidator {
 		String absolutePuName = validationContext.getAbsolutePuName();
 		InstallServiceRequest request = validationContext.getRequest();
 		if (request == null) {
-			throw new RestErrorException(CloudifyMessageKeys.VALIDATOR_REQUEST_MISSING.getName(), absolutePuName);
+			return;
 		}
-		String uploadKey = request.getUploadKey();
+		String uploadKey = request.getServiceFolderUploadKey();
 		if (StringUtils.isBlank(uploadKey)) {
 			throw new RestErrorException(CloudifyMessageKeys.UPLOAD_KEY_PARAMETER_MISSING.getName(), absolutePuName);
 		}

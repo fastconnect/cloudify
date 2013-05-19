@@ -3,6 +3,7 @@ package org.cloudifysource.rest.validators;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
+import org.cloudifysource.dsl.internal.CloudifyMessageKeys;
 import org.cloudifysource.rest.controllers.RestErrorException;
 import org.openspaces.admin.Admin;
 import org.openspaces.admin.esm.ElasticServiceManager;
@@ -21,9 +22,7 @@ public class ValidateEsmExists implements InstallServiceValidator {
 		Admin admin = validationContext.getAdmin();
 		final ElasticServiceManager esm = getESM(admin);
 		if (esm == null) {
-			throw new IllegalStateException(
-					"Could not find an ESM in the cluster. Groups: "
-							+ Arrays.toString(admin.getGroups()));
+			throw new RestErrorException(CloudifyMessageKeys.ESM_MISSING.getName(), Arrays.toString(admin.getGroups()));
 		}
 	}
 	

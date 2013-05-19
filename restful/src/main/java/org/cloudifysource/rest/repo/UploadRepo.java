@@ -19,9 +19,11 @@ import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 import org.apache.commons.io.FileUtils;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
+import org.cloudifysource.dsl.internal.CloudifyMessageKeys;
 import org.cloudifysource.rest.controllers.RestErrorException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -33,6 +35,9 @@ import org.springframework.web.multipart.MultipartFile;
  */
 @Component
 public class UploadRepo {
+	private static final Logger logger = Logger.getLogger(UploadRepo.class.getName());
+
+	private int uploadSizeLimitBytes = CloudifyConstants.DEFAULT_UPLOAD_SIZE_LIMIT_BYTES;	
 	private int cleanupTimeoutSeconds = CloudifyConstants.DEFAULT_UPLOAD_TIMEOUT_SECOND;
 	private File baseDir = new File(CloudifyConstants.REST_FOLDER);
 	private ScheduledExecutorService executor;
@@ -103,16 +108,30 @@ public class UploadRepo {
 	 * @throws IOException .
 	 */
 	public String put(final String fileName, final MultipartFile multipartFile) throws IOException, RestErrorException {
+		String name = fileName == null ? multipartFile.getOriginalFilename() : fileName;
+		// enforce size limit
+		long fileSize = multipartFile.getSize();
+		if (fileSize > getUploadSizeLimitBytes()) {
+			logger.warning("Upload file [" + name + "] size (" 
+					+ fileSize + ") exceeded the permitted size limit (" + getUploadSizeLimitBytes() + ").");
+			throw new RestErrorException(
+					CloudifyMessageKeys.UPLOAD_FILE_SIZE_LIMIT_EXCEEDED.getName(), name, fileSize, getUploadSizeLimitBytes());
+		}
 		final String dirName = UUID.randomUUID().toString();
 		final File srcDir = new File(restUploadDir, dirName);
 		srcDir.mkdirs();
-		String name = fileName == null ? multipartFile.getOriginalFilename() : fileName;
+		// enforce file name extension
+		if (!name.endsWith(CloudifyConstants.UPLOAD_PERMITTED_EXTENSION)) {
+			logger.warning("Upload file [" + name + "] does not have the expected extension (" 
+					+ CloudifyConstants.UPLOAD_PERMITTED_EXTENSION + ").");
+			throw new RestErrorException("Uploaded file's extension must be " 
+					+ CloudifyConstants.UPLOAD_PERMITTED_EXTENSION, name);
+		}
 		final File storedFile = new File(srcDir, name);
 		copyMultipartFileToLocalFile(multipartFile, storedFile);
-		if (!storedFile.getName().endsWith(CloudifyConstants.PERMITTED_EXTENSION)) {
-			throw new RestErrorException("Uploaded file's extension must be " 
-					+ CloudifyConstants.PERMITTED_EXTENSION, storedFile.getAbsolutePath());
-		}
+		
+		
+		logger.finer("File [" + storedFile.getAbsolutePath() + "] uploaded.");
 		return dirName;
 	}
 
@@ -124,9 +143,21 @@ public class UploadRepo {
 	 * @return the suitable file or null if a file with that name doesn't exist.
 	 */
 	public File get(final String key) {
-		if (key == null || restUploadDir == null || !restUploadDir.exists()) {
+		if (key == null) {
+			logger.finer("failed to get uploaded file, key is null.");
+			return null;
+		} 
+		if (restUploadDir == null) {
+			logger.finer("failed to get uploaded file, key is " + key + ", upload directory is null.");
+			return null;		
+		}
+		if (!restUploadDir.exists()) {
+			logger.finer("failed to get uploaded file. key is " + key 
+					+ ", upload directory [" + restUploadDir.getAbsolutePath() + "] does not exist.");
 			return null;
 		}
+		logger.finer("Trying to get the uploaded file stored in a directory named - " + key 
+				+ " (under " + restUploadDir.getAbsolutePath() + ").");
 
 		final File[] files = restUploadDir.listFiles(new FilenameFilter() {
 
@@ -137,7 +168,20 @@ public class UploadRepo {
 		});
 		if (files != null && files.length > 0) {
 			final File dir = files[0];
-			return dir.listFiles()[0];
+			if (!dir.isDirectory()) {
+				logger.finer("The file found is not a directory [" + dir.getAbsolutePath() + "].");
+				return null;
+			}
+			File[] listFiles = dir.listFiles();
+			if (listFiles.length > 0) {
+				File uploadedFile = listFiles[0];
+				logger.finer("Returning the found uploaded file [" + uploadedFile.getAbsolutePath() + "].");
+				return uploadedFile;
+			} else {
+				logger.finer("The directory [" + dir.getAbsolutePath() + "] does not contain an uploaded file.");
+			}
+		} else {
+			logger.finer("No directory with name " + key + " was found at " + restUploadDir.getAbsolutePath());
 		}
 		return null;
 	}
@@ -151,6 +195,7 @@ public class UploadRepo {
 	 * @param cleanupTimeoutSeconds .
 	 */
 	public void resetTimeout(final int cleanupTimeoutSeconds) {
+		logger.finer("reset timeout to " + cleanupTimeoutSeconds + ".");
 		this.setCleanupTimeoutSeconds(cleanupTimeoutSeconds);
 		reset();
 	}
@@ -169,5 +214,13 @@ public class UploadRepo {
 
 	public void setCleanupTimeoutSeconds(final int cleanupTimeoutSeconds) {
 		this.cleanupTimeoutSeconds = cleanupTimeoutSeconds;
+	}
+
+	public int getUploadSizeLimitBytes() {
+		return uploadSizeLimitBytes;
+	}
+
+	public void setUploadSizeLimitBytes(int uploadSizeLimitBytes) {
+		this.uploadSizeLimitBytes = uploadSizeLimitBytes;
 	}
 }

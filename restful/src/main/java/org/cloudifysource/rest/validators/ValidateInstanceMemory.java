@@ -17,7 +17,7 @@ package org.cloudifysource.rest.validators;
 
 import org.cloudifysource.dsl.Service;
 import org.cloudifysource.dsl.cloud.Cloud;
-import org.cloudifysource.dsl.internal.CloudifyErrorMessages;
+import org.cloudifysource.dsl.internal.CloudifyMessageKeys;
 import org.cloudifysource.rest.controllers.RestErrorException;
 import org.cloudifysource.rest.util.IsolationUtils;
 import org.springframework.stereotype.Component;
@@ -47,7 +47,7 @@ public class ValidateInstanceMemory implements InstallServiceValidator {
 		final int reservedMachineMemory = cloud.getProvider().getReservedMemoryCapacityPerMachineInMB();
 		final long instanceMemoryMB = IsolationUtils.getInstanceMemoryMB(service);
 		if (instanceMemoryMB > machineTemplateMemory - reservedMachineMemory) {
-			throw new RestErrorException(CloudifyErrorMessages.INSUFFICIENT_MEMORY.getName(),
+			throw new RestErrorException(CloudifyMessageKeys.INSUFFICIENT_MEMORY.getName(),
 					service.getName(), instanceMemoryMB, machineTemplateMemory, reservedMachineMemory);
 		}
 	}

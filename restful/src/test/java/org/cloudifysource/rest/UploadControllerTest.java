@@ -29,7 +29,6 @@ import org.cloudifysource.rest.repo.UploadRepo;
 import org.cloudifysource.restclient.GSRestClient;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -44,7 +43,7 @@ import org.springframework.web.multipart.MultipartFile;
  * @author yael
  *
  */
-@Ignore
+//@Ignore
 //Swap the default JUnit4 with the spring specific SpringJUnit4ClassRunner.
 //This will allow spring to inject the application context
 @RunWith(SpringJUnit4ClassRunner.class)
@@ -56,6 +55,7 @@ public class UploadControllerTest extends ControllerTest {
 	private static final String UPLOAD_RESOURCES_PATH = "src" + File.separator + "test" + File.separator 
 			+ "resources" + File.separator + "upload";
 	private static final String TEST_FILE_PATH =  UPLOAD_RESOURCES_PATH + File.separator + "test.txt";
+	private static final String TEST_FILE1_PATH =  UPLOAD_RESOURCES_PATH + File.separator + "test1.txt";
 
 	private static final String UPLOADED_FILE_NAME = "upload.zip";
 	private static final String UPLOAD_URI = "/upload/" + UPLOADED_FILE_NAME;
@@ -64,15 +64,15 @@ public class UploadControllerTest extends ControllerTest {
 	private UploadController controller;
 	private UploadRepo uploadRepo;
 	
-	private static final int UPLOAD_SIZE_LIMIT_BYTES = 10;
-	private static final int CLEANUP_TIMOUT_SECONDS = 3;
+	private static final int TEST_UPLOAD_SIZE_LIMIT_BYTES = 10;
+	private static final int TEST_CLEANUP_TIMOUT_SECONDS = 3;
 	
 
 	@Before
 	public void init() throws NoSuchMethodException, IOException {
 		controller = applicationContext.getBean(UploadController.class);
 		uploadRepo = applicationContext.getBean(UploadRepo.class);
-		uploadRepo.resetTimeout(CLEANUP_TIMOUT_SECONDS);
+		uploadRepo.resetTimeout(TEST_CLEANUP_TIMOUT_SECONDS);
 		controllerMapping = new HashMap<String, HashMap<RequestMethod, HandlerMethod>>();
 		HashMap<RequestMethod, HandlerMethod> map = new HashMap<RequestMethod, HandlerMethod>();
 		HandlerMethod method = new HandlerMethod(controller, "upload", String.class, MultipartFile.class);
@@ -103,8 +103,15 @@ public class UploadControllerTest extends ControllerTest {
 	}
 	
 	@Test
+	public void testUploadDifferentName() throws Exception {
+		File file = new File(TEST_FILE1_PATH);
+		String uploadKey = uploadFile(file);
+		assertUploadedFileExists(file, uploadKey);
+	}
+	
+	@Test
 	public void testUploadExceededSizeLimitFile() throws Exception {
-		controller.setUploadSizeLimitBytes(UPLOAD_SIZE_LIMIT_BYTES);
+		uploadRepo.setUploadSizeLimitBytes(TEST_UPLOAD_SIZE_LIMIT_BYTES);
 		File uploadFile = new File(TEST_FILE_PATH);
 		MockHttpServletResponse response = null;
 		long fileSize = uploadFile.length();
@@ -117,12 +124,12 @@ public class UploadControllerTest extends ControllerTest {
 			String status = (String) errorDescription.get("status");
 			Assert.assertEquals("error", status);
 			String errorMsg = (String) errorDescription.get("error");
-			Assert.assertEquals(CloudifyMessageKeys.FILE_SIZE_LIMIT_EXCEEDED.getName(), errorMsg);
+			Assert.assertEquals(CloudifyMessageKeys.UPLOAD_FILE_SIZE_LIMIT_EXCEEDED.getName(), errorMsg);
 			Object[] args = (Object[]) errorDescription.get("error_args");
-			Object[] expectedArgs = {UPLOADED_FILE_NAME, controller.getUploadSizeLimitBytes(), fileSize};
+			Object[] expectedArgs = {UPLOADED_FILE_NAME, fileSize, uploadRepo.getUploadSizeLimitBytes()};
 			Assert.assertArrayEquals(expectedArgs, args);
 		}  finally {
-			controller.setUploadSizeLimitBytes(CloudifyConstants.DEFAULT_UPLOAD_SIZE_LIMIT_BYTES);
+			uploadRepo.setUploadSizeLimitBytes(CloudifyConstants.DEFAULT_UPLOAD_SIZE_LIMIT_BYTES);
 		}
 	}
 	
@@ -133,7 +140,7 @@ public class UploadControllerTest extends ControllerTest {
 		File uploadedFile = assertUploadedFileExists(file, uploadKey);
 		String parentPath = uploadedFile.getParentFile().getAbsolutePath();
 		
-		Thread.sleep(CLEANUP_TIMOUT_SECONDS * 2000);
+		Thread.sleep(TEST_CLEANUP_TIMOUT_SECONDS * 2000);
 		
 		File expectedToBeDeletedFolder = new File(parentPath);
 		Assert.assertFalse(expectedToBeDeletedFolder.exists());

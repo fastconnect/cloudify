@@ -22,37 +22,33 @@ public enum CloudifyMessageKeys {
 	
 	NOT_EXIST_ATTRIBUTE("not_exist_attribute"),
 	
-	FILE_SIZE_LIMIT_EXCEEDED("file_size_limit_exceeded"),
+	UPLOAD_FILE_SIZE_LIMIT_EXCEEDED("upload_file_size_limit_exceeded"),
 	
 	UPLOAD_FAILED("failed_to_upload_file"),
 	
-	WRONG_SERVICE_OVERRIDES_UPLOAD_KEY("wrong_upload_key"),
+	WRONG_SERVICE_FOLDER_UPLOAD_KEY("wrong_service_upload_key"),
 	
+	WRONG_SERVICE_OVERRIDES_UPLOAD_KEY("wrong_service_overrides_upload_key"),
+	
+	WRONG_CLOUD_CONFIGURATION_UPLOAD_KEY("wrong_service_cloud_configuration_upload_key"),
+	
+	WRONG_CLOUD_OVERRIDES_UPLOAD_KEY("wrong_cloud_overrides_upload_key"),
+
 	UPLOAD_KEY_PARAMETER_MISSING("upload_key_is_missing"),
-	
-	ZONE_PARAMETER_MISSING("zone_parameter_is_missing"),
-	
+		
 	SERVICE_OVERRIDES_SIZE_LIMIT_EXCEEDED("service_overrides_file_size_limit_exceeded"),
 
 	CLOUD_OVERRIDES_SIZE_LIMIT_EXCEEDED("cloud_overrides_file_size_limit_exceeded"),
 
 	CLOUD_CONFIGURATION_SIZE_LIMIT_EXCEEDED("cloud_configuration_file_size_limit_exceeded"),
-
-	VALIDATOR_REQUEST_MISSING("validator_is_missing_install_service_request_instance"),
-	
-	VALIDATOR_CLOUD_MISSING("validator_is_missing_cloud_instance"),
-	
-	VALIDATOR_SERVICE_MISSING("validator_is_missing_service_instance"),
-	
-	VALIDATOR_TEMPLATE_NAME_MISSING("validator_is_missing_template_name"),
-
-	UNSUPPORTED_SERVICE_TYPE("unsupported_service_type"),
-	
+				
 	MISSING_TEMPLATE("missing_template"),
 	
 	NOT_ALL_GSM_INSTANCES_RUNNING("not_all_gsm_instances_running"), 
 	
 	INSUFFICIENT_MEMORY("insufficient_memory"),
+	
+	ESM_MISSING("esm_missing"),
 	
 	FAILED_TO_EXTRACT_PROJECT_FILE("failed_to_extract_service_project_file"),
 	
@@ -60,11 +56,8 @@ public enum CloudifyMessageKeys {
 	
 	FAILED_TO_READ_SERVICE("failed_to_read_service"),
 	
-	FAILED_TO_READ_SERVICE_CLOUD_CONFIGURATION("failed_to_read_service_cloud_configuration"), 
+	FAILED_TO_READ_SERVICE_CLOUD_CONFIGURATION("failed_to_read_service_cloud_configuration"); 
 	
-	WRONG_CLOUD_CONFIGURATION_UPLOAD_KEY("wrong_service_cloud_configuration_upload_key"),
-	
-	WRONG_CLOUD_OVERRIDES_UPLOAD_KEY("wrong_cloud_overrides_upload_key");
 	
 	private final String name;
 	

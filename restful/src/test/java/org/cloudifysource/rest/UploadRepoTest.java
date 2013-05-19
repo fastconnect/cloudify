@@ -83,7 +83,7 @@ public class UploadRepoTest {
 		// file expected to be a file and not a directory.
 		Assert.assertTrue(uploadedFile.isFile());
 		// unzip file
-		Assert.assertTrue(uploadedFile.getName().endsWith(CloudifyConstants.PERMITTED_EXTENSION));
+		Assert.assertTrue(uploadedFile.getName().endsWith(CloudifyConstants.UPLOAD_PERMITTED_EXTENSION));
 		File tempDir = new File(new File(CloudifyConstants.TEMP_FOLDER), "tempDir");
 		tempDir.mkdirs();
 		tempDir.deleteOnExit();

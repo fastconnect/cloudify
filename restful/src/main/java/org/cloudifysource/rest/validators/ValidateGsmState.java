@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 import org.cloudifysource.dsl.cloud.Cloud;
-import org.cloudifysource.rest.ResponseConstants;
+import org.cloudifysource.dsl.internal.CloudifyMessageKeys;
 import org.cloudifysource.rest.controllers.RestErrorException;
 import org.openspaces.admin.Admin;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,7 +48,7 @@ public class ValidateGsmState implements InstallServiceValidator {
 				if (!isGsmStateValid) {
 					int gsmCount = admin.getGridServiceManagers().getManagers().length;
 					logger.warning("Not all gsm instances are intact. Found " + gsmCount);
-					throw new RestErrorException(ResponseConstants.NOT_ALL_GSM_INSTANCES_RUNNING, 
+					throw new RestErrorException(CloudifyMessageKeys.NOT_ALL_GSM_INSTANCES_RUNNING.getName(), 
 							numManagementMachines, gsmCount);
 				}
 			}

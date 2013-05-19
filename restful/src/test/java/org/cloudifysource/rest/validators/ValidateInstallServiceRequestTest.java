@@ -26,10 +26,6 @@ public class ValidateInstallServiceRequestTest extends InstallServiceValidatorTe
 	private static final String DUPLICATE_DEBUG_EVENTS = DEBUG_EVENTS + ",init";
 	private static final String WRONG_DEBUG_EVENTS = DEBUG_EVENTS + ", EVENT_NOT_EXIST";
 
-	@Test
-	public void testMissingRequest() {
-		testValidator(null, CloudifyMessageKeys.VALIDATOR_REQUEST_MISSING.getName());
-	}
 	
 	@Test
 	public void testMissingUploadKey() {
@@ -41,7 +37,7 @@ public class ValidateInstallServiceRequestTest extends InstallServiceValidatorTe
 	@Test
 	public void testWrongDebugEventsAndAll() {
 		final InstallServiceRequest request = new InstallServiceRequest();
-		request.setUploadKey(UPLOAD_KEY);
+		request.setServiceFolderUploadKey(UPLOAD_KEY);
 		request.setDebugAll(true);
 		request.setDebugEvents(DEBUG_EVENTS);
 		testValidator(request, CloudifyErrorMessages.DEBUG_EVENTS_AND_ALL_SET.getName());
@@ -50,7 +46,7 @@ public class ValidateInstallServiceRequestTest extends InstallServiceValidatorTe
 	@Test
 	public void testWrongDebugEvents() {
 		final InstallServiceRequest request = new InstallServiceRequest();
-		request.setUploadKey(UPLOAD_KEY);
+		request.setServiceFolderUploadKey(UPLOAD_KEY);
 		request.setDebugAll(false);
 		request.setDebugEvents(WRONG_DEBUG_EVENTS);
 		testValidator(request, CloudifyErrorMessages.DEBUG_EVENT_UNKNOWN.getName());
@@ -59,7 +55,7 @@ public class ValidateInstallServiceRequestTest extends InstallServiceValidatorTe
 	@Test
 	public void testDuplicateDebugEvents() {
 		final InstallServiceRequest request = new InstallServiceRequest();
-		request.setUploadKey(UPLOAD_KEY);
+		request.setServiceFolderUploadKey(UPLOAD_KEY);
 		request.setDebugAll(false);
 		request.setDebugEvents(DUPLICATE_DEBUG_EVENTS);
 		testValidator(request, CloudifyErrorMessages.DEBUG_EVENT_REPEATS.getName());
@@ -68,7 +64,7 @@ public class ValidateInstallServiceRequestTest extends InstallServiceValidatorTe
 	@Test
 	public void testWrongDebugMode() {
 		final InstallServiceRequest request = new InstallServiceRequest();
-		request.setUploadKey(UPLOAD_KEY);
+		request.setServiceFolderUploadKey(UPLOAD_KEY);
 		request.setDebugAll(true);
 		request.setDebugMode(WRONG_DEBUG_MODE);
 		testValidator(request, CloudifyErrorMessages.DEBUG_UNKNOWN_MODE.getName());

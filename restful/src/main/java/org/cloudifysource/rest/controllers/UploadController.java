@@ -49,11 +49,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping(value = "/upload")
 public class UploadController {
 
-	//@Value(value = "${upload.uploadSizeLimitBytes}")
-	private static final int UPLOAD_SIZE_LIMIT_BYTE = 100000000;
-	private int uploadSizeLimitBytes = UPLOAD_SIZE_LIMIT_BYTE;
-	private static final Logger logger = Logger
-			.getLogger(UploadController.class.getName());
+	private static final Logger logger = Logger.getLogger(UploadController.class.getName());
 	
 	@Autowired
 	private UploadRepo uploadRepo;
@@ -96,15 +92,8 @@ public class UploadController {
 		if (fileName.isEmpty()) {
 			name = file.getOriginalFilename();
 		}
-		
 		if (logger.isLoggable(Level.FINER)) {
 			logger.finer("received request to upload file " + name);
-		}
-		// enforce size limit
-		long size = file.getSize();
-		if (size > uploadSizeLimitBytes) {
-			throw new RestErrorException(
-					CloudifyMessageKeys.FILE_SIZE_LIMIT_EXCEEDED.getName(), name, uploadSizeLimitBytes, size);
 		}
 		// upload file using uploadRepo
 		String uploadedFileDirName = null;
@@ -119,13 +108,5 @@ public class UploadController {
 		UploadResponse response = new UploadResponse();
 		response.setUploadKey(uploadedFileDirName);
 		return response;
-	}
-
-	public int getUploadSizeLimitBytes() {
-		return uploadSizeLimitBytes;
-	}
-
-	public void setUploadSizeLimitBytes(final int uploadSizeLimitBytes) {
-		this.uploadSizeLimitBytes = uploadSizeLimitBytes;
 	}
 }

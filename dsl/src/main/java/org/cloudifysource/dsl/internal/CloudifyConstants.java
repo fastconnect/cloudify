@@ -386,7 +386,7 @@ public final class CloudifyConstants {
 	 *  Upload file constants.
 	 */
 	// load from property, default to tempdir
-	public static final String PERMITTED_EXTENSION = ".zip";
+	public static final String UPLOAD_PERMITTED_EXTENSION = ".zip";
 	public static final String UPLOAD_FILE_PARAM_NAME = "file";
 	public static final String UPLOADS_FOLDER_NAME = "restUploads";
 	public static final int DEFAULT_UPLOAD_TIMEOUT_SECOND = 300;
@@ -398,9 +398,11 @@ public final class CloudifyConstants {
 	public static final long CLOUD_CONFIGURATION_FILE_LENGTH_LIMIT_BYTES = 10 * FileUtils.ONE_KB;
 
 	// install-service constants
+
+	public static final String INSTALL_SERVICE_REQUEST_PARAM_NAME = "install-service-request";
 	public static final String EXTRACTED_FILES_FOLDER_NAME = "extracted";	
 	public static final int LIFECYCLE_EVENT_POLLING_INTERVAL_SEC = 4;
-	
+
 	// CHECKSTYLE:ON
 }
 

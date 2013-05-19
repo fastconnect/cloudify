@@ -26,7 +26,7 @@ import org.cloudifysource.dsl.internal.debug.DebugModes;
  */
 public class InstallServiceRequest {
 
-	private String uploadKey;
+	private String serviceFolderUploadKey;
 	private String cloudConfigurationUploadKey;
 	private String cloudOverridesUploadKey;
 	private String serviceOverridesUploadKey;
@@ -41,12 +41,12 @@ public class InstallServiceRequest {
 	private String debugEvents;
 	private String debugMode = DebugModes.INSTEAD.getName();
 
-	public String getUploadKey() {
-		return uploadKey;
+	public String getServiceFolderUploadKey() {
+		return serviceFolderUploadKey;
 	}
 
-	public void setUploadKey(final String uploadKey) {
-		this.uploadKey = uploadKey;
+	public void setServiceFolderUploadKey(final String serviceFolderUploadKey) {
+		this.serviceFolderUploadKey = serviceFolderUploadKey;
 	}
 
 	public String getCloudConfigurationUploadKey() {

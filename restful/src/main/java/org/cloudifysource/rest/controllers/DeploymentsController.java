@@ -67,14 +67,13 @@ import org.cloudifysource.rest.deploy.DeploymentConfig;
 import org.cloudifysource.rest.deploy.ElasticDeploymentCreationException;
 import org.cloudifysource.rest.deploy.ElasticProcessingUnitDeploymentFactory;
 import org.cloudifysource.rest.deploy.ElasticProcessingUnitDeploymentFactoryImpl;
-import org.cloudifysource.rest.interceptors.ApiVersionValidationAndRestResponseBuilderInterceptor;
 import org.cloudifysource.rest.repo.UploadRepo;
-import org.cloudifysource.security.CustomPermissionEvaluator;
 import org.cloudifysource.rest.util.IsolationUtils;
 import org.cloudifysource.rest.util.LifecycleEventsContainer;
 import org.cloudifysource.rest.util.RestPollingRunnable;
 import org.cloudifysource.rest.validators.InstallServiceValidationContext;
 import org.cloudifysource.rest.validators.InstallServiceValidator;
+import org.cloudifysource.security.CustomPermissionEvaluator;
 import org.openspaces.admin.Admin;
 import org.openspaces.admin.AdminException;
 import org.openspaces.admin.application.Application;
@@ -94,6 +93,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import com.sun.mail.iap.Response;
 
 //import com.sun.mail.iap.Response;
 
@@ -361,12 +363,14 @@ public class DeploymentsController extends BaseRestContoller {
 	public InstallServiceResponse installService(
 			@PathVariable final String appName,
 			@PathVariable final String serviceName,
+			@RequestParam (value = CloudifyConstants.INSTALL_SERVICE_REQUEST_PARAM_NAME, required = true) 
 			final InstallServiceRequest request) throws RestErrorException {
 
 		final String absolutePuName = ServiceUtils.getAbsolutePUName(appName, serviceName);
 
 		// get and extract service folder
-		final File packedFile = getFromRepo(request.getUploadKey(), "service packed file", absolutePuName);
+		final File packedFile = getFromRepo(request.getServiceFolderUploadKey(), 
+				CloudifyMessageKeys.WRONG_SERVICE_FOLDER_UPLOAD_KEY.getName(), absolutePuName);
 		final File serviceDir = extractServiceDir(packedFile, absolutePuName);
 
 		// update service properties file (and re-zip packedFile if needed).
@@ -532,8 +536,9 @@ public class DeploymentsController extends BaseRestContoller {
 			baseDir.mkdirs();
 			baseDir.deleteOnExit();
 			serviceDir = ServiceReader.extractProjectFileToDir(srcFile, absolutePuName, baseDir);
-		} catch (final IOException e1) {
-			throw new RestErrorException(CloudifyMessageKeys.FAILED_TO_EXTRACT_PROJECT_FILE.getName(), absolutePuName);
+		} catch (final IOException e) {
+			throw new RestErrorException(CloudifyMessageKeys.FAILED_TO_EXTRACT_PROJECT_FILE.getName(), 
+					absolutePuName, e.getMessage());
 		}
 		return serviceDir;
 	}
@@ -549,7 +554,8 @@ public class DeploymentsController extends BaseRestContoller {
 				result = ServiceReader.getServiceFromDirectory(workingProjectDir);
 			}
 		} catch (final Exception e) {
-			throw new RestErrorException(CloudifyMessageKeys.FAILED_TO_READ_SERVICE.getName(), absolutePuName);
+			throw new RestErrorException(CloudifyMessageKeys.FAILED_TO_READ_SERVICE.getName(), 
+					absolutePuName, e.getMessage());
 		}
 		return result.getService();
 	}
@@ -562,7 +568,7 @@ public class DeploymentsController extends BaseRestContoller {
 				serviceCloudConfigurationContents = FileUtils.readFileToByteArray(serviceCloudConfigurationFile);
 			} catch (final IOException e) {
 				throw new RestErrorException(CloudifyMessageKeys.FAILED_TO_READ_SERVICE_CLOUD_CONFIGURATION.getName(),
-						absolutePuName);
+						absolutePuName, e.getMessage());
 			}
 		}
 		return serviceCloudConfigurationContents;
@@ -633,28 +639,25 @@ public class DeploymentsController extends BaseRestContoller {
 				filesToAppend.put(servicePropertiesFile, "service proeprties file");
 				final File serviceOverridesFile = repo.get(serviceOverridesUploadKey);
 				if (serviceOverridesFile != null) {
-					if (serviceOverridesFile.length() > CloudifyConstants.SERVICE_OVERRIDES_FILE_LENGTH_LIMIT_BYTES) {
-						throw new RestErrorException(
-								CloudifyMessageKeys.SERVICE_OVERRIDES_SIZE_LIMIT_EXCEEDED.getName());
-					}
 					filesToAppend.put(serviceOverridesFile, "service overrides file");
 				}
 				appender.appendAll(servicePropertiesFile, filesToAppend);
 				return Packager.createZipFile(absolutePuName, serviceDir);
 			} catch (final IOException e) {
-				throw new RestErrorException(CloudifyMessageKeys.FAILED_TO_MERGE_OVERRIDES.getName(), absolutePuName);
+				throw new RestErrorException(CloudifyMessageKeys.FAILED_TO_MERGE_OVERRIDES.getName(), 
+						absolutePuName, e.getMessage());
 			}
 		}
 	}
 
-	private File getFromRepo(final String uploadKey, final String errorDesc, final String absolutePuName)
+	private File getFromRepo(final String uploadKey, final String errorMsg, final String absolutePuName)
 			throws RestErrorException {
 		if (StringUtils.isBlank(uploadKey)) {
 			return null;
 		}
 		final File file = repo.get(uploadKey);
 		if (file == null) {
-			throw new RestErrorException(errorDesc, absolutePuName);
+			throw new RestErrorException(errorMsg, uploadKey, absolutePuName);
 		}
 		return file;
 	}

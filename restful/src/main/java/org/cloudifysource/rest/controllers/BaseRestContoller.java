@@ -89,6 +89,9 @@ public abstract class BaseRestContoller {
 
 	// default Admin waiting time
 	protected static final int DEFAULT_ADMIN_WAITING_TIMEOUT = 10;
+	
+	// Processing-unit discovery timeout (in seconds)
+	protected static final int PU_DISCOVERY_TIMEOUT_SEC = 8;
 
 	@Autowired(required = true)
 	protected MessageSource messageSource;

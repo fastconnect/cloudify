@@ -15,10 +15,13 @@ package org.cloudifysource.rest.controllers;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -43,6 +46,7 @@ import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
 import org.cloudifysource.dsl.rest.request.SetApplicationAttributesRequest;
 import org.cloudifysource.dsl.rest.request.SetServiceAttributesRequest;
 import org.cloudifysource.dsl.rest.request.SetServiceInstanceAttributesRequest;
+import org.cloudifysource.dsl.rest.request.UninstallServiceRequest;
 import org.cloudifysource.dsl.rest.request.UpdateApplicationAttributeRequest;
 import org.cloudifysource.dsl.rest.response.DeleteApplicationAttributeResponse;
 import org.cloudifysource.dsl.rest.response.DeleteServiceAttributeResponse;
@@ -57,6 +61,7 @@ import org.cloudifysource.dsl.rest.response.ServiceInstanceMetricsData;
 import org.cloudifysource.dsl.rest.response.ServiceInstanceMetricsResponse;
 import org.cloudifysource.dsl.rest.response.ServiceMetricsResponse;
 import org.cloudifysource.dsl.utils.ServiceUtils;
+import org.cloudifysource.rest.ResponseConstants;
 import org.cloudifysource.rest.RestConfiguration;
 import org.cloudifysource.rest.deploy.DeploymentConfig;
 import org.cloudifysource.rest.deploy.ElasticDeploymentCreationException;
@@ -81,6 +86,9 @@ import org.openspaces.admin.pu.elastic.ElasticStatelessProcessingUnitDeployment;
 import org.openspaces.admin.pu.elastic.topology.ElasticDeploymentTopology;
 import org.openspaces.admin.space.ElasticSpaceDeployment;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -126,6 +134,9 @@ public class DeploymentsController extends BaseRestContoller {
 
 	@Autowired
 	private InstallServiceValidator[] installServiceValidators = new InstallServiceValidator[0];
+	
+	@Autowired
+	private InstallServiceValidator[] uninstallServiceValidators = new InstallServiceValidator[0];
 
 	@Autowired(required = false)
 	private CustomPermissionEvaluator permissionEvaluator;
@@ -665,6 +676,24 @@ public class DeploymentsController extends BaseRestContoller {
 			validator.validate(validationContext);
 		}
 	}
+	
+	private void validateUninstallService(final String absolutePuName, final InstallServiceRequest request,
+			final Service service, final String templateName, final File cloudOverridesFile,
+			final File serviceOverridesFile, final File cloudConfigurationFile)
+			throws RestErrorException {
+		final InstallServiceValidationContext validationContext = new InstallServiceValidationContext();
+		validationContext.setAbsolutePuName(absolutePuName);
+		validationContext.setCloud(restConfig.getCloud());
+		validationContext.setRequest(request);
+		validationContext.setService(service);
+		validationContext.setTemplateName(templateName);
+		validationContext.setCloudOverridesFile(cloudOverridesFile);
+		validationContext.setServiceOverridesFile(serviceOverridesFile);
+		validationContext.setCloudConfigurationFile(cloudConfigurationFile);
+		for (final InstallServiceValidator validator : getUninstallServiceValidators()) {
+			validator.validate(validationContext);
+		}
+	}
 
 	/******
 	 * get application status by given name.
@@ -738,12 +767,52 @@ public class DeploymentsController extends BaseRestContoller {
 	 *            the application name
 	 * @param serviceName
 	 *            the service name
-	 * @return
+	 * @param uninstallServiceRequest
+	 *            settings regarding this request (e.g. timeout)
+	 * @throws RestErrorException
+	 *            Indicates the operation failed
 	 */
 	@RequestMapping(value = "/{appName}/services/{serviceName}", method = RequestMethod.DELETE)
+	@PreAuthorize("isFullyAuthenticated()")
 	public void uninstallService(@PathVariable final String appName,
-			@PathVariable final String serviceName) {
-		throwUnsupported();
+			@PathVariable final String serviceName,
+			@RequestBody final UninstallServiceRequest uninstallServiceRequest) throws RestErrorException {
+		final String absolutePuName = ServiceUtils.getAbsolutePUName(appName, serviceName);
+		final ProcessingUnit processingUnit = admin.getProcessingUnits().waitFor(absolutePuName, 
+				PU_DISCOVERY_TIMEOUT_SEC, TimeUnit.SECONDS);
+		if (processingUnit == null) {
+			return unavailableServiceError(absolutePuName);
+		}
+
+		if (permissionEvaluator != null) {
+			final String puAuthGroups = processingUnit.getBeanLevelProperties().getContextProperties().
+					getProperty(CloudifyConstants.CONTEXT_PROPERTY_AUTH_GROUPS);
+			final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+			final CloudifyAuthorizationDetails authDetails = new CloudifyAuthorizationDetails(authentication);
+			permissionEvaluator.verifyPermission(authDetails, puAuthGroups, "deploy");
+		}
+		
+		validateGsmState();
+
+		final FutureTask<Boolean> undeployTask = new FutureTask<Boolean>(
+				new Callable<Boolean>() {
+					@Override
+					public Boolean call() throws Exception {
+						boolean result = processingUnit.undeployAndWait(uninstallServiceRequest.getTimeoutInMinutes(),
+								TimeUnit.MINUTES);
+						deleteServiceAttributes(applicationName, serviceName);
+						return result;
+					}
+
+				});
+		serviceUndeployExecutor.execute(undeployTask);
+		final UUID lifecycleEventContainerID = startPollingForServiceUninstallLifecycleEvents(appName, serviceName,
+				uninstallServiceRequest.getTimeoutInMinutes(), undeployTask);
+
+		final Map<String, Object> returnMap = new HashMap<String, Object>();
+		returnMap.put(CloudifyConstants.LIFECYCLE_EVENT_CONTAINER_ID,
+				lifecycleEventContainerID);
+		return successStatus(returnMap);
 	}
 
 	/**
@@ -1240,9 +1309,17 @@ public class DeploymentsController extends BaseRestContoller {
 	public InstallServiceValidator[] getInstallServiceValidators() {
 		return installServiceValidators;
 	}
+	
+	public InstallServiceValidator[] getUninstallServiceValidators() {
+		return uninstallServiceValidators;
+	}
 
 	public void setInstallServiceValidators(final InstallServiceValidator[] installServiceValidators) {
 		this.installServiceValidators = installServiceValidators;
+	}
+	
+	public void setUninstallServiceValidators(final InstallServiceValidator[] uninstallServiceValidators) {
+		this.uninstallServiceValidators = uninstallServiceValidators;
 	}
 
 }

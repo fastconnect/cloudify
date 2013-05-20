@@ -1,6 +1,7 @@
 package org.cloudifysource.dsl.rest.response;
 
-import java.util.HashMap;
+import org.cloudifysource.dsl.MaxSizeHashMap;
+
 import java.util.Map;
 
 /**
@@ -12,38 +13,13 @@ import java.util.Map;
  */
 public class ServiceDeploymentEvents {
 
-    private Map<String, InstanceDeploymentEvents> eventsPerInstance = new HashMap<String, InstanceDeploymentEvents>();
-    private long lastRefreshedTimestamp;
-    private volatile Object mutex = new Object();
+    private Map<Integer, ServiceDeploymentEvent> events = new MaxSizeHashMap<Integer, ServiceDeploymentEvent>(100);
 
-    public long getLastRefreshedTimestamp() {
-        return lastRefreshedTimestamp;
+    public Map<Integer, ServiceDeploymentEvent> getEvents() {
+        return events;
     }
 
-    public void setLastRefreshedTimestamp(final long lastRefreshedTimestamp) {
-        this.lastRefreshedTimestamp = lastRefreshedTimestamp;
-    }
-
-    public Map<String, InstanceDeploymentEvents> getEventsPerInstance() {
-        return eventsPerInstance;
-    }
-
-    public void setEventsPerInstance(final Map<String, InstanceDeploymentEvents> eventsPerInstance) {
-        this.eventsPerInstance = eventsPerInstance;
-    }
-
-    public Object mutex() {
-        return mutex;
-    }
-
-    public void add(final String processingUnitInstanceName, InstanceDeploymentEvents instanceDeploymentEvents) {
-        eventsPerInstance.get(processingUnitInstanceName).add(instanceDeploymentEvents);
-    }
-
-    @Override
-    public String toString() {
-        return "ServiceDeploymentEvents{"
-                + "eventsPerInstance=" + eventsPerInstance
-                + ", lastRefreshedTimestamp=" + lastRefreshedTimestamp + '}';
+    public void setEvents(final Map<Integer, ServiceDeploymentEvent> events) {
+        this.events = events;
     }
 }

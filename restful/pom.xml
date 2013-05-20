@@ -40,7 +40,7 @@
 			<groupId>org.cloudifysource</groupId>
 			<artifactId>security</artifactId>
 			<version>${cloudifyVersion}</version>
-			<scope>provided</scope>
+			<scope>compile</scope>
 		</dependency>
 		<dependency>
 			<groupId>com.gigaspaces</groupId>

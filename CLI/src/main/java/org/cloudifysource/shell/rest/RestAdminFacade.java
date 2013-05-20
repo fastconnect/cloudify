@@ -32,6 +32,7 @@ import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.rest.ApplicationDescription;
 import org.cloudifysource.dsl.rest.ServiceDescription;
 import org.cloudifysource.dsl.rest.response.ControllerDetails;
+import org.cloudifysource.dsl.rest.response.UploadResponse;
 import org.cloudifysource.dsl.utils.ServiceUtils;
 import org.cloudifysource.restclient.ErrorStatusException;
 import org.cloudifysource.restclient.GSRestClient;
@@ -625,7 +626,13 @@ public class RestAdminFacade extends AbstractAdminFacade {
 		}
 	}
 
-	/**
+    @Override
+    public UploadResponse upload(String fileName, File file) throws CLIException {
+
+        return null;
+    }
+
+    /**
 	 * {@inheritDoc}
 	 *
 	 * @param debugAll

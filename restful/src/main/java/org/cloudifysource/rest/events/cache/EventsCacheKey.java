@@ -25,7 +25,7 @@ public class EventsCacheKey {
         return appName;
     }
 
-    public void setAppName(String appName) {
+    public void setAppName(final String appName) {
         this.appName = appName;
     }
 
@@ -33,12 +33,12 @@ public class EventsCacheKey {
         return serviceName;
     }
 
-    public void setServiceName(String serviceName) {
+    public void setServiceName(final String serviceName) {
         this.serviceName = serviceName;
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 

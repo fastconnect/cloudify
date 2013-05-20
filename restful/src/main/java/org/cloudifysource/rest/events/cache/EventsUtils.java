@@ -1,15 +1,16 @@
 package org.cloudifysource.rest.events.cache;
 
-import com.gigaspaces.log.LogEntries;
 import com.gigaspaces.log.LogEntry;
 import com.gigaspaces.log.LogEntryMatcher;
-import com.gigaspaces.log.RegexLogEntryMatcher;
-import org.cloudifysource.dsl.rest.response.InstanceDeploymentEvent;
-import org.cloudifysource.dsl.rest.response.InstanceDeploymentEvents;
+import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvent;
+import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvents;
 import org.openspaces.admin.Admin;
 import org.openspaces.admin.gsc.GridServiceContainer;
+import org.openspaces.admin.gsc.GridServiceContainers;
 import org.openspaces.admin.pu.ProcessingUnit;
 import org.openspaces.admin.pu.ProcessingUnitInstance;
+import org.openspaces.admin.pu.events.ProcessingUnitInstanceLifecycleEventListener;
+import org.openspaces.admin.zone.Zone;
 
 import java.text.MessageFormat;
 import java.util.HashSet;
@@ -28,50 +29,59 @@ public class EventsUtils {
 
     private static final String USM_EVENT_LOGGER_NAME = ".*.USMEventLogger.*";
 
-    public static InstanceDeploymentEvent logToEvent(final LogEntry logEntry,
+    public static ServiceDeploymentEvent logToEvent(final LogEntry logEntry,
                                                      final String hostName,
                                                      final String hostAddress) {
         String text = logEntry.getText();
         String textWithoutLogger = text.split(" - ")[1];
         String actualEvent = textWithoutLogger.substring(textWithoutLogger.indexOf(".") + 1);
-        InstanceDeploymentEvent event = new InstanceDeploymentEvent();
-        event.setDescirption("[" + hostName + "/" + hostAddress + "] - " + actualEvent);
+        ServiceDeploymentEvent event = new ServiceDeploymentEvent();
+        event.setDescription("[" + hostName + "/" + hostAddress + "] - " + actualEvent);
         return event;
-    }
-
-    public static InstanceDeploymentEvents logsToEvents(final LogEntries logEntries,
-                                                        final int lastEventIndex,
-                                                        final String containerUid) {
-        InstanceDeploymentEvents events = new InstanceDeploymentEvents();
-        events.setContainerUid(containerUid);
-        String hostName = logEntries.getHostName();
-        String hostAddress = logEntries.getHostAddress();
-        int index = lastEventIndex;
-        for (LogEntry logEntry : logEntries) {
-            if (logEntry.isLog()) {
-                events.getEventPerIndex().put(index++, EventsUtils.logToEvent(logEntry, hostAddress, hostName));
-            }
-        }
-        return events;
     }
 
     public static LogEntryMatcher createMatcher(){
         final String regex = MessageFormat.format(USM_EVENT_LOGGER_NAME, new Object() {
         });
-        RegexLogEntryMatcher matcher = regex(regex);
-        return matcher;
+        return regex(regex);
     }
 
-    public static Set<GridServiceContainer> getContainersForDeployment(final String fullServiceName, final Admin admin) {
+    public static GridServiceContainers getContainersForDeployment(final String fullServiceName, final Admin admin) {
+
         Set<GridServiceContainer> containers = new HashSet<GridServiceContainer>();
-        ProcessingUnit processingUnit = admin.getProcessingUnits().getProcessingUnit(fullServiceName);
-        if (processingUnit == null) {
-            return containers;
+        Zone zone = admin.getZones().getByName(fullServiceName);
+        if (zone == null) {
+            return null;
+        } else {
+            return zone.getGridServiceContainers();
         }
-        for (ProcessingUnitInstance puInstance : processingUnit) {
-            containers.add(puInstance.getGridServiceContainer());
+    }
+
+    public static ServiceDeploymentEvents extractDesiredEvents(final ServiceDeploymentEvents events,
+                                                         final int from,
+                                                         final int to) {
+
+        ServiceDeploymentEvents desiredEvents = new ServiceDeploymentEvents();
+        for (int i = from; i <= to; i++) {
+            ServiceDeploymentEvent serviceDeploymentEvent = events.getEvents().get(i);
+            if (serviceDeploymentEvent != null) {
+                desiredEvents.getEvents().put(i, serviceDeploymentEvent);
+            }
         }
-        return containers;
+        return desiredEvents;
+    }
+
+    public static boolean eventsPresent(final ServiceDeploymentEvents events,
+                                  final int from,
+                                  final int to) {
+
+        for (int i = from; i <= to; i++) {
+            if (events.getEvents().get(i) == null) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public static String getThreadId() {

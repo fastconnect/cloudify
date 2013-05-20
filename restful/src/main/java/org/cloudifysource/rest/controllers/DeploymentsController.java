@@ -63,8 +63,8 @@ import org.cloudifysource.rest.deploy.ElasticProcessingUnitDeploymentFactory;
 import org.cloudifysource.rest.deploy.ElasticProcessingUnitDeploymentFactoryImpl;
 import org.cloudifysource.rest.events.cache.EventsCache;
 import org.cloudifysource.rest.events.cache.EventsCacheKey;
+import org.cloudifysource.rest.events.cache.EventsCacheValue;
 import org.cloudifysource.rest.events.cache.EventsUtils;
-import org.cloudifysource.rest.exceptions.MissingServiceException;
 import org.cloudifysource.rest.interceptors.ApiVersionValidationAndRestResponseBuilderInterceptor;
 import org.cloudifysource.rest.repo.UploadRepo;
 import org.cloudifysource.rest.util.IsolationUtils;
@@ -97,9 +97,6 @@ import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-
-//import com.sun.mail.iap.Response;
-
 /**
  * This controller is responsible for retrieving information about deployments. It is also the entry point for deploying
  * services and application. <br>
@@ -126,8 +123,9 @@ import java.util.logging.Logger;
 @RequestMapping(value = "/{version}/deployments")
 public class DeploymentsController extends BaseRestContoller {
 
-	private static final Logger logger = Logger.getLogger(DeploymentsController.class.getName());
-    private static final String MAX_NUMBER_OF_EVENTS = "100";
+    private static final Logger logger = Logger.getLogger(DeploymentsController.class.getName());
+    private static final int MAX_NUMBER_OF_EVENTS = 100;
+    public static final int REFRESH_INTERVAL_MILLIS = 500;
     private EventsCache eventsCache;
 
 	@Autowired
@@ -1122,7 +1120,7 @@ public class DeploymentsController extends BaseRestContoller {
 
 		// get delete attribute returned previous value
 		final Object previous = deleteAttribute(appName,
-				serviceName, null, attributeName);
+                serviceName, null, attributeName);
 
 		// create response object
 		final DeleteServiceAttributeResponse sar = new DeleteServiceAttributeResponse();
@@ -1417,77 +1415,54 @@ public class DeploymentsController extends BaseRestContoller {
     @RequestMapping(value = "applications/{appName}/service/{serviceName}/events", method = RequestMethod.GET)
     public ServiceDeploymentEvents getServiceDeploymentEventsByFullServiceName(@PathVariable final String appName,
                                                                                @PathVariable final String serviceName,
-                                                                               @RequestParam(required = false, defaultValue = "0") final String from,
-                                                                               @RequestParam(required = false, defaultValue = MAX_NUMBER_OF_EVENTS) final String to)
+                                                                               @RequestParam(required = false, defaultValue = "0") final int from,
+                                                                               @RequestParam(required = false, defaultValue = "-1") final int to)
                                                                                throws Throwable {
 
+        // limit the default number of events returned to the client.
+        int actualTo = to;
+        if (to == -1) {
+            actualTo = from + MAX_NUMBER_OF_EVENTS;
+        }
+
         EventsCacheKey key = new EventsCacheKey(appName, serviceName);
-        ServiceDeploymentEvents events;
+        logger.fine(EventsUtils.getThreadId() + "Received request for events [" + from + "]-[" + to + "] . key : " + key);
+        EventsCacheValue value;
         try {
-            System.out.println(EventsUtils.getThreadId() + "Retrieving events from cache for key : " + key);
-            events = eventsCache.get(key);
+            logger.fine(EventsUtils.getThreadId() + "Retrieving events from cache for key : " + key);
+            value = eventsCache.get(key);
         } catch (final ExecutionException e) {
             throw e.getCause();
         }
 
         // we don't want another request to modify our object during this calculation.
-        // all threads requesting events for this service, will use the same ServiceDeploymentEvents instance.
-        // so we can use a mutex defined in the object as a shared resource across threads.
-        System.out.println(EventsUtils.getThreadId() + "Retrieved events from cache : " + events.hashCode() + " . Waiting on mutex " + events.mutex());
-        synchronized (events.mutex()) {
-            System.out.println(EventsUtils.getThreadId() + "Calculating events to be returned for request");
-            if (!eventsPresent(events, Integer.parseInt(from), Integer.parseInt(to))) {
+        synchronized (value.getMutex()) {
+            if (!EventsUtils.eventsPresent(value.getEvents(), from, actualTo)) {
                 // enforce time restriction on refresh operations.
                 long now = System.currentTimeMillis();
-                if (now - events.getLastRefreshedTimestamp() > 1000) {
-                    System.out.println(EventsUtils.getThreadId() + "Some events are not present in events cache. Refreshing...");
+                if (now - value.getLastRefreshedTimestamp() > REFRESH_INTERVAL_MILLIS) {
+                    logger.fine(EventsUtils.getThreadId() + "Some events are missing from cache. Refreshing...");
                     // refresh the cache for this deployment.
                     eventsCache.refresh(key);
-                    events = eventsCache.getIfPresent(key);
                 }
+            } else {
+                logger.fine(EventsUtils.getThreadId() + "Found all desired events in cache.");
             }
 
             // return the events. this MAY or MAY NOT be the complete set of events requested.
             // request for specific events is treated as best effort. no guarantees all events are returned.
-            ServiceDeploymentEvents desiredEvents = extractDesiredEvents(events, Integer.parseInt(from), Integer.parseInt(to));
-            System.out.println(EventsUtils.getThreadId() + "Finished calculation. Returning events " + events.hashCode() + " : " + desiredEvents);
-            return desiredEvents;
+            return EventsUtils.extractDesiredEvents(value.getEvents(), from, actualTo);
         }
     }
 
-    private ServiceDeploymentEvents extractDesiredEvents(final ServiceDeploymentEvents events,
-                                                         final int from,
-                                                         final int to) {
-        ServiceDeploymentEvents desiredEvents = new ServiceDeploymentEvents();
-        for (Map.Entry<String, InstanceDeploymentEvents> instanceEntry : events.getEventsPerInstance().entrySet()) {
-            desiredEvents.getEventsPerInstance().put(instanceEntry.getKey(), new InstanceDeploymentEvents());
-            for (Map.Entry<Integer, InstanceDeploymentEvent> eventEntry : instanceEntry.getValue().getEventPerIndex().entrySet()) {
-                if (eventEntry.getKey() >= from && eventEntry.getKey() <= to) {
-                    desiredEvents.getEventsPerInstance().get(instanceEntry.getKey()).getEventPerIndex().put(eventEntry.getKey(), eventEntry.getValue());
-                }
-            }
-        }
-        desiredEvents.setLastRefreshedTimestamp(events.getLastRefreshedTimestamp());
-        return desiredEvents;
-    }
 
-    private boolean eventsPresent(final ServiceDeploymentEvents events,
-                                  final int from,
-                                  final int to) {
-        for (InstanceDeploymentEvents instanceDeploymentEvents : events.getEventsPerInstance().values()) {
-            for (int i = from; i <= to; i++) {
-                if (!instanceDeploymentEvents.getEventPerIndex().containsKey(i)) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
+
+
 
     @RequestMapping(value = "{deploymentId}/events", method = RequestMethod.GET)
     public ServiceDeploymentEvents getServiceDeploymentEventsByDeploymentId(@PathVariable final String deploymentId,
                                                                             @RequestParam(required = false, defaultValue = "0") final String from,
-                                                                            @RequestParam(required = false, defaultValue = MAX_NUMBER_OF_EVENTS) final String to) {
+                                                                            @RequestParam(required = false, defaultValue = "-1") final String to) {
         return null;
     }
 }

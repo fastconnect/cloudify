@@ -6,7 +6,9 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 
+import java.util.HashSet;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 /**
  * Created with IntelliJ IDEA.
@@ -17,34 +19,39 @@ import java.util.concurrent.TimeUnit;
  */
 public class LogEntryMatcherProvider {
 
-    private final LoadingCache<String, ContinuousLogEntryMatcher> matchersCache;
+    private static final Logger logger = Logger.getLogger(LogEntryMatcherProvider.class.getName());
+
+    private final LoadingCache<LogEntryMatcherProviderKey, ContinuousLogEntryMatcher> matcherCache;
 
     public LogEntryMatcherProvider() {
 
-        this.matchersCache = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES)
-                .build(new CacheLoader<String, ContinuousLogEntryMatcher>() {
+        this.matcherCache = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES)
+                .build(new CacheLoader<LogEntryMatcherProviderKey, ContinuousLogEntryMatcher>() {
 
                     @Override
-                    public ContinuousLogEntryMatcher load(final String key) throws Exception {
+                    public ContinuousLogEntryMatcher load(final LogEntryMatcherProviderKey key) throws Exception {
                         LogEntryMatcher matcher = EventsUtils.createMatcher();
+                        logger.fine(EventsUtils.getThreadId() + "Loading matcher cache with matcher for key " + key);
                         return new ContinuousLogEntryMatcher(matcher, matcher);
                     }
                 });
     }
 
-    public void remove(final String containerUid) {
-        matchersCache.asMap().remove(containerUid);
-    }
+    /**
+     * Removes all matchers that were dedicated to events with a curtain key.
+     * @param key - the specified key.
+     */
+    public void removeAll(final EventsCacheKey key) {
+        System.out.println(EventsUtils.getThreadId() + "Removing matcher for key " + key);
 
-    public LogEntryMatcher getOrLoad(final String containerUid) {
-        return matchersCache.getUnchecked(containerUid);
-    }
-
-    public LogEntryMatcher get(final String containerUid) {
-        ContinuousLogEntryMatcher matcher = matchersCache.getIfPresent(containerUid);
-        if (matcher == null) {
-            throw new IllegalStateException("matcher cannot be null!");
+        for (LogEntryMatcherProviderKey logMatcherKey : new HashSet<LogEntryMatcherProviderKey>(matcherCache.asMap().keySet())) {
+            if (logMatcherKey.getEventsCacheKey().equals(key)) {
+                matcherCache.asMap().remove(logMatcherKey);
+            }
         }
-        return matcher;
+    }
+
+    public LogEntryMatcher getOrLoad(final LogEntryMatcherProviderKey key) {
+        return matcherCache.getUnchecked(key);
     }
 }

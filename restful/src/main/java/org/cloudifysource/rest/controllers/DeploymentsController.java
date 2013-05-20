@@ -12,15 +12,14 @@
  *******************************************************************************/
 package org.cloudifysource.rest.controllers;
 
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.Callable;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -46,7 +45,6 @@ import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
 import org.cloudifysource.dsl.rest.request.SetApplicationAttributesRequest;
 import org.cloudifysource.dsl.rest.request.SetServiceAttributesRequest;
 import org.cloudifysource.dsl.rest.request.SetServiceInstanceAttributesRequest;
-import org.cloudifysource.dsl.rest.request.UninstallServiceRequest;
 import org.cloudifysource.dsl.rest.request.UpdateApplicationAttributeRequest;
 import org.cloudifysource.dsl.rest.response.DeleteApplicationAttributeResponse;
 import org.cloudifysource.dsl.rest.response.DeleteServiceAttributeResponse;
@@ -61,18 +59,20 @@ import org.cloudifysource.dsl.rest.response.ServiceInstanceMetricsData;
 import org.cloudifysource.dsl.rest.response.ServiceInstanceMetricsResponse;
 import org.cloudifysource.dsl.rest.response.ServiceMetricsResponse;
 import org.cloudifysource.dsl.utils.ServiceUtils;
-import org.cloudifysource.rest.ResponseConstants;
 import org.cloudifysource.rest.RestConfiguration;
 import org.cloudifysource.rest.deploy.DeploymentConfig;
 import org.cloudifysource.rest.deploy.ElasticDeploymentCreationException;
 import org.cloudifysource.rest.deploy.ElasticProcessingUnitDeploymentFactory;
 import org.cloudifysource.rest.deploy.ElasticProcessingUnitDeploymentFactoryImpl;
+import org.cloudifysource.rest.interceptors.ApiVersionValidationAndRestResponseBuilderInterceptor;
 import org.cloudifysource.rest.repo.UploadRepo;
 import org.cloudifysource.rest.util.IsolationUtils;
 import org.cloudifysource.rest.util.LifecycleEventsContainer;
 import org.cloudifysource.rest.util.RestPollingRunnable;
 import org.cloudifysource.rest.validators.InstallServiceValidationContext;
 import org.cloudifysource.rest.validators.InstallServiceValidator;
+import org.cloudifysource.rest.validators.UninstallServiceValidationContext;
+import org.cloudifysource.rest.validators.UninstallServiceValidator;
 import org.cloudifysource.security.CustomPermissionEvaluator;
 import org.openspaces.admin.Admin;
 import org.openspaces.admin.AdminException;
@@ -85,9 +85,6 @@ import org.openspaces.admin.pu.elastic.ElasticStatelessProcessingUnitDeployment;
 import org.openspaces.admin.pu.elastic.topology.ElasticDeploymentTopology;
 import org.openspaces.admin.space.ElasticSpaceDeployment;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -138,7 +135,7 @@ public class DeploymentsController extends BaseRestContoller {
 	private InstallServiceValidator[] installServiceValidators = new InstallServiceValidator[0];
 	
 	@Autowired
-	private InstallServiceValidator[] uninstallServiceValidators = new InstallServiceValidator[0];
+	private UninstallServiceValidator[] uninstallServiceValidators = new UninstallServiceValidator[0];
 
 	@Autowired(required = false)
 	private CustomPermissionEvaluator permissionEvaluator;
@@ -451,7 +448,7 @@ public class DeploymentsController extends BaseRestContoller {
 			startPollingForLifecycleEvents(deploymentID, service.getName(), appName,
 					service.getNumInstances(), true, request.getTimeout(), request.getTimeUnit());
 		}
-
+		
 		installServiceResponse.setDeploymentID(deploymentID.toString());
 		return installServiceResponse;
 
@@ -496,36 +493,118 @@ public class DeploymentsController extends BaseRestContoller {
 		}
 		return restConfig.getAdmin().getGridServiceManagers().iterator().next();
 	}
-
-	private void startPollingForLifecycleEvents(final UUID deploymentID, final String serviceName,
-			final String applicationName, final int plannedNumberOfInstances,
-			final boolean isServiceInstall, final int timeout,
-			final TimeUnit minutes) {
+	
+	private void startPollingForLifecycleEvents(final UUID deploymentID, final String serviceName, 
+			final String applicationName, final int plannedNumberOfInstances, final boolean isServiceInstall,
+			final int timeout, final TimeUnit minutes) {
+		
 		RestPollingRunnable restPollingRunnable;
-		logger.info("starting poll on service : " + serviceName + " app: "
-				+ applicationName);
+		logger.info("starting poll on service : " + serviceName + " app: " + applicationName);
 
 		final LifecycleEventsContainer lifecycleEventsContainer = new LifecycleEventsContainer();
 		lifecycleEventsContainer.setEventsSet(restConfig.getEventsSet());
 
-		restPollingRunnable = new RestPollingRunnable(applicationName, timeout,
-				minutes);
+		restPollingRunnable = new RestPollingRunnable(applicationName, timeout, minutes);
 		restPollingRunnable.addService(serviceName, plannedNumberOfInstances);
 		restPollingRunnable.setAdmin(restConfig.getAdmin());
 		restPollingRunnable.setIsServiceInstall(isServiceInstall);
 		restPollingRunnable.setLifecycleEventsContainer(lifecycleEventsContainer);
 		restPollingRunnable.setEndTime(timeout, TimeUnit.MINUTES);
 		restPollingRunnable.setIsSetInstances(true);
-		restConfig.getLifecyclePollingThreadContainer().put(deploymentID,
-				restPollingRunnable);
+		restConfig.getLifecyclePollingThreadContainer().put(deploymentID, restPollingRunnable);
 		final ScheduledFuture<?> scheduleWithFixedDelay = restConfig.getScheduledExecutor()
 				.scheduleWithFixedDelay(restPollingRunnable, 0,
 						CloudifyConstants.LIFECYCLE_EVENT_POLLING_INTERVAL_SEC, TimeUnit.SECONDS);
 		restPollingRunnable.setFutureTask(scheduleWithFixedDelay);
 
-		logger.log(Level.INFO, "polling container UUID is "
-				+ deploymentID.toString());
+		logger.log(Level.INFO, "polling container UUID is " + deploymentID.toString());
 	}
+	
+	
+	private UUID startPollingForServiceUninstallLifecycleEvents(final String serviceName, final String applicationName,
+			final int timeoutInMinutes, final FutureTask<Boolean> undeployTask) {
+	
+		RestPollingRunnable restPollingRunnable;
+		final LifecycleEventsContainer lifecycleEventsContainer = new LifecycleEventsContainer();
+		final UUID deploymentID = UUID.randomUUID();
+		lifecycleEventsContainer.setEventsSet(restConfig.getEventsSet());
+
+		restPollingRunnable = new RestPollingRunnable(applicationName, timeoutInMinutes, TimeUnit.MINUTES);
+		restPollingRunnable.addService(serviceName, 0);
+		restPollingRunnable.setIsServiceInstall(false);
+		restPollingRunnable.setIsUninstall(true);
+		restPollingRunnable.setAdmin(restConfig.getAdmin());
+		restPollingRunnable.setLifecycleEventsContainer(lifecycleEventsContainer);
+		restPollingRunnable.setUndeployTask(undeployTask);
+		restPollingRunnable.setEndTime(timeoutInMinutes, TimeUnit.MINUTES);
+		restConfig.getLifecyclePollingThreadContainer().put(deploymentID, restPollingRunnable);
+		final ScheduledFuture<?> scheduleWithFixedDelay = restConfig.getScheduledExecutor()
+				.scheduleWithFixedDelay(restPollingRunnable, 0,
+						CloudifyConstants.LIFECYCLE_EVENT_POLLING_INTERVAL_SEC, TimeUnit.SECONDS);
+		restPollingRunnable.setFutureTask(scheduleWithFixedDelay);
+		
+		logger.log(Level.INFO, "Starting to poll for uninstall lifecycle events.");
+		logger.log(Level.INFO, "polling container UUID is " + deploymentID.toString());
+		
+		return deploymentID;
+	}
+	
+	
+	/*private UUID startPollingForLifecycleUninstallEvents(final UUID existingDeploymentID, final String serviceName, final String applicationName,
+			final int timeoutInMinutes, final FutureTask<Boolean> undeployTask) {
+	
+		RestPollingRunnable restPollingRunnable;
+		final LifecycleEventsContainer lifecycleEventsContainer = new LifecycleEventsContainer();
+		lifecycleEventsContainer.setEventsSet(restConfig.getEventsSet());
+		UUID deploymentID = existingDeploymentID;
+		if (deploymentID == null) {
+			deploymentID = UUID.randomUUID();	
+		}
+
+		createRestPollingRunnableForUninstall(applicationName, timeoutInMinutes, serviceName);
+		
+		restPollingRunnable.setLifecycleEventsContainer(lifecycleEventsContainer);
+		
+		final ScheduledFuture<?> scheduleWithFixedDelay = restConfig.getScheduledExecutor()
+				.scheduleWithFixedDelay(restPollingRunnable, 0,
+						CloudifyConstants.LIFECYCLE_EVENT_POLLING_INTERVAL_SEC, TimeUnit.SECONDS);
+		restPollingRunnable.setFutureTask(scheduleWithFixedDelay);
+		
+		restPollingRunnable = new RestPollingRunnable(applicationName, timeoutInMinutes, TimeUnit.MINUTES);
+		restPollingRunnable.addService(serviceName, 0);
+		restPollingRunnable.setIsServiceInstall(false);
+		restPollingRunnable.setIsUninstall(true);
+		restPollingRunnable.setAdmin(restConfig.getAdmin());
+		restPollingRunnable.setLifecycleEventsContainer(lifecycleEventsContainer);
+		restPollingRunnable.setUndeployTask(undeployTask);
+		restPollingRunnable.setEndTime(timeoutInMinutes, TimeUnit.MINUTES);
+
+		restConfig.getLifecyclePollingThreadContainer().put(deploymentID, restPollingRunnable);
+		final ScheduledFuture<?> scheduleWithFixedDelay = restConfig.getScheduledExecutor()
+				.scheduleWithFixedDelay(restPollingRunnable, 0,
+						CloudifyConstants.LIFECYCLE_EVENT_POLLING_INTERVAL_SEC, TimeUnit.SECONDS);
+		restPollingRunnable.setFutureTask(scheduleWithFixedDelay);
+		
+		logger.log(Level.INFO, "Starting to poll for uninstall lifecycle events.");
+		logger.log(Level.INFO, "polling container UUID is " + deploymentID.toString());
+		
+		return deploymentID;
+	}*/
+	
+	
+	private RestPollingRunnable createRestPollingRunnableForUninstall(final String applicationName, final int timeoutInMinutes, final String serviceName) {
+		RestPollingRunnable restPollingRunnable = new RestPollingRunnable(applicationName, timeoutInMinutes, TimeUnit.MINUTES);
+		restPollingRunnable.addService(serviceName, 0);
+		restPollingRunnable.setIsServiceInstall(false);
+		restPollingRunnable.setIsUninstall(true);
+		restPollingRunnable.setEndTime(timeoutInMinutes, TimeUnit.MINUTES);
+		restPollingRunnable.setAdmin(restConfig.getAdmin());
+
+		
+		return restPollingRunnable;
+	}
+	
+	
 
 	private File extractServiceDir(final File srcFile, final String absolutePuName) throws RestErrorException {
 		File serviceDir = null;
@@ -678,20 +757,13 @@ public class DeploymentsController extends BaseRestContoller {
 		}
 	}
 	
-	private void validateUninstallService(final String absolutePuName, final InstallServiceRequest request,
-			final Service service, final String templateName, final File cloudOverridesFile,
-			final File serviceOverridesFile, final File cloudConfigurationFile)
+	private void validateUninstallService()
 			throws RestErrorException {
-		final InstallServiceValidationContext validationContext = new InstallServiceValidationContext();
-		validationContext.setAbsolutePuName(absolutePuName);
+		final UninstallServiceValidationContext validationContext = new UninstallServiceValidationContext();
+
 		validationContext.setCloud(restConfig.getCloud());
-		validationContext.setRequest(request);
-		validationContext.setService(service);
-		validationContext.setTemplateName(templateName);
-		validationContext.setCloudOverridesFile(cloudOverridesFile);
-		validationContext.setServiceOverridesFile(serviceOverridesFile);
-		validationContext.setCloudConfigurationFile(cloudConfigurationFile);
-		for (final InstallServiceValidator validator : getUninstallServiceValidators()) {
+
+		for (final UninstallServiceValidator validator : getUninstallServiceValidators()) {
 			validator.validate(validationContext);
 		}
 	}
@@ -773,16 +845,17 @@ public class DeploymentsController extends BaseRestContoller {
 	 * @throws RestErrorException
 	 *            Indicates the operation failed
 	 */
-	@RequestMapping(value = "/{appName}/services/{serviceName}", method = RequestMethod.DELETE)
+	/*@RequestMapping(value = "/{appName}/services/{serviceName}", method = RequestMethod.DELETE)
 	@PreAuthorize("isFullyAuthenticated()")
-	public void uninstallService(@PathVariable final String appName,
+	public UninstallServiceResponse uninstallService(@PathVariable final String appName,
 			@PathVariable final String serviceName,
 			@RequestBody final UninstallServiceRequest uninstallServiceRequest) throws RestErrorException {
 		final String absolutePuName = ServiceUtils.getAbsolutePUName(appName, serviceName);
 		final ProcessingUnit processingUnit = admin.getProcessingUnits().waitFor(absolutePuName, 
 				PU_DISCOVERY_TIMEOUT_SEC, TimeUnit.SECONDS);
+		
 		if (processingUnit == null) {
-			return unavailableServiceError(absolutePuName);
+			throw new RestErrorException(FAILED_TO_LOCATE_SERVICE, serviceName);
 		}
 
 		if (permissionEvaluator != null) {
@@ -793,7 +866,8 @@ public class DeploymentsController extends BaseRestContoller {
 			permissionEvaluator.verifyPermission(authDetails, puAuthGroups, "deploy");
 		}
 		
-		validateGsmState();
+		// validations
+		validateUninstallService();
 
 		final FutureTask<Boolean> undeployTask = new FutureTask<Boolean>(
 				new Callable<Boolean>() {
@@ -801,7 +875,7 @@ public class DeploymentsController extends BaseRestContoller {
 					public Boolean call() throws Exception {
 						boolean result = processingUnit.undeployAndWait(uninstallServiceRequest.getTimeoutInMinutes(),
 								TimeUnit.MINUTES);
-						deleteServiceAttributes(applicationName, serviceName);
+						deleteServiceAttributes(appName, serviceName);
 						return result;
 					}
 
@@ -810,11 +884,10 @@ public class DeploymentsController extends BaseRestContoller {
 		final UUID lifecycleEventContainerID = startPollingForServiceUninstallLifecycleEvents(appName, serviceName,
 				uninstallServiceRequest.getTimeoutInMinutes(), undeployTask);
 
-		final Map<String, Object> returnMap = new HashMap<String, Object>();
-		returnMap.put(CloudifyConstants.LIFECYCLE_EVENT_CONTAINER_ID,
-				lifecycleEventContainerID);
-		return successStatus(returnMap);
-	}
+		final UninstallServiceResponse uninstallServiceResponse = new UninstallServiceResponse();
+		uninstallServiceResponse.setDeploymentID(lifecycleEventContainerID.toString());
+		return uninstallServiceResponse;
+	}*/
 
 	/**
 	 * update application attributes.
@@ -1311,7 +1384,7 @@ public class DeploymentsController extends BaseRestContoller {
 		return installServiceValidators;
 	}
 	
-	public InstallServiceValidator[] getUninstallServiceValidators() {
+	public UninstallServiceValidator[] getUninstallServiceValidators() {
 		return uninstallServiceValidators;
 	}
 
@@ -1319,7 +1392,7 @@ public class DeploymentsController extends BaseRestContoller {
 		this.installServiceValidators = installServiceValidators;
 	}
 	
-	public void setUninstallServiceValidators(final InstallServiceValidator[] uninstallServiceValidators) {
+	public void setUninstallServiceValidators(final UninstallServiceValidator[] uninstallServiceValidators) {
 		this.uninstallServiceValidators = uninstallServiceValidators;
 	}
 

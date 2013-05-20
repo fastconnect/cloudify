@@ -13,20 +13,6 @@
 package org.cloudifysource.rest.controllers;
 
 
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.FutureTask;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import net.jini.core.discovery.LookupLocator;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
@@ -36,23 +22,6 @@ import org.cloudifysource.dsl.cloud.Cloud;
 import org.cloudifysource.dsl.internal.*;
 import org.cloudifysource.dsl.internal.packaging.FileAppender;
 import org.cloudifysource.dsl.internal.packaging.Packager;
-import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
-import org.cloudifysource.dsl.rest.request.SetApplicationAttributesRequest;
-import org.cloudifysource.dsl.rest.request.SetServiceAttributesRequest;
-import org.cloudifysource.dsl.rest.request.SetServiceInstanceAttributesRequest;
-import org.cloudifysource.dsl.rest.request.UpdateApplicationAttributeRequest;
-import org.cloudifysource.dsl.rest.response.DeleteApplicationAttributeResponse;
-import org.cloudifysource.dsl.rest.response.DeleteServiceAttributeResponse;
-import org.cloudifysource.dsl.rest.response.DeleteServiceInstanceAttributeResponse;
-import org.cloudifysource.dsl.rest.response.GetApplicationAttributesResponse;
-import org.cloudifysource.dsl.rest.response.GetServiceAttributesResponse;
-import org.cloudifysource.dsl.rest.response.GetServiceInstanceAttributesResponse;
-import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
-import org.cloudifysource.dsl.rest.response.ServiceDetails;
-import org.cloudifysource.dsl.rest.response.ServiceInstanceDetails;
-import org.cloudifysource.dsl.rest.response.ServiceInstanceMetricsData;
-import org.cloudifysource.dsl.rest.response.ServiceInstanceMetricsResponse;
-import org.cloudifysource.dsl.rest.response.ServiceMetricsResponse;
 import org.cloudifysource.dsl.rest.request.*;
 import org.cloudifysource.dsl.rest.response.*;
 import org.cloudifysource.dsl.utils.ServiceUtils;
@@ -72,8 +41,6 @@ import org.cloudifysource.rest.util.LifecycleEventsContainer;
 import org.cloudifysource.rest.util.RestPollingRunnable;
 import org.cloudifysource.rest.validators.InstallServiceValidationContext;
 import org.cloudifysource.rest.validators.InstallServiceValidator;
-import org.cloudifysource.rest.validators.UninstallServiceValidationContext;
-import org.cloudifysource.rest.validators.UninstallServiceValidator;
 import org.cloudifysource.security.CustomPermissionEvaluator;
 import org.openspaces.admin.Admin;
 import org.openspaces.admin.AdminException;
@@ -137,8 +104,8 @@ public class DeploymentsController extends BaseRestContoller {
 	@Autowired
 	private InstallServiceValidator[] installServiceValidators = new InstallServiceValidator[0];
 	
-	@Autowired
-	private UninstallServiceValidator[] uninstallServiceValidators = new UninstallServiceValidator[0];
+//	@Autowired
+//	private UninstallServiceValidator[] uninstallServiceValidators = new UninstallServiceValidator[0];
 
 	@Autowired(required = false)
 	private CustomPermissionEvaluator permissionEvaluator;
@@ -774,13 +741,13 @@ public class DeploymentsController extends BaseRestContoller {
 	
 	private void validateUninstallService()
 			throws RestErrorException {
-		final UninstallServiceValidationContext validationContext = new UninstallServiceValidationContext();
-
-		validationContext.setCloud(restConfig.getCloud());
-
-		for (final UninstallServiceValidator validator : getUninstallServiceValidators()) {
-			validator.validate(validationContext);
-		}
+//		final UninstallServiceValidationContext validationContext = new UninstallServiceValidationContext();
+//
+//		validationContext.setCloud(restConfig.getCloud());
+//
+//		for (final UninstallServiceValidator validator : getUninstallServiceValidators()) {
+//			validator.validate(validationContext);
+//		}
 	}
 
 	/******
@@ -1399,17 +1366,17 @@ public class DeploymentsController extends BaseRestContoller {
 		return installServiceValidators;
 	}
 	
-	public UninstallServiceValidator[] getUninstallServiceValidators() {
-		return uninstallServiceValidators;
-	}
+//	public UninstallServiceValidator[] getUninstallServiceValidators() {
+//		return uninstallServiceValidators;
+//	}
 
 	public void setInstallServiceValidators(final InstallServiceValidator[] installServiceValidators) {
 		this.installServiceValidators = installServiceValidators;
 	}
 	
-	public void setUninstallServiceValidators(final UninstallServiceValidator[] uninstallServiceValidators) {
-		this.uninstallServiceValidators = uninstallServiceValidators;
-	}
+//	public void setUninstallServiceValidators(final UninstallServiceValidator[] uninstallServiceValidators) {
+//		this.uninstallServiceValidators = uninstallServiceValidators;
+//	}
 
 
     @RequestMapping(value = "applications/{appName}/service/{serviceName}/events", method = RequestMethod.GET)

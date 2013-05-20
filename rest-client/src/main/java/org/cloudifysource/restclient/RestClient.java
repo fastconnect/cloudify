@@ -67,6 +67,7 @@ public class RestClient {
 	private static final String UPLOAD_CONTROLLER_URL = "/upload/";
 	private static final String DEPLOYMENT_CONTROLLER_URL = "/deployments/";
 	private final String versionedDeploymentControllerUrl; 
+	private final String versionedUploadControllerUrl; 
 
 
 	private static final String HTTPS = "https";
@@ -106,6 +107,7 @@ public class RestClient {
 		});
 		setCredentials(username, password, httpClient);
 		versionedDeploymentControllerUrl = apiVersion + DEPLOYMENT_CONTROLLER_URL;
+		versionedUploadControllerUrl = apiVersion + UPLOAD_CONTROLLER_URL;
 		executer = new RestClientExecuter(httpClient, url);
 	}
 
@@ -191,7 +193,7 @@ public class RestClient {
 				executer.postObject(
 						installServiceUrl, 
 						request, 
-						new TypeReference<InstallServiceResponse>() { }
+						new TypeReference<Response<InstallServiceResponse>>() { }
 						);
 		return response;
 	}
@@ -210,12 +212,12 @@ public class RestClient {
 	public UploadResponse upload(final String fileName, final File file) 
 			throws IOException, RestClientException, TimeoutException {
 		final String uploadUrl = 
-				UPLOAD_CONTROLLER_URL + fileName;
+				versionedUploadControllerUrl + fileName;
 		UploadResponse response = executer.postFile(
 				uploadUrl, 
 				file, 
 				CloudifyConstants.UPLOAD_FILE_PARAM_NAME, 
-				new TypeReference<UploadResponse>() {
+				new TypeReference<Response<UploadResponse>>() {
 		});
 		return response;
 	}

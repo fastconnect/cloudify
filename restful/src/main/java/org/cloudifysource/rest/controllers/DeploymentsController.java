@@ -621,10 +621,9 @@ public class DeploymentsController extends BaseRestContoller {
 	private File updatePropertiesFile(final InstallServiceRequest request, final File overridesFile,
 			final File serviceDir, final String absolutePuName, final File workingProjectDir, final File srcFile)
 			throws RestErrorException {
-		final String serviceOverridesUploadKey = request.getServiceOverridesUploadKey();
 		final File applicationProeprtiesFile = request.getApplicationPropertiesFile();
 		// check if merge is necessary
-		if (StringUtils.isBlank(serviceOverridesUploadKey) && applicationProeprtiesFile == null) {
+		if (overridesFile == null && applicationProeprtiesFile == null) {
 			return srcFile;
 		} else {
 			// get properties file from working directory
@@ -637,9 +636,8 @@ public class DeploymentsController extends BaseRestContoller {
 				final FileAppender appender = new FileAppender("finalPropertiesFile.properties");
 				filesToAppend.put(applicationProeprtiesFile, "application proeprties file");
 				filesToAppend.put(servicePropertiesFile, "service proeprties file");
-				final File serviceOverridesFile = repo.get(serviceOverridesUploadKey);
-				if (serviceOverridesFile != null) {
-					filesToAppend.put(serviceOverridesFile, "service overrides file");
+				if (overridesFile != null) {
+					filesToAppend.put(overridesFile, "service overrides file");
 				}
 				appender.appendAll(servicePropertiesFile, filesToAppend);
 				return Packager.createZipFile(absolutePuName, serviceDir);

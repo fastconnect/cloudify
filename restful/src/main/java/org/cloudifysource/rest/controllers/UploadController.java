@@ -33,7 +33,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 
 
@@ -46,8 +45,8 @@ import org.springframework.web.multipart.MultipartFile;
  *
  */
 @Controller
-@RequestMapping(value = "/upload")
-public class UploadController {
+@RequestMapping(value = "/{version}/upload")
+public class UploadController extends BaseRestContoller {
 
 	private static final Logger logger = Logger.getLogger(UploadController.class.getName());
 	
@@ -82,7 +81,6 @@ public class UploadController {
 	 */
 	@PreAuthorize("isFullyAuthenticated() and hasPermission(#authGroups, 'deploy')")
 	@RequestMapping(value = "/{fileName:.+}", method = RequestMethod.POST)
-	@ResponseBody
 	public UploadResponse upload(
 			@PathVariable() final String fileName,
 			@RequestParam(value = CloudifyConstants.UPLOAD_FILE_PARAM_NAME, required = true) final MultipartFile file) 

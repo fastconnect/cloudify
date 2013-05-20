@@ -5,6 +5,7 @@ import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.core.MediaType;
 
 import org.cloudifysource.dsl.internal.CloudifyMessageKeys;
 import org.cloudifysource.dsl.rest.response.Response;
@@ -62,6 +63,7 @@ public class ApiVersionValidationAndRestResponseBuilderInterceptor extends Handl
 		
 		Object model = filterModel(modelAndView.getModel());
 		modelAndView.clear();
+		response.setContentType(MediaType.APPLICATION_JSON);
 		if (model instanceof Response<?>) {
 			String responseBodyStr = new ObjectMapper().writeValueAsString(model);
 			response.getOutputStream().write(responseBodyStr.getBytes());

@@ -26,6 +26,7 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.entity.mime.MultipartEntity;
@@ -47,7 +48,7 @@ public class RestClientExecuter {
 
 	private URL url;
 	private String urlStr;
-	
+
 	public RestClientExecuter(final DefaultHttpClient httpClient, final URL url) {
 		this.httpClient = httpClient;
 		this.url = url;
@@ -56,11 +57,8 @@ public class RestClientExecuter {
 			this.urlStr += FORWARD_SLASH;
 		}
 	}
-	
-	private final DefaultHttpClient httpClient;
 
-	private static final String CONTENT_TYPE_HEADER_NAME = "Content-Type";
-	private static final String CONTENT_TYPE_HEADER_VALUE = "application/json";
+	private final DefaultHttpClient httpClient;
 
 	/**
 	 * Executes HTTP post over REST on the given (relative) URL with the given postBody.
@@ -79,13 +77,13 @@ public class RestClientExecuter {
 	 * @throws IOException .
 	 */
 	public <T> T postObject(final String url, final Object postBody,
-			final TypeReference<T> responseTypeReference)
-			throws RestClientException, TimeoutException, IOException {
+			final TypeReference<Response<T>> responseTypeReference)
+					throws RestClientException, TimeoutException, IOException {
 		final String jsonStr = new ObjectMapper().writeValueAsString(postBody);
 		final HttpEntity stringEntity = new StringEntity(jsonStr, "UTF-8");
 		return post(url, responseTypeReference, stringEntity);
 	}
-	
+
 	/**
 	 * 
 	 * @param relativeUrl
@@ -104,23 +102,23 @@ public class RestClientExecuter {
 	 * @throws TimeoutException .
 	 */
 	public <T> T postFile(final String relativeUrl, final File fileToPost, 
-			final String partName, final TypeReference<T> responseTypeReference) 
+			final String partName, final TypeReference<Response<T>> responseTypeReference) 
 					throws IOException, RestClientException, TimeoutException {
 		final MultipartEntity multipartEntity = new MultipartEntity();
 		final FileBody fileBody = new FileBody(fileToPost);
 		multipartEntity.addPart(partName, fileBody);
 		return post(relativeUrl, responseTypeReference, multipartEntity);
-		
+
 	}
-	
-	private <T> T post(final String relativeUrl, final TypeReference<T> responseTypeReference, 
+
+	private <T> T post(final String relativeUrl, final TypeReference<Response<T>> responseTypeReference, 
 			final HttpEntity entity) throws RestClientException, TimeoutException, IOException {
 		final HttpPost postRequest = new HttpPost(getFullUrl(relativeUrl));
 		//postRequest.setHeader(CONTENT_TYPE_HEADER_NAME, CONTENT_TYPE_HEADER_VALUE);
 		postRequest.setEntity(entity);
 		return executeRequest(postRequest, responseTypeReference);
 	}
-	
+
 	/**
 	 * 
 	 * @param relativeUrl
@@ -132,13 +130,13 @@ public class RestClientExecuter {
 	 * @throws IOException .
 	 * @throws RestClientException .
 	 */
-	public <T> T get(final String relativeUrl, final TypeReference<T> responseTypeReference) 
+	public <T> T get(final String relativeUrl, final TypeReference<Response<T>> responseTypeReference) 
 			throws IOException, RestClientException {
 		final HttpGet getRequest = new HttpGet(getFullUrl(relativeUrl));
 		return executeRequest(getRequest, responseTypeReference);
 	}
-	
-	
+
+
 	/**
 	 * 
 	 * @param relativeUrl
@@ -150,42 +148,45 @@ public class RestClientExecuter {
 	 * @throws IOException .
 	 * @throws RestClientException .
 	 */
-	public <T> T delete(final String relativeUrl, final TypeReference<T> responseTypeReference) 
+	public <T> T delete(final String relativeUrl, final TypeReference<Response<T>> responseTypeReference) 
 			throws IOException, RestClientException {
 		final HttpDelete getRequest = new HttpDelete(getFullUrl(relativeUrl));
 		return executeRequest(getRequest, responseTypeReference);
 	}
 
-	private <T> T executeRequest(final HttpUriRequest request, 
-			final TypeReference<T> responseTypeReference)
-			throws IOException, RestClientException {
-		final HttpResponse httpResponse = httpClient.execute(request);
-		checkForError(httpResponse);
-		return getResponseObject(responseTypeReference, httpResponse);
+	private <T> T executeRequest(final HttpRequestBase request, 
+			final TypeReference<Response<T>> responseTypeReference)
+					throws IOException, RestClientException {
+		try {
+			final HttpResponse httpResponse = httpClient.execute(request);
+			checkForError(httpResponse);
+			return getResponseObject(responseTypeReference, httpResponse);
+		} finally {
+			request.abort();
+		}
 	}
 
 	private void checkForError(final HttpResponse response)
 			throws RestClientException, IOException {
 		final int statusCode = response.getStatusLine().getStatusCode();
 		if (statusCode != CloudifyConstants.HTTP_STATUS_CODE_OK) {
-//			final String responseBody = getResponseBody(response);
-//			final Response<Void> entity =
-//					new ObjectMapper().readValue(responseBody, ResponseTypeReferenceFactory.newVoidResponse());
-//			String messageId = entity.getMessageId();
+			final String responseBody = getResponseBody(response);
+			final Response<Void> entity = 
+					new ObjectMapper().readValue(responseBody, new TypeReference<Response<Void>>() { });
+			String messageId = entity.getMessageId();
+			throw new RestClientException(response.getStatusLine().getStatusCode(), entity.getMessage());
 //			throw new RestClientException(
 //					response.getStatusLine().getStatusCode(),
-//					entity.getMessage());
-			throw new RestClientException(
-					response.getStatusLine().getStatusCode(),
-					response.getStatusLine().getReasonPhrase());
+//					response.getStatusLine().getReasonPhrase());
 		}
 	}
 
-	private <T> T getResponseObject(final TypeReference<T> typeReference, final HttpResponse httpResponse)
+	private <T> T getResponseObject(final TypeReference<Response<T>> typeReference, final HttpResponse httpResponse)
 			throws IOException {
 		final String responseBody = getResponseBody(httpResponse);
-		final T response = new ObjectMapper().readValue(responseBody, typeReference);
-		return response;
+		final Response<T> response = 
+				new ObjectMapper().readValue(responseBody, typeReference);
+		return response.getResponse();
 	}
 
 	/**
@@ -202,7 +203,7 @@ public class RestClientExecuter {
 		}
 		return urlStr + safeRelativeURL;
 	}
-	
+
 	/**
 	 * Gets the HTTP response's body as a String.
 	 * 

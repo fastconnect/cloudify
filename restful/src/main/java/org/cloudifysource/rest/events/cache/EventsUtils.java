@@ -1,22 +1,20 @@
 package org.cloudifysource.rest.events.cache;
 
-import com.gigaspaces.log.LogEntry;
-import com.gigaspaces.log.LogEntryMatcher;
-import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvent;
-import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvents;
-import org.openspaces.admin.Admin;
-import org.openspaces.admin.gsc.GridServiceContainer;
-import org.openspaces.admin.gsc.GridServiceContainers;
-import org.openspaces.admin.pu.ProcessingUnit;
-import org.openspaces.admin.pu.ProcessingUnitInstance;
-import org.openspaces.admin.pu.events.ProcessingUnitInstanceLifecycleEventListener;
-import org.openspaces.admin.zone.Zone;
+import static com.gigaspaces.log.LogEntryMatchers.regex;
 
 import java.text.MessageFormat;
 import java.util.HashSet;
 import java.util.Set;
 
-import static com.gigaspaces.log.LogEntryMatchers.regex;
+import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvent;
+import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvents;
+import org.openspaces.admin.Admin;
+import org.openspaces.admin.gsc.GridServiceContainer;
+import org.openspaces.admin.gsc.GridServiceContainers;
+import org.openspaces.admin.zone.Zone;
+
+import com.gigaspaces.log.LogEntry;
+import com.gigaspaces.log.LogEntryMatcher;
 
 /**
  * Created with IntelliJ IDEA.

@@ -1,11 +1,7 @@
 package org.cloudifysource.rest.events.cache;
 
-import com.gigaspaces.log.LogEntries;
-import com.gigaspaces.log.LogEntry;
-import com.gigaspaces.log.LogEntryMatcher;
-import com.google.common.cache.CacheLoader;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
+import java.util.logging.Logger;
+
 import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvent;
 import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvents;
 import org.cloudifysource.dsl.utils.ServiceUtils;
@@ -14,8 +10,12 @@ import org.openspaces.admin.Admin;
 import org.openspaces.admin.gsc.GridServiceContainer;
 import org.openspaces.admin.gsc.GridServiceContainers;
 
-import java.util.Set;
-import java.util.logging.Logger;
+import com.gigaspaces.log.LogEntries;
+import com.gigaspaces.log.LogEntry;
+import com.gigaspaces.log.LogEntryMatcher;
+import com.google.common.cache.CacheLoader;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 
 /**
  * Created with IntelliJ IDEA.

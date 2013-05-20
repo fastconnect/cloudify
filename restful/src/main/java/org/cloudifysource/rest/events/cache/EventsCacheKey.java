@@ -1,6 +1,5 @@
 package org.cloudifysource.rest.events.cache;
 
-import org.openspaces.admin.gsc.GridServiceContainer;
 
 /**
  * Created with IntelliJ IDEA.

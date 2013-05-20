@@ -1,7 +1,5 @@
 package org.cloudifysource.dsl.rest.response;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 /**
  * Created with IntelliJ IDEA.

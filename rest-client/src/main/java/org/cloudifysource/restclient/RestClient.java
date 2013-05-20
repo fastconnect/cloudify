@@ -62,7 +62,7 @@ public class RestClient {
 
 	private static final Logger logger = Logger.getLogger(RestClient.class.getName());
 
-	private final RestClientExecuter executer;
+	private final RestClientExecutor executor;
 	
 	private static final String UPLOAD_CONTROLLER_URL = "/upload/";
 	private static final String DEPLOYMENT_CONTROLLER_URL = "/deployments/";
@@ -108,7 +108,7 @@ public class RestClient {
 		setCredentials(username, password, httpClient);
 		versionedDeploymentControllerUrl = apiVersion + DEPLOYMENT_CONTROLLER_URL;
 		versionedUploadControllerUrl = apiVersion + UPLOAD_CONTROLLER_URL;
-		executer = new RestClientExecuter(httpClient, url);
+		executor = new RestClientExecutor(httpClient, url);
 	}
 
 	/**
@@ -187,15 +187,12 @@ public class RestClient {
 	public InstallServiceResponse installService(final String applicationName, 
 			final String serviceName, final InstallServiceRequest request) 
 					throws RestClientException , TimeoutException , IOException {
-		final String installServiceUrl = 
-				versionedDeploymentControllerUrl + applicationName + "/services/" + serviceName;
-		InstallServiceResponse response = 
-				executer.postObject(
-						installServiceUrl, 
+		final String installServiceUrl = versionedDeploymentControllerUrl + applicationName + "/services/" + serviceName;
+		return executor.postObject(
+                        installServiceUrl,
 						request, 
 						new TypeReference<Response<InstallServiceResponse>>() { }
 						);
-		return response;
 	}
 
 	/**
@@ -213,7 +210,7 @@ public class RestClient {
 			throws IOException, RestClientException, TimeoutException {
 		final String uploadUrl = 
 				versionedUploadControllerUrl + fileName;
-		UploadResponse response = executer.postFile(
+		UploadResponse response = executor.postFile(
 				uploadUrl, 
 				file, 
 				CloudifyConstants.UPLOAD_FILE_PARAM_NAME, 

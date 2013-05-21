@@ -34,10 +34,6 @@ public class RestClientException extends Exception {
 		this.verbose = verbose;
 	}
 
-	public static long getSerialversionuid() {
-		return serialVersionUID;
-	}
-
 	public String getMessageCode() {
 		return messageCode;
 	}

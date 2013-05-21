@@ -12,6 +12,8 @@
  ******************************************************************************/
 package org.cloudifysource.restclient;
 
+import org.apache.commons.lang.exception.ExceptionUtils;
+
 /**
  * 
  * @author yael
@@ -29,7 +31,7 @@ public class RestClientHttpException extends RestClientResponseException {
 
 	public RestClientHttpException(final String messageCode, final String messageFormattedText, final int statusCode,
 			final String reasonPhrase, final String responseBody, final Exception exception) {
-		super(messageCode, messageFormattedText, statusCode, reasonPhrase);
+		super(messageCode, messageFormattedText, statusCode, reasonPhrase, ExceptionUtils.getStackTrace(exception));
 		this.responseBody = responseBody;
 		this.exception = exception;
 	}

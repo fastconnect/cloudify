@@ -96,7 +96,7 @@ public class UploadRepo {
 	/**
 	 * Creates a new folder with a randomly generated name (using the UUID class) which holds the uploaded file.
 	 * The folder located at the main upload folder in {@link #baseDir}.
-	 * This uploaded file and its folder will be deleted after {@link #cleanupTimeoutMillis} seconds.
+	 * This uploaded file and its folder will be deleted after {@link #cleanupTimeoutMillis} millis.
 	 * 
 	 * @param fileName
 	 * 			The name of the uploaded file.
@@ -186,11 +186,11 @@ public class UploadRepo {
 	
 	/**
 	 * Sets the cleanup timeout and reset the scheduled thread.
-	 * @param cleanupTimeoutSeconds .
+	 * @param cleanupTimeoutMillis .
 	 */
-	public void resetTimeout(final int cleanupTimeoutSeconds) {
-		logger.finer("reset timeout to " + cleanupTimeoutSeconds + ".");
-		this.setCleanupTimeoutMillis(cleanupTimeoutSeconds);
+	public void resetTimeout(final int cleanupTimeoutMillis) {
+		logger.finer("reset timeout to " + cleanupTimeoutMillis + " milliseconds.");
+		this.setCleanupTimeoutMillis(cleanupTimeoutMillis);
 		reset();
 	}
 

@@ -50,14 +50,6 @@ import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvents;
 import org.cloudifysource.dsl.rest.response.UploadResponse;
 import org.codehaus.jackson.type.TypeReference;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.URL;
-import java.security.*;
-import java.security.cert.CertificateException;
-import java.util.concurrent.TimeoutException;
-import java.util.logging.Logger;
-
 /**
  * 
  * @author yael

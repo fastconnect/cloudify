@@ -585,11 +585,8 @@ public class DeploymentsController extends BaseRestContoller {
 		final File serviceDir = extractServiceDir(packedFile, absolutePuName);
 
 		// update service properties file (and re-zip packedFile if needed).
-		File serviceOverridesFile = null;
-		if (!request.isApplicationInstall()) {
-			serviceOverridesFile = getFromRepo(request.getServiceOverridesUploadKey(),
+		File serviceOverridesFile = getFromRepo(request.getServiceOverridesUploadKey(),
 					CloudifyMessageKeys.WRONG_SERVICE_OVERRIDES_UPLOAD_KEY.getName(), absolutePuName);
-		}
 		final File workingProjectDir = new File(serviceDir, "ext");
 		final File updatedPackedFile = updatePropertiesFile(request, serviceOverridesFile, serviceDir, absolutePuName,
 				workingProjectDir, packedFile);

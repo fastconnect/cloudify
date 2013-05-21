@@ -182,7 +182,7 @@ public class RestClientExecutor {
 			checkForError(httpResponse);
 			return getResponseObject(responseTypeReference, httpResponse);
 		} catch (IOException e) {
-			throw new RestClientIOException("execute_request_failed", 
+			throw new RestClientIOException(EXECUTION_FAILURE_CODE, 
 					"failed to execute " + request.getMethod() + " request to " + request.getURI(), e);
 		} finally {
 			request.abort();
@@ -202,7 +202,7 @@ public class RestClientExecutor {
 				throw new RestClientResponseException(entity.getMessageId(), 
 						entity.getMessage(), statusCode, reasonPhrase, entity.getVerbose());
 			} catch (IOException e) {
-				throw new RestClientHttpException("http_failure", 
+				throw new RestClientHttpException(HTTP_FAILURE_CODE, 
 						"IOExeception occured when tried to read the response", 
 						statusCode, reasonPhrase, responseBody, e);
 			}

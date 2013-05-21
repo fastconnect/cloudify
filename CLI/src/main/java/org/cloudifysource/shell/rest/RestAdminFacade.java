@@ -75,7 +75,7 @@ public class RestAdminFacade extends AbstractAdminFacade {
 		try {
 			return newRestClient.upload(fileName, file);
 		} catch (RestClientException e) {
-			throw new CLIStatusException(e.getMessage(), e.getArgs());
+			throw new CLIStatusException(e.getMessageFormattedText(), null);
 		} catch (Exception e) {
 			throw new CLIStatusException("failed_to_upload_file", e.getMessage());
 		} 

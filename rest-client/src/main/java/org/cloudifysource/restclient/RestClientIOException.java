@@ -12,42 +12,32 @@
  ******************************************************************************/
 package org.cloudifysource.restclient;
 
+import java.io.IOException;
+
+import org.apache.commons.lang.exception.ExceptionUtils;
+
 /**
  * 
  * @author yael
  * 
  */
-public class RestClientException extends Exception {
+public class RestClientIOException extends RestClientException {
 
 	/**
 	 * UID for serialization.
 	 */
 	private static final long serialVersionUID = 1L;
 
-	private final String messageCode;
-	private final String messageFormattedText;
-	private final String verbose;
+	private final IOException exception;
 
-	public RestClientException(final String messageCode, final String messageFormattedText, final String verbose) {
-		this.messageCode = messageCode;
-		this.messageFormattedText = messageFormattedText;
-		this.verbose = verbose;
+	public RestClientIOException(final String messageCode, final String messageFormattedText,
+			final IOException exception) {
+		super(messageCode, messageFormattedText, ExceptionUtils.getStackTrace(exception));
+		this.exception = exception;
 	}
 
-	public static long getSerialversionuid() {
-		return serialVersionUID;
-	}
-
-	public String getMessageCode() {
-		return messageCode;
-	}
-
-	public String getMessageFormattedText() {
-		return messageFormattedText;
-	}
-
-	public String getVerbose() {
-		return verbose;
+	public IOException getException() {
+		return exception;
 	}
 
 }

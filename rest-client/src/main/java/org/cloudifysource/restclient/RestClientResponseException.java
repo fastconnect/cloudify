@@ -17,37 +17,29 @@ package org.cloudifysource.restclient;
  * @author yael
  * 
  */
-public class RestClientException extends Exception {
+public class RestClientResponseException extends RestClientException {
 
 	/**
 	 * UID for serialization.
 	 */
 	private static final long serialVersionUID = 1L;
 
-	private final String messageCode;
-	private final String messageFormattedText;
-	private final String verbose;
+	private final int statusCode;
+	private final String reasonPhrase;
 
-	public RestClientException(final String messageCode, final String messageFormattedText, final String verbose) {
-		this.messageCode = messageCode;
-		this.messageFormattedText = messageFormattedText;
-		this.verbose = verbose;
+	public RestClientResponseException(final String messageCode, final String messageFormattedText,
+			final int statusCode, final String reasonPhrase, final String verbose) {
+		super(messageCode, messageFormattedText, verbose);
+		this.statusCode = statusCode;
+		this.reasonPhrase = reasonPhrase;
 	}
 
-	public static long getSerialversionuid() {
-		return serialVersionUID;
+	public int getStatusCode() {
+		return statusCode;
 	}
 
-	public String getMessageCode() {
-		return messageCode;
-	}
-
-	public String getMessageFormattedText() {
-		return messageFormattedText;
-	}
-
-	public String getVerbose() {
-		return verbose;
+	public String getReasonPhrase() {
+		return reasonPhrase;
 	}
 
 }

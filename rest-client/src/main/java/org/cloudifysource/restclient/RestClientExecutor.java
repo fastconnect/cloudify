@@ -18,6 +18,8 @@ package org.cloudifysource.restclient;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
+import org.apache.http.StatusLine;
+import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
@@ -45,7 +47,10 @@ import java.util.concurrent.TimeoutException;
 public class RestClientExecutor {
 
     private static final String FORWARD_SLASH = "/";
-
+    private static final String HTTP_FAILURE_CODE = "http_failure";
+    private static final String POST_FAILURE_CODE = "create_post_entity_failed";
+    private static final String EXECUTION_FAILURE_CODE = "execute_request_failed";
+    
     private final DefaultHttpClient httpClient;
     private String urlStr;
 
@@ -71,14 +76,18 @@ public class RestClientExecutor {
 	 * @return The response object from the REST server.
 	 * @throws RestClientException
 	 *             Reporting failure to post the file.
-	 * @throws TimeoutException .
-	 * @throws IOException .
 	 */
 	public <T> T postObject(final String url,
                             final Object postBody,
-			                final TypeReference<Response<T>> responseTypeReference) throws RestClientException, TimeoutException, IOException {
-		final String jsonStr = new ObjectMapper().writeValueAsString(postBody);
-		final HttpEntity stringEntity = new StringEntity(jsonStr, "UTF-8");
+			                final TypeReference<Response<T>> responseTypeReference) throws RestClientException {
+		final HttpEntity stringEntity;
+		try {
+			final String jsonStr = new ObjectMapper().writeValueAsString(postBody);
+			stringEntity = new StringEntity(jsonStr, "UTF-8");
+		} catch (IOException e) {
+			throw new RestClientIOException(POST_FAILURE_CODE, 
+					"failed to create the post entity for " + url, e);
+		}
 		return post(url, responseTypeReference, stringEntity);
 	}
 
@@ -94,15 +103,13 @@ public class RestClientExecutor {
 	 *          The type reference of the response.
 	 * @param <T> The type of the response.
 	 * @return The response object from the REST server.
-	 * @throws IOException .
 	 * @throws RestClientException
 	 *             Reporting failure to post the file.
-	 * @throws TimeoutException .
 	 */
 	public <T> T postFile(final String relativeUrl,
                           final File fileToPost,
 			              final String partName,
-                          final TypeReference<Response<T>> responseTypeReference) throws IOException, RestClientException, TimeoutException {
+                          final TypeReference<Response<T>> responseTypeReference) throws RestClientException {
 		final MultipartEntity multipartEntity = new MultipartEntity();
 		final FileBody fileBody = new FileBody(fileToPost);
 		multipartEntity.addPart(partName, fileBody);
@@ -118,11 +125,10 @@ public class RestClientExecutor {
      *          The type reference of the response.
      * @param <T> The type of the response.
      * @return The response object from the REST server.
-     * @throws IOException .
      * @throws RestClientException .
      */
     public <T> T get(final String relativeUrl,
-                     final TypeReference<Response<T>> responseTypeReference) throws IOException, RestClientException {
+                     final TypeReference<Response<T>> responseTypeReference) throws RestClientException {
         final HttpGet getRequest = new HttpGet(getFullUrl(relativeUrl));
         return executeRequest(getRequest, responseTypeReference);
     }
@@ -135,18 +141,17 @@ public class RestClientExecutor {
      *          The type reference of the response.
      * @param <T> The type of the response.
      * @return The response object from the REST server.
-     * @throws IOException .
      * @throws RestClientException .
      */
     public <T> T delete(final String relativeUrl,
-                        final TypeReference<Response<T>> responseTypeReference) throws IOException, RestClientException {
+                        final TypeReference<Response<T>> responseTypeReference) throws RestClientException {
         final HttpDelete getRequest = new HttpDelete(getFullUrl(relativeUrl));
         return executeRequest(getRequest, responseTypeReference);
     }
 
 	private <T> T post(final String relativeUrl,
                        final TypeReference<Response<T>> responseTypeReference,
-			           final HttpEntity entity) throws RestClientException, TimeoutException, IOException {
+			           final HttpEntity entity) throws RestClientException {
 		final HttpPost postRequest = new HttpPost(getFullUrl(relativeUrl));
 		postRequest.setEntity(entity);
 		return executeRequest(postRequest, responseTypeReference);
@@ -171,23 +176,36 @@ public class RestClientExecutor {
     }
 
 	private <T> T executeRequest(final HttpRequestBase request, 
-			                     final TypeReference<Response<T>> responseTypeReference) throws IOException, RestClientException {
+			                     final TypeReference<Response<T>> responseTypeReference) throws RestClientException {
 		try {
 			final HttpResponse httpResponse = httpClient.execute(request);
 			checkForError(httpResponse);
 			return getResponseObject(responseTypeReference, httpResponse);
+		} catch (IOException e) {
+			throw new RestClientIOException("execute_request_failed", 
+					"failed to execute " + request.getMethod() + " request to " + request.getURI(), e);
 		} finally {
 			request.abort();
 		}
 	}
 
-	private void checkForError(final HttpResponse response) throws RestClientException, IOException {
-		final int statusCode = response.getStatusLine().getStatusCode();
+	private void checkForError(final HttpResponse response) throws RestClientException {
+		StatusLine statusLine = response.getStatusLine();
+		final int statusCode = statusLine.getStatusCode();
+		String reasonPhrase = statusLine.getReasonPhrase();
+		String responseBody = null;
 		if (statusCode != HttpStatus.SC_OK) {
-			final String responseBody = getResponseBody(response);
-			final Response<Void> entity = new ObjectMapper()
-                    .readValue(responseBody, new TypeReference<Response<Void>>() {});
-			throw new RestClientException(response.getStatusLine().getStatusCode(), entity.getMessage());
+			try {
+				responseBody = getResponseBody(response);
+				final Response<Void> entity = new ObjectMapper()
+				.readValue(responseBody, new TypeReference<Response<Void>>() { });
+				throw new RestClientResponseException(entity.getMessageId(), 
+						entity.getMessage(), statusCode, reasonPhrase, entity.getVerbose());
+			} catch (IOException e) {
+				throw new RestClientHttpException("http_failure", 
+						"IOExeception occured when tried to read the response", 
+						statusCode, reasonPhrase, responseBody, e);
+			}
 		}
 	}
 

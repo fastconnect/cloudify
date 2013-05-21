@@ -40,6 +40,7 @@ import org.cloudifysource.restclient.GSRestClient;
 import org.cloudifysource.restclient.InvocationResult;
 import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.restclient.RestClientException;
+import org.cloudifysource.restclient.RestClientResponseException;
 import org.cloudifysource.restclient.RestException;
 import org.cloudifysource.restclient.StringUtils;
 import org.cloudifysource.shell.AbstractAdminFacade;
@@ -76,9 +77,7 @@ public class RestAdminFacade extends AbstractAdminFacade {
 			return newRestClient.upload(fileName, file);
 		} catch (RestClientException e) {
 			throw new CLIStatusException(e.getMessageFormattedText(), null);
-		} catch (Exception e) {
-			throw new CLIStatusException("failed_to_upload_file", e.getMessage());
-		} 
+		}
 	}
 	
 	/**

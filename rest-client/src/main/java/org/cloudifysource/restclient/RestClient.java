@@ -202,12 +202,10 @@ public class RestClient {
 	 * @param file
 	 * 		The file to upload.
 	 * @return upload response.
-	 * @throws IOException .
 	 * @throws RestClientException .
-	 * @throws TimeoutException .
 	 */
 	public UploadResponse upload(final String fileName, final File file) 
-			throws IOException, RestClientException, TimeoutException {
+			throws RestClientException {
 		String finalFileName = fileName == null ? file.getName() : fileName;
 		final String uploadUrl = 
 				versionedUploadControllerUrl + finalFileName;

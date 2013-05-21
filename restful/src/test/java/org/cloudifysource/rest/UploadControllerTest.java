@@ -70,7 +70,7 @@ public class UploadControllerTest extends ControllerTest {
 	private UploadRepo uploadRepo;
 	
 	private static final int TEST_UPLOAD_SIZE_LIMIT_BYTES = 10;
-	private static final int TEST_CLEANUP_TIMOUT_SECONDS = 1;
+	private static final int TEST_CLEANUP_TIMOUT_MILLIS = 50;
 	
 
 	@Before
@@ -79,7 +79,7 @@ public class UploadControllerTest extends ControllerTest {
 		versionedUploadUri = "/" + version + UPLOAD_URI;
 		controller = applicationContext.getBean(UploadController.class);
 		uploadRepo = applicationContext.getBean(UploadRepo.class);
-		uploadRepo.resetTimeout(TEST_CLEANUP_TIMOUT_SECONDS);
+		uploadRepo.resetTimeout(TEST_CLEANUP_TIMOUT_MILLIS);
 		controllerMapping = new HashMap<String, HashMap<RequestMethod, HandlerMethod>>();
 		HashMap<RequestMethod, HandlerMethod> map = new HashMap<RequestMethod, HandlerMethod>();
 		HandlerMethod method = new HandlerMethod(controller, "upload", String.class, MultipartFile.class);
@@ -150,7 +150,7 @@ public class UploadControllerTest extends ControllerTest {
 		File uploadedFile = assertUploadedFileExists(file, uploadKey);
 		String parentPath = uploadedFile.getParentFile().getAbsolutePath();
 		
-		Thread.sleep(TEST_CLEANUP_TIMOUT_SECONDS * 2000);
+		Thread.sleep(TEST_CLEANUP_TIMOUT_MILLIS * 3);
 		
 		File expectedToBeDeletedFolder = new File(parentPath);
 		Assert.assertFalse(expectedToBeDeletedFolder.exists());

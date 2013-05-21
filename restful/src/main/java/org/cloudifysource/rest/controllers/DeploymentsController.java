@@ -674,7 +674,8 @@ public class DeploymentsController extends BaseRestContoller {
 	private File getCloudConfigurationFile(final InstallServiceRequest request,
 			final String absolutePuName) throws RestErrorException {
 		File cloudConfigFile;
-		if (request.isApplicationInstall()) {
+		//TODO:adaml check application or service install
+		if (false) {
 			//TODO:figure out a way to obtain this file.
 			cloudConfigFile = null;//request.getCloudConfiguration();
 		} else {
@@ -687,7 +688,8 @@ public class DeploymentsController extends BaseRestContoller {
 	private File getPackedFile(final InstallServiceRequest request, final String absolutePUName) 
 						throws RestErrorException {
 		File packedFile;
-		if (request.isApplicationInstall()) {
+		//TODO:adaml check application or service install
+		if (false) {
 			packedFile = getFromRepo(request.getServiceFolderUploadKey(), 
 					CloudifyMessageKeys.WRONG_SERVICE_FOLDER_UPLOAD_KEY.getName(), absolutePUName);
 		} else {

@@ -15,21 +15,6 @@
  ******************************************************************************/
 package org.cloudifysource.restclient;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.URL;
-import java.security.KeyManagementException;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.UnrecoverableKeyException;
-import java.security.cert.CertificateException;
-import java.util.concurrent.TimeoutException;
-import java.util.logging.Logger;
-
-import org.apache.http.HttpException;
-import org.apache.http.HttpRequest;
-import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.HttpVersion;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
@@ -45,7 +30,6 @@ import org.apache.http.params.HttpConnectionParams;
 import org.apache.http.params.HttpParams;
 import org.apache.http.params.HttpProtocolParams;
 import org.apache.http.protocol.HTTP;
-import org.apache.http.protocol.HttpContext;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
 import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
@@ -53,6 +37,14 @@ import org.cloudifysource.dsl.rest.response.Response;
 import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvents;
 import org.cloudifysource.dsl.rest.response.UploadResponse;
 import org.codehaus.jackson.type.TypeReference;
+
+import java.io.File;
+import java.io.IOException;
+import java.net.URL;
+import java.security.*;
+import java.security.cert.CertificateException;
+import java.util.concurrent.TimeoutException;
+import java.util.logging.Logger;
 
 /**
  * 
@@ -63,51 +55,16 @@ public class RestClient {
 
 	private static final Logger logger = Logger.getLogger(RestClient.class.getName());
 
-	private final RestClientExecutor executor;
+	private RestClientExecutor executor;
 	
 	private static final String UPLOAD_CONTROLLER_URL = "/upload/";
 	private static final String DEPLOYMENT_CONTROLLER_URL = "/deployments/";
-	private final String versionedDeploymentControllerUrl; 
-	private final String versionedUploadControllerUrl; 
+	private String versionedDeploymentControllerUrl;
+	private String versionedUploadControllerUrl;
 
 
 	private static final String HTTPS = "https";
 
-
-
-	/**
-	 * Ctor.
-	 * 
-	 * @param username
-	 *            Username for the HTTP client, optional.
-	 * @param password
-	 *            Password for the HTTP client, optional.
-	 * @param apiVersion
-	 *            cloudify api version of the client
-	 * @throws RestException
-	 *             Reporting failure to create a SSL HTTP client.
-	 */
-	public RestClient(final String username,
-                      final String password,
-                      final URL url,
-                      final String apiVersion)
-			throws RestException {
-
-		DefaultHttpClient httpClient;
-		if (HTTPS.equals(url.getProtocol())) {
-			httpClient = getSSLHttpClient(url);
-		} else {
-			httpClient = new DefaultHttpClient();
-		}
-		final HttpParams httpParams = httpClient.getParams();
-		HttpConnectionParams.setConnectionTimeout(httpParams, CloudifyConstants.DEFAULT_HTTP_CONNECTION_TIMEOUT);
-		HttpConnectionParams.setSoTimeout(httpParams, CloudifyConstants.DEFAULT_HTTP_READ_TIMEOUT);
-
-		setCredentials(username, password, httpClient);
-		versionedDeploymentControllerUrl = apiVersion + DEPLOYMENT_CONTROLLER_URL;
-		versionedUploadControllerUrl = apiVersion + UPLOAD_CONTROLLER_URL;
-		executor = new RestClientExecutor(httpClient, url);
-	}
 
 	/**
 	 * Returns a HTTP client configured to use SSL.
@@ -162,7 +119,6 @@ public class RestClient {
 	 * @param httpClient 
 	 */
 	private void setCredentials(final String username, final String password, final AbstractHttpClient httpClient) {
-		// TODO use userdetails instead of user/pass
 		if (StringUtils.notEmpty(username) && StringUtils.notEmpty(password)) {
 			httpClient.getCredentialsProvider().setCredentials(new AuthScope(AuthScope.ANY),
 					new UsernamePasswordCredentials(username, password));
@@ -225,7 +181,33 @@ public class RestClient {
 		return response;
 	}
 
-    public void connect() throws IOException, RestClientException {
+    public void connect(final URL url,
+                        final String username,
+                        final String password,
+                        final String apiVersion) throws IOException, RestClientException, RestException {
+
+        this.executor = createExecutor(url, username, password, apiVersion);
+
         executor.get(versionedDeploymentControllerUrl + "/testrest", new TypeReference<Response<Void>>() {});
+    }
+
+    private RestClientExecutor createExecutor(final URL url,
+                                              final String username,
+                                              final String password,
+                                              final String apiVersion) throws RestException {
+        DefaultHttpClient httpClient;
+        if (HTTPS.equals(url.getProtocol())) {
+            httpClient = getSSLHttpClient(url);
+        } else {
+            httpClient = new DefaultHttpClient();
+        }
+        final HttpParams httpParams = httpClient.getParams();
+        HttpConnectionParams.setConnectionTimeout(httpParams, CloudifyConstants.DEFAULT_HTTP_CONNECTION_TIMEOUT);
+        HttpConnectionParams.setSoTimeout(httpParams, CloudifyConstants.DEFAULT_HTTP_READ_TIMEOUT);
+
+        setCredentials(username, password, httpClient);
+        versionedDeploymentControllerUrl = apiVersion + DEPLOYMENT_CONTROLLER_URL;
+        versionedUploadControllerUrl = apiVersion + UPLOAD_CONTROLLER_URL;
+        return new RestClientExecutor(httpClient, url);
     }
 }

@@ -15,18 +15,17 @@
  *******************************************************************************/
 package org.cloudifysource.shell;
 
+import jline.Terminal;
+import org.apache.felix.service.command.CommandProcessor;
+import org.apache.karaf.shell.console.jline.Console;
+import org.cloudifysource.restclient.RestClient;
+import org.cloudifysource.shell.rest.RestAdminFacade;
+
 import java.io.File;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.util.HashMap;
 import java.util.Properties;
-
-import jline.Terminal;
-
-import org.apache.felix.service.command.CommandProcessor;
-import org.apache.karaf.shell.console.jline.Console;
-import org.cloudifysource.restclient.RestClient;
-import org.cloudifysource.shell.rest.RestAdminFacade;
 
 /**
  * @author uri
@@ -59,6 +58,7 @@ public class ConsoleWithProps extends Console {
 		session.put(Constants.RECIPES, new HashMap<String, File>());
 		session.put(Constants.ACTIVE_APP, DEFAULT_APP_NAME);
 		session.put(Constants.INTERACTIVE_MODE, isInteractive);
+        session.put(Constants.REST_CLIENT, new RestClient());
 
 	}
 

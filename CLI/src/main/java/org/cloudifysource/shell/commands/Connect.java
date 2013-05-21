@@ -20,7 +20,6 @@ import org.apache.felix.gogo.commands.Argument;
 import org.apache.felix.gogo.commands.Command;
 import org.apache.felix.gogo.commands.Option;
 import org.cloudifysource.restclient.RestClient;
-import org.cloudifysource.restclient.RestClientException;
 import org.cloudifysource.shell.AdminFacade;
 import org.cloudifysource.shell.Constants;
 import org.cloudifysource.shell.ShellUtils;
@@ -69,11 +68,9 @@ public class Connect extends AbstractGSCommand {
 
         // create the rest client instance
         String formattedRestUrl = ShellUtils.getFormattedRestUrl(url, ssl);
-        restClient = new RestClient(user,
-                                    password,
-                                    new URL(formattedRestUrl),
-                                    PlatformVersion.getVersion());
-        restClient.connect();
+
+        restClient = (RestClient) session.get(Constants.REST_CLIENT);
+        restClient.connect(new URL(formattedRestUrl), user, password, PlatformVersion.getVersion());
 
         String formattedMessage;
         if (ssl) {

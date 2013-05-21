@@ -115,7 +115,8 @@ public class UploadRepo {
 			logger.warning("Upload file [" + name + "] size (" 
 					+ fileSize + ") exceeded the permitted size limit (" + getUploadSizeLimitBytes() + ").");
 			throw new RestErrorException(
-					CloudifyMessageKeys.UPLOAD_FILE_SIZE_LIMIT_EXCEEDED.getName(), name, fileSize, getUploadSizeLimitBytes());
+					CloudifyMessageKeys.UPLOAD_FILE_SIZE_LIMIT_EXCEEDED.getName(), 
+					name, fileSize, getUploadSizeLimitBytes());
 		}
 		final String dirName = UUID.randomUUID().toString();
 		final File srcDir = new File(restUploadDir, dirName);

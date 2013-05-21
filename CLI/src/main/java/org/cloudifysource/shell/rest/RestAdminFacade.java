@@ -13,6 +13,7 @@
 package org.cloudifysource.shell.rest;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
@@ -37,6 +38,8 @@ import org.cloudifysource.dsl.utils.ServiceUtils;
 import org.cloudifysource.restclient.ErrorStatusException;
 import org.cloudifysource.restclient.GSRestClient;
 import org.cloudifysource.restclient.InvocationResult;
+import org.cloudifysource.restclient.RestClient;
+import org.cloudifysource.restclient.RestClientException;
 import org.cloudifysource.restclient.RestException;
 import org.cloudifysource.restclient.StringUtils;
 import org.cloudifysource.shell.AbstractAdminFacade;
@@ -63,8 +66,21 @@ public class RestAdminFacade extends AbstractAdminFacade {
 	private static final String CLOUD_CONTROLLER_URL = "/cloudcontroller/";
 
 	private GSRestClient client;
+	private RestClient newRestClient;
 	private URL urlObj;
 
+	@Override
+	public UploadResponse upload(String fileName, File file) 
+			throws CLIException {
+		try {
+			return newRestClient.upload(fileName, file);
+		} catch (RestClientException e) {
+			throw new CLIStatusException(e.getMessage(), e.getArgs());
+		} catch (Exception e) {
+			throw new CLIStatusException("failed_to_upload_file", e.getMessage());
+		} 
+	}
+	
 	/**
 	 * {@inheritDoc}
 	 */
@@ -75,6 +91,7 @@ public class RestAdminFacade extends AbstractAdminFacade {
 		try {
 			this.urlObj = new URL(ShellUtils.getFormattedRestUrl(url, sslUsed));
 			client = new GSRestClient(user, password, getUrl(), PlatformVersion.getVersionNumber());
+			newRestClient = new RestClient(user, password, PlatformVersion.getVersion(), urlObj);
 			// test connection
 			client.get(SERVICE_CONTROLLER_URL + "testrest");
 			if (user != null || password != null) {
@@ -625,12 +642,6 @@ public class RestAdminFacade extends AbstractAdminFacade {
 			throw new CLIStatusException(e, e.getReasonCode(), e.getArgs());
 		}
 	}
-
-    @Override
-    public UploadResponse upload(String fileName, File file) throws CLIException {
-
-        return null;
-    }
 
     /**
 	 * {@inheritDoc}

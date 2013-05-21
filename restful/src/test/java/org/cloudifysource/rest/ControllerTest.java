@@ -17,6 +17,8 @@ import java.io.IOException;
 import java.security.InvalidParameterException;
 import java.util.Map;
 
+import javax.ws.rs.core.MediaType;
+
 import junit.framework.Assert;
 
 import org.apache.commons.lang.StringUtils;
@@ -33,7 +35,9 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.HandlerExecutionChain;
+import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.HandlerMapping;
+import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter;
 
 /**
@@ -43,7 +47,6 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
  */
 public abstract class ControllerTest {
 	private static final ObjectMapper PROJECT_MAPPER = new ObjectMapper();
-	private static final String JSON_CONTENT_TYPE = "application/json;charset=UTF-8";
 
 	protected RequestMappingHandlerAdapter handlerAdapter;
 	
@@ -85,24 +88,34 @@ public abstract class ControllerTest {
 		return testRequest(reqeust, getExpectedMethod(requestUri, RequestMethod.POST));
 	}
 
-	private MockHttpServletResponse testRequest(final MockHttpServletRequest reqeust,
+	private MockHttpServletResponse testRequest(final MockHttpServletRequest request,
 			final HandlerMethod expectedHandlerMethod) throws Exception {
 		final MockHttpServletResponse response = new MockHttpServletResponse();
 
-		final Object handler = getHandlerToRequest(reqeust);
+		final HandlerExecutionChain handlerExecutionChain = getHandlerToRequest(request);
+		Object handler = handlerExecutionChain.getHandler();
 		Assert.assertEquals("Wrong handler selected for request uri: "
-				+ reqeust.getRequestURI(), expectedHandlerMethod.toString(),
+				+ request.getRequestURI(), expectedHandlerMethod.toString(),
 				handler.toString());
-
+		
+		HandlerInterceptor[] interceptors = handlerExecutionChain.getInterceptors();
+		// pre handle
+		for (HandlerInterceptor handlerInterceptor : interceptors) {
+			handlerInterceptor.preHandle(request, response, handler);
+		}
 		// handle the request
-		handlerAdapter.handle(reqeust, response, handler);
+		ModelAndView modelAndView = handlerAdapter.handle(request, response, handler);
+		// post handle
+		for (HandlerInterceptor handlerInterceptor : interceptors) {
+			handlerInterceptor.postHandle(request, response, handler, modelAndView);
+		}		
 
 		// validate the response
 		Assert.assertTrue("Wrong response status: " + response.getStatus(),
 				response.getStatus() == HttpStatus.OK.value());
 		Assert.assertEquals(
 				"Wrong content type in response: " + response.getContentType(),
-				JSON_CONTENT_TYPE, response.getContentType());
+				MediaType.APPLICATION_JSON, response.getContentType());
 		return response;
 	}
 
@@ -128,7 +141,7 @@ public abstract class ControllerTest {
 	 * @throws Exception
 	 *             Indicates a matching handler could not be found
 	 */
-	private Object getHandlerToRequest(final MockHttpServletRequest request)
+	private HandlerExecutionChain getHandlerToRequest(final MockHttpServletRequest request)
 			throws Exception {
 		HandlerExecutionChain chain = null;
 
@@ -148,15 +161,14 @@ public abstract class ControllerTest {
 					"Unable to find handler for request URI: "
 							+ request.getRequestURI());
 		}
-
-		return chain.getHandler();
+		return chain;
 	}
 
 	private MockHttpServletRequest createMockGetRequest(final String requestUri) {
 		final MockHttpServletRequest request = new MockHttpServletRequest();
 		request.setRequestURI(requestUri);
 		request.setMethod("GET");
-		request.setContentType("application/json");
+		request.setContentType(MediaType.APPLICATION_JSON);
 
 		return request;
 	}
@@ -166,7 +178,7 @@ public abstract class ControllerTest {
 		final MockHttpServletRequest request = new MockHttpServletRequest();
 		request.setRequestURI(requestUri);
 		request.setMethod("POST");
-		request.setContentType("application/json");
+		request.setContentType(MediaType.APPLICATION_JSON);
 
 		if (StringUtils.isNotBlank(contentAsJson)) {
 			request.setContent(contentAsJson.getBytes());
@@ -190,7 +202,7 @@ public abstract class ControllerTest {
 		final MockHttpServletRequest request = new MockHttpServletRequest();
 		request.setRequestURI(requestUri);
 		request.setMethod("DELETE");
-		request.setContentType("application/json");
+		request.setContentType(MediaType.APPLICATION_JSON);
 
 		return request;
 	}

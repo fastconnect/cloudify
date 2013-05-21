@@ -31,17 +31,38 @@
      <mvc:view-controller path="/resourceNotFound"/>
      <mvc:view-controller path="/dataAccessFailure"/-->
 
+    <mvc:interceptors>
+			<mvc:interceptor>
+				<mvc:mapping path="/**/deployments/**"/>
+				<mvc:mapping path="/**/infra/**"/>
+				<mvc:mapping path="/**/repo/**"/>
+				<mvc:mapping path="/**/alert/**"/>
+				<mvc:mapping path="/**/config/**"/>
+				<mvc:mapping path="/**/upload/**"/>
+				<bean class="org.cloudifysource.rest.interceptors.ApiVersionValidationAndRestResponseBuilderInterceptor"></bean>
+			</mvc:interceptor>
+	</mvc:interceptors>
+          
     <!-- Resolves localized messages*.properties and application.properties files in the application to	allow for internationalization.
          The messages*.properties files translate Roo generated messages which are part of the admin interface, the application.properties
          resource bundle localizes all application specific messages such as entity names and menu items. -->
-    <bean class="org.springframework.context.support.ReloadableResourceBundleMessageSource" id="messageSource"
-          p:basenames="WEB-INF/i18n/messages,WEB-INF/i18n/application" p:fallbackToSystemLocale="false"/>
+    <!--bean class="org.springframework.context.support.ReloadableResourceBundleMessageSource" id="messageSource"
+          p:basenames="WEB-INF/i18n/messages,WEB-INF/i18n/application" p:fallbackToSystemLocale="false"/-->
+          
+          		<bean id="messageSource" class="org.springframework.context.support.ResourceBundleMessageSource">
+			<property name="basename" value="MessagesBundle"/>
+		</bean>
 
     <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
         <!-- property name="prefix" value="/WEB-INF/views/" /-->
         <property name="prefix" value=""/>
         <property name="suffix" value=".jsp"/>
     </bean>
+    
+    <bean id="admin" class="org.cloudifysource.rest.util.AdminFactoryBean">
+		<property name="groups" value="${restful.lookupGroups}" />
+		<property name="locators" value="${restful.lookupLocators}" />
+	</bean>
 
     <!-- bean id="propertyConfigurer" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
          <property name="location" value="classpath*:META-INF/spring/*.properties"/>
@@ -96,6 +117,7 @@
     <bean class="org.springframework.web.servlet.theme.CookieThemeResolver" id="themeResolver" p:cookieName="theme"
           p:defaultThemeName="standard"/>
 
+
     <!-- This bean resolves specific types of exceptions to corresponding logical - view names for error views.
           The default behaviour of DispatcherServlet - is to propagate all exceptions to the servlet container:
           this will happen - here with all other types of exceptions. -->
@@ -124,4 +146,5 @@
       </list>
     </property>
   </bean-->
+			
 </beans>

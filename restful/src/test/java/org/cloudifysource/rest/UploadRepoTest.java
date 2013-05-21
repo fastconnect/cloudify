@@ -38,7 +38,6 @@ import org.springframework.web.multipart.MultipartFile;
  * @author yael
  * 
  */
-//@Ignore
 public class UploadRepoTest {
 
 	private UploadRepo repo;

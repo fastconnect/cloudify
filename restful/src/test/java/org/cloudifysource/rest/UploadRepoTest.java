@@ -82,7 +82,6 @@ public class UploadRepoTest {
 		// file expected to be a file and not a directory.
 		Assert.assertTrue(uploadedFile.isFile());
 		// unzip file
-		Assert.assertTrue(uploadedFile.getName().endsWith(CloudifyConstants.UPLOAD_PERMITTED_EXTENSION));
 		File tempDir = new File(new File(CloudifyConstants.TEMP_FOLDER), "tempDir");
 		tempDir.mkdirs();
 		tempDir.deleteOnExit();
@@ -139,7 +138,7 @@ public class UploadRepoTest {
 		assertUploadedFile(new File(TXT_EXTENSION_TEST_FILE_PATH), uploadedFile);
 		
 		// wait until the file is deleted.
-		Thread.sleep(repo.getCleanupTimeoutSeconds() * 2000);
+		Thread.sleep(repo.getCleanupTimeoutMillis() * 2000);
 
 		final File restUploadDir = repo.getRestUploadDir();
 		Assert.assertNotNull(restUploadDir);

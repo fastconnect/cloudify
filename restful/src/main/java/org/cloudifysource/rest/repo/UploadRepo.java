@@ -38,7 +38,7 @@ public class UploadRepo {
 	private static final Logger logger = Logger.getLogger(UploadRepo.class.getName());
 
 	private int uploadSizeLimitBytes = CloudifyConstants.DEFAULT_UPLOAD_SIZE_LIMIT_BYTES;	
-	private int cleanupTimeoutSeconds = CloudifyConstants.DEFAULT_UPLOAD_TIMEOUT_SECOND;
+	private int cleanupTimeoutMillis = CloudifyConstants.DEFAULT_UPLOAD_TIMEOUT_MILLIS;
 	private File baseDir = new File(CloudifyConstants.REST_FOLDER);
 	private ScheduledExecutorService executor;
 	private File restUploadDir;
@@ -55,9 +55,9 @@ public class UploadRepo {
 
 	private void createScheduledExecutor() {
 		final CleanUploadDirThread cleanupThread =
-				new CleanUploadDirThread(restUploadDir, cleanupTimeoutSeconds * 1000);
+				new CleanUploadDirThread(restUploadDir, cleanupTimeoutMillis);
 		executor = Executors.newSingleThreadScheduledExecutor();
-		executor.scheduleAtFixedRate(cleanupThread, 0, cleanupTimeoutSeconds, TimeUnit.SECONDS);
+		executor.scheduleAtFixedRate(cleanupThread, 0, cleanupTimeoutMillis, TimeUnit.MILLISECONDS);
 		
 	}
 	
@@ -96,7 +96,7 @@ public class UploadRepo {
 	/**
 	 * Creates a new folder with a randomly generated name (using the UUID class) which holds the uploaded file.
 	 * The folder located at the main upload folder in {@link #baseDir}.
-	 * This uploaded file and its folder will be deleted after {@link #cleanupTimeoutSeconds} seconds.
+	 * This uploaded file and its folder will be deleted after {@link #cleanupTimeoutMillis} seconds.
 	 * 
 	 * @param fileName
 	 * 			The name of the uploaded file.
@@ -121,13 +121,6 @@ public class UploadRepo {
 		final String dirName = UUID.randomUUID().toString();
 		final File srcDir = new File(restUploadDir, dirName);
 		srcDir.mkdirs();
-		// enforce file name extension
-		if (!name.endsWith(CloudifyConstants.UPLOAD_PERMITTED_EXTENSION)) {
-			logger.warning("Upload file [" + name + "] does not have the expected extension (" 
-					+ CloudifyConstants.UPLOAD_PERMITTED_EXTENSION + ").");
-			throw new RestErrorException("Uploaded file's extension must be " 
-					+ CloudifyConstants.UPLOAD_PERMITTED_EXTENSION, name);
-		}
 		final File storedFile = new File(srcDir, name);
 		copyMultipartFileToLocalFile(multipartFile, storedFile);
 		
@@ -197,7 +190,7 @@ public class UploadRepo {
 	 */
 	public void resetTimeout(final int cleanupTimeoutSeconds) {
 		logger.finer("reset timeout to " + cleanupTimeoutSeconds + ".");
-		this.setCleanupTimeoutSeconds(cleanupTimeoutSeconds);
+		this.setCleanupTimeoutMillis(cleanupTimeoutSeconds);
 		reset();
 	}
 
@@ -209,19 +202,19 @@ public class UploadRepo {
 		this.baseDir = baseDir;
 	}
 
-	public int getCleanupTimeoutSeconds() {
-		return cleanupTimeoutSeconds;
+	public int getCleanupTimeoutMillis() {
+		return cleanupTimeoutMillis;
 	}
 
-	public void setCleanupTimeoutSeconds(final int cleanupTimeoutSeconds) {
-		this.cleanupTimeoutSeconds = cleanupTimeoutSeconds;
+	public void setCleanupTimeoutMillis(final int cleanupTimeoutMillis) {
+		this.cleanupTimeoutMillis = cleanupTimeoutMillis;
 	}
 
 	public int getUploadSizeLimitBytes() {
 		return uploadSizeLimitBytes;
 	}
 
-	public void setUploadSizeLimitBytes(int uploadSizeLimitBytes) {
+	public void setUploadSizeLimitBytes(final int uploadSizeLimitBytes) {
 		this.uploadSizeLimitBytes = uploadSizeLimitBytes;
 	}
 }

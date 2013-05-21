@@ -208,8 +208,9 @@ public class RestClient {
 	 */
 	public UploadResponse upload(final String fileName, final File file) 
 			throws IOException, RestClientException, TimeoutException {
+		String finalFileName = fileName == null ? file.getName() : fileName;
 		final String uploadUrl = 
-				versionedUploadControllerUrl + fileName;
+				versionedUploadControllerUrl + finalFileName;
 		UploadResponse response = executor.postFile(
 				uploadUrl, 
 				file, 

@@ -38,8 +38,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 /**
  * A controller for uploading files for future deployments.
- * Each uploaded file will be available for {@link CloudifyConstants#DEFAULT_UPLOAD_TIMEOUT_SECOND} seconds.
- * The timeout can be edited via {@link UploadRepo#setCleanupTimeoutSeconds(int)}. 
+ * Each uploaded file will be available for {@link CloudifyConstants#DEFAULT_UPLOAD_TIMEOUT_MILLIS} seconds.
+ * The timeout can be edited via {@link UploadRepo#setCleanupTimeoutMillis(int)}. 
  * @author yael
  * @since 2.6.0
  *

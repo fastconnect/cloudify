@@ -15,12 +15,18 @@
  *******************************************************************************/
 package org.cloudifysource.shell.commands;
 
+import com.j_spaces.kernel.PlatformVersion;
 import org.apache.felix.gogo.commands.Argument;
 import org.apache.felix.gogo.commands.Command;
 import org.apache.felix.gogo.commands.Option;
+import org.cloudifysource.restclient.RestClient;
+import org.cloudifysource.restclient.RestClientException;
 import org.cloudifysource.shell.AdminFacade;
 import org.cloudifysource.shell.Constants;
+import org.cloudifysource.shell.ShellUtils;
 import org.fusesource.jansi.Ansi.Color;
+
+import java.net.URL;
 
 /**
  * @author rafi, adaml, barakm
@@ -40,18 +46,18 @@ import org.fusesource.jansi.Ansi.Color;
 @Command(scope = "cloudify", name = "connect", description = "connects to the target admin REST server")
 public class Connect extends AbstractGSCommand {
 
+    @Argument(required = true, name = "URL", description = "the URL of the REST admin server to connect to")
+    private String url = null;
+
     @Option(required = false, description = "The username when connecting to a secure admin server", name = "-user")
-    private String user;
+    private String user = null;
 
     @Option(required = false, description = "The password when connecting to a secure admin server", name = "-password")
-    private String password;
-    
-    @Option(required = false, description = "True if this is a secured connection (SSL)", name = "-ssl")
-    private boolean ssl;
+    private String password = null;
 
-    @Argument(required = true, name = "URL", description = "the URL of the REST admin server to connect to")
-    private String url = "";
-    
+    @Option(required = false, description = "True if this is a secured connection (SSL)", name = "-ssl")
+    private boolean ssl = false;
+
 
     /**
      * {@inheritDoc}
@@ -60,6 +66,15 @@ public class Connect extends AbstractGSCommand {
     protected Object doExecute() throws Exception {
         final AdminFacade adminFacade = (AdminFacade) session.get(Constants.ADMIN_FACADE);
         adminFacade.connect(user, password, url, ssl);
+
+        // create the rest client instance
+        String formattedRestUrl = ShellUtils.getFormattedRestUrl(url, ssl);
+        restClient = new RestClient(user,
+                                    password,
+                                    new URL(formattedRestUrl),
+                                    PlatformVersion.getVersion());
+        restClient.connect();
+
         String formattedMessage;
         if (ssl) {
         	formattedMessage = getFormattedMessage("connected_successfully_with_ssl", Color.GREEN);

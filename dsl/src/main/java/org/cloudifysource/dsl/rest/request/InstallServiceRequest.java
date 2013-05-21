@@ -30,13 +30,10 @@ public class InstallServiceRequest {
 	private String cloudConfigurationUploadKey;
 	private String cloudOverridesUploadKey;
 	private String serviceOverridesUploadKey;
-	private File applicationPropertiesFile;
-	private boolean isApplicationInstall;
 	private String serviceFileName;
 	private String authGroups;
 	private Boolean selfHealing = true;
-	private int timeout;
-	private TimeUnit timeUnit;
+	private long timeoutInMillis;
 	private boolean debugAll;
 	private String debugEvents;
 	private String debugMode = DebugModes.INSTEAD.getName();
@@ -73,22 +70,6 @@ public class InstallServiceRequest {
 		this.serviceOverridesUploadKey = serviceOverridesUploadKey;
 	}
 
-	public File getApplicationPropertiesFile() {
-		return applicationPropertiesFile;
-	}
-
-	public void setApplicationPropertiesFile(final File applicationPropertiesFile) {
-		this.applicationPropertiesFile = applicationPropertiesFile;
-	}
-
-	public boolean isApplicationInstall() {
-		return isApplicationInstall;
-	}
-	
-	public void setApplicationInstall(final boolean isApplicationInstall) {
-		this.isApplicationInstall = isApplicationInstall;
-	}
-	
 	public String getServiceFileName() {
 		return serviceFileName;
 	}
@@ -113,20 +94,12 @@ public class InstallServiceRequest {
 		this.selfHealing = selfHealing;
 	}
 
-	public int getTimeout() {
-		return timeout;
+	public long getTimeoutInMillis() {
+		return timeoutInMillis;
 	}
 	
-	public void setTimeout(final int timeout) {
-		this.timeout = timeout;
-	}
-	
-	public TimeUnit getTimeUnit() {
-		return timeUnit;
-	}
-	
-	public void setTimeUnit(final TimeUnit timeUnit) {
-		this.timeUnit = timeUnit;
+	public void setTimeoutInMillis(final long timeout) {
+		this.timeoutInMillis = timeout;
 	}
 
 	public boolean isDebugAll() {

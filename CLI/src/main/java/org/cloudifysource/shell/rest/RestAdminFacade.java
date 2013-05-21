@@ -90,7 +90,7 @@ public class RestAdminFacade extends AbstractAdminFacade {
 		try {
 			this.urlObj = new URL(ShellUtils.getFormattedRestUrl(url, sslUsed));
 			client = new GSRestClient(user, password, getUrl(), PlatformVersion.getVersionNumber());
-			newRestClient = new RestClient(user, password, PlatformVersion.getVersion(), urlObj);
+			//newRestClient = new RestClient(user, password, PlatformVersion.getVersion(), urlObj);
 			// test connection
 			client.get(SERVICE_CONTROLLER_URL + "testrest");
 			if (user != null || password != null) {

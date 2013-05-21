@@ -50,6 +50,7 @@ import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
 import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
 import org.cloudifysource.dsl.rest.response.Response;
+import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvents;
 import org.cloudifysource.dsl.rest.response.UploadResponse;
 import org.codehaus.jackson.type.TypeReference;
 
@@ -72,6 +73,8 @@ public class RestClient {
 
 	private static final String HTTPS = "https";
 
+
+
 	/**
 	 * Ctor.
 	 * 
@@ -84,7 +87,10 @@ public class RestClient {
 	 * @throws RestException
 	 *             Reporting failure to create a SSL HTTP client.
 	 */
-	public RestClient(final String username, final String password, final String apiVersion, final URL url)
+	public RestClient(final String username,
+                      final String password,
+                      final URL url,
+                      final String apiVersion)
 			throws RestException {
 
 		DefaultHttpClient httpClient;
@@ -97,14 +103,6 @@ public class RestClient {
 		HttpConnectionParams.setConnectionTimeout(httpParams, CloudifyConstants.DEFAULT_HTTP_CONNECTION_TIMEOUT);
 		HttpConnectionParams.setSoTimeout(httpParams, CloudifyConstants.DEFAULT_HTTP_READ_TIMEOUT);
 
-		httpClient.addRequestInterceptor(new HttpRequestInterceptor() {
-
-			@Override
-			public void process(final HttpRequest request, final HttpContext context)
-					throws HttpException, IOException {
-				request.addHeader(CloudifyConstants.REST_API_VERSION_HEADER, apiVersion);
-			}
-		});
 		setCredentials(username, password, httpClient);
 		versionedDeploymentControllerUrl = apiVersion + DEPLOYMENT_CONTROLLER_URL;
 		versionedUploadControllerUrl = apiVersion + UPLOAD_CONTROLLER_URL;
@@ -195,6 +193,15 @@ public class RestClient {
 						);
 	}
 
+    public ServiceDeploymentEvents getServiceDeploymentEvents(final String deploymentId,
+                                                              final int from,
+                                                              final int to) throws IOException, RestClientException {
+        final String getServiceDeploymentEventsUrl = versionedDeploymentControllerUrl + "/" + deploymentId + "?from=" + from + "&to=" + to;
+        return executor.get(
+                getServiceDeploymentEventsUrl,
+                new TypeReference<Response<ServiceDeploymentEvents>>() {});
+    }
+
 	/**
 	 * Uploads a file to the repository.
 	 * @param fileName
@@ -218,4 +225,7 @@ public class RestClient {
 		return response;
 	}
 
+    public void connect() throws IOException, RestClientException {
+        executor.get(versionedDeploymentControllerUrl + "/testrest", new TypeReference<Response<Void>>() {});
+    }
 }

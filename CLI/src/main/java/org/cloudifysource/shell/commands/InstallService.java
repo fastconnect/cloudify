@@ -14,8 +14,6 @@ package org.cloudifysource.shell.commands;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -29,15 +27,13 @@ import org.cloudifysource.dsl.Service;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.internal.CloudifyErrorMessages;
 import org.cloudifysource.dsl.internal.DSLErrorMessageException;
-import org.cloudifysource.dsl.internal.DSLReader;
-import org.cloudifysource.dsl.internal.DSLUtils;
-import org.cloudifysource.dsl.internal.ServiceReader;
 import org.cloudifysource.dsl.internal.debug.DebugModes;
 import org.cloudifysource.dsl.internal.debug.DebugUtils;
-import org.cloudifysource.dsl.internal.packaging.Packager;
-import org.cloudifysource.dsl.internal.packaging.PackagingException;
 import org.cloudifysource.dsl.internal.packaging.ZipUtils;
+import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
+import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
 import org.cloudifysource.dsl.utils.RecipePathResolver;
+import org.cloudifysource.restclient.RestClientException;
 import org.cloudifysource.shell.Constants;
 import org.cloudifysource.shell.ShellUtils;
 import org.cloudifysource.shell.rest.RestLifecycleEventsLatch;
@@ -61,20 +57,19 @@ import org.fusesource.jansi.Ansi.Color;
 		+ " path it will be packed and deployed. If you specify a service archive, the shell will deploy that file.")
 public class InstallService extends AdminAwareCommand {
 
+    private static final long MILLIS_IN_MINUTES = 60 * 1000;
+
 	private static final int DEFAULT_TIMEOUT_MINUTES = 5;
 	private static final String TIMEOUT_ERROR_MESSAGE = "Service installation timed out."
 			+ " Configure the timeout using the -timeout flag.";
 	private static final long TEN_K = 10 * FileUtils.ONE_KB;
 
 	@Argument(required = true, name = "recipe", description = "The service recipe folder or archive")
-	private File recipe;
+	private File recipe = null;
 
 	@Option(required = false, name = "-authGroups", description = "The groups authorized to access this application "
 			+ "(multiple values can be comma-separated)")
-	private String authGroups;
-
-	@Option(required = false, name = "-zone", description = "The machines zone in which to install the service")
-	private String zone;
+	private String authGroups = null;
 
 	@Option(required = false, name = "-name", description = "The name of the service")
 	private String serviceName = null;
@@ -98,12 +93,12 @@ public class InstallService extends AdminAwareCommand {
 
 	@Option(required = false, name = "-overrides", description =
 			"File containing properties to be used to overrides the current service's properties.")
-	private File overrides;
+	private File overrides = null;
 
 	@Option(required = false, name = "-cloud-overrides",
 			description = "File containing properties to be used to override the current cloud "
 					+ "configuration for this service.")
-	private File cloudOverrides;
+	private File cloudOverrides = null;
 
 	@Option(required = false, name = "-debug-all",
 			description = "Debug all supported lifecycle events")
@@ -121,140 +116,148 @@ public class InstallService extends AdminAwareCommand {
 	 * {@inheritDoc}
 	 */
 	@Override
-	protected Object doExecute()
-			throws Exception {
+	protected Object doExecute() throws Exception {
 
-		try {
-			DebugUtils.validateDebugSettings(debugAll, debugEvents, debugModeString);
-		} catch (final DSLErrorMessageException e) {
-			throw new CLIStatusException(e, e.getErrorMessage().getName(), (Object[]) e.getArgs());
-		}
+        // first run validations
+        validateDebugSetting();
+        validateOverridesFile();
+        validateCloudOverridesFile();
+        validateCloudConfigurationFile();
 
-		if (cloudOverrides != null) {
-			if (cloudOverrides.length() >= TEN_K) {
-				throw new CLIStatusException(CloudifyErrorMessages.CLOUD_OVERRIDES_TO_LONG.getName());
-			}
-		}
+        // now upload the files if necessary
+        final String cloudConfigurationFileKey = uploadToRepo(cloudConfiguration);
+        final String cloudOverridesFileKey = uploadToRepo(cloudOverrides);
+        final String overridesFileKey = uploadToRepo(overrides);
 
-		final RecipePathResolver pathResolver = new RecipePathResolver();
-		if (pathResolver.resolveService(recipe)) {
-			recipe = pathResolver.getResolved();
-		} else {
-			throw new CLIStatusException("service_file_doesnt_exist",
-					StringUtils.join(pathResolver.getPathsLooked().toArray(), ", "));
-		}
+        NameAndPackedFileResolver nameAndPackedFileResolver = getResolver(recipe);
+        nameAndPackedFileResolver.init();
+        String actualServiceName = nameAndPackedFileResolver.getName();
+        File packedFile = nameAndPackedFileResolver.getPackedFile();
 
-		File packedFile;
+        final String recipeFileKey = uploadToRepo(packedFile);
 
-		final File cloudConfigurationZipFile = createCloudConfigurationZipFile();
+        InstallServiceRequest request = new InstallServiceRequest();
+        request.setAuthGroups(authGroups);
+        request.setCloudConfigurationUploadKey(cloudConfigurationFileKey);
+        request.setDebugAll(debugAll);
+        request.setCloudOverridesUploadKey(cloudOverridesFileKey);
+        request.setDebugEvents(debugEvents);
+        request.setServiceOverridesUploadKey(overridesFileKey);
+        request.setServiceFolderUploadKey(recipeFileKey);
+        request.setServiceFileName(serviceFileName);
+        request.setSelfHealing(disableSelfHealing);
+        request.setTimeoutInMillis(timeoutInMinutes * MILLIS_IN_MINUTES);
 
-		// TODO: this logics should not be done twice. should be done directly
-		// in the rest server.
-		// also figure out how to treat war/jar files that have no .groovy file.
-		// create default?
-		Service service = null;
-		try {
-			if (recipe.getName().endsWith(".jar")
-					|| recipe.getName().endsWith(".war")) {
-				// legacy XAP Processing Unit
-				packedFile = recipe;
-			} else if (recipe.isDirectory()) {
-				// Assume that a folder will contain a DSL file?
+        // execute the request
+        InstallServiceResponse installServiceResponse = restClient.installService(CloudifyConstants.DEFAULT_APPLICATION_NAME, actualServiceName, request);
+        final String deploymentId = installServiceResponse.getDeploymentID();
 
-				final List<File> additionFiles = new LinkedList<File>();
-				if (cloudConfigurationZipFile != null) {
-					additionFiles.add(cloudConfigurationZipFile);
-				}
-				File recipeFile = recipe;
-				if (getServiceFileName() != null) {
-					final File fullPathToRecipe = new File(
-							recipe.getAbsolutePath() + "/" + getServiceFileName());
-					if (!fullPathToRecipe.exists()) {
-						throw new CLIStatusException(
-								"service_file_doesnt_exist",
-								fullPathToRecipe.getPath());
-					}
-					// locate recipe file
-					recipeFile = fullPathToRecipe.isDirectory()
-							? DSLReader.findDefaultDSLFile(DSLUtils.SERVICE_DSL_FILE_NAME_SUFFIX, fullPathToRecipe)
-							: fullPathToRecipe;
-				} else {
-					recipeFile = DSLReader.findDefaultDSLFile(DSLUtils.SERVICE_DSL_FILE_NAME_SUFFIX, recipe);
-				}
-				service = ServiceReader.readService(recipeFile, recipe, null, null, null, false, overrides);
-				packedFile = Packager.pack(recipeFile, false, service, additionFiles);
-				packedFile.deleteOnExit();
-			} else {
-				// serviceFile is a zip file
-				packedFile = recipe;
-				service = ServiceReader.readServiceFromZip(packedFile);
-			}
-		} catch (final IOException e) {
-			throw new CLIException(e);
-		} catch (final PackagingException e) {
-			throw new CLIException(e);
-		}
-		final String currentApplicationName = getCurrentApplicationName();
+        // start polling for life cycle events
+        waitForLifeCycleEvents(deploymentId);
 
-		Properties props = null;
-		if (service != null) {
-			props = createServiceContextProperties(service);
-			if (getServiceFileName() != null) {
-				props.setProperty(CloudifyConstants.CONTEXT_PROPERTY_SERVICE_FILE_NAME, getServiceFileName());
-			}
-			if (serviceName == null || serviceName.isEmpty()) {
-				serviceName = service.getName();
-			}
-
-			if (!org.cloudifysource.restclient.StringUtils.isValidRecipeName(serviceName)) {
-				throw new CLIStatusException(CloudifyErrorMessages.SERVICE_NAME_INVALID_CHARS.getName(), serviceName);
-			}
-		} else {
-			if (serviceName == null || serviceName.isEmpty()) {
-				serviceName = recipe.getName();
-				final int endIndex = serviceName.lastIndexOf('.');
-				if (endIndex > 0) {
-					serviceName = serviceName.substring(0, endIndex);
-				}
-			}
-		}
-		if (zone == null || zone.isEmpty()) {
-			zone = serviceName;
-		}
-
-		String templateName;
-		// service is null when a simple deploying war for example
-		if (service == null || service.getCompute() == null) {
-			templateName = "";
-		} else {
-			templateName = service.getCompute().getTemplate();
-			if (templateName == null) {
-				templateName = "";
-			}
-		}
-
-		try {
-			final String lifecycleEventContainerPollingID = adminFacade
-					.installElastic(packedFile, currentApplicationName,
-							serviceName, zone, props, templateName, authGroups,
-							getTimeoutInMinutes(), !disableSelfHealing, cloudOverrides, overrides);
-
-			pollForLifecycleEvents(lifecycleEventContainerPollingID);
-
-		} finally {
-			// if a zip file was created, delete it at the end of use.
-			if (recipe.isDirectory()) {
-				FileUtils.deleteQuietly(packedFile.getParentFile());
-			}
-		}
-
-		// TODO - server may have failed! We should check the service state and
-		// decide accordingly
-		// which message to display.
 		return getFormattedMessage("service_install_ended", Color.GREEN, serviceName);
 	}
 
-	private void pollForLifecycleEvents(final String lifecycleEventContainerPollingID) throws InterruptedException,
+    private NameAndPackedFileResolver getResolver(File recipe) throws CLIStatusException {
+        if (recipe.isFile()) {
+            // this is a prepared package we can just use.
+            return new PreparedPackageHelper(recipe);
+        } else {
+            // this is an actual service directory
+            recipe = resolve(recipe);
+            return new ServiceHelper(recipe, overrides, serviceFileName);
+        }
+    }
+
+    private String getServiceNameFromRecipe() {
+        return null;
+    }
+
+    private void waitForLifeCycleEvents(final String deploymentId) {
+
+
+
+    }
+
+    private String uploadToRepo(final File file) throws RestClientException, IOException, TimeoutException {
+        if (file == null) {
+            return null;
+        }
+        return restClient.upload(file.getName(), file).getUploadKey();
+    }
+
+    private File zip(final File file) throws IOException {
+
+        // create a temp file in a temp directory
+        final File tempDir = File.createTempFile("__cloudify_temp", ".tmp");
+        FileUtils.forceDelete(tempDir);
+        if (!tempDir.mkdirs()) {
+            throw new IOException("Failed creating directories in path " + tempDir.getAbsolutePath());
+        }
+
+        final File tempFile = new File(tempDir, file.getName());
+
+        // mark files for deletion on JVM exit
+        tempFile.deleteOnExit();
+        tempDir.deleteOnExit();
+
+        if (file.isDirectory()) {
+            ZipUtils.zip(file, tempFile);
+        } else if (file.isFile()) {
+            ZipUtils.zipSingleFile(file, tempFile);
+        }
+        return tempFile;
+    }
+
+    private void validateCloudConfigurationFile() throws CLIStatusException {
+        if (cloudConfiguration != null) {
+            if (!cloudConfiguration.exists()) {
+                throw new CLIStatusException("cloud_configuration_file_not_found",
+                        cloudConfiguration.getAbsolutePath());
+            }
+            if (!cloudConfiguration.isDirectory() && !cloudConfiguration.isFile()) {
+                throw new CLIStatusException("cloud_configuration_file_invalid",
+                        cloudConfiguration.getAbsolutePath());
+            }
+
+        }
+    }
+
+    private File resolve(final File recipe) throws CLIStatusException {
+        final RecipePathResolver pathResolver = new RecipePathResolver();
+        if (pathResolver.resolveService(recipe)) {
+            return pathResolver.getResolved();
+        } else {
+            throw new CLIStatusException("service_file_doesnt_exist",
+                    StringUtils.join(pathResolver.getPathsLooked().toArray(), ", "));
+        }
+    }
+
+    private void validateCloudOverridesFile() throws CLIStatusException {
+        if (cloudOverrides != null) {
+            if (cloudOverrides.length() >= TEN_K) {
+                throw new CLIStatusException(CloudifyErrorMessages.OVERRIDES_TO_LONG.getName());
+            }
+        }
+    }
+
+    private void validateOverridesFile() throws CLIStatusException {
+        if (overrides != null) {
+            if (overrides.length() >= TEN_K) {
+                throw new CLIStatusException(CloudifyErrorMessages.CLOUD_OVERRIDES_TO_LONG.getName());
+            }
+        }
+    }
+
+    private void validateDebugSetting() throws CLIStatusException {
+        try {
+            DebugUtils.validateDebugSettings(debugAll, debugEvents, debugModeString);
+        } catch (final DSLErrorMessageException e) {
+            throw new CLIStatusException(e, e.getErrorMessage().getName(), (Object[]) e.getArgs());
+        }
+    }
+
+    private void pollForLifecycleEvents(final String lifecycleEventContainerPollingID) throws InterruptedException,
 			CLIException, TimeoutException, IOException {
 		final RestLifecycleEventsLatch lifecycleEventsPollingLatch = this.adminFacade
 				.getLifecycleEventsPollingLatch(

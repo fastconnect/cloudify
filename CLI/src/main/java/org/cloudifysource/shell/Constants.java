@@ -56,4 +56,9 @@ public final class Constants {
 	 */
 	public static final String ENABLE_PROXY_CONFIGURATION_PROPERTY = "org.cloudifysource.cli.proxy.enable";
 
+    /**
+     * The property holding the rest client
+     */
+    public static final String REST_CLIENT = "gsRestClient";
+
 }

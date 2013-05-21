@@ -63,6 +63,8 @@ import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static org.cloudifysource.rest.ResponseConstants.FAILED_TO_LOCATE_LUS;
+
 /**
  * This controller is responsible for retrieving information about deployments. It is also the entry point for deploying
  * services and application. <br>
@@ -117,6 +119,18 @@ public class DeploymentsController extends BaseRestContoller {
     public void init() throws IOException {
         this.eventsCache = new EventsCache(admin);
     }
+
+    @RequestMapping(value = "/testrest", method = RequestMethod.GET)
+    public void test() throws RestErrorException {
+
+        if (admin.getLookupServices().getSize() > 0) {
+            return;
+        }
+        final String groups = Arrays.toString(admin.getGroups());
+        final String locators = Arrays.toString(admin.getLocators());
+        throw new RestErrorException(FAILED_TO_LOCATE_LUS, groups, locators);
+    }
+
 
     /**
      * This method provides metadata about a service belonging to a specific
@@ -341,8 +355,7 @@ public class DeploymentsController extends BaseRestContoller {
 	public InstallServiceResponse installService(
 			@PathVariable final String appName,
 			@PathVariable final String serviceName,
-			@RequestParam (value = CloudifyConstants.INSTALL_SERVICE_REQUEST_PARAM_NAME, required = true) 
-			final InstallServiceRequest request) throws RestErrorException {
+			@RequestBody  final InstallServiceRequest request) throws RestErrorException {
 
 		final String absolutePuName = ServiceUtils.getAbsolutePUName(appName, serviceName);
 
@@ -423,13 +436,7 @@ public class DeploymentsController extends BaseRestContoller {
 			throw new RestErrorException("Timed out waiting for deployment.", e);
 		}
 
-		// start polling
 		final InstallServiceResponse installServiceResponse = new InstallServiceResponse();
-		if (!request.isApplicationInstall()) {
-			startPollingForLifecycleEvents(deploymentID, service.getName(), appName,
-					service.getNumInstances(), true, request.getTimeout(), request.getTimeUnit());
-		}
-		
 		installServiceResponse.setDeploymentID(deploymentID.toString());
 		return installServiceResponse;
 
@@ -681,7 +688,7 @@ public class DeploymentsController extends BaseRestContoller {
 	private File updatePropertiesFile(final InstallServiceRequest request, final File overridesFile,
 			final File serviceDir, final String absolutePuName, final File workingProjectDir, final File srcFile)
 			throws RestErrorException {
-		final File applicationProeprtiesFile = request.getApplicationPropertiesFile();
+		final File applicationProeprtiesFile = null;
 		// check if merge is necessary
 		if (overridesFile == null && applicationProeprtiesFile == null) {
 			return srcFile;

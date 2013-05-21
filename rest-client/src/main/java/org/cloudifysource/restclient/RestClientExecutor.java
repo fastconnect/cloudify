@@ -15,10 +15,7 @@
  ******************************************************************************/
 package org.cloudifysource.restclient;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.HttpStatus;
-import org.apache.http.StatusLine;
+import org.apache.http.*;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
@@ -153,6 +150,9 @@ public class RestClientExecutor {
                        final TypeReference<Response<T>> responseTypeReference,
 			           final HttpEntity entity) throws RestClientException {
 		final HttpPost postRequest = new HttpPost(getFullUrl(relativeUrl));
+        if (entity instanceof StringEntity) {
+            postRequest.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
+        }
 		postRequest.setEntity(entity);
 		return executeRequest(postRequest, responseTypeReference);
 	}

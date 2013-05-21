@@ -22,6 +22,8 @@ import org.apache.felix.gogo.commands.Option;
 import org.apache.felix.service.command.CommandSession;
 import org.apache.karaf.shell.console.CloseShellException;
 import org.cloudifysource.dsl.Service;
+import org.cloudifysource.restclient.RestClient;
+import org.cloudifysource.restclient.RestClientException;
 import org.cloudifysource.shell.AdminFacade;
 import org.cloudifysource.shell.Constants;
 import org.cloudifysource.shell.ShellUtils;
@@ -47,6 +49,7 @@ public abstract class AbstractGSCommand implements Action {
 	protected ResourceBundle messages;
 	protected boolean adminAware = false;
 	protected AdminFacade adminFacade;
+    protected static RestClient restClient;
 
 	/**
 	 * Initializes the messages bundle, and takes the admin facade objects from the session when command is admin-aware.
@@ -76,7 +79,21 @@ public abstract class AbstractGSCommand implements Action {
 			final Object result = doExecute();
 			return result;
 
-		} catch (final CLIStatusException cse) {
+		} catch (final RestClientException rce) {
+            // this is for exceptions that are thrown from the rest client.
+            // basically these exceptions mean that some rest api call failed.
+            // in this case we already have a formatted message constructed on the server.
+            // so just display it.
+            if (verbose) {
+                // display the stack trace
+                final String stackTrace = rce.getVerbose();
+                if (stackTrace != null) {
+                    logger.log(Level.WARNING, rce.getMessage() + " : " + stackTrace);
+                } else {
+                    logger.log(Level.WARNING, rce.getMessage());
+                }
+            }
+        } catch (final CLIStatusException cse) {
 			if (verbose) {
 				if (cse.getVerboseData() == null) {
 					logger.log(

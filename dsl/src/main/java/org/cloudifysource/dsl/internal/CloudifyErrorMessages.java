@@ -187,7 +187,7 @@ public enum CloudifyErrorMessages {
 
 
 	// CHECKSTYLE:OFF
-	;
+    OVERRIDES_TO_LONG("overrides_file_to_long", 0);
 	// CHECKSTYLE:ON
 
 	private final int numberOfParameters;

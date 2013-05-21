@@ -13,7 +13,6 @@
 package org.cloudifysource.shell.rest;
 
 import java.io.File;
-import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
@@ -40,7 +39,6 @@ import org.cloudifysource.restclient.GSRestClient;
 import org.cloudifysource.restclient.InvocationResult;
 import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.restclient.RestClientException;
-import org.cloudifysource.restclient.RestClientResponseException;
 import org.cloudifysource.restclient.RestException;
 import org.cloudifysource.restclient.StringUtils;
 import org.cloudifysource.shell.AbstractAdminFacade;

@@ -12,9 +12,6 @@
  *******************************************************************************/
 package org.cloudifysource.dsl.rest.request;
 
-import java.io.File;
-import java.util.concurrent.TimeUnit;
-
 import org.cloudifysource.dsl.internal.debug.DebugModes;
 
 /**

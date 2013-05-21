@@ -58,8 +58,11 @@ public enum CloudifyMessageKeys {
 	
 	FAILED_TO_READ_SERVICE("failed_to_read_service"),
 	
-	FAILED_TO_READ_SERVICE_CLOUD_CONFIGURATION("failed_to_read_service_cloud_configuration"); 
+	FAILED_TO_READ_SERVICE_CLOUD_CONFIGURATION("failed_to_read_service_cloud_configuration"), 
 	
+	WRONG_APPLICTION_FILE_UPLOAD_KEY("wrong_application_file_upload_key"),
+	
+	WRONG_APPLICTION_OVERRIDES_FILE_UPLOAD_KEY("wrong_application_overrides_file_upload_key");
 	
 	private final String name;
 	

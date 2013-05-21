@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
@@ -36,6 +37,7 @@ import org.openspaces.admin.Admin;
  */
 public class RestConfiguration {
 
+	private static final int THREAD_POOL_SIZE = 20;
 	private Admin admin;
 	private Cloud cloud = null;
 	private CloudConfigurationHolder cloudConfigurationHolder;
@@ -59,6 +61,21 @@ public class RestConfiguration {
 				public Thread newThread(final Runnable r) {
 					final Thread thread = new Thread(r,
 							"LifecycleEventsPollingExecutor-"
+									+ threadNumber.getAndIncrement());
+					thread.setDaemon(true);
+					return thread;
+				}
+			});
+	
+	// Set up a small thread pool with daemon threads.
+	private final ExecutorService executorService = Executors
+			.newFixedThreadPool(THREAD_POOL_SIZE, new ThreadFactory() {
+				private final AtomicInteger threadNumber = new AtomicInteger(1);
+
+				@Override
+				public Thread newThread(final Runnable r) {
+					final Thread thread = new Thread(r,
+							"ServiceControllerExecutor-"
 									+ threadNumber.getAndIncrement());
 					thread.setDaemon(true);
 					return thread;
@@ -143,6 +160,10 @@ public class RestConfiguration {
 
 	public ScheduledExecutorService getScheduledExecutor() {
 		return scheduledExecutor;
+	}
+
+	public ExecutorService getExecutorService() {
+		return executorService;
 	}
 
 }

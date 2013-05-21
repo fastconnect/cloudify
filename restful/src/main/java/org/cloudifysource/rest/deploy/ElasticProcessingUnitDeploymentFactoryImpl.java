@@ -17,6 +17,9 @@ package org.cloudifysource.rest.deploy;
 
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 import java.util.logging.Logger;
@@ -32,6 +35,7 @@ import org.cloudifysource.dsl.cloud.Cloud;
 import org.cloudifysource.dsl.cloud.compute.ComputeTemplate;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
+import org.cloudifysource.dsl.utils.ServiceUtils;
 import org.cloudifysource.esc.driver.provisioning.CloudifyMachineProvisioningConfig;
 import org.cloudifysource.rest.controllers.ElasticScaleConfigFactory;
 import org.cloudifysource.rest.util.IsolationUtils;
@@ -47,6 +51,7 @@ import org.openspaces.admin.space.ElasticSpaceDeployment;
 import org.openspaces.core.util.MemoryUnit;
 
 /**
+ * Elastic deployment factory class.
  * 
  * @author adaml
  * @since 2.6.0
@@ -79,7 +84,6 @@ public class ElasticProcessingUnitDeploymentFactoryImpl implements ElasticProces
 		}
 	}
 	
-//TODO: ask yael about the context properties
 	private ElasticSpaceDeployment createElasticDatagridDeployment() {
 		
 		final String absolutePUName = deploymentConfig.getAbsolutePUName();
@@ -535,9 +539,23 @@ public class ElasticProcessingUnitDeploymentFactoryImpl implements ElasticProces
 		Service service = deploymentConfig.getService();
 
 		if (service.getDependsOn() != null) {
+			final String serviceNames = service.getDependsOn().toString();
 			contextProperties.setProperty(
 					CloudifyConstants.CONTEXT_PROPERTY_DEPENDS_ON, service
-							.getDependsOn().toString());
+					.getDependsOn().toString());
+			if (service.getDependsOn().equals("")) {
+				contextProperties.setProperty(CloudifyConstants.CONTEXT_PROPERTY_DEPENDS_ON, "[]");
+			} else {
+				final String[] splitServiceNames = serviceNames.split(",");
+				final List<String> absoluteServiceNames = new ArrayList<String>();
+				for (final String name : splitServiceNames) {
+					absoluteServiceNames.add(ServiceUtils.getAbsolutePUName(
+							deploymentConfig.getApplicationName(), name.trim()));
+				}
+				contextProperties.setProperty(
+						CloudifyConstants.CONTEXT_PROPERTY_DEPENDS_ON,
+						Arrays.toString(absoluteServiceNames.toArray()));
+			} 
 		}
 		if (service.getType() != null) {
 			contextProperties.setProperty(
@@ -557,6 +575,11 @@ public class ElasticProcessingUnitDeploymentFactoryImpl implements ElasticProces
 								CloudifyConstants.CONTEXT_PROPERTY_NETWORK_PROTOCOL_DESCRIPTION,
 								service.getNetwork().getProtocolDescription());
 			}
+		}
+		if (deploymentConfig.getCloud() != null) {
+			contextProperties.setProperty(
+					CloudifyConstants.CONTEXT_PROPERTY_CLOUD_NAME,
+					deploymentConfig.getCloud().getName());
 		}
 
 		contextProperties.setProperty(

@@ -22,10 +22,29 @@ import org.cloudifysource.dsl.cloud.Cloud;
 import org.cloudifysource.dsl.internal.*;
 import org.cloudifysource.dsl.internal.packaging.FileAppender;
 import org.cloudifysource.dsl.internal.packaging.Packager;
-import org.cloudifysource.dsl.rest.request.*;
-import org.cloudifysource.dsl.rest.response.*;
+import org.cloudifysource.dsl.rest.request.InstallApplicationRequest;
+import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
+import org.cloudifysource.dsl.rest.request.SetApplicationAttributesRequest;
+import org.cloudifysource.dsl.rest.request.SetServiceAttributesRequest;
+import org.cloudifysource.dsl.rest.request.SetServiceInstanceAttributesRequest;
+import org.cloudifysource.dsl.rest.request.UpdateApplicationAttributeRequest;
+import org.cloudifysource.dsl.rest.response.DeleteApplicationAttributeResponse;
+import org.cloudifysource.dsl.rest.response.DeleteServiceAttributeResponse;
+import org.cloudifysource.dsl.rest.response.DeleteServiceInstanceAttributeResponse;
+import org.cloudifysource.dsl.rest.response.GetApplicationAttributesResponse;
+import org.cloudifysource.dsl.rest.response.GetServiceAttributesResponse;
+import org.cloudifysource.dsl.rest.response.GetServiceInstanceAttributesResponse;
+import org.cloudifysource.dsl.rest.response.InstallApplicationResponse;
+import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
+import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvents;
+import org.cloudifysource.dsl.rest.response.ServiceDetails;
+import org.cloudifysource.dsl.rest.response.ServiceInstanceDetails;
+import org.cloudifysource.dsl.rest.response.ServiceInstanceMetricsData;
+import org.cloudifysource.dsl.rest.response.ServiceInstanceMetricsResponse;
+import org.cloudifysource.dsl.rest.response.ServiceMetricsResponse;
 import org.cloudifysource.dsl.utils.ServiceUtils;
 import org.cloudifysource.rest.RestConfiguration;
+import org.cloudifysource.rest.deploy.ApplicationDeployerRunnable;
 import org.cloudifysource.rest.deploy.DeploymentConfig;
 import org.cloudifysource.rest.deploy.ElasticDeploymentCreationException;
 import org.cloudifysource.rest.deploy.ElasticProcessingUnitDeploymentFactory;
@@ -38,9 +57,16 @@ import org.cloudifysource.rest.repo.UploadRepo;
 import org.cloudifysource.rest.util.IsolationUtils;
 import org.cloudifysource.rest.util.LifecycleEventsContainer;
 import org.cloudifysource.rest.util.RestPollingRunnable;
+import org.cloudifysource.rest.validators.InstallApplicationValidationContext;
+import org.cloudifysource.rest.validators.InstallApplicationValidator;
 import org.cloudifysource.rest.validators.InstallServiceValidationContext;
 import org.cloudifysource.rest.validators.InstallServiceValidator;
 import org.cloudifysource.security.CustomPermissionEvaluator;
+import org.jgrapht.DirectedGraph;
+import org.jgrapht.alg.CycleDetector;
+import org.jgrapht.graph.DefaultDirectedGraph;
+import org.jgrapht.graph.DefaultEdge;
+import org.jgrapht.traverse.TopologicalOrderIterator;
 import org.openspaces.admin.Admin;
 import org.openspaces.admin.AdminException;
 import org.openspaces.admin.application.Application;
@@ -94,6 +120,7 @@ public class DeploymentsController extends BaseRestContoller {
     private static final Logger logger = Logger.getLogger(DeploymentsController.class.getName());
     private static final int MAX_NUMBER_OF_EVENTS = 100;
     public static final int REFRESH_INTERVAL_MILLIS = 500;
+    
     private EventsCache eventsCache;
 
 	@Autowired
@@ -104,6 +131,10 @@ public class DeploymentsController extends BaseRestContoller {
 
 	@Autowired
 	private InstallServiceValidator[] installServiceValidators = new InstallServiceValidator[0];
+	
+	//enable when autowire is set up.
+	@Autowired
+	private InstallApplicationValidator[] installApplicationValidators = new InstallApplicationValidator[0];
 	
 //	@Autowired
 //	private UninstallServiceValidator[] uninstallServiceValidators = new UninstallServiceValidator[0];
@@ -327,17 +358,207 @@ public class DeploymentsController extends BaseRestContoller {
 
 	}
 
-	/******
-	 * Installs an application.
+	/**
 	 * 
 	 * @param appName
-	 *            the application name.
+	 * 			The application name.
+	 * @param request
+	 * 			install application request.
 	 * @return
+	 * 		an install application response.
+	 * @throws RestErrorException .
+	 * 			
 	 */
 	@RequestMapping(value = "/{name}", method = RequestMethod.POST)
-	public void installApplication(@PathVariable final String appName) {
-		throwUnsupported();
+	public InstallApplicationResponse installApplication(@PathVariable final String appName,
+			final InstallApplicationRequest request) throws RestErrorException {
+		
+		validateInstallApplication();
+		
+		//get the application file
+		final String applcationFileUploadKey = request.getApplcationFileUploadKey();
+		final File applicationFile = getFromRepo(applcationFileUploadKey, 
+						CloudifyMessageKeys.WRONG_APPLICTION_FILE_UPLOAD_KEY.getName(),
+						appName);
+		//get the application overrides file
+		final String applicationOverridesFileKey = request.getApplicationOverridesUploadKey();
+		final File applicationOverridesFile = getFromRepo(applicationOverridesFileKey, 
+						CloudifyMessageKeys.WRONG_APPLICTION_OVERRIDES_FILE_UPLOAD_KEY.getName(), 
+						appName);
+		
+		//read application data
+		DSLApplicationCompilatioResult result;
+		try {
+			result = ServiceReader
+					.getApplicationFromFile(applicationFile,
+							applicationOverridesFile);
+		} catch (final Exception e) {
+			throw new RestErrorException("Failed reading application file."
+					+ " Reason: " + e.getMessage(), e);
+		}
+		
+		// update effective authGroups
+		String effectiveAuthGroups = getEffectiveAuthGroups(request.getAuthGroups());
+		request.setAuthGroups(effectiveAuthGroups);
+		
+		//create install dependency order.
+		final List<Service> services = createServiceDependencyOrder(result
+				.getApplication());
+		
+		final ApplicationDeployerRunnable installer =
+				new ApplicationDeployerRunnable(this, 
+								request, 
+								result, 
+								services,
+								applicationOverridesFile);
+		
+		//start polling for lifecycle events.
+		logger.log(Level.INFO, "Starting to poll for " + appName + " installation lifecycle events.");
+		final UUID lifecycleEventContainerID = startPollingForLifecycleEvents(
+				result.getApplication(), appName, request.getTimeout(), request.getTimeUnit());
+		
+		installer.setTaskPollingId(lifecycleEventContainerID);
+		
+		//start install thread.
+		if (installer.isAsyncInstallPossibleForApplication()) {
+			installer.run();
+		} else {
+			restConfig.getExecutorService().execute(installer);
+		}
+		installer.setTaskPollingId(lifecycleEventContainerID);
+		
+		//creating response
+		final String[] serviceOrder = new String[services.size()];
+		for (int i = 0; i < serviceOrder.length; i++) {
+			serviceOrder[i] = services.get(i).getName();
+		}
+		final Map<String, Object> responseMap = new HashMap<String, Object>();
+		responseMap.put(CloudifyConstants.SERVICE_ORDER,
+				Arrays.toString(serviceOrder));
+		responseMap.put(CloudifyConstants.LIFECYCLE_EVENT_CONTAINER_ID,
+				lifecycleEventContainerID);
+		
+		final InstallApplicationResponse response = new InstallApplicationResponse();
+		response.setInstallResponse(responseMap);
+		
+		return response;
 	}
+	
+	private void validateInstallApplication() 
+			throws RestErrorException {
+		final InstallApplicationValidationContext validationContext = 
+				new InstallApplicationValidationContext();
+		validationContext.setCloud(restConfig.getCloud());
+		for (final InstallApplicationValidator validator : getInstallApplicationValidators()) {
+			validator.validate(validationContext);
+		}
+	}
+
+	// TODO: Start executer service
+	private UUID startPollingForLifecycleEvents(
+			final org.cloudifysource.dsl.Application application, final String applicationName,
+			final int timeout, final TimeUnit timeUnit) {
+
+		final LifecycleEventsContainer lifecycleEventsContainer = new LifecycleEventsContainer();
+		final UUID lifecycleEventsContainerUUID = UUID.randomUUID();
+		lifecycleEventsContainer.setEventsSet(restConfig.getEventsSet());
+
+		final RestPollingRunnable restPollingRunnable = new RestPollingRunnable(
+				applicationName, timeout, timeUnit);
+		for (final Service service : application.getServices()) {
+			restPollingRunnable.addService(service.getName(),
+					service.getNumInstances());
+		}
+		restPollingRunnable.setIsServiceInstall(false);
+		restPollingRunnable.setLifecycleEventsContainer(lifecycleEventsContainer);
+		restPollingRunnable.setAdmin(admin);
+		restPollingRunnable.setEndTime(timeout, TimeUnit.MINUTES);
+		restConfig.getLifecyclePollingThreadContainer().put(lifecycleEventsContainerUUID,
+				restPollingRunnable);
+		final ScheduledFuture<?> scheduleWithFixedDelay = restConfig.getScheduledExecutor()
+				.scheduleWithFixedDelay(restPollingRunnable, 0,
+						CloudifyConstants.LIFECYCLE_EVENT_POLLING_INTERVAL_SEC, TimeUnit.SECONDS);
+		restPollingRunnable.setFutureTask(scheduleWithFixedDelay);
+
+		logger.log(Level.INFO, "polling container UUID is "
+				+ lifecycleEventsContainerUUID.toString());
+		return lifecycleEventsContainerUUID;
+	}
+	
+	private List<Service> createServiceDependencyOrder(
+			final org.cloudifysource.dsl.Application application) {
+		final DirectedGraph<Service, DefaultEdge> graph = new DefaultDirectedGraph<Service, DefaultEdge>(
+				DefaultEdge.class);
+
+		final Map<String, Service> servicesByName = new HashMap<String, Service>();
+
+		final List<Service> services = application.getServices();
+
+		for (final Service service : services) {
+			// keep a map of names to services
+			servicesByName.put(service.getName(), service);
+			// and create the graph node
+			graph.addVertex(service);
+		}
+
+		for (final Service service : services) {
+			final List<String> dependsList = service.getDependsOn();
+			if (dependsList != null) {
+				for (final String depends : dependsList) {
+					final Service dependency = servicesByName.get(depends);
+					if (dependency == null) {
+						throw new IllegalArgumentException("Dependency '"
+								+ depends + "' of service: "
+								+ service.getName() + " was not found");
+					}
+
+					graph.addEdge(dependency, service);
+				}
+			}
+		}
+
+		final CycleDetector<Service, DefaultEdge> cycleDetector = new CycleDetector<Service, DefaultEdge>(
+				graph);
+		final boolean containsCycle = cycleDetector.detectCycles();
+
+		if (containsCycle) {
+			final Set<Service> servicesInCycle = cycleDetector.findCycles();
+			final StringBuilder sb = new StringBuilder();
+			boolean first = true;
+			for (final Service service : servicesInCycle) {
+				if (!first) {
+					sb.append(",");
+				} else {
+					first = false;
+				}
+				sb.append(service.getName());
+			}
+
+			final String cycleString = sb.toString();
+
+			// NOTE: This is not exactly how the cycle detector works. The
+			// returned list is the vertex set for the subgraph of all cycles.
+			// So if there are multiple cycles, the list will contain the
+			// members of all of them.
+			throw new IllegalArgumentException(
+					"The dependency graph of application: "
+							+ application.getName()
+							+ " contains one or more cycles. "
+							+ "The services that form a cycle are part of the following group: "
+							+ cycleString);
+		}
+
+		final TopologicalOrderIterator<Service, DefaultEdge> iterator =
+				new TopologicalOrderIterator<Service, DefaultEdge>(graph);
+
+		final List<Service> orderedList = new ArrayList<Service>();
+		while (iterator.hasNext()) {
+			orderedList.add(iterator.next());
+		}
+		return orderedList;
+
+	}
+
 
 	/******
 	 * Installs an service.
@@ -360,13 +581,15 @@ public class DeploymentsController extends BaseRestContoller {
 		final String absolutePuName = ServiceUtils.getAbsolutePUName(appName, serviceName);
 
 		// get and extract service folder
-		final File packedFile = getFromRepo(request.getServiceFolderUploadKey(), 
-				CloudifyMessageKeys.WRONG_SERVICE_FOLDER_UPLOAD_KEY.getName(), absolutePuName);
+		final File packedFile = getPackedFile(request, absolutePuName); 
 		final File serviceDir = extractServiceDir(packedFile, absolutePuName);
 
 		// update service properties file (and re-zip packedFile if needed).
-		final File serviceOverridesFile = getFromRepo(request.getServiceOverridesUploadKey(),
-				CloudifyMessageKeys.WRONG_SERVICE_OVERRIDES_UPLOAD_KEY.getName(), absolutePuName);
+		File serviceOverridesFile = null;
+		if (!request.isApplicationInstall()) {
+			serviceOverridesFile = getFromRepo(request.getServiceOverridesUploadKey(),
+					CloudifyMessageKeys.WRONG_SERVICE_OVERRIDES_UPLOAD_KEY.getName(), absolutePuName);
+		}
 		final File workingProjectDir = new File(serviceDir, "ext");
 		final File updatedPackedFile = updatePropertiesFile(request, serviceOverridesFile, serviceDir, absolutePuName,
 				workingProjectDir, packedFile);
@@ -378,8 +601,7 @@ public class DeploymentsController extends BaseRestContoller {
 		final String templateName = getTempalteNameFromService(service);
 
 		// get cloud configuration file and content
-		final File cloudConfigurationFile = getFromRepo(request.getCloudConfigurationUploadKey(),
-				CloudifyMessageKeys.WRONG_CLOUD_CONFIGURATION_UPLOAD_KEY.getName(), absolutePuName);
+		final File cloudConfigurationFile = getCloudConfigurationFile(request, absolutePuName);
 		final byte[] cloudConfigurationContents = getCloudConfigurationContent(cloudConfigurationFile, absolutePuName);
 
 		// get cloud overrides file
@@ -387,14 +609,8 @@ public class DeploymentsController extends BaseRestContoller {
 				CloudifyMessageKeys.WRONG_CLOUD_OVERRIDES_UPLOAD_KEY.getName(), absolutePuName);
 
 		// update effective authGroups
-		String effectiveAuthGroups = request.getAuthGroups();
-		if (StringUtils.isBlank(effectiveAuthGroups)) {
-			if (permissionEvaluator != null) {
-				effectiveAuthGroups = permissionEvaluator.getUserAuthGroupsString();
-			} else {
-				effectiveAuthGroups = "";
-			}
-		}
+		String effectiveAuthGroups = getEffectiveAuthGroups(request.getAuthGroups());
+		request.setAuthGroups(effectiveAuthGroups);
 
 		// validations
 		validateInstallService(absolutePuName, request, service, templateName,
@@ -409,21 +625,25 @@ public class DeploymentsController extends BaseRestContoller {
 		// deploy
 		final DeploymentConfig deployConfig = new DeploymentConfig();
 		final UUID deploymentID = UUID.randomUUID();
-		deployConfig.setDeploymentId(deploymentID.toString());
-		deployConfig.setAbsolutePUName(absolutePuName);
-		deployConfig.setApplicationName(appName);
-		deployConfig.setCloud(restConfig.getCloud());
-		deployConfig.setCloudConfig(cloudConfigurationContents);
-		deployConfig.setCloudOverrides(cloudOverrides);
 		final String locators = extractLocators(restConfig.getAdmin());
+		final Cloud cloud = restConfig.getCloud();
+		deployConfig.setCloudConfig(cloudConfigurationContents);
+		deployConfig.setDeploymentId(deploymentID.toString());
+		deployConfig.setAuthGroups(effectiveAuthGroups);
+		deployConfig.setAbsolutePUName(absolutePuName);
+		deployConfig.setCloudOverrides(cloudOverrides);
+		deployConfig.setCloud(cloud);
+		deployConfig.setPackedFile(updatedPackedFile);
+		deployConfig.setTemplateName(templateName);
+		deployConfig.setApplicationName(appName);
 		deployConfig.setInstallRequest(request);
 		deployConfig.setLocators(locators);
-		deployConfig.setPackedFile(updatedPackedFile);
 		deployConfig.setService(service);
-		deployConfig.setTemplateName(templateName);
-		deployConfig.setAuthGroups(effectiveAuthGroups);
+		
+		//create elastic deployment object. 
+		final ElasticProcessingUnitDeploymentFactory fac = 
+						new ElasticProcessingUnitDeploymentFactoryImpl();
 		final ElasticDeploymentTopology deployment;
-		final ElasticProcessingUnitDeploymentFactory fac = new ElasticProcessingUnitDeploymentFactoryImpl();
 		try {
 			deployment = fac.create(deployConfig);
 		} catch (ElasticDeploymentCreationException e) {
@@ -440,6 +660,44 @@ public class DeploymentsController extends BaseRestContoller {
 		installServiceResponse.setDeploymentID(deploymentID.toString());
 		return installServiceResponse;
 
+	}
+
+	String getEffectiveAuthGroups(final String authGroups) {
+		String effectiveAuthGroups = authGroups;
+		if (StringUtils.isBlank(effectiveAuthGroups)) {
+			if (permissionEvaluator != null) {
+				effectiveAuthGroups = permissionEvaluator.getUserAuthGroupsString();
+			} else {
+				effectiveAuthGroups = "";
+			}
+		}
+		return effectiveAuthGroups;
+	}
+
+	private File getCloudConfigurationFile(final InstallServiceRequest request,
+			final String absolutePuName) throws RestErrorException {
+		File cloudConfigFile;
+		if (request.isApplicationInstall()) {
+			//TODO:figure out a way to obtain this file.
+			cloudConfigFile = null;//request.getCloudConfiguration();
+		} else {
+			cloudConfigFile = getFromRepo(request.getCloudConfigurationUploadKey(),
+					CloudifyMessageKeys.WRONG_CLOUD_CONFIGURATION_UPLOAD_KEY.getName(), absolutePuName);
+		}
+		return cloudConfigFile;
+	}
+
+	private File getPackedFile(final InstallServiceRequest request, final String absolutePUName) 
+						throws RestErrorException {
+		File packedFile;
+		if (request.isApplicationInstall()) {
+			packedFile = getFromRepo(request.getServiceFolderUploadKey(), 
+					CloudifyMessageKeys.WRONG_SERVICE_FOLDER_UPLOAD_KEY.getName(), absolutePUName);
+		} else {
+			//TODO:figure out a way to obtain this file.
+			packedFile = null;//request.getPackedFile();
+		}
+		return packedFile;
 	}
 
 	private static String extractLocators(final Admin admin) {
@@ -715,14 +973,14 @@ public class DeploymentsController extends BaseRestContoller {
 		}
 	}
 
-	private File getFromRepo(final String uploadKey, final String errorMsg, final String absolutePuName)
+	public File getFromRepo(final String uploadKey, final String errorDesc, final Object... args)
 			throws RestErrorException {
 		if (StringUtils.isBlank(uploadKey)) {
 			return null;
 		}
 		final File file = repo.get(uploadKey);
 		if (file == null) {
-			throw new RestErrorException(errorMsg, uploadKey, absolutePuName);
+			throw new RestErrorException(errorDesc, args);
 		}
 		return file;
 	}
@@ -1073,7 +1331,8 @@ public class DeploymentsController extends BaseRestContoller {
 	 * @throws RestErrorException
 	 *             when attribute name is empty,null or application name ,service not exist
 	 */
-	@RequestMapping(value = "/{appName}/service/{serviceName}/attributes/{attributeName}", method = RequestMethod.DELETE)
+	@RequestMapping(value = "/{appName}/service/{serviceName}/attributes/{attributeName}", 
+			method = RequestMethod.DELETE)
 	public DeleteServiceAttributeResponse deleteServiceAttribute(
 			@PathVariable final String appName,
 			@PathVariable final String serviceName,
@@ -1372,6 +1631,15 @@ public class DeploymentsController extends BaseRestContoller {
 		return installServiceValidators;
 	}
 	
+	public InstallApplicationValidator[] getInstallApplicationValidators() {
+		return installApplicationValidators;
+	}
+	
+	public void setInstallApplicationValidators(
+					final InstallApplicationValidator[] installApplicationValidators) {
+		this.installApplicationValidators = installApplicationValidators;
+	}
+	
 //	public UninstallServiceValidator[] getUninstallServiceValidators() {
 //		return uninstallServiceValidators;
 //	}
@@ -1438,4 +1706,38 @@ public class DeploymentsController extends BaseRestContoller {
                                                                             @RequestParam(required = false, defaultValue = "-1") final String to) {
         return null;
     }
+	
+	/******
+	 * Waits for a single instance of a service to become available. NOTE: currently only uses service name as
+	 * processing unit name.
+	 *
+	 * @param applicationName
+	 *            not used.
+	 * @param serviceName
+	 *            the service name.
+	 * @param timeout
+	 *            the timeout period to wait for the processing unit, and then the PU instance.
+	 * @param timeUnit
+	 *            the time unit used to wait for the processing unit, and then the PU instance.
+	 * @return true if instance is found, false if instance is not found in the specified period.
+	 */
+	public boolean waitForServiceInstance(final String applicationName,
+			final String serviceName, final long timeout,
+			final TimeUnit timeUnit) {
+
+		// this should be a very fast lookup, since the service was already
+		// successfully deployed
+		final String absolutePUName = ServiceUtils.getAbsolutePUName(
+				applicationName, serviceName);
+		final ProcessingUnit pu = this.admin.getProcessingUnits().waitFor(
+				absolutePUName, timeout, timeUnit);
+		if (pu == null) {
+			return false;
+		}
+
+		// ignore the time spent on PU lookup, as it should be failry short.
+		return pu.waitFor(1, timeout, timeUnit);
+
+	}
+
 }

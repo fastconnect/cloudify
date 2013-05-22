@@ -16,6 +16,13 @@
 package org.cloudifysource.restclient;
 
 
+import java.io.File;
+import java.io.IOException;
+import java.net.URL;
+import java.security.KeyStore;
+import java.util.concurrent.TimeoutException;
+import java.util.logging.Logger;
+
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.http.HttpVersion;
 import org.apache.http.auth.AuthScope;
@@ -24,7 +31,6 @@ import org.apache.http.conn.ClientConnectionManager;
 import org.apache.http.conn.scheme.Scheme;
 import org.apache.http.conn.scheme.SchemeRegistry;
 import org.apache.http.conn.ssl.SSLSocketFactory;
-import org.apache.http.impl.client.AbstractHttpClient;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
 import org.apache.http.params.BasicHttpParams;
@@ -33,19 +39,14 @@ import org.apache.http.params.HttpParams;
 import org.apache.http.params.HttpProtocolParams;
 import org.apache.http.protocol.HTTP;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
-import org.cloudifysource.dsl.internal.CloudifyMessageKeys;
 import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
 import org.cloudifysource.dsl.rest.request.UninstallServiceRequest;
-import org.cloudifysource.dsl.rest.response.*;
+import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
+import org.cloudifysource.dsl.rest.response.Response;
+import org.cloudifysource.dsl.rest.response.UninstallServiceResponse;
+import org.cloudifysource.dsl.rest.response.UploadResponse;
 import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.codehaus.jackson.type.TypeReference;
-
-import java.io.File;
-import java.io.IOException;
-import java.net.URL;
-import java.security.KeyStore;
-import java.util.concurrent.TimeoutException;
-import java.util.logging.Logger;
 
 /**
  * 

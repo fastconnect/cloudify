@@ -21,7 +21,6 @@ import java.util.concurrent.TimeoutException;
 import org.cloudifysource.dsl.cloud.compute.ComputeTemplate;
 import org.cloudifysource.dsl.rest.ApplicationDescription;
 import org.cloudifysource.dsl.rest.response.ControllerDetails;
-import org.cloudifysource.dsl.rest.response.UploadResponse;
 import org.cloudifysource.restclient.InvocationResult;
 import org.cloudifysource.shell.exceptions.CLIException;
 import org.cloudifysource.shell.rest.RestLifecycleEventsLatch;

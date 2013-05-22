@@ -12,20 +12,31 @@
  *******************************************************************************/
 package org.cloudifysource.shell.rest;
 
-import com.j_spaces.kernel.PlatformVersion;
+import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
 import org.cloudifysource.dsl.cloud.compute.ComputeTemplate;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.rest.ApplicationDescription;
 import org.cloudifysource.dsl.rest.ServiceDescription;
 import org.cloudifysource.dsl.rest.response.ControllerDetails;
-import org.cloudifysource.dsl.rest.response.UploadResponse;
 import org.cloudifysource.dsl.utils.ServiceUtils;
 import org.cloudifysource.restclient.GSRestClient;
 import org.cloudifysource.restclient.InvocationResult;
-import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.restclient.StringUtils;
 import org.cloudifysource.restclient.exceptions.ErrorStatusException;
-import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.cloudifysource.restclient.exceptions.RestException;
 import org.cloudifysource.shell.AbstractAdminFacade;
 import org.cloudifysource.shell.ShellUtils;
@@ -33,13 +44,7 @@ import org.cloudifysource.shell.exceptions.CLIException;
 import org.cloudifysource.shell.exceptions.CLIStatusException;
 import org.codehaus.jackson.map.ObjectMapper;
 
-import java.io.File;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import com.j_spaces.kernel.PlatformVersion;
 
 /**
  * This class implements the {@link org.cloudifysource.shell.AdminFacade},

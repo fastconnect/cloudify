@@ -15,6 +15,10 @@
  *******************************************************************************/
 package org.cloudifysource.shell.commands;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+
 import org.apache.felix.gogo.commands.Argument;
 import org.apache.felix.gogo.commands.Command;
 import org.apache.felix.gogo.commands.CompleterValues;
@@ -22,14 +26,8 @@ import org.apache.felix.gogo.commands.Option;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.rest.request.UninstallServiceRequest;
 import org.cloudifysource.dsl.rest.response.UninstallServiceResponse;
-import org.cloudifysource.restclient.RestClient;
-import org.cloudifysource.shell.Constants;
 import org.cloudifysource.shell.ShellUtils;
 import org.fusesource.jansi.Ansi.Color;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
 
 /**
  * @author rafi, adaml, barakm

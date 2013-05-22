@@ -83,8 +83,6 @@ public class UninstallService extends AdminAwareCommand {
             return getFormattedMessage("uninstall_aborted");
         }
 
-        restClient = (RestClient) session.get(Constants.REST_CLIENT);
-
         UninstallServiceRequest request = new UninstallServiceRequest();
         request.setTimeoutInMinutes(timeoutInMinutes);
 

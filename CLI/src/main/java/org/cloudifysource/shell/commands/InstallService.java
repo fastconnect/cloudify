@@ -170,16 +170,6 @@ public class InstallService extends AdminAwareCommand {
 	@Override
 	protected Object doExecute() throws Exception {
 
-        // first run validations
-        validateDebugSetting();
-        validateOverridesFile();
-        validateCloudOverridesFile();
-        validateCloudConfigurationFile();
-
-        // now upload the files if necessary
-        final String cloudConfigurationFileKey = uploadToRepo(cloudConfiguration);
-        final String cloudOverridesFileKey = uploadToRepo(cloudOverrides);
-        final String overridesFileKey = uploadToRepo(overrides);
 
         NameAndPackedFileResolver nameAndPackedFileResolver = getResolver(recipe);
         nameAndPackedFileResolver.init();
@@ -189,6 +179,11 @@ public class InstallService extends AdminAwareCommand {
             actualServiceName = nameAndPackedFileResolver.getName();
         }
         File packedFile = nameAndPackedFileResolver.getPackedFile();
+
+        // upload the files if necessary
+        final String cloudConfigurationFileKey = uploadToRepo(cloudConfiguration);
+        final String cloudOverridesFileKey = uploadToRepo(cloudOverrides);
+        final String overridesFileKey = uploadToRepo(overrides);
 
         final String recipeFileKey = uploadToRepo(packedFile);
 
@@ -206,6 +201,8 @@ public class InstallService extends AdminAwareCommand {
 
         // execute the request
         ((RestAdminFacade) adminFacade).installService(CloudifyConstants.DEFAULT_APPLICATION_NAME, actualServiceName, request);
+
+        //events
 
 		return getFormattedMessage("service_install_ended", Color.GREEN, actualServiceName);
 	}

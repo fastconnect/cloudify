@@ -64,6 +64,7 @@ public class RestConfigurationFactoryBean implements FactoryBean<RestConfigurati
 	public void initRestConfiguration() {
 		logger.info("Initializing service controller cloud configuration");
 		Cloud cloud = readCloud();
+        config.setAdmin(admin);
 		if (cloud != null) {
 			initCloudTemplates();
 			CloudCompute cloudCompute = cloud.getCloudCompute();
@@ -77,7 +78,6 @@ public class RestConfigurationFactoryBean implements FactoryBean<RestConfigurati
 			String managementTemplateName = cloud.getConfiguration().getManagementMachineTemplate();
 			config.setManagementTemplateName(managementTemplateName);
 			config.setManagementTemplate(cloudCompute.getTemplates().get(managementTemplateName));
-			config.setAdmin(admin);
 			config.setCloud(cloud);
 			config.setTemporaryFolderPath(CloudifyConstants.REST_FOLDER);
 		} else {

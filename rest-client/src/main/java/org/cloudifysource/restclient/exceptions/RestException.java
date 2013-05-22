@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package org.cloudifysource.restclient;
+package org.cloudifysource.restclient.exceptions;
 
 /**
  * Exception representing a failure in the communication through rest. For More
  * detailed exceptions use
- * {@link org.cloudifysource.restclient.ErrorStatusException}
+ * {@link ErrorStatusException}
  */
 public class RestException extends Exception {
 

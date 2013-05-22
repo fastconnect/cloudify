@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  ******************************************************************************/
-package org.cloudifysource.restclient;
+package org.cloudifysource.restclient.exceptions;
 
 import org.apache.commons.lang.StringUtils;
 
 /**
- * This exception extends {@link org.cloudifysource.restclient.RestException} to
+ * This exception extends {@link RestException} to
  * include a detailed error status. The reasonCode and args array can be used to
  * created formatted messages from the message bundle.
  * 

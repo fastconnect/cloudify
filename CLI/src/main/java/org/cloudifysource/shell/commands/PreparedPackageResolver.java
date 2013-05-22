@@ -3,6 +3,7 @@ package org.cloudifysource.shell.commands;
 import org.cloudifysource.dsl.Service;
 import org.cloudifysource.dsl.internal.DSLException;
 import org.cloudifysource.dsl.internal.ServiceReader;
+import org.cloudifysource.shell.exceptions.CLIStatusException;
 
 import java.io.File;
 import java.io.IOException;
@@ -14,12 +15,12 @@ import java.io.IOException;
  * Time: 11:59 AM
  * To change this template use File | Settings | File Templates.
  */
-public class PreparedPackageHelper implements NameAndPackedFileResolver {
+public class PreparedPackageResolver implements NameAndPackedFileResolver {
 
     private File zipFile;
     private Service service;
 
-    public PreparedPackageHelper(final File zipFile) {
+    public PreparedPackageResolver(final File zipFile) {
         this.zipFile = zipFile;
     }
 

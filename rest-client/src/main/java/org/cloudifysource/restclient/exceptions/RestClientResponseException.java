@@ -10,40 +10,36 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  ******************************************************************************/
-package org.cloudifysource.restclient;
+package org.cloudifysource.restclient.exceptions;
 
 /**
  * 
  * @author yael
  * 
  */
-public class RestClientException extends Exception {
+public class RestClientResponseException extends RestClientException {
 
 	/**
 	 * UID for serialization.
 	 */
 	private static final long serialVersionUID = 1L;
 
-	private final String messageCode;
-	private final String messageFormattedText;
-	private final String verbose;
+	private final int statusCode;
+	private final String reasonPhrase;
 
-	public RestClientException(final String messageCode, final String messageFormattedText, final String verbose) {
-		this.messageCode = messageCode;
-		this.messageFormattedText = messageFormattedText;
-		this.verbose = verbose;
+	public RestClientResponseException(final String messageCode, final String messageFormattedText,
+			final int statusCode, final String reasonPhrase, final String verbose) {
+		super(messageCode, messageFormattedText, verbose);
+		this.statusCode = statusCode;
+		this.reasonPhrase = reasonPhrase;
 	}
 
-	public String getMessageCode() {
-		return messageCode;
+	public int getStatusCode() {
+		return statusCode;
 	}
 
-	public String getMessageFormattedText() {
-		return messageFormattedText;
-	}
-
-	public String getVerbose() {
-		return verbose;
+	public String getReasonPhrase() {
+		return reasonPhrase;
 	}
 
 }

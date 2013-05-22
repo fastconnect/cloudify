@@ -18,7 +18,7 @@ import org.cloudifysource.dsl.internal.packaging.PackagingException;
  * Time: 11:42 AM
  * To change this template use File | Settings | File Templates.
  */
-public class ServiceHelper implements NameAndPackedFileResolver {
+public class ServiceResolver implements NameAndPackedFileResolver {
 
     private File serviceDirectory;
     private File overrides;
@@ -27,9 +27,9 @@ public class ServiceHelper implements NameAndPackedFileResolver {
     private Service service;
     private File serviceGroovyFile;
 
-    public ServiceHelper(final File serviceDirectory,
-                         final File overrides,
-                         final String serviceFileName) {
+    public ServiceResolver(final File serviceDirectory,
+                           final File overrides,
+                           final String serviceFileName) {
         this.serviceDirectory = serviceDirectory;
         this.overrides = overrides;
         this.serviceFileName = serviceFileName;

@@ -70,7 +70,7 @@ public class UploadControllerTest extends ControllerTest {
 	private UploadRepo uploadRepo;
 	
 	private static final int TEST_UPLOAD_SIZE_LIMIT_BYTES = 10;
-	private static final int TEST_CLEANUP_TIMOUT_MILLIS = 50;
+	private static final int TEST_CLEANUP_TIMOUT_MILLIS = 100;
 	
 
 	@Before
@@ -94,28 +94,30 @@ public class UploadControllerTest extends ControllerTest {
 		return hashMap.get(requestMethod);
 	}
 	
-	private String uploadFile(final File file) throws Exception {
+	private UploadResponse uploadFile(final File file) throws Exception {
 		MockHttpServletResponse response = testPostFile(versionedUploadUri, file);
 		ObjectMapper objectMapper = new ObjectMapper();
 		Response<UploadResponse> readValue = objectMapper.readValue(response.getContentAsString(), 
 				new TypeReference<Response<UploadResponse>>() { });
 		UploadResponse uploadResponse = readValue.getResponse();
-		String uploadKey = uploadResponse.getUploadKey();
-		Assert.assertNotNull(uploadKey);
-		return uploadKey;
+		return uploadResponse;
 	}
 	
 	@Test
 	public void testUpload() throws Exception {
 		File file = new File(TEST_FILE_PATH);
-		String uploadKey = uploadFile(file);
+		UploadResponse uploadResponse = uploadFile(file);
+		String uploadKey = uploadResponse.getUploadKey();
+		Assert.assertNotNull(uploadKey);
 		assertUploadedFileExists(file, uploadKey);
 	} 
 	
 	@Test
 	public void testUploadDifferentName() throws Exception {
 		File file = new File(TEST_FILE1_PATH);
-		String uploadKey = uploadFile(file);
+		UploadResponse uploadResponse = uploadFile(file);
+		String uploadKey = uploadResponse.getUploadKey();
+		Assert.assertNotNull(uploadKey);
 		assertUploadedFileExists(file, uploadKey);
 	}
 	
@@ -146,7 +148,9 @@ public class UploadControllerTest extends ControllerTest {
 	@Test
 	public void testUploadTimeout() throws Exception {
 		File file = new File(TEST_FILE_PATH);
-		String uploadKey = uploadFile(file);
+		UploadResponse uploadResponse = uploadFile(file);
+		String uploadKey = uploadResponse.getUploadKey();
+		Assert.assertNotNull(uploadKey);
 		File uploadedFile = assertUploadedFileExists(file, uploadKey);
 		String parentPath = uploadedFile.getParentFile().getAbsolutePath();
 		

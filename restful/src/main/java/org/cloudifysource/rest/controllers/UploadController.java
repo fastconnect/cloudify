@@ -22,6 +22,7 @@ import java.util.logging.Logger;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
+import org.apache.commons.lang.StringUtils;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.internal.CloudifyMessageKeys;
 import org.cloudifysource.dsl.rest.response.UploadResponse;
@@ -87,7 +88,7 @@ public class UploadController extends BaseRestContoller {
 			throws RestErrorException {
 		// determine file's name
 		String name = fileName;
-		if (fileName.isEmpty()) {
+		if (StringUtils.isEmpty(fileName)) {
 			name = file.getOriginalFilename();
 		}
 		if (logger.isLoggable(Level.FINER)) {

@@ -43,6 +43,7 @@ import org.apache.http.params.HttpParams;
 import org.apache.http.params.HttpProtocolParams;
 import org.apache.http.protocol.HTTP;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
+import org.cloudifysource.dsl.internal.CloudifyMessageKeys;
 import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
 import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
 import org.cloudifysource.dsl.rest.response.Response;
@@ -173,6 +174,10 @@ public class RestClient {
 	 */
 	public UploadResponse upload(final String fileName, final File file) 
 			throws RestClientException {
+		if (file == null) {
+			throw new RestClientException("upload_file_missing", 
+					"the required file parameter (the file to upload) is missing", null);
+		}
 		String finalFileName = fileName == null ? file.getName() : fileName;
 		final String uploadUrl = 
 				versionedUploadControllerUrl + finalFileName;

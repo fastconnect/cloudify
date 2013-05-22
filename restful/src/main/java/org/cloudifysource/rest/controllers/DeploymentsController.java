@@ -12,7 +12,6 @@
  *******************************************************************************/
 package org.cloudifysource.rest.controllers;
 
-
 import net.jini.core.discovery.LookupLocator;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
@@ -27,6 +26,8 @@ import org.cloudifysource.dsl.internal.packaging.Packager;
 import org.cloudifysource.dsl.rest.request.*;
 import org.cloudifysource.dsl.rest.response.*;
 import org.cloudifysource.dsl.utils.ServiceUtils;
+import org.cloudifysource.rest.RestConfiguration;
+import org.cloudifysource.rest.controllers.helpers.ControllerHelper;
 import org.cloudifysource.rest.deploy.*;
 import org.cloudifysource.rest.events.cache.EventsCache;
 import org.cloudifysource.rest.events.cache.EventsCacheKey;
@@ -52,6 +53,8 @@ import org.openspaces.admin.pu.elastic.ElasticStatefulProcessingUnitDeployment;
 import org.openspaces.admin.pu.elastic.ElasticStatelessProcessingUnitDeployment;
 import org.openspaces.admin.pu.elastic.topology.ElasticDeploymentTopology;
 import org.openspaces.admin.space.ElasticSpaceDeployment;
+import org.openspaces.core.GigaSpace;
+import org.openspaces.core.context.GigaSpaceContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -98,10 +101,17 @@ import static org.cloudifysource.rest.ResponseConstants.FAILED_TO_LOCATE_LUS;
 public class DeploymentsController extends BaseRestController {
 
     private static final Logger logger = Logger.getLogger(DeploymentsController.class.getName());
-
     private static final int MAX_NUMBER_OF_EVENTS = 100;
+
     private static final int REFRESH_INTERVAL_MILLIS = 500;
     private EventsCache eventsCache;
+    private ControllerHelper controllerHelper;
+
+    @GigaSpaceContext(name = "gigaSpace")
+    protected GigaSpace gigaSpace;
+
+    @Autowired
+    protected RestConfiguration restConfig;
 
 	@Autowired
 	private UploadRepo repo;
@@ -121,6 +131,7 @@ public class DeploymentsController extends BaseRestController {
     @PostConstruct
     public void init() throws IOException {
         this.eventsCache = new EventsCache(restConfig.getAdmin());
+        this.controllerHelper = new ControllerHelper(gigaSpace, restConfig.getAdmin());
     }
 
     /**
@@ -149,7 +160,7 @@ public class DeploymentsController extends BaseRestController {
 	public ServiceDetails getServiceDetails(@PathVariable final String appName,
 			                                @PathVariable final String serviceName) throws ResourceNotFoundException {
 
-		final ProcessingUnit processingUnit = getService(appName, serviceName);
+		final ProcessingUnit processingUnit = controllerHelper.getService(appName, serviceName);
 		final ServiceDetails serviceDetails = new ServiceDetails();
 		serviceDetails.setName(serviceName);
 		serviceDetails.setApplicationName(appName);
@@ -175,14 +186,14 @@ public class DeploymentsController extends BaseRestController {
 	public void setApplicationAttributes(@PathVariable final String appName,
 			                             @RequestBody final SetApplicationAttributesRequest attributesRequest) throws RestErrorException, ResourceNotFoundException {
 		// valid application
-		getApplication(appName);
+        controllerHelper.getApplication(appName);
 
 		if (attributesRequest == null || attributesRequest.getAttributes() == null) {
 			throw new RestErrorException(CloudifyMessageKeys.EMPTY_REQUEST_BODY_ERROR.getName());
 		}
 
 		// set attributes
-		setAttributes(appName, null, null, attributesRequest.getAttributes());
+        controllerHelper.setAttributes(appName, null, null, attributesRequest.getAttributes());
 
 	}
 
@@ -202,7 +213,7 @@ public class DeploymentsController extends BaseRestController {
 			                                                                     @PathVariable final Integer instanceId,
 			                                                                     @PathVariable final String attributeName) throws ResourceNotFoundException, RestErrorException {
 		// valid service
-		getService(appName, serviceName);
+        controllerHelper.getService(appName, serviceName);
 
 		// logger - request to delete attributes
 		if (logger.isLoggable(Level.FINER)) {
@@ -213,7 +224,7 @@ public class DeploymentsController extends BaseRestController {
 		}
 
 		// get delete attribute returned previous value
-		final Object previous = deleteAttribute(appName, serviceName, instanceId, attributeName);
+		final Object previous = controllerHelper.deleteAttribute(appName, serviceName, instanceId, attributeName);
 
 		// create response object
 		final DeleteServiceInstanceAttributeResponse siar = new DeleteServiceInstanceAttributeResponse();
@@ -237,7 +248,7 @@ public class DeploymentsController extends BaseRestController {
 			                                                @PathVariable final String serviceName,
 			                                                @PathVariable final Integer instanceId) throws ResourceNotFoundException {
 		// get processingUnit instance
-		final ProcessingUnitInstance pui = getServiceInstance(appName, serviceName, instanceId);
+		final ProcessingUnitInstance pui = controllerHelper.getServiceInstance(appName, serviceName, instanceId);
 
 		// get USM details
 		final org.openspaces.pu.service.ServiceDetails usmDetails = pui.getServiceDetailsByServiceId("USM");
@@ -245,14 +256,14 @@ public class DeploymentsController extends BaseRestController {
 		final Map<String, Object> puiAttributes = usmDetails.getAttributes();
 
 		// get private ,public IP
-		final String privateIp = getServiceInstanceEnvVariable(pui, CloudifyConstants.GIGASPACES_AGENT_ENV_PRIVATE_IP);
-		final String publicIp = getServiceInstanceEnvVariable(pui, CloudifyConstants.GIGASPACES_AGENT_ENV_PUBLIC_IP);
+		final String privateIp = controllerHelper.getServiceInstanceEnvVariable(pui, CloudifyConstants.GIGASPACES_AGENT_ENV_PRIVATE_IP);
+		final String publicIp = controllerHelper.getServiceInstanceEnvVariable(pui, CloudifyConstants.GIGASPACES_AGENT_ENV_PUBLIC_IP);
 
 		// machine details
-		final String hardwareId = getServiceInstanceEnvVariable(pui, CloudifyConstants.GIGASPACES_CLOUD_HARDWARE_ID);
-		final String machineId = getServiceInstanceEnvVariable(pui, CloudifyConstants.GIGASPACES_CLOUD_MACHINE_ID);
-		final String imageId = getServiceInstanceEnvVariable(pui, CloudifyConstants.GIGASPACES_CLOUD_IMAGE_ID);
-		final String templateName = getServiceInstanceEnvVariable(pui, CloudifyConstants.GIGASPACES_CLOUD_TEMPLATE_NAME);
+		final String hardwareId = controllerHelper.getServiceInstanceEnvVariable(pui, CloudifyConstants.GIGASPACES_CLOUD_HARDWARE_ID);
+		final String machineId = controllerHelper.getServiceInstanceEnvVariable(pui, CloudifyConstants.GIGASPACES_CLOUD_MACHINE_ID);
+		final String imageId = controllerHelper.getServiceInstanceEnvVariable(pui, CloudifyConstants.GIGASPACES_CLOUD_IMAGE_ID);
+		final String templateName = controllerHelper.getServiceInstanceEnvVariable(pui, CloudifyConstants.GIGASPACES_CLOUD_TEMPLATE_NAME);
 
 		// return new instance
 		final ServiceInstanceDetails sid = new ServiceInstanceDetails();
@@ -477,7 +488,7 @@ public class DeploymentsController extends BaseRestController {
                                                      @PathVariable final String serviceName,
                                                      @RequestBody final UninstallServiceRequest uninstallServiceRequest) throws RestErrorException, ResourceNotFoundException {
 
-        final ProcessingUnit processingUnit = getService(appName, serviceName);
+        final ProcessingUnit processingUnit = controllerHelper.getService(appName, serviceName);
 
         if (permissionEvaluator != null) {
             final String puAuthGroups = processingUnit.getBeanLevelProperties().getContextProperties().
@@ -509,14 +520,14 @@ public class DeploymentsController extends BaseRestController {
 	public GetApplicationAttributesResponse getApplicationAttributes(@PathVariable final String appName) throws ResourceNotFoundException {
 
 		// valid application if exist
-		getApplication(appName);
+        controllerHelper.getApplication(appName);
 
 		if (logger.isLoggable(Level.FINER)) {
 			logger.finer("received request to get all attributes of application " + appName);
 		}
 
 		// get attributes
-		final Map<String, Object> attributes = getAttributes(appName, null, null);
+		final Map<String, Object> attributes = controllerHelper.getAttributes(appName, null, null);
 
 		// create response object
 		final GetApplicationAttributesResponse aar = new GetApplicationAttributesResponse();
@@ -539,7 +550,7 @@ public class DeploymentsController extends BaseRestController {
 			                                                             @PathVariable final String attributeName) throws ResourceNotFoundException, RestErrorException {
 
 		// valid application if exist
-		getApplication(appName);
+        controllerHelper.getApplication(appName);
 
 		if (logger.isLoggable(Level.FINER)) {
 			logger.finer("received request to delete attributes "
@@ -547,7 +558,7 @@ public class DeploymentsController extends BaseRestController {
 		}
 
 		// delete attribute returned previous value
-		final Object previousValue = deleteAttribute(appName, null, null, attributeName);
+		final Object previousValue = controllerHelper.deleteAttribute(appName, null, null, attributeName);
 
 		final DeleteApplicationAttributeResponse daar = new DeleteApplicationAttributeResponse();
 		daar.setPreviousValue(previousValue);
@@ -568,7 +579,7 @@ public class DeploymentsController extends BaseRestController {
                                                              @PathVariable final String serviceName) throws ResourceNotFoundException {
 
 		// valid exist service
-		getService(appName, serviceName);
+        controllerHelper.getService(appName, serviceName);
 
 		// logger - request to get all attributes
 		if (logger.isLoggable(Level.FINER)) {
@@ -578,7 +589,7 @@ public class DeploymentsController extends BaseRestController {
 		}
 
 		// get attributes
-		final Map<String, Object> attributes = getAttributes(appName, serviceName,
+		final Map<String, Object> attributes = controllerHelper.getAttributes(appName, serviceName,
 				null);
 
 		// create response object
@@ -604,7 +615,7 @@ public class DeploymentsController extends BaseRestController {
                                     @RequestBody final SetServiceAttributesRequest request) throws ResourceNotFoundException, RestErrorException {
 
 		// valid service
-		getService(appName, serviceName);
+        controllerHelper.getService(appName, serviceName);
 
 		// validate request object
 		if (request == null || request.getAttributes() == null) {
@@ -621,7 +632,7 @@ public class DeploymentsController extends BaseRestController {
 		}
 
 		// set attributes
-		setAttributes(appName, serviceName, null, request.getAttributes());
+        controllerHelper.setAttributes(appName, serviceName, null, request.getAttributes());
 
 	}
 
@@ -641,7 +652,7 @@ public class DeploymentsController extends BaseRestController {
 
 
 		// valid service
-		getService(appName, serviceName);
+        controllerHelper.getService(appName, serviceName);
 
 		// logger - request to delete attributes
 		if (logger.isLoggable(Level.FINER)) {
@@ -652,7 +663,7 @@ public class DeploymentsController extends BaseRestController {
 		}
 
 		// get delete attribute returned previous value
-		final Object previous = deleteAttribute(appName, serviceName, null, attributeName);
+		final Object previous = controllerHelper.deleteAttribute(appName, serviceName, null, attributeName);
 
 		// create response object
 		final DeleteServiceAttributeResponse sar = new DeleteServiceAttributeResponse();
@@ -677,7 +688,7 @@ public class DeploymentsController extends BaseRestController {
                                                                              @PathVariable final Integer instanceId) throws ResourceNotFoundException {
 
 		// valid service
-		getService(appName, serviceName);
+        controllerHelper.getService(appName, serviceName);
 
 		// logger - request to get all attributes
 		if (logger.isLoggable(Level.FINER)) {
@@ -689,7 +700,7 @@ public class DeploymentsController extends BaseRestController {
 		}
 
 		// get attributes
-		final Map<String, Object> attributes = getAttributes(appName, serviceName, instanceId);
+		final Map<String, Object> attributes = controllerHelper.getAttributes(appName, serviceName, instanceId);
 		// create response object
 		final GetServiceInstanceAttributesResponse siar = new GetServiceInstanceAttributesResponse();
 		// set attributes
@@ -715,7 +726,7 @@ public class DeploymentsController extends BaseRestController {
 			                                @RequestBody final SetServiceInstanceAttributesRequest request) throws ResourceNotFoundException, RestErrorException {
 
 		// valid service
-		getService(appName, serviceName);
+        controllerHelper.getService(appName, serviceName);
 
 		// validate request object
 		if (request == null || request.getAttributes() == null) {
@@ -733,7 +744,7 @@ public class DeploymentsController extends BaseRestController {
 		}
 
 		// set attributes
-		setAttributes(appName, serviceName, instanceId, request.getAttributes());
+        controllerHelper.setAttributes(appName, serviceName, instanceId, request.getAttributes());
 	}
 
     /**
@@ -752,7 +763,7 @@ public class DeploymentsController extends BaseRestController {
 				new ArrayList<ServiceInstanceMetricsData>();
 
 		// get service
-		final ProcessingUnit service = getService(appName, serviceName);
+		final ProcessingUnit service = controllerHelper.getService(appName, serviceName);
 
 		// set metrics for every instance
 		for (final ProcessingUnitInstance serviceInstance : service.getInstances()) {
@@ -788,7 +799,7 @@ public class DeploymentsController extends BaseRestController {
 			                                                        @PathVariable final Integer instanceId) throws ResourceNotFoundException {
 
 		// get service instance
-		final ProcessingUnitInstance serviceInstance = getServiceInstance(appName, serviceName, instanceId);
+		final ProcessingUnitInstance serviceInstance = controllerHelper.getServiceInstance(appName, serviceName, instanceId);
 
 		// get metrics data
 		final Map<String, Object> metrics = serviceInstance.getStatistics().getMonitors().get("USM").getMonitors();

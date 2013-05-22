@@ -320,7 +320,7 @@ public class ManagementWebServiceInstaller extends AbstractManagementServiceInst
 				try {
 					adminFacade.connect(username, password, url.toString(), isSecureConnection);
 					return true;
-				} catch (final CLIException e) {
+				} catch (final Exception e) {
 					if (verbose) {
 						logger.log(Level.INFO, "Error connecting to web service [" + serviceName + "].", e);
 					}

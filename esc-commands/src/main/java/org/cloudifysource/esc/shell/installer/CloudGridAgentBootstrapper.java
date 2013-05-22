@@ -841,7 +841,7 @@ public class CloudGridAgentBootstrapper {
 						try {
 							adminFacade.connect(username, password, restAdminUrl.toString(), isSecureConnection);
 							return true;
-						} catch (final CLIException e) {
+						} catch (final Exception e) {
 							if (verbose) {
 								logger.log(Level.INFO,
 										"Error connecting to rest service.", e);

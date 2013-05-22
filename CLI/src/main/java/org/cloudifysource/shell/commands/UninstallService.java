@@ -27,6 +27,7 @@ import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.rest.request.UninstallServiceRequest;
 import org.cloudifysource.dsl.rest.response.UninstallServiceResponse;
 import org.cloudifysource.shell.ShellUtils;
+import org.cloudifysource.shell.rest.RestAdminFacade;
 import org.fusesource.jansi.Ansi.Color;
 
 /**
@@ -85,7 +86,7 @@ public class UninstallService extends AdminAwareCommand {
         request.setTimeoutInMinutes(timeoutInMinutes);
 
         UninstallServiceResponse uninstallServiceResponse =
-                restClient.uninstallService(CloudifyConstants.DEFAULT_APPLICATION_NAME, serviceName, request);
+                ((RestAdminFacade) adminFacade).uninstallService(CloudifyConstants.DEFAULT_APPLICATION_NAME, serviceName, request);
         final String deploymentId = uninstallServiceResponse.getDeploymentID();
 
         // start polling for life cycle events

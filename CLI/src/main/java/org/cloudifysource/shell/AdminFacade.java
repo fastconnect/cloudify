@@ -35,8 +35,6 @@ import org.cloudifysource.shell.rest.RestLifecycleEventsLatch;
  *        about the current deployment status.
  */
 public interface AdminFacade {
-
-	UploadResponse upload(String fileName, File file) throws CLIException;
 	
 	/**
 	 * Installs and starts a service on a given application.

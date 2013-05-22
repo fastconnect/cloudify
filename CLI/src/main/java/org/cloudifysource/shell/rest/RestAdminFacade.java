@@ -57,19 +57,8 @@ public class RestAdminFacade extends AbstractAdminFacade {
 	private static final String CLOUD_CONTROLLER_URL = "/cloudcontroller/";
 
 	private GSRestClient client;
-	private RestClient newRestClient;
 	private URL urlObj;
 
-	@Override
-	public UploadResponse upload(String fileName, File file) 
-			throws CLIException {
-		try {
-			return newRestClient.upload(fileName, file);
-		} catch (RestClientException e) {
-			throw new CLIStatusException(e.getMessageFormattedText(), null);
-		}
-	}
-	
 	/**
 	 * {@inheritDoc}
 	 */

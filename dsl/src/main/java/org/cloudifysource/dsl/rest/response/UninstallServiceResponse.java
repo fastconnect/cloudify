@@ -21,7 +21,7 @@ package org.cloudifysource.dsl.rest.response;
  * @author yael
  *
  */
-public class InstallServiceResponse {
+public class UninstallServiceResponse {
 	private String deploymentID = "";
 
 	public String getDeploymentID() {

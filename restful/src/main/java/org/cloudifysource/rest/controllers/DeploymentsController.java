@@ -19,6 +19,8 @@ import org.apache.commons.lang.StringUtils;
 import org.cloudifysource.dsl.ComputeDetails;
 import org.cloudifysource.dsl.Service;
 import org.cloudifysource.dsl.cloud.Cloud;
+import org.cloudifysource.dsl.context.kvstorage.spaceentries.InstanceCloudifyAttribute;
+import org.cloudifysource.dsl.context.kvstorage.spaceentries.ServiceCloudifyAttribute;
 import org.cloudifysource.dsl.internal.*;
 import org.cloudifysource.dsl.internal.packaging.FileAppender;
 import org.cloudifysource.dsl.internal.packaging.Packager;
@@ -33,12 +35,8 @@ import org.cloudifysource.rest.events.cache.EventsUtils;
 import org.cloudifysource.rest.exceptions.ResourceNotFoundException;
 import org.cloudifysource.rest.repo.UploadRepo;
 import org.cloudifysource.rest.util.IsolationUtils;
-import org.cloudifysource.rest.util.LifecycleEventsContainer;
-import org.cloudifysource.rest.util.RestPollingRunnable;
-import org.cloudifysource.rest.validators.InstallApplicationValidationContext;
-import org.cloudifysource.rest.validators.InstallApplicationValidator;
-import org.cloudifysource.rest.validators.InstallServiceValidationContext;
-import org.cloudifysource.rest.validators.InstallServiceValidator;
+import org.cloudifysource.rest.validators.*;
+import org.cloudifysource.security.CloudifyAuthorizationDetails;
 import org.cloudifysource.security.CustomPermissionEvaluator;
 import org.jgrapht.DirectedGraph;
 import org.jgrapht.alg.CycleDetector;
@@ -55,6 +53,9 @@ import org.openspaces.admin.pu.elastic.ElasticStatelessProcessingUnitDeployment;
 import org.openspaces.admin.pu.elastic.topology.ElasticDeploymentTopology;
 import org.openspaces.admin.space.ElasticSpaceDeployment;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
@@ -111,7 +112,10 @@ public class DeploymentsController extends BaseRestController {
 	@Autowired
 	private InstallApplicationValidator[] installApplicationValidators = new InstallApplicationValidator[0];
 
-	@Autowired(required = false)
+    @Autowired
+    private UninstallServiceValidator[] uninstallServiceValidators = new UninstallServiceValidator[0];
+
+    @Autowired(required = false)
 	private CustomPermissionEvaluator permissionEvaluator;
 
     @PostConstruct
@@ -465,8 +469,35 @@ public class DeploymentsController extends BaseRestController {
 		final InstallServiceResponse installServiceResponse = new InstallServiceResponse();
 		installServiceResponse.setDeploymentID(deploymentID.toString());
 		return installServiceResponse;
-
 	}
+
+    @RequestMapping(value = "/{appName}/services/{serviceName}", method = RequestMethod.DELETE)
+    @PreAuthorize("isFullyAuthenticated()")
+    public UninstallServiceResponse uninstallService(@PathVariable final String appName,
+                                                     @PathVariable final String serviceName,
+                                                     @RequestBody final UninstallServiceRequest uninstallServiceRequest) throws RestErrorException, ResourceNotFoundException {
+
+        final ProcessingUnit processingUnit = getService(appName, serviceName);
+
+        if (permissionEvaluator != null) {
+            final String puAuthGroups = processingUnit.getBeanLevelProperties().getContextProperties().
+                    getProperty(CloudifyConstants.CONTEXT_PROPERTY_AUTH_GROUPS);
+            final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            final CloudifyAuthorizationDetails authDetails = new CloudifyAuthorizationDetails(authentication);
+            permissionEvaluator.verifyPermission(authDetails, puAuthGroups, "deploy");
+        }
+
+        // validations
+        validateUninstallService();
+
+        processingUnit.undeployAndWait(uninstallServiceRequest.getTimeoutInMinutes(), TimeUnit.MINUTES);
+        deleteServiceAttributes(appName, serviceName);
+
+        final UUID lifecycleEventContainerID = null;
+        final UninstallServiceResponse uninstallServiceResponse = new UninstallServiceResponse();
+        uninstallServiceResponse.setDeploymentID(lifecycleEventContainerID.toString());
+        return uninstallServiceResponse;
+    }
 
     /**
      * Retrieves application level attributes.
@@ -1234,5 +1265,30 @@ public class DeploymentsController extends BaseRestController {
             packedFile = null;//request.getPackedFile();
         }
         return packedFile;
+    }
+
+    private void validateUninstallService() throws RestErrorException {
+        final UninstallServiceValidationContext validationContext = new UninstallServiceValidationContext();
+
+        validationContext.setCloud(restConfig.getCloud());
+
+        for (final UninstallServiceValidator validator : uninstallServiceValidators) {
+            validator.validate(validationContext);
+        }
+    }
+
+    private void deleteServiceAttributes(final String applicationName,
+                                         final String serviceName) {
+        deleteServiceInstanceAttributes(applicationName, serviceName, null);
+        final ServiceCloudifyAttribute serviceAttributeTemplate =
+                new ServiceCloudifyAttribute(applicationName, serviceName, null, null);
+        gigaSpace.takeMultiple(serviceAttributeTemplate);
+    }
+
+    private void deleteServiceInstanceAttributes(final String applicationName, final String serviceName,
+                                                 final Integer instanceId) {
+        final InstanceCloudifyAttribute instanceAttributesTemplate =
+                new InstanceCloudifyAttribute(applicationName, serviceName, instanceId, null, null);
+        gigaSpace.takeMultiple(instanceAttributesTemplate);
     }
 }

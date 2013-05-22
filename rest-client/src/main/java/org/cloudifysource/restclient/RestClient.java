@@ -35,10 +35,8 @@ import org.apache.http.protocol.HTTP;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.internal.CloudifyMessageKeys;
 import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
-import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
-import org.cloudifysource.dsl.rest.response.Response;
-import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvents;
-import org.cloudifysource.dsl.rest.response.UploadResponse;
+import org.cloudifysource.dsl.rest.request.UninstallServiceRequest;
+import org.cloudifysource.dsl.rest.response.*;
 import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.codehaus.jackson.type.TypeReference;
 
@@ -100,44 +98,25 @@ public class RestClient {
 
 			return new DefaultHttpClient(ccm, params);
 		} catch (final Exception e) {
-			throw new RestClientException(null,
+			throw new RestClientException(FAILED_CREATING_CLIENT,
                                           "Failed creating http client",
                                           ExceptionUtils.getFullStackTrace(e));
 		}
 	}
 
 	/**
-	 * Sets username and password for the HTTP client.
-	 * 
-	 * @param username
-	 *            Username for the HTTP client.
-	 * @param password
-	 *            Password for the HTTP client.
-	 * @param httpClient 
-	 */
-	private void setCredentials(final String username, final String password, final AbstractHttpClient httpClient) {
-		if (StringUtils.notEmpty(username) && StringUtils.notEmpty(password)) {
-			httpClient.getCredentialsProvider().setCredentials(new AuthScope(AuthScope.ANY),
-					new UsernamePasswordCredentials(username, password));
-		}
-	}
-
-	/**
-	 * 
-	 * @param applicationName
-	 * 			The name of the application.
-	 * @param serviceName
-	 * 			The name of the service to install.
-	 * @param request
-	 * 			The install service request.
+	 * Executes a rest api call to install a specific service.
+	 * @param applicationName The name of the application.
+	 * @param serviceName The name of the service to install.
+	 * @param request The install service request.
 	 * @return The install service response.
 	 * @throws RestClientException .
 	 * @throws TimeoutException .
 	 * @throws IOException .
 	 */
-	public InstallServiceResponse installService(final String applicationName, 
-			final String serviceName, final InstallServiceRequest request) 
-					throws RestClientException , TimeoutException , IOException {
+	public InstallServiceResponse installService(final String applicationName,
+			                                     final String serviceName,
+                                                 final InstallServiceRequest request) throws RestClientException , TimeoutException , IOException {
 		final String installServiceUrl = versionedDeploymentControllerUrl + applicationName + "/services/" + serviceName;
 		return executor.postObject(
                         installServiceUrl,
@@ -146,21 +125,18 @@ public class RestClient {
 						);
 	}
 
-    public ServiceDeploymentEvents getServiceDeploymentEvents(final String deploymentId,
-                                                              final int from,
-                                                              final int to) throws IOException, RestClientException {
-        final String getServiceDeploymentEventsUrl = versionedDeploymentControllerUrl + "/" + deploymentId + "?from=" + from + "&to=" + to;
-        return executor.get(
-                getServiceDeploymentEventsUrl,
-                new TypeReference<Response<ServiceDeploymentEvents>>() {});
+    public UninstallServiceResponse uninstallService(final String applicationName,
+                                                     final String serviceName, final UninstallServiceRequest request) throws RestClientException , TimeoutException , IOException {
+        final String uninstallServiceUrl = versionedDeploymentControllerUrl + applicationName + "/services/" + serviceName;
+        return executor.delete(uninstallServiceUrl,
+                new TypeReference<Response<UninstallServiceResponse>>() {
+                });
     }
 
 	/**
 	 * Uploads a file to the repository.
-	 * @param fileName
-	 * 		The name of the file to upload.
-	 * @param file
-	 * 		The file to upload.
+	 * @param fileName The name of the file to upload.
+	 * @param file The file to upload.
 	 * @return upload response.
 	 * @throws RestClientException .
 	 */
@@ -206,7 +182,11 @@ public class RestClient {
         HttpConnectionParams.setConnectionTimeout(httpParams, CloudifyConstants.DEFAULT_HTTP_CONNECTION_TIMEOUT);
         HttpConnectionParams.setSoTimeout(httpParams, CloudifyConstants.DEFAULT_HTTP_READ_TIMEOUT);
 
-        setCredentials(username, password, httpClient);
+        if (StringUtils.notEmpty(username) && StringUtils.notEmpty(password)) {
+            httpClient.getCredentialsProvider().setCredentials(new AuthScope(AuthScope.ANY),
+                    new UsernamePasswordCredentials(username, password));
+        }
+
         versionedDeploymentControllerUrl = apiVersion + DEPLOYMENT_CONTROLLER_URL;
         versionedUploadControllerUrl = apiVersion + UPLOAD_CONTROLLER_URL;
         return new RestClientExecutor(httpClient, url);

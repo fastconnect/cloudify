@@ -26,7 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
-public class ValidateGsmState implements InstallServiceValidator, InstallApplicationValidator {
+public class ValidateGsmState implements InstallServiceValidator, InstallApplicationValidator, UninstallServiceValidator {
 
 	Logger logger = Logger.getLogger(ValidateGsmState.class.getName());
 
@@ -36,20 +36,21 @@ public class ValidateGsmState implements InstallServiceValidator, InstallApplica
 
 	@Override
 	public void validate(final InstallServiceValidationContext validationContext) throws RestErrorException {
-		final Cloud cloud = validationContext.getCloud();
-		validateGsmState(cloud);
+		validateGsmState(validationContext.getCloud());
 	}
 
 	@Override
-	public void validate(InstallApplicationValidationContext validationContext)
-			throws RestErrorException {
-		final Cloud cloud = validationContext.getCloud();
-		validateGsmState(cloud);
+	public void validate(final InstallApplicationValidationContext validationContext) throws RestErrorException {
+
+        validateGsmState(validationContext.getCloud());
 	}
+
+    @Override
+    public void validate(final UninstallServiceValidationContext validationContext) throws RestErrorException {
+        validateGsmState(validationContext.getCloud());
+    }
 	
-	void validateGsmState(
-			final Cloud cloud)
-			throws RestErrorException {
+	void validateGsmState(final Cloud cloud) throws RestErrorException {
 		//When a manager is down and persistence is used along with HA, install/uninstall/scaling should be disabled.
 		logger.info("Validating Gsm state.");
 		if (cloud != null) {
@@ -67,8 +68,4 @@ public class ValidateGsmState implements InstallServiceValidator, InstallApplica
 			}
 		}
 	}
-
-
-
-
 }

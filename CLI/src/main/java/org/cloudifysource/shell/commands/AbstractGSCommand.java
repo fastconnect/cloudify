@@ -16,7 +16,6 @@ import org.apache.felix.gogo.commands.Action;
 import org.apache.felix.gogo.commands.Option;
 import org.apache.felix.service.command.CommandSession;
 import org.apache.karaf.shell.console.CloseShellException;
-import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.cloudifysource.shell.AdminFacade;
 import org.cloudifysource.shell.Constants;
@@ -67,42 +66,36 @@ public abstract class AbstractGSCommand implements Action {
 
 		this.session = session;
 		messages = ShellUtils.getMessageBundle();
-		try {
-			if (adminAware) {
-				adminFacade = (AdminFacade) session.get(Constants.ADMIN_FACADE);
 
-				if (!adminFacade.isConnected()) {
-					throw new CLIStatusException("not_connected");
-				}
-			}
-			return doExecute();
+        try {
+            if (adminAware) {
+                adminFacade = (AdminFacade) session.get(Constants.ADMIN_FACADE);
 
-		} catch (final Throwable t) {
-            ClientSideExceptionHandler exceptionHandler = getExceptionHandler(t);
-            if (logger.isLoggable(exceptionHandler.getLoggingLevel())) {
-                logger.log(exceptionHandler.getLoggingLevel(), exceptionHandler.getMessage(verbose));
+                if (!adminFacade.isConnected()) {
+                    throw new CLIStatusException("not_connected");
+                }
             }
-            raiseCloseShellExceptionIfNonInteractive(session, t);
+            return doExecute();
+        } catch (final CLIStatusException e) {
+            handle(new CLIStatusExceptionHandler(e), e);
+        } catch (final CLIException e) {
+            handle(new CLIExceptionHandler(e), e);
+        } catch (final RestClientException e) {
+            handle(new RestClientExceptionHandler(e), e);
+        } catch (final InterruptedException e) {
+            handle(new InterruptedExceptionHandler(), e);
+        } catch (final Throwable t) {
+            handle(new ThrowableHandler(t), t);
         }
 		return getFormattedMessage("op_failed", Color.RED, "");
 	}
 
-    protected ClientSideExceptionHandler getExceptionHandler(final Throwable t) {
-
-        if (t instanceof CLIStatusException) {
-            return new CLIStatusExceptionHandler((CLIStatusException) t);
+    private void handle(final ClientSideExceptionHandler clientSideExceptionHandler,
+                        final Throwable t) throws CloseShellException {
+        if (logger.isLoggable(clientSideExceptionHandler.getLoggingLevel())) {
+            logger.log(clientSideExceptionHandler.getLoggingLevel(), clientSideExceptionHandler.getMessage(verbose));
         }
-        if (t instanceof CLIException) {
-            return new CLIExceptionHandler((CLIException) t);
-        }
-        if (t instanceof RestClientException) {
-            return new RestClientExceptionHandler((RestClientException) t);
-        }
-        if (t instanceof InterruptedException) {
-            return new InterruptedExceptionHandler();
-        }
-        return new ThrowableHandler(t);
-
+        raiseCloseShellExceptionIfNonInteractive(session, t);
     }
 
 	/**

@@ -29,6 +29,7 @@ import org.cloudifysource.dsl.internal.debug.DebugUtils;
 import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
 import org.cloudifysource.dsl.utils.RecipePathResolver;
 import org.cloudifysource.restclient.exceptions.RestClientException;
+import org.cloudifysource.shell.exceptions.CLIException;
 import org.cloudifysource.shell.exceptions.CLIStatusException;
 import org.cloudifysource.shell.rest.RestAdminFacade;
 import org.fusesource.jansi.Ansi.Color;
@@ -182,7 +183,11 @@ public class InstallService extends AdminAwareCommand {
 
         NameAndPackedFileResolver nameAndPackedFileResolver = getResolver(recipe);
         nameAndPackedFileResolver.init();
-        String actualServiceName = nameAndPackedFileResolver.getName();
+        String actualServiceName = serviceName;
+        if (actualServiceName == null) {
+            // no override name was defined. use the default.
+            actualServiceName = nameAndPackedFileResolver.getName();
+        }
         File packedFile = nameAndPackedFileResolver.getPackedFile();
 
         final String recipeFileKey = uploadToRepo(packedFile);
@@ -202,7 +207,7 @@ public class InstallService extends AdminAwareCommand {
         // execute the request
         ((RestAdminFacade) adminFacade).installService(CloudifyConstants.DEFAULT_APPLICATION_NAME, actualServiceName, request);
 
-		return getFormattedMessage("service_install_ended", Color.GREEN, serviceName);
+		return getFormattedMessage("service_install_ended", Color.GREEN, actualServiceName);
 	}
 
     private NameAndPackedFileResolver getResolver(final File recipe) throws CLIStatusException {
@@ -215,8 +220,15 @@ public class InstallService extends AdminAwareCommand {
         }
     }
 
-    private String uploadToRepo(final File file) throws RestClientException, IOException, TimeoutException {
-        return ((RestAdminFacade) adminFacade).upload(null, file).getUploadKey();
+    private String uploadToRepo(final File file) throws RestClientException, CLIException {
+        if (file != null) {
+            if (!file.isFile()) {
+                throw new CLIException(file.getAbsolutePath() + " is not a file or is missing");
+            } else {
+                return ((RestAdminFacade) adminFacade).upload(null, file).getUploadKey();
+            }
+        }
+        return null;
     }
 
     private void validateCloudConfigurationFile() throws CLIStatusException {

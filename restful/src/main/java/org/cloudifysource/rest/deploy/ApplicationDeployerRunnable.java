@@ -19,7 +19,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
@@ -46,7 +45,7 @@ import com.j_spaces.kernel.Environment;
  * @author adaml
  *
  */
-public class ApplicationDeployerRunnable implements Runnable{
+public class ApplicationDeployerRunnable implements Runnable {
 	private static final int SERVICE_INSTANCE_STARTUP_TIMEOUT_MINUTES = 60;
 
 	private static final java.util.logging.Logger logger = java.util.logging.Logger
@@ -58,36 +57,9 @@ public class ApplicationDeployerRunnable implements Runnable{
 	private final File overridesFile;
 	private final List<Service> services;
 	private final DSLApplicationCompilatioResult result;
-	private UUID pollingTaskId;
 
-	/**************
-	 * Constructor.
-	 *
-	 * @param controller
-	 *            installation requests are delegated to this controller.
-	 * @param result
-	 *            the application compilation result.
-	 * @param applicationName
-	 *            the application name.
-	 * @param overridesFile
-	 *            Application overrides file.
-	 * @param authGroups
-	 *            Security authorization groups for this application.
-	 * @param cloud
-	 *            the cloud configuration object.
-	 * @param selfHealing
-	 *            true if self healing is enabled for all services in this application, false if it is disabled for
-	 *            them.
-	 * @param cloudOverrides
-	 *            cloud configuration overrides for all services in this application.
-	 * @param debugAll
-	 * @param debugModeString
-	 * @param debugEvents
-	 * @throws RestErrorException 
-	 */
-	
 	/**
-	 * 
+	 * Constructor.
 	 * @param controller
 	 * 		installation requests are delegated to this controller.
 	 * @param request
@@ -121,11 +93,9 @@ public class ApplicationDeployerRunnable implements Runnable{
 		logger.info("Async install setting is " + asyncInstallPossible);
 		try {
 			installServices(asyncInstallPossible);
-			
 		} catch (final IOException e) {
 			e.printStackTrace();
 		}
-
 	}
 
 	private void installServices(final boolean async)
@@ -139,9 +109,6 @@ public class ApplicationDeployerRunnable implements Runnable{
 			logger.info("Installing service: " + service.getName() + " for application: " + applicationName);
 			service.getCustomProperties().put("usmJarPath",
 					Environment.getHomeDirectory() + "/lib/platform/usm");
-
-//			final Properties contextProperties = createServiceContextProperties(
-//					service, applicationName, async, cloud);
 
 			final String serviceName = service.getName();
 			final String absolutePUName = ServiceUtils.getAbsolutePUName(
@@ -186,16 +153,24 @@ public class ApplicationDeployerRunnable implements Runnable{
 				appender.appendAll(servicePropertiesFile, filesToAppend);
 
 				// Pack the folder and name it absolutePuName
-				final File packedFile = Packager.pack(service, serviceDirectory, absolutePUName, null);
+				final File packedFile = Packager.pack(service, 
+													serviceDirectory, 
+													absolutePUName, 
+													null);
 				result.getApplicationFile().delete();
 				packedFile.deleteOnExit();
 				// Deployment will be done using the service's absolute PU name.
-//				logger.info("Deploying PU: " + absolutePUName + ". File: "
-//						+ packedFile + ". Properties: " + contextProperties);
 				final InstallServiceRequest installServiceReq = createInstallServiceRequest(
 						cloudConfiguration, applicationPropertiesFile,
 						packedFile);
-				controller.installService(this.applicationName, serviceName, installServiceReq);
+				final String appName = this.request.getApplicationName();
+	
+				controller.installServiceInternal(appName, serviceName, 
+												installServiceReq, 
+												packedFile, 
+												null, 
+												cloudConfiguration,
+												applicationPropertiesFile);
 				try {
 					FileUtils.deleteDirectory(packedFile.getParentFile());
 				} catch (final IOException ioe) {
@@ -238,8 +213,6 @@ public class ApplicationDeployerRunnable implements Runnable{
 								+ ". Application installation will halt. "
 								+ "Some services may already have started, and should be shutdown manually. Error was: "
 								+ e.getMessage(), e);
-				//TODO:What should I do with this?
-//				this.controller.handleDeploymentException(e, this.pollingTaskId);
 				return;
 			}
 
@@ -251,7 +224,6 @@ public class ApplicationDeployerRunnable implements Runnable{
 						+ ". Application installation will stop. Some services may have been installed!");
 				return;
 			}
-
 		}
 		FileUtils.deleteDirectory(appDir);
 	}
@@ -259,7 +231,9 @@ public class ApplicationDeployerRunnable implements Runnable{
 	InstallServiceRequest createInstallServiceRequest(
 			final File cloudConfiguration,
 			final File applicationPropertiesFile, final File packedFile) {
+		
 		final InstallServiceRequest installServiceReq = new InstallServiceRequest();
+		installServiceReq.setCloudOverridesUploadKey(request.getCloudOverridesUploadKey());
 		installServiceReq.setAuthGroups(this.request.getAuthGroups());
 		installServiceReq.setDebugAll(this.request.isDebugAll());
 		installServiceReq.setDebugEvents(this.request.getDebugEvents());
@@ -267,12 +241,7 @@ public class ApplicationDeployerRunnable implements Runnable{
 		installServiceReq.setSelfHealing(this.request.isSelfHealing());
 		installServiceReq.setServiceFileName(packedFile.getName());
 		installServiceReq.setTimeoutInMillis(0);
-		//TODO:Uncomment this when resolving file transfer issue
-//		installServiceReq.setApplicationPropertiesFile(applicationPropertiesFile);
-		installServiceReq.setCloudOverridesUploadKey(request.getCloudOverridesUploadKey());
-		//TODO:These paramenters should be transfered 
-//		installServiceReq.setPackedFile(packedFile);
-//		installServiceReq.setCloudConfiguration(cloudConfiguration);
+
 		return installServiceReq;
 	}
 
@@ -281,7 +250,6 @@ public class ApplicationDeployerRunnable implements Runnable{
 	 * @return true if all services have Lifecycle events.
 	 */
 	public boolean isAsyncInstallPossibleForApplication() {
-
 		// check if all services are USM
 		for (final Service service : this.services) {
 			if (service.getLifecycle() == null) {
@@ -291,80 +259,4 @@ public class ApplicationDeployerRunnable implements Runnable{
 
 		return true;
 	}
-
-	/**
-	 * Sets the polling id for this deployment task.
-	 *
-	 * @param taskPollingId
-	 *            polling task id
-	 */
-	public void setTaskPollingId(final UUID taskPollingId) {
-		this.pollingTaskId = taskPollingId;
-	}
-
-//	private Properties createServiceContextProperties(final Service service,
-//			final String applicationName, final boolean async, final Cloud cloud) {
-//		final Properties contextProperties = new Properties();
-//
-//		if (service.getDependsOn() != null) {
-//			String serviceNames = service.getDependsOn().toString();
-//			serviceNames = serviceNames.substring(1, serviceNames.length() - 1);
-//			if (serviceNames.equals("")) {
-//				contextProperties.setProperty(
-//						CloudifyConstants.CONTEXT_PROPERTY_DEPENDS_ON, "[]");
-//			} else {
-//				final String[] splitServiceNames = serviceNames.split(",");
-//				final List<String> absoluteServiceNames = new ArrayList<String>();
-//				for (final String name : splitServiceNames) {
-//					absoluteServiceNames.add(ServiceUtils.getAbsolutePUName(
-//							applicationName, name.trim()));
-//				}
-//				contextProperties.setProperty(
-//						CloudifyConstants.CONTEXT_PROPERTY_DEPENDS_ON,
-//						Arrays.toString(absoluteServiceNames.toArray()));
-//			}
-//		}
-//		if (service.getType() != null) {
-//			contextProperties.setProperty(
-//					CloudifyConstants.CONTEXT_PROPERTY_SERVICE_TYPE,
-//					service.getType());
-//		}
-//		if (service.getIcon() != null) {
-//			contextProperties.setProperty(
-//					CloudifyConstants.CONTEXT_PROPERTY_SERVICE_ICON,
-//					CloudifyConstants.SERVICE_EXTERNAL_FOLDER
-//							+ service.getIcon());
-//		}
-//		if (service.getNetwork() != null) {
-//			contextProperties
-//					.setProperty(
-//							CloudifyConstants.CONTEXT_PROPERTY_NETWORK_PROTOCOL_DESCRIPTION,
-//							service.getNetwork().getProtocolDescription());
-//		}
-//
-//		contextProperties.setProperty(
-//				CloudifyConstants.CONTEXT_PROPERTY_ASYNC_INSTALL,
-//				Boolean.toString(async));
-//
-//		if (cloud != null) {
-//			contextProperties.setProperty(
-//					CloudifyConstants.CONTEXT_PROPERTY_CLOUD_NAME,
-//					cloud.getName());
-//		}
-//
-//		contextProperties.setProperty(
-//				CloudifyConstants.CONTEXT_PROPERTY_ELASTIC,
-//				Boolean.toString(service.isElastic()));
-//
-//		if (debugAll) {
-//			contextProperties.setProperty(CloudifyConstants.CONTEXT_PROPERTY_DEBUG_ALL, Boolean.TRUE.toString());
-//			contextProperties.setProperty(CloudifyConstants.CONTEXT_PROPERTY_DEBUG_MODE, debugModeString);
-//		} else if (StringUtils.isNotBlank(debugEvents)) {
-//			contextProperties.setProperty(CloudifyConstants.CONTEXT_PROPERTY_DEBUG_EVENTS, debugEvents);
-//			contextProperties.setProperty(CloudifyConstants.CONTEXT_PROPERTY_DEBUG_MODE, debugModeString);
-//		}
-//
-//		return contextProperties;
-//	}
-
 }

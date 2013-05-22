@@ -15,7 +15,6 @@
  *******************************************************************************/	
 package org.cloudifysource.dsl.rest.response;
 
-import java.util.Map;
 
 /**
  * an install application response POJO.
@@ -25,13 +24,13 @@ import java.util.Map;
  */
 public class InstallApplicationResponse {
 	
-	private Map<String, Object> installResponse;
+	private String deploymentID;
 
-	public Map<String, Object> getInstallResponse() {
-		return installResponse;
+	public void setDeploymentID(String id) {
+		this.deploymentID = id;
 	}
-
-	public void setInstallResponse(final Map<String, Object> installResponse) {
-		this.installResponse = installResponse;
+	
+	public String getDeploymentID() {
+		return this.deploymentID;
 	}
 }

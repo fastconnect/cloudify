@@ -341,33 +341,15 @@ public class DeploymentsController extends BaseRestController {
 								services,
 								applicationOverridesFile);
 		
-		//start polling for lifecycle events.
-		logger.log(Level.INFO, "Starting to poll for " + appName + " installation lifecycle events.");
-		final UUID lifecycleEventContainerID = null;
-		
-		installer.setTaskPollingId(lifecycleEventContainerID);
-		
 		//start install thread.
 		if (installer.isAsyncInstallPossibleForApplication()) {
 			installer.run();
 		} else {
 			restConfig.getExecutorService().execute(installer);
 		}
-		installer.setTaskPollingId(lifecycleEventContainerID);
-		
 		//creating response
-		final String[] serviceOrder = new String[services.size()];
-		for (int i = 0; i < serviceOrder.length; i++) {
-			serviceOrder[i] = services.get(i).getName();
-		}
-		final Map<String, Object> responseMap = new HashMap<String, Object>();
-		responseMap.put(CloudifyConstants.SERVICE_ORDER,
-				Arrays.toString(serviceOrder));
-		responseMap.put(CloudifyConstants.LIFECYCLE_EVENT_CONTAINER_ID,
-				lifecycleEventContainerID);
-		
 		final InstallApplicationResponse response = new InstallApplicationResponse();
-		response.setInstallResponse(responseMap);
+		response.setDeploymentID("");
 		
 		return response;
 	}
@@ -378,13 +360,15 @@ public class DeploymentsController extends BaseRestController {
      * @param appName The application name this service belongs to.
      * @param serviceName The service name.
      * @param request Request body, specifying all the needed parameters for the service.
-     * @return An instance of {@link InstallServiceResponse} containing a deployment id, with which you can query for installation events and status.
+     * @return An instance of {@link InstallServiceResponse} containing a deployment id, 
+     * with which you can query for installation events and status.
      * @throws RestErrorException Thrown in case an error happened before installation begins.
      */
 	@RequestMapping(value = "/{appName}/services/{serviceName}", method = RequestMethod.POST)
 	public InstallServiceResponse installService(@PathVariable final String appName,
                                                  @PathVariable final String serviceName,
-                                                 @RequestBody  final InstallServiceRequest request) throws RestErrorException {
+                                                 @RequestBody  final InstallServiceRequest request) 
+                                                		 throws RestErrorException {
 
 		final String absolutePuName = ServiceUtils.getAbsolutePUName(appName, serviceName);
 
@@ -392,12 +376,57 @@ public class DeploymentsController extends BaseRestController {
 		final File packedFile = getFromRepo(request.getServiceFolderUploadKey(),
                                             CloudifyMessageKeys.WRONG_SERVICE_FOLDER_UPLOAD_KEY.getName(),
                                             absolutePuName);
-		final File serviceDir = extractServiceDir(packedFile, absolutePuName);
 
 		// update service properties file (and re-zip packedFile if needed).
 		final File serviceOverridesFile = getFromRepo(request.getServiceOverridesUploadKey(),
 				                                      CloudifyMessageKeys.WRONG_SERVICE_OVERRIDES_UPLOAD_KEY.getName(),
                                                       absolutePuName);
+
+		// get cloud configuration file and content
+		final File cloudConfigurationFile = getFromRepo(request.getCloudConfigurationUploadKey(),
+				CloudifyMessageKeys.WRONG_CLOUD_CONFIGURATION_UPLOAD_KEY.getName(),
+				absolutePuName);
+		return installServiceInternal(appName, serviceName, request,
+				packedFile, serviceOverridesFile,
+				cloudConfigurationFile, null);
+	}
+
+	/**
+	 * an internal implementation for installing a service.
+	 * 
+	 * @param appName
+	 * 			Application name.
+	 * @param serviceName
+	 * 			Service name.
+	 * @param request
+	 * 			Install service request.
+	 * @param packedFile
+	 * 			packed service file.
+	 * @param serviceOverridesFile
+	 * 			A file containing overrides for service's properties file.
+	 * @param cloudConfigurationFile
+	 * 			The cloud config file.
+	 * @param applicationPropertiesFile
+	 * 			The application overrides file - to overrides the application properties.
+	 * @return
+	 * 		an install service response.
+	 * @throws RestErrorException .
+	 */
+	public InstallServiceResponse installServiceInternal(final String appName, final String serviceName,
+														 final InstallServiceRequest request,
+														 final File packedFile, 
+														 final File serviceOverridesFile, 
+														 final File cloudConfigurationFile,
+														 final File applicationPropertiesFile)
+			throws RestErrorException {
+		
+		final String absolutePuName = ServiceUtils.getAbsolutePUName(appName, serviceName);
+		// get the service dir
+		final File serviceDir = extractServiceDir(packedFile, absolutePuName);
+		// get cloud overrides file
+		final File cloudOverridesFile = getFromRepo(request.getCloudOverridesUploadKey(),
+				CloudifyMessageKeys.WRONG_CLOUD_OVERRIDES_UPLOAD_KEY.getName(),
+				absolutePuName);
 		final File workingProjectDir = new File(serviceDir, "ext");
 		final File updatedPackedFile = updatePropertiesFile(request,
                                                             serviceOverridesFile,
@@ -412,16 +441,8 @@ public class DeploymentsController extends BaseRestController {
 		// update template name
 		final String templateName = getTempalteNameFromService(service);
 
-		// get cloud configuration file and content
-		final File cloudConfigurationFile = getFromRepo(request.getCloudConfigurationUploadKey(),
-				                                        CloudifyMessageKeys.WRONG_CLOUD_CONFIGURATION_UPLOAD_KEY.getName(),
-                                                        absolutePuName);
 		final byte[] cloudConfigurationContents = getCloudConfigurationContent(cloudConfigurationFile, absolutePuName);
 
-		// get cloud overrides file
-		final File cloudOverridesFile = getFromRepo(request.getCloudOverridesUploadKey(),
-				                                    CloudifyMessageKeys.WRONG_CLOUD_OVERRIDES_UPLOAD_KEY.getName(),
-                                                    absolutePuName);
 
 		// update effective authGroups
 		String effectiveAuthGroups = getEffectiveAuthGroups(request.getAuthGroups());
@@ -947,7 +968,7 @@ public class DeploymentsController extends BaseRestController {
     }
 
 
-    public File getFromRepo(final String uploadKey, final String errorDesc, final Object... args)
+    private File getFromRepo(final String uploadKey, final String errorDesc, final Object... args)
             throws RestErrorException {
         if (StringUtils.isBlank(uploadKey)) {
             return null;

@@ -298,8 +298,9 @@ public class DeploymentsController extends BaseRestController {
 	 * 			
 	 */
 	@RequestMapping(value = "/{name}", method = RequestMethod.POST)
-	public InstallApplicationResponse installApplication(@PathVariable final String appName,
-			final InstallApplicationRequest request) throws RestErrorException {
+	public InstallApplicationResponse installApplication(
+            @PathVariable final String appName,
+			@RequestBody final InstallApplicationRequest request) throws RestErrorException {
 		
 		validateInstallApplication();
 		
@@ -930,12 +931,6 @@ public class DeploymentsController extends BaseRestController {
     @RequestMapping(value = "/appName}/service/{serviceName}/alerts", method = RequestMethod.GET)
     public void getServiceAlerts(@PathVariable final String appName,
                                  @PathVariable final String serviceName) {
-        throw new UnsupportedOperationException();
-    }
-
-
-    @RequestMapping(value = "/{name}", method = RequestMethod.POST)
-    public void installApplication(@PathVariable final String appName) {
         throw new UnsupportedOperationException();
     }
 

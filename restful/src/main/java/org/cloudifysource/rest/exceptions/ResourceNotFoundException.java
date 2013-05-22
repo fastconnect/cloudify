@@ -9,13 +9,13 @@ package org.cloudifysource.rest.exceptions;
  */
 public class ResourceNotFoundException extends Exception {
 
-    private String resourceName;
+    private String resourceDescription;
 
     public ResourceNotFoundException(final String resourceName) {
-        this.resourceName = resourceName;
+        this.resourceDescription = resourceName;
     }
 
-    public String getResourceName() {
-        return resourceName;
+    public String getResourceDescription() {
+        return resourceDescription;
     }
 }

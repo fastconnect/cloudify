@@ -12,32 +12,18 @@
  *******************************************************************************/
 package org.cloudifysource.rest.controllers;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.TimeUnit;
-
-import javax.servlet.http.HttpServletResponse;
-
+import com.gigaspaces.client.WriteModifiers;
 import net.jini.core.lease.Lease;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
-import org.cloudifysource.dsl.context.kvstorage.spaceentries.AbstractCloudifyAttribute;
-import org.cloudifysource.dsl.context.kvstorage.spaceentries.ApplicationCloudifyAttribute;
-import org.cloudifysource.dsl.context.kvstorage.spaceentries.GlobalCloudifyAttribute;
-import org.cloudifysource.dsl.context.kvstorage.spaceentries.InstanceCloudifyAttribute;
-import org.cloudifysource.dsl.context.kvstorage.spaceentries.ServiceCloudifyAttribute;
+import org.cloudifysource.dsl.context.kvstorage.spaceentries.*;
 import org.cloudifysource.dsl.internal.CloudifyErrorMessages;
 import org.cloudifysource.dsl.internal.CloudifyMessageKeys;
 import org.cloudifysource.dsl.rest.response.Response;
 import org.cloudifysource.dsl.utils.ServiceUtils;
-import org.cloudifysource.rest.exceptions.MissingServiceException;
+import org.cloudifysource.rest.RestConfiguration;
 import org.cloudifysource.rest.exceptions.ResourceNotFoundException;
 import org.codehaus.jackson.map.ObjectMapper;
-import org.openspaces.admin.Admin;
 import org.openspaces.admin.application.Application;
 import org.openspaces.admin.pu.ProcessingUnit;
 import org.openspaces.admin.pu.ProcessingUnitInstance;
@@ -49,7 +35,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
-import com.gigaspaces.client.WriteModifiers;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * 
@@ -83,8 +74,8 @@ public abstract class BaseRestController {
 	// @see http://wiki.fasterxml.com/JacksonFAQ for more info.
 	private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-	@Autowired(required = true)
-	protected Admin admin;
+    @Autowired
+    protected RestConfiguration restConfig;
 
 	@GigaSpaceContext(name = "gigaSpace")
 	protected GigaSpace gigaSpace;
@@ -92,18 +83,18 @@ public abstract class BaseRestController {
 	@Autowired(required = true)
 	protected MessageSource messageSource;
 
-	protected Application getApplication(final String appName) throws RestErrorException {
+	protected Application getApplication(final String appName) throws ResourceNotFoundException {
 
-		Application application = admin.getApplications().getApplication(appName);
+		Application application = restConfig.getAdmin().getApplications().getApplication(appName);
 		if (application == null) {
-			throw new RestErrorException(CloudifyMessageKeys.MISSIN_APPLICATION.getName(), appName);
+			throw new ResourceNotFoundException(appName);
 		}
 		return application;
 
 	}
 
 	protected ProcessingUnitInstance getServiceInstance(final ProcessingUnit processingUnit,
-                                                        final int instanceId) throws RestErrorException {
+                                                        final int instanceId) throws ResourceNotFoundException {
 
 		ProcessingUnitInstance pui = null;
 		for (ProcessingUnitInstance processingUnitInstance : processingUnit.getInstances()) {
@@ -113,21 +104,18 @@ public abstract class BaseRestController {
 			}
 		}
 		if (pui == null) {
-			throw new RestErrorException(CloudifyMessageKeys.MISSING_SERVICE_INSTANCE.getName(),
-					                     processingUnit.getName(),
-                                         String.valueOf(instanceId));
+			throw new ResourceNotFoundException(processingUnit.getName() + "[" + instanceId + "]");
 		}
 		return pui;
 	}
 
 	protected ProcessingUnit getService(final String appName,
-			                            final String serviceName) throws RestErrorException {
+			                            final String serviceName) throws ResourceNotFoundException {
 
         String absolutePUName = ServiceUtils.getAbsolutePUName(appName, serviceName);
-        ProcessingUnit processingUnit = admin.getProcessingUnits().getProcessingUnit(absolutePUName);
+        ProcessingUnit processingUnit = restConfig.getAdmin().getProcessingUnits().getProcessingUnit(absolutePUName);
 		if (processingUnit == null) {
-			throw new RestErrorException(CloudifyMessageKeys.MISSING_SERVICE.getName(),
-					                     serviceName);
+			throw new ResourceNotFoundException(serviceName);
 		}
 		return processingUnit;
 	}
@@ -142,12 +130,9 @@ public abstract class BaseRestController {
 	}
 
 	protected ProcessingUnitInstance getServiceInstance(final String appName,
-			final String serviceName, final int instanceId)
-			throws RestErrorException {
-
-		// return processingUnit by given parameters
+			                                            final String serviceName,
+                                                        final int instanceId) throws ResourceNotFoundException {
 		ProcessingUnit processingUnit = getService(appName, serviceName);
-
 		return getServiceInstance(processingUnit, instanceId);
 
 	}
@@ -155,12 +140,11 @@ public abstract class BaseRestController {
 	protected Map<String, Object> getAttributes(final String appName,
 			final String serviceName, final Integer instanceId) {
 
-		// create template according to given parameters
-		final AbstractCloudifyAttribute templateAttribute = createCloudifyAttribute(
-				appName, serviceName, instanceId, null, null);
+
+		final AbstractCloudifyAttribute templateAttribute = createCloudifyAttribute(appName, serviceName, instanceId, null, null);
+
 		// read the matching multiple attributes from the space
-		final AbstractCloudifyAttribute[] currAttributes = gigaSpace
-				.readMultiple(templateAttribute);
+		final AbstractCloudifyAttribute[] currAttributes = gigaSpace.readMultiple(templateAttribute);
 
 		// create new map for response
 		Map<String, Object> attributes = new HashMap<String, Object>();
@@ -184,26 +168,11 @@ public abstract class BaseRestController {
 		return attributes;
 	}
 
-	/**
-	 * create Cloudify attribute accroding to given parameters. e.g
-	 * applicationName,serviceName,instanceId are null return
-	 * GlobalCloudifyAttribute
-	 * 
-	 * @param applicationName
-	 *            the application name
-	 * @param serviceName
-	 *            the service name
-	 * @param instanceId
-	 *            instance id
-	 * @param name
-	 *            attribute key
-	 * @param value
-	 *            attribute value
-	 * @return cloudify attributes
-	 */
-	protected AbstractCloudifyAttribute createCloudifyAttribute(
-			final String applicationName, final String serviceName,
-			final Integer instanceId, final String name, final Object value) {
+	protected AbstractCloudifyAttribute createCloudifyAttribute(final String applicationName,
+                                                                final String serviceName,
+			                                                    final Integer instanceId,
+                                                                final String name,
+                                                                final Object value) {
 		// global
 		if (applicationName == null) {
 			return new GlobalCloudifyAttribute(name, value);
@@ -224,85 +193,53 @@ public abstract class BaseRestController {
 	}
 
 	protected Object deleteAttribute(final String appName,
-			final String serviceName, final Integer instanceId,
-			final String attributeName) throws RestErrorException {
+			                         final String serviceName,
+                                     final Integer instanceId,
+			                         final String attributeName) throws ResourceNotFoundException, RestErrorException {
 
 		// attribute name is null
 		if (StringUtils.isBlank(attributeName)) {
-			throw new RestErrorException(
-					CloudifyMessageKeys.EMPTY_ATTRIBUTE_NAME.getName());
+			throw new RestErrorException(CloudifyMessageKeys.EMPTY_ATTRIBUTE_NAME.getName());
 		}
 
-		// delete attribute
-
 		// get attribute template
-		final AbstractCloudifyAttribute attributeTemplate = createCloudifyAttribute(
-				appName, serviceName, instanceId, attributeName, null);
+		final AbstractCloudifyAttribute attributeTemplate = createCloudifyAttribute(appName, serviceName, instanceId, attributeName, null);
 
 		// delete value
-		final AbstractCloudifyAttribute previousValue = gigaSpace
-				.take(attributeTemplate);
+		final AbstractCloudifyAttribute previousValue = gigaSpace.take(attributeTemplate);
 
 		// not exist attribute name
 		if (previousValue == null) {
-			throw new RestErrorException(
-					CloudifyMessageKeys.NOT_EXIST_ATTRIBUTE.getName(),
-					attributeName);
+			throw new ResourceNotFoundException(attributeName);
 		}
 
 		// return previous value for attribute that already deleted
-		return previousValue != null ? previousValue.getValue() : null;
+		return previousValue.getValue();
 
 	}
 
-	/**
-	 * 
-	 * set attributes by given string array represent names of attributes to set
-	 * for given application , service or service instance.
-	 * 
-	 * @param appName
-	 *            the application name
-	 * @param serviceName
-	 *            the service name
-	 * @param serviceInstance
-	 *            service instance id
-	 * @param attributesMap
-	 *            attributes map to set
-	 * @throws RestErrorException
-	 *             throw rest error exception if attributes map is null
-	 * 
-	 */
 	protected void setAttributes(final String appName,
-			final String serviceName, final Integer serviceInstance,
-			final Map<String, Object> attributesMap) throws RestErrorException {
+			                     final String serviceName,
+                                 final Integer serviceInstance,
+			                     final Map<String, Object> attributesMap) throws RestErrorException {
 
 		// validate attributes map
 		if (attributesMap == null) {
-
-			throw new RestErrorException(
-					CloudifyMessageKeys.EMPTY_REQUEST_BODY_ERROR.getName());
+			throw new RestErrorException(CloudifyMessageKeys.EMPTY_REQUEST_BODY_ERROR.getName());
 		}
 
 		// create templates attributes to write
-		final AbstractCloudifyAttribute[] attributesToWrite = new AbstractCloudifyAttribute[attributesMap
-				.size()];
+		final AbstractCloudifyAttribute[] attributesToWrite = new AbstractCloudifyAttribute[attributesMap.size()];
 
 		int i = 0;
 		for (final Entry<String, Object> attrEntry : attributesMap.entrySet()) {
-			// create template attribute with key
-			final AbstractCloudifyAttribute newAttr = createCloudifyAttribute(
-					appName, serviceName, serviceInstance, attrEntry.getKey(),
-					null);
-			// delete previous value if exist
+			final AbstractCloudifyAttribute newAttr = createCloudifyAttribute(appName, serviceName, serviceInstance, attrEntry.getKey(), null);
 			gigaSpace.take(newAttr);
-			// set new value
 			newAttr.setValue(attrEntry.getValue());
-			// add to array
 			attributesToWrite[i++] = newAttr;
 		}
 		// write attributes
-		gigaSpace.writeMultiple(attributesToWrite, Lease.FOREVER,
-				WriteModifiers.UPDATE_OR_WRITE);
+		gigaSpace.writeMultiple(attributesToWrite, Lease.FOREVER,WriteModifiers.UPDATE_OR_WRITE);
 
 	}
 
@@ -343,15 +280,8 @@ public abstract class BaseRestController {
     public void handleResourceNotFoundException(final HttpServletResponse response,
                                                 final ResourceNotFoundException e) throws IOException {
 
-        String messageId;
-        Object[] messageArgs;
-        if (e instanceof MissingServiceException) {
-            messageId = CloudifyMessageKeys.MISSING_SERVICE.getName();
-            messageArgs = new Object[] {((MissingServiceException) e).getServiceName()};
-        } else {
-            messageId = CloudifyMessageKeys.MISSING_RESOURCE.getName();
-            messageArgs = new Object[] {e.getResourceName()};
-        }
+        String messageId = CloudifyMessageKeys.MISSING_RESOURCE.getName();
+        Object[] messageArgs = new Object[] {e.getResourceDescription()};
         String formattedMessage = messageSource.getMessage(messageId,
                 messageArgs, Locale.US);
 

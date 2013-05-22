@@ -40,7 +40,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class UploadRepoTest {
 
 	private UploadRepo repo;
-	private static final int CLEANUP_TIMEOUT_MILLIS = 10;
+	private static final int CLEANUP_TIMEOUT_MILLIS = 100;
 	private static final String TEST_FILE_NAME = "test.txt";
 	private static final String ZIP_FILE_PATH = "src/test/resources/upload/test.zip";
 	private static final String TXT_FILE_PATH = "src/test/resources/upload/" + TEST_FILE_NAME;

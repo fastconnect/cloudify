@@ -79,7 +79,7 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 	 */
 	@Override
 	public void doConnect(final String user, final String password, final String url, final boolean sslUsed)
-			throws CLIException {
+            throws CLIException, RestClientException {
 
 		try {
 
@@ -95,11 +95,9 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 		} catch (final MalformedURLException e) {
 			throw new CLIStatusException("could_not_parse_url", url, e);
 		} catch (final ErrorStatusException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            throw new CLIStatusException(e.getReasonCode(), e.getArgs(), e);
         } catch (final RestException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-        } catch (RestClientException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            throw new CLIException(e);
         }
     }
 
@@ -107,7 +105,7 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 	 * {@inheritDoc}
 	 */
 	@Override
-	public void reconnect(final String username, final String password) throws CLIException {
+	public void reconnect(final String username, final String password) throws CLIException, RestClientException {
 		try {
 			client.setCredentials(username, password);
             newRestClient.setCredentials(username, password);
@@ -117,9 +115,7 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
             newRestClient.connect();
 		} catch (final ErrorStatusException e) {
 			throw new CLIStatusException(e, e.getReasonCode(), e.getArgs());
-		} catch (RestClientException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-        }
+		}
     }
 
 	/**

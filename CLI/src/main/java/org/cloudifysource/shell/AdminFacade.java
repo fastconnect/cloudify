@@ -22,6 +22,7 @@ import org.cloudifysource.dsl.cloud.compute.ComputeTemplate;
 import org.cloudifysource.dsl.rest.ApplicationDescription;
 import org.cloudifysource.dsl.rest.response.ControllerDetails;
 import org.cloudifysource.restclient.InvocationResult;
+import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.cloudifysource.shell.exceptions.CLIException;
 import org.cloudifysource.shell.rest.RestLifecycleEventsLatch;
 
@@ -140,7 +141,7 @@ public interface AdminFacade {
 	 * @throws CLIException
 	 *             Reporting a failure to the connect to the server
 	 */
-	void connect(String user, String password, String url, boolean isSecureConnection) throws CLIException;
+	void connect(String user, String password, String url, boolean isSecureConnection) throws Exception;
 
 	/**
 	 * Reconnects to the server, using the given credentials.
@@ -152,7 +153,7 @@ public interface AdminFacade {
 	 * @throws CLIException
 	 *             Reporting a failure to the connect to the server
 	 */
-	void reconnect(String username, String password) throws CLIException;
+	void reconnect(String username, String password) throws CLIException, RestClientException;
 
 	/**
 	 * Verifies the logged in user is a CloudAdmin.

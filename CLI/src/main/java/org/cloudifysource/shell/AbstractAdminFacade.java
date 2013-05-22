@@ -15,6 +15,7 @@
  *******************************************************************************/
 package org.cloudifysource.shell;
 
+import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.cloudifysource.shell.exceptions.CLIException;
 import org.cloudifysource.shell.exceptions.CLIStatusException;
 
@@ -49,7 +50,7 @@ public abstract class AbstractAdminFacade implements AdminFacade {
      */
     @Override
     public void connect(final String user, final String password, final String url, final boolean sslUsed)
-    		throws CLIException {
+    		throws CLIException, RestClientException {
         if (!isConnected()) {
             doConnect(user, password, url, sslUsed);
             this.connected = true;
@@ -68,7 +69,7 @@ public abstract class AbstractAdminFacade implements AdminFacade {
      * @throws CLIException Reporting a failure to the connect to the server
      */
     protected abstract void doConnect(String user, String password, String url, boolean isSecureConnection)
-    		throws CLIException;
+            throws CLIException, RestClientException;
 
     /**
      * {@inheritDoc}

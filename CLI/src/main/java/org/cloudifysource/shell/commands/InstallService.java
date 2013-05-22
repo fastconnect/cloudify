@@ -30,6 +30,7 @@ import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
 import org.cloudifysource.dsl.utils.RecipePathResolver;
 import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.cloudifysource.shell.exceptions.CLIStatusException;
+import org.cloudifysource.shell.rest.RestAdminFacade;
 import org.fusesource.jansi.Ansi.Color;
 
 /**
@@ -199,7 +200,7 @@ public class InstallService extends AdminAwareCommand {
         request.setTimeoutInMillis(timeoutInMinutes * MILLIS_IN_MINUTES);
 
         // execute the request
-        restClient.installService(CloudifyConstants.DEFAULT_APPLICATION_NAME, actualServiceName, request);
+        ((RestAdminFacade) adminFacade).installService(CloudifyConstants.DEFAULT_APPLICATION_NAME, actualServiceName, request);
 
 		return getFormattedMessage("service_install_ended", Color.GREEN, serviceName);
 	}
@@ -215,7 +216,7 @@ public class InstallService extends AdminAwareCommand {
     }
 
     private String uploadToRepo(final File file) throws RestClientException, IOException, TimeoutException {
-        return restClient.upload(null, file).getUploadKey();
+        return ((RestAdminFacade) adminFacade).upload(null, file).getUploadKey();
     }
 
     private void validateCloudConfigurationFile() throws CLIStatusException {

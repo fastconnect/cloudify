@@ -49,7 +49,6 @@ public abstract class AbstractGSCommand implements Action {
 	protected ResourceBundle messages;
 	protected boolean adminAware = false;
 	protected AdminFacade adminFacade;
-    protected RestClient restClient;
 
 	/**
 	 * Initializes the messages bundle, and takes the admin facade objects from the session when command is admin-aware.
@@ -71,7 +70,6 @@ public abstract class AbstractGSCommand implements Action {
 		try {
 			if (adminAware) {
 				adminFacade = (AdminFacade) session.get(Constants.ADMIN_FACADE);
-                restClient = (RestClient) session.get(Constants.REST_CLIENT);
 
 				if (!adminFacade.isConnected()) {
 					throw new CLIStatusException("not_connected");

@@ -529,34 +529,29 @@ public class ElasticProcessingUnitDeploymentFactoryImpl implements ElasticProces
 	 * Create Properties object with settings from the service object, if found on the given service. The supported
 	 * settings are: com.gs.application.dependsOn com.gs.service.type com.gs.service.icon
 	 * com.gs.service.network.protocolDescription
-	 * 
-	 * @param service
+	 *
 	 *            The service object the read the settings from
 	 * @return Properties object populated with the above properties, if found on the given service.
 	 */
 	private Properties createServiceContextProperties() {
+
 		final Properties contextProperties = new Properties();
 		Service service = deploymentConfig.getService();
 
-		if (service.getDependsOn() != null) {
-			final String serviceNames = service.getDependsOn().toString();
-			contextProperties.setProperty(
-					CloudifyConstants.CONTEXT_PROPERTY_DEPENDS_ON, service
-					.getDependsOn().toString());
-			if (service.getDependsOn().equals("")) {
-				contextProperties.setProperty(CloudifyConstants.CONTEXT_PROPERTY_DEPENDS_ON, "[]");
-			} else {
-				final String[] splitServiceNames = serviceNames.split(",");
-				final List<String> absoluteServiceNames = new ArrayList<String>();
-				for (final String name : splitServiceNames) {
-					absoluteServiceNames.add(ServiceUtils.getAbsolutePUName(
-							deploymentConfig.getApplicationName(), name.trim()));
-				}
-				contextProperties.setProperty(
-						CloudifyConstants.CONTEXT_PROPERTY_DEPENDS_ON,
-						Arrays.toString(absoluteServiceNames.toArray()));
-			} 
-		}
+        if (service.getDependsOn().isEmpty()) {
+            contextProperties.setProperty(CloudifyConstants.CONTEXT_PROPERTY_DEPENDS_ON, "[]");
+        } else {
+            final List<String> absoluteServiceNames = new ArrayList<String>();
+            for (final String name : service.getDependsOn()) {
+                absoluteServiceNames.add(ServiceUtils.getAbsolutePUName(
+                        deploymentConfig.getApplicationName(), name.trim()));
+            }
+            contextProperties.setProperty(
+                    CloudifyConstants.CONTEXT_PROPERTY_DEPENDS_ON,
+                    Arrays.toString(absoluteServiceNames.toArray()));
+
+        }
+
 		if (service.getType() != null) {
 			contextProperties.setProperty(
 					CloudifyConstants.CONTEXT_PROPERTY_SERVICE_TYPE,

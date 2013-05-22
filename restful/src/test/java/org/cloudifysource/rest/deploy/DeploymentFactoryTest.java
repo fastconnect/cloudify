@@ -55,6 +55,19 @@ public class DeploymentFactoryTest {
 		deploymentFactory = new ElasticProcessingUnitDeploymentFactoryImpl();
 		cloud = ServiceReader.readCloud(new File(CLOUD_FILE));
 	}
+
+    @Test
+    public void testDependsOnWithService() throws Exception {
+
+        final Service service = ServiceReader.readService(new File(USM_SERVICE_FILE));
+        DeploymentConfig deploymentConfig = createDeploymentConfig(false, service);
+        ElasticStatelessProcessingUnitDeployment deployment =
+                (ElasticStatelessProcessingUnitDeployment) deploymentFactory.create(deploymentConfig);
+        ElasticStatelessProcessingUnitConfig deploymentHolder = deployment.create();
+        String dependsOn = deploymentHolder.getContextProperties().get(CloudifyConstants.CONTEXT_PROPERTY_DEPENDS_ON);
+        Assert.assertEquals("[]", dependsOn);
+
+    }
 	
 	@Test
 	public void testElasticUSMDeploymentIntegrity() throws Exception {

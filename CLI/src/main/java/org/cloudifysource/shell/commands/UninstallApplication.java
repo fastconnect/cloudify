@@ -28,6 +28,8 @@ import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.shell.Constants;
 import org.cloudifysource.shell.GigaShellMain;
 import org.cloudifysource.shell.ShellUtils;
+import org.cloudifysource.shell.exceptions.CLIException;
+import org.cloudifysource.shell.exceptions.CLIStatusException;
 import org.fusesource.jansi.Ansi.Color;
 
 /**

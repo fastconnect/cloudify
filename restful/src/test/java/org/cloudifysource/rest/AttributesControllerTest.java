@@ -102,7 +102,7 @@ public class AttributesControllerTest extends ControllerTest {
 		final HashMap<RequestMethod, HandlerMethod> singleApplicationAttributeHandlers =
 				new HashMap<RequestMethod, HandlerMethod>();
 		singleApplicationAttributeHandlers.put(RequestMethod.GET, new HandlerMethod(
-				controller, "getApplicationAttribute", String.class,
+				controller, "getApplicationAttributes", String.class,
 				String.class));
 		singleApplicationAttributeHandlers.put(RequestMethod.POST, new HandlerMethod(
 				controller, "setApplicationAttribute", String.class,
@@ -132,7 +132,7 @@ public class AttributesControllerTest extends ControllerTest {
 		final HashMap<RequestMethod, HandlerMethod> singleServiceAttributeHandlers =
 				new HashMap<RequestMethod, HandlerMethod>();
 		singleServiceAttributeHandlers.put(RequestMethod.GET, new HandlerMethod(
-				controller, "getServiceAttribute", String.class, String.class,
+				controller, "getServiceAttributes", String.class, String.class,
 				String.class));
 		singleServiceAttributeHandlers.put(RequestMethod.POST, new HandlerMethod(
 				controller, "setServiceAttribute", String.class, String.class,

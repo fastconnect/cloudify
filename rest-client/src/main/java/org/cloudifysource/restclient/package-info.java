@@ -40,9 +40,9 @@
  * 
  * Exception handling is performed with these classes:
  * <br>
- * {@link org.cloudifysource.restclient.RestException}
+ * {@link org.cloudifysource.restclient.exceptions.RestException}
  * <br>
- * {@link org.cloudifysource.restclient.ErrorStatusException}
+ * {@link org.cloudifysource.restclient.exceptions.ErrorStatusException}
  * <p>
  * 
  * {@link org.cloudifysource.restclient.RestSSLSocketFactory} - Handles secure communication with the REST server.

@@ -70,6 +70,8 @@ import org.apache.http.protocol.HttpContext;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.internal.CloudifyErrorMessages;
 import org.cloudifysource.dsl.rest.response.ControllerDetails;
+import org.cloudifysource.restclient.exceptions.ErrorStatusException;
+import org.cloudifysource.restclient.exceptions.RestException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.type.TypeFactory;
 import org.codehaus.jackson.type.JavaType;
@@ -121,7 +123,7 @@ public class GSRestClient {
 	 *            URL to the rest service.
 	 * @param version
 	 *            cloudify api version of the client
-	 * @throws RestException
+	 * @throws org.cloudifysource.restclient.exceptions.RestException
 	 *             Reporting failure to create a SSL HTTP client.
 	 */
 	public GSRestClient(final String username, final String password, final URL url, final String version)
@@ -257,7 +259,7 @@ public class GSRestClient {
 	 *            example: "/service/applications/travel/services/cassandra/ USMEventsLogs/" will get event logs from
 	 *            the cassandra service of the travel application.
 	 * @return An object, the response received from the rest service
-	 * @throws ErrorStatusException
+	 * @throws org.cloudifysource.restclient.exceptions.ErrorStatusException
 	 *             Reporting errors of all types (IO, HTTP, rest etc.)
 	 */
 	public final Object get(final String relativeUrl) throws ErrorStatusException {

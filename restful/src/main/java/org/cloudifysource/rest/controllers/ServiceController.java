@@ -123,7 +123,7 @@ import org.cloudifysource.restDoclet.annotations.JsonResponseExample;
 import org.cloudifysource.restDoclet.annotations.PossibleResponseStatus;
 import org.cloudifysource.restDoclet.annotations.PossibleResponseStatuses;
 import org.cloudifysource.restclient.GSRestClient;
-import org.cloudifysource.restclient.RestException;
+import org.cloudifysource.restclient.exceptions.RestException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.hyperic.sigar.Sigar;
 import org.jgrapht.DirectedGraph;
@@ -1489,7 +1489,7 @@ public class ServiceController implements ServiceDetailsProvider {
 			throws TimeoutException, RestErrorException {
 		try {
 			final ProcessingUnit pu = getGridServiceManager().deploy(deployment,
-					60, TimeUnit.SECONDS);
+                    60, TimeUnit.SECONDS);
 			if (pu == null) {
 				throw new TimeoutException("Timed out waiting for Service "
 						+ serviceName + " deployment.");

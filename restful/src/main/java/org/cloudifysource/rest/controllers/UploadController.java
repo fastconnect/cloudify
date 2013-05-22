@@ -47,7 +47,7 @@ import org.springframework.web.multipart.MultipartFile;
  */
 @Controller
 @RequestMapping(value = "/{version}/upload")
-public class UploadController extends BaseRestContoller {
+public class UploadController extends BaseRestController {
 
 	private static final Logger logger = Logger.getLogger(UploadController.class.getName());
 	

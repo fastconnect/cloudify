@@ -32,7 +32,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
  */
 @Controller
 @RequestMapping(value = "/{version}/infra")
-public class InfraController extends BaseRestContoller {
+public class InfraController extends BaseRestController {
 
 	/******
 	 * add group security.
@@ -41,7 +41,7 @@ public class InfraController extends BaseRestContoller {
 	 */
 	@RequestMapping(value = "/securitygroups ", method = RequestMethod.POST)
 	public void addSecurityGroup() {
-		throwUnsupported();
+        throw new UnsupportedOperationException();
 	}
 
 	/******
@@ -53,7 +53,7 @@ public class InfraController extends BaseRestContoller {
 	 */
 	@RequestMapping(value = "/securitygroups/{groupName}", method = RequestMethod.POST)
 	public void addSecurityRule(@PathVariable final String groupName) {
-		throwUnsupported();
+        throw new UnsupportedOperationException();
 	}
 
 	/******
@@ -65,7 +65,7 @@ public class InfraController extends BaseRestContoller {
 	 */
 	@RequestMapping(value = "/securitygroups/{groupName}", method = RequestMethod.DELETE)
 	public void removeSecurityRule(@PathVariable final String groupName) {
-		throwUnsupported();
+        throw new UnsupportedOperationException();
 	}
 
 	/******
@@ -77,7 +77,7 @@ public class InfraController extends BaseRestContoller {
 	 */
 	@RequestMapping(value = "/securitygroups/{groupName}", method = RequestMethod.PUT)
 	public void updateSecurityRule(@PathVariable final String groupName) {
-		throwUnsupported();
+        throw new UnsupportedOperationException();
 	}
 
 	/******
@@ -89,7 +89,7 @@ public class InfraController extends BaseRestContoller {
 	 */
 	@RequestMapping(value = "/securitygroups/{groupName}", method = RequestMethod.GET)
 	public void listSecurityRules(@PathVariable final String groupName) {
-		throwUnsupported();
+        throw new UnsupportedOperationException();
 	}
 
 	/******
@@ -98,7 +98,7 @@ public class InfraController extends BaseRestContoller {
 	 */
 	@RequestMapping(value = "/hosts", method = RequestMethod.GET)
 	public void getHosts() {
-		throwUnsupported();
+        throw new UnsupportedOperationException();
 	}
 
 	/******
@@ -107,7 +107,7 @@ public class InfraController extends BaseRestContoller {
 	 */
 	@RequestMapping(value = "/hosts", method = RequestMethod.PUT)
 	public void addHost() {
-		throwUnsupported();
+        throw new UnsupportedOperationException();
 	}
 
 	/******
@@ -116,7 +116,7 @@ public class InfraController extends BaseRestContoller {
 	 */
 	@RequestMapping(value = "/hosts", method = RequestMethod.DELETE)
 	public void removeHost() {
-		throwUnsupported();
+        throw new UnsupportedOperationException();
 	}
 
 }

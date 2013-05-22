@@ -15,6 +15,11 @@ package org.cloudifysource.restclient.exceptions;
 /**
  * 
  * @author yael
+ * Base class for all exception thrown by the rest client.
+ *
+ *          messageCode - code for message formatting using a message bundle.
+ *          messageFormattedText - the default formatted message that will be returned to consumers of this client
+ *          verbose - complete stack trace of the cause exception.
  * 
  */
 public class RestClientException extends Exception {

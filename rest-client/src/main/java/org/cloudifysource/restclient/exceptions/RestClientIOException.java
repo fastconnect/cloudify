@@ -19,6 +19,7 @@ import org.apache.commons.lang.exception.ExceptionUtils;
 /**
  * 
  * @author yael
+ * Severe exception when reading/writing response/request from/to server.
  * 
  */
 public class RestClientIOException extends RestClientException {
@@ -30,8 +31,9 @@ public class RestClientIOException extends RestClientException {
 
 	private final IOException exception;
 
-	public RestClientIOException(final String messageCode, final String messageFormattedText,
-			final IOException exception) {
+	public RestClientIOException(final String messageCode,
+                                 final String messageFormattedText,
+			                     final IOException exception) {
 		super(messageCode, messageFormattedText, ExceptionUtils.getStackTrace(exception));
 		this.exception = exception;
 	}

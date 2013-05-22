@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
  */
 @Controller
 @RequestMapping(value = "/{version}/repo")
-public class RepoController extends BaseRestContoller {
+public class RepoController extends BaseRestController {
 
 	
 	/******
@@ -36,7 +36,7 @@ public class RepoController extends BaseRestContoller {
 	 */
 	@RequestMapping(value = "/apps", method = RequestMethod.POST)
 	public void pushAppRecipe() {
-			throwUnsupported();
+        throw new UnsupportedOperationException();
 	}
 	
 	
@@ -48,7 +48,7 @@ public class RepoController extends BaseRestContoller {
 	@RequestMapping(value = "/apps/{appName}", method = RequestMethod.GET)
 	public void getAppRecipe(
 			@PathVariable final String appName) {
-			throwUnsupported();
+        throw new UnsupportedOperationException();
 	}
 	
 	/******
@@ -59,7 +59,7 @@ public class RepoController extends BaseRestContoller {
 	@RequestMapping(value = "/apps/{appName}", method = RequestMethod.PUT)
 	public void updateAppRecipe(
 			@PathVariable final String appName) {
-			throwUnsupported();
+        throw new UnsupportedOperationException();
 	}
 	
 	
@@ -71,8 +71,6 @@ public class RepoController extends BaseRestContoller {
 	@RequestMapping(value = "/apps/{appName}", method = RequestMethod.DELETE)
 	public void deleteAppRecipe(
 			@PathVariable final String appName) {
-			throwUnsupported();
+        throw new UnsupportedOperationException();
 	}
-	
-	
 }

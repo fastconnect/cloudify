@@ -7,10 +7,8 @@ public enum CloudifyMessageKeys {
 	ATTRIBUTE_DELETED_SUCCESSFULLY("deleted_instance_attribute"),
 	
 	API_VERSION_MISMATCH("version_mismatch"),
-	
-	SERVICE_WAIT_TIMEOUT("service_wait_timeout"),
-	
-	APPLICATION_WAIT_TIMEOUT("application_wait_timeout"),
+
+	MISSING_APPLICATION("missing_application"),
 
     MISSING_RESOURCE("missing_resource"),
 	

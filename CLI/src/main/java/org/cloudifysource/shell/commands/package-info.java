@@ -43,8 +43,8 @@
  * <p>
  * 
  * <h4>Exception handling</h4>
- * Exception handling is performed using {@link org.cloudifysource.shell.commands.CLIException} as a basic CLI
- * exception, or {@link org.cloudifysource.shell.commands.CLIStatusException} for more detailed exceptions with a reason
+ * Exception handling is performed using {@link org.cloudifysource.shell.exceptions.CLIException} as a basic CLI
+ * exception, or {@link org.cloudifysource.shell.exceptions.CLIStatusException} for more detailed exceptions with a reason
  * code and optionally arguments to be passed to the message formatter.
  * 
  */

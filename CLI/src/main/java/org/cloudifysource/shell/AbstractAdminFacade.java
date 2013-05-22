@@ -15,8 +15,8 @@
  *******************************************************************************/
 package org.cloudifysource.shell;
 
-import org.cloudifysource.shell.commands.CLIException;
-import org.cloudifysource.shell.commands.CLIStatusException;
+import org.cloudifysource.shell.exceptions.CLIException;
+import org.cloudifysource.shell.exceptions.CLIStatusException;
 
 import java.io.File;
 import java.util.ResourceBundle;

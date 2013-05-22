@@ -17,6 +17,7 @@ import org.apache.commons.lang.exception.ExceptionUtils;
 /**
  * 
  * @author yael
+ * Exception originating from errors on the server side, but not from our controllers.
  * 
  */
 public class RestClientHttpException extends RestClientResponseException {
@@ -29,9 +30,12 @@ public class RestClientHttpException extends RestClientResponseException {
 	private final String responseBody;
 	private final Exception exception;
 
-	public RestClientHttpException(final String messageCode, final String messageFormattedText, final int statusCode,
-			final String reasonPhrase, final String responseBody, final Exception exception) {
-		super(messageCode, messageFormattedText, statusCode, reasonPhrase, ExceptionUtils.getStackTrace(exception));
+	public RestClientHttpException(final String messageCode,
+                                   final String messageFormattedText,
+                                   final int statusCode,
+			                       final String reasonPhrase,
+                                   final String responseBody, final Exception exception) {
+		super(messageCode, messageFormattedText, statusCode, reasonPhrase, ExceptionUtils.getFullStackTrace(exception));
 		this.responseBody = responseBody;
 		this.exception = exception;
 	}

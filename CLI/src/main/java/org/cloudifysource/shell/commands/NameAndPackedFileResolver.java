@@ -2,6 +2,7 @@ package org.cloudifysource.shell.commands;
 
 import org.cloudifysource.dsl.internal.DSLException;
 import org.cloudifysource.dsl.internal.packaging.PackagingException;
+import org.cloudifysource.shell.exceptions.CLIStatusException;
 
 import java.io.File;
 import java.io.IOException;

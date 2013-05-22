@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
  */
 @Controller
 @RequestMapping(value = "/{version}/alerts")
-public class AlertController extends BaseRestContoller {
+public class AlertController extends BaseRestController {
 	
 	
 	/******
@@ -34,7 +34,7 @@ public class AlertController extends BaseRestContoller {
 	 */
 	@RequestMapping(value = "/", method = RequestMethod.GET)
 	public void getManagerAlerts() {
-			throwUnsupported();
+        throw new UnsupportedOperationException();
 	}
 	
 	

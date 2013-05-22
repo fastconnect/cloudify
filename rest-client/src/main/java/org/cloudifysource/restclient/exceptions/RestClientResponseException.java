@@ -15,6 +15,8 @@ package org.cloudifysource.restclient.exceptions;
 /**
  * 
  * @author yael
+ * Exception originating from errors that were thrown by our controllers.
+ * Meant to encapsulate all error data returned as strings from the rest.
  * 
  */
 public class RestClientResponseException extends RestClientException {
@@ -27,8 +29,11 @@ public class RestClientResponseException extends RestClientException {
 	private final int statusCode;
 	private final String reasonPhrase;
 
-	public RestClientResponseException(final String messageCode, final String messageFormattedText,
-			final int statusCode, final String reasonPhrase, final String verbose) {
+	public RestClientResponseException(final String messageCode,
+                                       final String messageFormattedText,
+			                           final int statusCode,
+                                       final String reasonPhrase,
+                                       final String verbose) {
 		super(messageCode, messageFormattedText, verbose);
 		this.statusCode = statusCode;
 		this.reasonPhrase = reasonPhrase;

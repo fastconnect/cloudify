@@ -30,6 +30,7 @@ import org.cloudifysource.dsl.internal.DSLException;
 import org.cloudifysource.dsl.internal.DSLReader;
 import org.cloudifysource.dsl.internal.DSLUtils;
 import org.cloudifysource.dsl.internal.packaging.Packager;
+import org.cloudifysource.shell.exceptions.CLIStatusException;
 import org.fusesource.jansi.Ansi.Color;
 
 /**

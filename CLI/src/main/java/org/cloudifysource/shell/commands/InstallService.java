@@ -25,11 +25,12 @@ import org.cloudifysource.dsl.internal.debug.DebugModes;
 import org.cloudifysource.dsl.internal.debug.DebugUtils;
 import org.cloudifysource.dsl.internal.packaging.ZipUtils;
 import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
-import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
 import org.cloudifysource.dsl.utils.RecipePathResolver;
-import org.cloudifysource.restclient.RestClientException;
+import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.cloudifysource.shell.Constants;
 import org.cloudifysource.shell.ShellUtils;
+import org.cloudifysource.shell.exceptions.CLIException;
+import org.cloudifysource.shell.exceptions.CLIStatusException;
 import org.cloudifysource.shell.rest.RestLifecycleEventsLatch;
 import org.fusesource.jansi.Ansi.Color;
 
@@ -112,6 +113,63 @@ public class InstallService extends AdminAwareCommand {
 			description = "Debug mode. One of: instead, after or onError")
 	private String debugModeString = DebugModes.INSTEAD.getName();
 
+
+    public File getCloudConfiguration() {
+        return cloudConfiguration;
+    }
+
+    public void setCloudConfiguration(final File cloudConfiguration) {
+        this.cloudConfiguration = cloudConfiguration;
+    }
+
+    public int getTimeoutInMinutes() {
+        return timeoutInMinutes;
+    }
+
+    public void setTimeoutInMinutes(final int timeoutInMinutes) {
+        this.timeoutInMinutes = timeoutInMinutes;
+    }
+
+    public boolean isDisableSelfHealing() {
+        return disableSelfHealing;
+    }
+
+    public void setDisableSelfHealing(final boolean disableSelfHealing) {
+        this.disableSelfHealing = disableSelfHealing;
+    }
+
+    public boolean isDebugAll() {
+        return debugAll;
+    }
+
+    public void setDebugAll(final boolean debugAll) {
+        this.debugAll = debugAll;
+    }
+
+    public String getDebugEvents() {
+        return debugEvents;
+    }
+
+    public void setDebugEvents(final String debugEvents) {
+        this.debugEvents = debugEvents;
+    }
+
+    public String getDebugModeString() {
+        return debugModeString;
+    }
+
+    public void setDebugModeString(final String debugModeString) {
+        this.debugModeString = debugModeString;
+    }
+
+    public String getServiceFileName() {
+        return serviceFileName;
+    }
+
+    public void setServiceFileName(final String serviceFileName) {
+        this.serviceFileName = serviceFileName;
+    }
+
 	/**
 	 * {@inheritDoc}
 	 */
@@ -149,64 +207,23 @@ public class InstallService extends AdminAwareCommand {
         request.setTimeoutInMillis(timeoutInMinutes * MILLIS_IN_MINUTES);
 
         // execute the request
-        InstallServiceResponse installServiceResponse = restClient.installService(CloudifyConstants.DEFAULT_APPLICATION_NAME, actualServiceName, request);
-        final String deploymentId = installServiceResponse.getDeploymentID();
-
-        // start polling for life cycle events
-        waitForLifeCycleEvents(deploymentId);
+        restClient.installService(CloudifyConstants.DEFAULT_APPLICATION_NAME, actualServiceName, request);
 
 		return getFormattedMessage("service_install_ended", Color.GREEN, serviceName);
 	}
 
-    private NameAndPackedFileResolver getResolver(File recipe) throws CLIStatusException {
+    private NameAndPackedFileResolver getResolver(final File recipe) throws CLIStatusException {
         if (recipe.isFile()) {
             // this is a prepared package we can just use.
-            return new PreparedPackageHelper(recipe);
+            return new PreparedPackageResolver(recipe);
         } else {
             // this is an actual service directory
-            recipe = resolve(recipe);
-            return new ServiceHelper(recipe, overrides, serviceFileName);
+            return new ServiceResolver(resolve(recipe), overrides, serviceFileName);
         }
-    }
-
-    private String getServiceNameFromRecipe() {
-        return null;
-    }
-
-    private void waitForLifeCycleEvents(final String deploymentId) {
-
-
-
     }
 
     private String uploadToRepo(final File file) throws RestClientException, IOException, TimeoutException {
-        if (file == null) {
-            return null;
-        }
-        return restClient.upload(file.getName(), file).getUploadKey();
-    }
-
-    private File zip(final File file) throws IOException {
-
-        // create a temp file in a temp directory
-        final File tempDir = File.createTempFile("__cloudify_temp", ".tmp");
-        FileUtils.forceDelete(tempDir);
-        if (!tempDir.mkdirs()) {
-            throw new IOException("Failed creating directories in path " + tempDir.getAbsolutePath());
-        }
-
-        final File tempFile = new File(tempDir, file.getName());
-
-        // mark files for deletion on JVM exit
-        tempFile.deleteOnExit();
-        tempDir.deleteOnExit();
-
-        if (file.isDirectory()) {
-            ZipUtils.zip(file, tempFile);
-        } else if (file.isFile()) {
-            ZipUtils.zipSingleFile(file, tempFile);
-        }
-        return tempFile;
+        return restClient.upload(null, file).getUploadKey();
     }
 
     private void validateCloudConfigurationFile() throws CLIStatusException {
@@ -256,193 +273,4 @@ public class InstallService extends AdminAwareCommand {
             throw new CLIStatusException(e, e.getErrorMessage().getName(), (Object[]) e.getArgs());
         }
     }
-
-    private void pollForLifecycleEvents(final String lifecycleEventContainerPollingID) throws InterruptedException,
-			CLIException, TimeoutException, IOException {
-		final RestLifecycleEventsLatch lifecycleEventsPollingLatch = this.adminFacade
-				.getLifecycleEventsPollingLatch(
-						lifecycleEventContainerPollingID, TIMEOUT_ERROR_MESSAGE);
-		boolean isDone = false;
-		boolean continuous = false;
-		while (!isDone) {
-			try {
-				if (!continuous) {
-					lifecycleEventsPollingLatch.waitForLifecycleEvents(
-							getTimeoutInMinutes(), TimeUnit.MINUTES);
-				} else {
-					lifecycleEventsPollingLatch.continueWaitForLifecycleEvents(
-							getTimeoutInMinutes(), TimeUnit.MINUTES);
-				}
-				isDone = true;
-			} catch (final TimeoutException e) {
-				if (!(Boolean) session.get(Constants.INTERACTIVE_MODE)) {
-					throw e;
-				}
-				final boolean continueInstallation = promptWouldYouLikeToContinueQuestion();
-				if (!continueInstallation) {
-					throw new CLIStatusException(e,
-							"service_installation_timed_out_on_client",
-							serviceName);
-				} else {
-					continuous = true;
-				}
-			}
-		}
-	}
-
-	private boolean promptWouldYouLikeToContinueQuestion() throws IOException {
-		return ShellUtils.promptUser(session,
-				"would_you_like_to_continue_service_installation", serviceName);
-	}
-
-	// TODO: THIS CODE IS COPIED AS IS FROM THE REST PROJECT
-	// It is used originally in ApplicationInstallerRunnable
-	// This copy is a bad idea, and should be moved out of here as soon as
-	// possible.
-	/**
-	 * Create Properties object with settings from the service object, if found on the given service. The supported
-	 * settings are: com.gs.application.dependsOn com.gs.service.type com.gs.service.icon
-	 * com.gs.service.network.protocolDescription
-	 * 
-	 * @param service
-	 *            The service object the read the settings from
-	 * @return Properties object populated with the above properties, if found on the given service.
-	 */
-	private Properties createServiceContextProperties(final Service service) {
-		final Properties contextProperties = new Properties();
-
-		// contextProperties.setProperty("com.gs.application.services",
-		// serviceNamesString);
-		if (service.getDependsOn() != null) {
-			contextProperties.setProperty(
-					CloudifyConstants.CONTEXT_PROPERTY_DEPENDS_ON, service
-							.getDependsOn().toString());
-		}
-		if (service.getType() != null) {
-			contextProperties.setProperty(
-					CloudifyConstants.CONTEXT_PROPERTY_SERVICE_TYPE,
-					service.getType());
-		}
-		if (service.getIcon() != null) {
-			contextProperties.setProperty(
-					CloudifyConstants.CONTEXT_PROPERTY_SERVICE_ICON,
-					CloudifyConstants.SERVICE_EXTERNAL_FOLDER
-							+ service.getIcon());
-		}
-		if (service.getNetwork() != null) {
-			if (service.getNetwork().getProtocolDescription() != null) {
-				contextProperties
-						.setProperty(
-								CloudifyConstants.CONTEXT_PROPERTY_NETWORK_PROTOCOL_DESCRIPTION,
-								service.getNetwork().getProtocolDescription());
-			}
-		}
-
-		contextProperties.setProperty(
-				CloudifyConstants.CONTEXT_PROPERTY_ELASTIC,
-				Boolean.toString(service.isElastic()));
-
-		if (this.debugAll) {
-			contextProperties.setProperty(CloudifyConstants.CONTEXT_PROPERTY_DEBUG_ALL, Boolean.TRUE.toString());
-			contextProperties.setProperty(CloudifyConstants.CONTEXT_PROPERTY_DEBUG_MODE, this.getDebugModeString());
-		} else if (this.debugEvents != null) {
-			contextProperties.setProperty(CloudifyConstants.CONTEXT_PROPERTY_DEBUG_EVENTS, this.debugEvents);
-			contextProperties.setProperty(CloudifyConstants.CONTEXT_PROPERTY_DEBUG_MODE, this.getDebugModeString());
-		}
-
-		return contextProperties;
-	}
-
-	private File createCloudConfigurationZipFile() throws CLIStatusException,
-			IOException {
-		if (this.cloudConfiguration == null) {
-			return null;
-		}
-
-		if (!this.cloudConfiguration.exists()) {
-			throw new CLIStatusException("cloud_configuration_file_not_found",
-					this.cloudConfiguration.getAbsolutePath());
-		}
-
-		// create a temp file in a temp directory
-		final File tempDir = File.createTempFile(
-				"__Cloudify_Cloud_configuration", ".tmp");
-		FileUtils.forceDelete(tempDir);
-		tempDir.mkdirs();
-
-		final File tempFile = new File(tempDir,
-				CloudifyConstants.SERVICE_CLOUD_CONFIGURATION_FILE_NAME);
-
-		// mark files for deletion on JVM exit
-		tempFile.deleteOnExit();
-		tempDir.deleteOnExit();
-
-		if (this.cloudConfiguration.isDirectory()) {
-			ZipUtils.zip(this.cloudConfiguration, tempFile);
-		} else if (this.cloudConfiguration.isFile()) {
-			ZipUtils.zipSingleFile(this.cloudConfiguration, tempFile);
-		} else {
-			throw new IOException(this.cloudConfiguration
-					+ " is neither a file nor a directory");
-		}
-
-		return tempFile;
-	}
-
-	public File getCloudConfiguration() {
-		return cloudConfiguration;
-	}
-
-	public void setCloudConfiguration(final File cloudConfiguration) {
-		this.cloudConfiguration = cloudConfiguration;
-	}
-
-	public int getTimeoutInMinutes() {
-		return timeoutInMinutes;
-	}
-
-	public void setTimeoutInMinutes(final int timeoutInMinutes) {
-		this.timeoutInMinutes = timeoutInMinutes;
-	}
-
-	public boolean isDisableSelfHealing() {
-		return disableSelfHealing;
-	}
-
-	public void setDisableSelfHealing(final boolean disableSelfHealing) {
-		this.disableSelfHealing = disableSelfHealing;
-	}
-
-	public boolean isDebugAll() {
-		return debugAll;
-	}
-
-	public void setDebugAll(final boolean debugAll) {
-		this.debugAll = debugAll;
-	}
-
-	public String getDebugEvents() {
-		return debugEvents;
-	}
-
-	public void setDebugEvents(final String debugEvents) {
-		this.debugEvents = debugEvents;
-	}
-
-	public String getDebugModeString() {
-		return debugModeString;
-	}
-
-	public void setDebugModeString(final String debugModeString) {
-		this.debugModeString = debugModeString;
-	}
-
-	public String getServiceFileName() {
-		return serviceFileName;
-	}
-
-	public void setServiceFileName(final String serviceFileName) {
-		this.serviceFileName = serviceFileName;
-	}
-
 }

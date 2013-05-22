@@ -20,6 +20,7 @@ package org.cloudifysource.shell.exceptions;
  * @since 2.0.0
  * 
  *        Represents exceptions in the scope of the command line interface.
+ *        This exception is mainly used for error on the client side.
  */
 public class CLIException extends Exception {
 

@@ -15,18 +15,8 @@
  ******************************************************************************/
 package org.cloudifysource.restclient;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.URL;
-import java.security.KeyManagementException;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.UnrecoverableKeyException;
-import java.security.cert.CertificateException;
-import java.util.concurrent.TimeoutException;
-import java.util.logging.Logger;
 
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.http.HttpVersion;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
@@ -49,7 +39,15 @@ import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
 import org.cloudifysource.dsl.rest.response.Response;
 import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvents;
 import org.cloudifysource.dsl.rest.response.UploadResponse;
+import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.codehaus.jackson.type.TypeReference;
+
+import java.io.File;
+import java.io.IOException;
+import java.net.URL;
+import java.security.KeyStore;
+import java.util.concurrent.TimeoutException;
+import java.util.logging.Logger;
 
 /**
  * 
@@ -59,6 +57,8 @@ import org.codehaus.jackson.type.TypeReference;
 public class RestClient {
 
 	private static final Logger logger = Logger.getLogger(RestClient.class.getName());
+
+    private static final String FAILED_CREATING_CLIENT = "failed_creating_client";
 
 	private RestClientExecutor executor;
 	
@@ -76,10 +76,10 @@ public class RestClient {
 	 * @param url 
 	 * 
 	 * @return HTTP client configured to use SSL
-	 * @throws RestException
+	 * @throws org.cloudifysource.restclient.exceptions.RestClientException
 	 *             Reporting different failures while creating the HTTP client
 	 */
-	private DefaultHttpClient getSSLHttpClient(final URL url) throws RestException {
+	private DefaultHttpClient getSSLHttpClient(final URL url) throws RestClientException {
 		try {
 			final KeyStore trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
 			// TODO : support self-signed certs if configured by user upon
@@ -99,18 +99,10 @@ public class RestClient {
 			final ClientConnectionManager ccm = new ThreadSafeClientConnManager(params, registry);
 
 			return new DefaultHttpClient(ccm, params);
-		} catch (final KeyStoreException e) {
-			throw new RestException(e);
-		} catch (final NoSuchAlgorithmException e) {
-			throw new RestException(e);
-		} catch (final CertificateException e) {
-			throw new RestException(e);
-		} catch (final IOException e) {
-			throw new RestException(e);
-		} catch (final KeyManagementException e) {
-			throw new RestException(e);
-		} catch (final UnrecoverableKeyException e) {
-			throw new RestException(e);
+		} catch (final Exception e) {
+			throw new RestClientException(null,
+                                          "Failed creating http client",
+                                          ExceptionUtils.getFullStackTrace(e));
 		}
 	}
 
@@ -193,7 +185,7 @@ public class RestClient {
     public void connect(final URL url,
                         final String username,
                         final String password,
-                        final String apiVersion) throws IOException, RestClientException, RestException {
+                        final String apiVersion) throws IOException, RestClientException, RestClientException {
 
         this.executor = createExecutor(url, username, password, apiVersion);
 
@@ -203,7 +195,7 @@ public class RestClient {
     private RestClientExecutor createExecutor(final URL url,
                                               final String username,
                                               final String password,
-                                              final String apiVersion) throws RestException {
+                                              final String apiVersion) throws RestClientException {
         DefaultHttpClient httpClient;
         if (HTTPS.equals(url.getProtocol())) {
             httpClient = getSSLHttpClient(url);

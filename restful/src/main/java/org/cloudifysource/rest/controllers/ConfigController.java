@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
  */
 @Controller
 @RequestMapping(value = "/{version}/config")
-public class ConfigController extends BaseRestContoller {
+public class ConfigController extends BaseRestController {
 	
 	
 	/******
@@ -36,7 +36,7 @@ public class ConfigController extends BaseRestContoller {
 	 */
 	@RequestMapping(value = "/compute", method = RequestMethod.POST)
 	public void addComputeTemplate() {
-			throwUnsupported();
+			throw new UnsupportedOperationException();
 	}
 	
 	
@@ -46,7 +46,7 @@ public class ConfigController extends BaseRestContoller {
 	 */
 	@RequestMapping(value = "/compute", method = RequestMethod.GET)
 	public void listComputeTemplates() {
-			throwUnsupported();
+        throw new UnsupportedOperationException();
 	}
 	
 	/******
@@ -55,7 +55,7 @@ public class ConfigController extends BaseRestContoller {
 	 */
 	@RequestMapping(value = "/compute", method = RequestMethod.DELETE)
 	public void deleteComputeTemplate() {
-			throwUnsupported();
+        throw new UnsupportedOperationException();
 	}
 	
 	
@@ -65,7 +65,7 @@ public class ConfigController extends BaseRestContoller {
 	 */
 	@RequestMapping(value = "/network", method = RequestMethod.POST)
 	public void addNetworkTemplate() {
-			throwUnsupported();
+        throw new UnsupportedOperationException();
 	}
 	
 	
@@ -75,9 +75,8 @@ public class ConfigController extends BaseRestContoller {
 	 *  
 	 */
 	@RequestMapping(value = "/network/{networkName}", method = RequestMethod.GET)
-	public void listNetworkTemplates(
-			@PathVariable final String networkName) {
-			throwUnsupported();
+	public void listNetworkTemplates(@PathVariable final String networkName) {
+        throw new UnsupportedOperationException();
 	}
 	
 	
@@ -89,7 +88,7 @@ public class ConfigController extends BaseRestContoller {
 	@RequestMapping(value = "/network/{networkName}", method = RequestMethod.DELETE)
 	public void deleteNetworkTemplates(
 			@PathVariable final String networkName) {
-			throwUnsupported();
+			throw new UnsupportedOperationException();
 	}
 	
 	
@@ -99,7 +98,7 @@ public class ConfigController extends BaseRestContoller {
 	 */
 	@RequestMapping(value = "/loadbalancer", method = RequestMethod.POST)
 	public void addLBTemplate() {
-			throwUnsupported();
+        throw new UnsupportedOperationException();
 	}
 	
 	
@@ -109,7 +108,7 @@ public class ConfigController extends BaseRestContoller {
 	 */
 	@RequestMapping(value = "/loadbalancer", method = RequestMethod.GET)
 	public void listLBTemplate() {
-			throwUnsupported();
+        throw new UnsupportedOperationException();
 	}
 	
 	/******
@@ -118,7 +117,7 @@ public class ConfigController extends BaseRestContoller {
 	 */
 	@RequestMapping(value = "/loadbalancer", method = RequestMethod.DELETE)
 	public void deleteLBTemplate() {
-			throwUnsupported();
+        throw new UnsupportedOperationException();
 	}
 	
 	/******
@@ -127,7 +126,7 @@ public class ConfigController extends BaseRestContoller {
 	 */
 	@RequestMapping(value = "/storage", method = RequestMethod.POST)
 	public void addStorageTemplate() {
-			throwUnsupported();
+        throw new UnsupportedOperationException();
 	}
 	
 	
@@ -137,7 +136,7 @@ public class ConfigController extends BaseRestContoller {
 	 */
 	@RequestMapping(value = "/storage", method = RequestMethod.GET)
 	public void listStorageTemplate() {
-			throwUnsupported();
+        throw new UnsupportedOperationException();
 	}
 	
 	
@@ -147,7 +146,7 @@ public class ConfigController extends BaseRestContoller {
 	 */
 	@RequestMapping(value = "/storage", method = RequestMethod.DELETE)
 	public void deleteStorageTemplate() {
-			throwUnsupported();
+        throw new UnsupportedOperationException();
 	}
 	
 	
@@ -158,7 +157,7 @@ public class ConfigController extends BaseRestContoller {
 	 */
 	@RequestMapping(value = "/securitygroups", method = RequestMethod.POST)
 	public void addSecurityGrouptemplate() {
-			throwUnsupported();
+        throw new UnsupportedOperationException();
 	}
 	
 

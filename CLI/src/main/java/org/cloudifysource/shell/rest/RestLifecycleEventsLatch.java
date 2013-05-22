@@ -24,11 +24,11 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.cloudifysource.dsl.internal.CloudifyConstants;
-import org.cloudifysource.restclient.ErrorStatusException;
+import org.cloudifysource.restclient.exceptions.ErrorStatusException;
 import org.cloudifysource.restclient.GSRestClient;
 import org.cloudifysource.shell.ConditionLatch;
 import org.cloudifysource.shell.ConditionLatch.Predicate;
-import org.cloudifysource.shell.commands.CLIException;
+import org.cloudifysource.shell.exceptions.CLIException;
 import org.cloudifysource.shell.installer.CLIEventsDisplayer;
 /**
  * The RestLifecycleEventsLatch will poll the rest for installation lifecycle events 

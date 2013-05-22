@@ -26,6 +26,7 @@ import org.apache.felix.gogo.commands.Option;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.shell.Constants;
 import org.cloudifysource.shell.ShellUtils;
+import org.cloudifysource.shell.exceptions.CLIStatusException;
 import org.cloudifysource.shell.rest.RestLifecycleEventsLatch;
 import org.fusesource.jansi.Ansi.Color;
 
@@ -84,7 +85,7 @@ public class SetInstances extends AdminAwareCommand {
 				}
 				boolean continueInstallation = promptWouldYouLikeToContinueQuestion();
 				if (!continueInstallation) {
-					throw new CLIStatusException(e, "application_installation_timed_out_on_client", 
+					throw new CLIStatusException(e, "application_installation_timed_out_on_client",
 							applicationName);
 				} else {
 					continuous = continueInstallation;

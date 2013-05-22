@@ -1,8 +1,5 @@
 package org.cloudifysource.shell.commands;
 
-import java.io.File;
-import java.io.IOException;
-
 import org.cloudifysource.dsl.Service;
 import org.cloudifysource.dsl.internal.DSLException;
 import org.cloudifysource.dsl.internal.DSLReader;
@@ -10,7 +7,10 @@ import org.cloudifysource.dsl.internal.DSLUtils;
 import org.cloudifysource.dsl.internal.ServiceReader;
 import org.cloudifysource.dsl.internal.packaging.Packager;
 import org.cloudifysource.dsl.internal.packaging.PackagingException;
+import org.cloudifysource.shell.exceptions.CLIStatusException;
 
+import java.io.File;
+import java.io.IOException;
 /**
  * Created with IntelliJ IDEA.
  * User: elip

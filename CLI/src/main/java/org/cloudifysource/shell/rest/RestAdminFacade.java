@@ -12,21 +12,7 @@
  *******************************************************************************/
 package org.cloudifysource.shell.rest;
 
-import java.io.File;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Properties;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-
+import com.j_spaces.kernel.PlatformVersion;
 import org.cloudifysource.dsl.cloud.compute.ComputeTemplate;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.rest.ApplicationDescription;
@@ -34,20 +20,26 @@ import org.cloudifysource.dsl.rest.ServiceDescription;
 import org.cloudifysource.dsl.rest.response.ControllerDetails;
 import org.cloudifysource.dsl.rest.response.UploadResponse;
 import org.cloudifysource.dsl.utils.ServiceUtils;
-import org.cloudifysource.restclient.ErrorStatusException;
 import org.cloudifysource.restclient.GSRestClient;
 import org.cloudifysource.restclient.InvocationResult;
 import org.cloudifysource.restclient.RestClient;
-import org.cloudifysource.restclient.RestClientException;
-import org.cloudifysource.restclient.RestException;
 import org.cloudifysource.restclient.StringUtils;
+import org.cloudifysource.restclient.exceptions.ErrorStatusException;
+import org.cloudifysource.restclient.exceptions.RestClientException;
+import org.cloudifysource.restclient.exceptions.RestException;
 import org.cloudifysource.shell.AbstractAdminFacade;
 import org.cloudifysource.shell.ShellUtils;
-import org.cloudifysource.shell.commands.CLIException;
-import org.cloudifysource.shell.commands.CLIStatusException;
+import org.cloudifysource.shell.exceptions.CLIException;
+import org.cloudifysource.shell.exceptions.CLIStatusException;
 import org.codehaus.jackson.map.ObjectMapper;
 
-import com.j_spaces.kernel.PlatformVersion;
+import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * This class implements the {@link org.cloudifysource.shell.AdminFacade},
@@ -97,11 +89,11 @@ public class RestAdminFacade extends AbstractAdminFacade {
 		} catch (final MalformedURLException e) {
 			throw new CLIStatusException("could_not_parse_url", url, e);
 		} catch (final ErrorStatusException e) {
-			throw new CLIStatusException(e);
-		} catch (final RestException e) {
-			throw new CLIException(e);
-		}
-	}
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        } catch (final RestException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        }
+    }
 
 	/**
 	 * {@inheritDoc}
@@ -539,7 +531,7 @@ public class RestAdminFacade extends AbstractAdminFacade {
 		for (final ServiceDescription serviceDescription : servicesList.getServicesDescription()) {
 			final String serviceName = serviceDescription.getServiceName();
 			containerUids.addAll(getGridServiceContainerUidsForService(
-					applicationName, serviceName));
+                    applicationName, serviceName));
 		}
 		return containerUids;
 	}
@@ -933,7 +925,7 @@ public class RestAdminFacade extends AbstractAdminFacade {
 			final List<ControllerDetails> controllers = this.client.shutdownManagers();
 			return controllers;
 		} catch (final ErrorStatusException e) {
-			throw new CLIStatusException(e);
+			throw new CLIException(e);
 		}
 
 	}
@@ -947,7 +939,7 @@ public class RestAdminFacade extends AbstractAdminFacade {
 		try {
 			return client.getManagers();
 		} catch (final ErrorStatusException e) {
-			throw new CLIStatusException(e);
+			throw new CLIException(e);
 		}
 	}
 

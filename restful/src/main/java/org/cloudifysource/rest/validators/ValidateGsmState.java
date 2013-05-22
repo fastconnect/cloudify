@@ -25,10 +25,19 @@ import org.openspaces.admin.Admin;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+/**
+ * validates that if running with high availability, both GSMs are up
+ * 
+ * @author adaml
+ *
+ */
 @Component
-public class ValidateGsmState implements InstallServiceValidator, InstallApplicationValidator, UninstallServiceValidator {
+public class ValidateGsmState implements InstallServiceValidator, 
+										InstallApplicationValidator, 
+										UninstallServiceValidator, 
+										UninstallApplicationValidator {
 
-	Logger logger = Logger.getLogger(ValidateGsmState.class.getName());
+	private static final Logger logger = Logger.getLogger(ValidateGsmState.class.getName());
 
 
 	@Autowired(required = true)
@@ -49,6 +58,12 @@ public class ValidateGsmState implements InstallServiceValidator, InstallApplica
     public void validate(final UninstallServiceValidationContext validationContext) throws RestErrorException {
         validateGsmState(validationContext.getCloud());
     }
+    
+	@Override
+	public void validate(final UninstallApplicationValidationContext validationContext)
+			throws RestErrorException {
+		validateGsmState(validationContext.getCloud());
+	}
 	
 	void validateGsmState(final Cloud cloud) throws RestErrorException {
 		//When a manager is down and persistence is used along with HA, install/uninstall/scaling should be disabled.

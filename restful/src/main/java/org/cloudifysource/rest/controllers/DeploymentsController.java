@@ -12,23 +12,78 @@
  *******************************************************************************/
 package org.cloudifysource.rest.controllers;
 
+import static org.cloudifysource.rest.ResponseConstants.FAILED_TO_LOCATE_LUS;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import javax.annotation.PostConstruct;
+
 import net.jini.core.discovery.LookupLocator;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.cloudifysource.dsl.ComputeDetails;
 import org.cloudifysource.dsl.Service;
 import org.cloudifysource.dsl.cloud.Cloud;
+import org.cloudifysource.dsl.context.kvstorage.spaceentries.ApplicationCloudifyAttribute;
 import org.cloudifysource.dsl.context.kvstorage.spaceentries.InstanceCloudifyAttribute;
 import org.cloudifysource.dsl.context.kvstorage.spaceentries.ServiceCloudifyAttribute;
-import org.cloudifysource.dsl.internal.*;
+import org.cloudifysource.dsl.internal.CloudifyConstants;
+import org.cloudifysource.dsl.internal.CloudifyMessageKeys;
+import org.cloudifysource.dsl.internal.DSLApplicationCompilatioResult;
+import org.cloudifysource.dsl.internal.DSLServiceCompilationResult;
+import org.cloudifysource.dsl.internal.DSLUtils;
+import org.cloudifysource.dsl.internal.ServiceReader;
 import org.cloudifysource.dsl.internal.packaging.FileAppender;
 import org.cloudifysource.dsl.internal.packaging.Packager;
-import org.cloudifysource.dsl.rest.request.*;
-import org.cloudifysource.dsl.rest.response.*;
+import org.cloudifysource.dsl.rest.request.InstallApplicationRequest;
+import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
+import org.cloudifysource.dsl.rest.request.SetApplicationAttributesRequest;
+import org.cloudifysource.dsl.rest.request.SetServiceAttributesRequest;
+import org.cloudifysource.dsl.rest.request.SetServiceInstanceAttributesRequest;
+import org.cloudifysource.dsl.rest.request.UninstallApplicationRequest;
+import org.cloudifysource.dsl.rest.request.UninstallServiceRequest;
+import org.cloudifysource.dsl.rest.request.UpdateApplicationAttributeRequest;
+import org.cloudifysource.dsl.rest.response.DeleteApplicationAttributeResponse;
+import org.cloudifysource.dsl.rest.response.DeleteServiceAttributeResponse;
+import org.cloudifysource.dsl.rest.response.DeleteServiceInstanceAttributeResponse;
+import org.cloudifysource.dsl.rest.response.GetApplicationAttributesResponse;
+import org.cloudifysource.dsl.rest.response.GetServiceAttributesResponse;
+import org.cloudifysource.dsl.rest.response.GetServiceInstanceAttributesResponse;
+import org.cloudifysource.dsl.rest.response.InstallApplicationResponse;
+import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
+import org.cloudifysource.dsl.rest.response.Response;
+import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvents;
+import org.cloudifysource.dsl.rest.response.ServiceDetails;
+import org.cloudifysource.dsl.rest.response.ServiceInstanceDetails;
+import org.cloudifysource.dsl.rest.response.ServiceInstanceMetricsData;
+import org.cloudifysource.dsl.rest.response.ServiceInstanceMetricsResponse;
+import org.cloudifysource.dsl.rest.response.ServiceMetricsResponse;
+import org.cloudifysource.dsl.rest.response.UninstallApplicationResponse;
+import org.cloudifysource.dsl.rest.response.UninstallServiceResponse;
 import org.cloudifysource.dsl.utils.ServiceUtils;
 import org.cloudifysource.rest.RestConfiguration;
 import org.cloudifysource.rest.controllers.helpers.ControllerHelper;
-import org.cloudifysource.rest.deploy.*;
+import org.cloudifysource.rest.deploy.ApplicationDeployerRunnable;
+import org.cloudifysource.rest.deploy.DeploymentConfig;
+import org.cloudifysource.rest.deploy.ElasticDeploymentCreationException;
+import org.cloudifysource.rest.deploy.ElasticProcessingUnitDeploymentFactory;
+import org.cloudifysource.rest.deploy.ElasticProcessingUnitDeploymentFactoryImpl;
 import org.cloudifysource.rest.events.cache.EventsCache;
 import org.cloudifysource.rest.events.cache.EventsCacheKey;
 import org.cloudifysource.rest.events.cache.EventsCacheValue;
@@ -36,7 +91,14 @@ import org.cloudifysource.rest.events.cache.EventsUtils;
 import org.cloudifysource.rest.exceptions.ResourceNotFoundException;
 import org.cloudifysource.rest.repo.UploadRepo;
 import org.cloudifysource.rest.util.IsolationUtils;
-import org.cloudifysource.rest.validators.*;
+import org.cloudifysource.rest.validators.InstallApplicationValidationContext;
+import org.cloudifysource.rest.validators.InstallApplicationValidator;
+import org.cloudifysource.rest.validators.InstallServiceValidationContext;
+import org.cloudifysource.rest.validators.InstallServiceValidator;
+import org.cloudifysource.rest.validators.UninstallApplicationValidationContext;
+import org.cloudifysource.rest.validators.UninstallApplicationValidator;
+import org.cloudifysource.rest.validators.UninstallServiceValidationContext;
+import org.cloudifysource.rest.validators.UninstallServiceValidator;
 import org.cloudifysource.security.CloudifyAuthorizationDetails;
 import org.cloudifysource.security.CustomPermissionEvaluator;
 import org.jgrapht.DirectedGraph;
@@ -46,7 +108,9 @@ import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.traverse.TopologicalOrderIterator;
 import org.openspaces.admin.Admin;
 import org.openspaces.admin.AdminException;
+import org.openspaces.admin.application.Application;
 import org.openspaces.admin.gsm.GridServiceManager;
+import org.openspaces.admin.internal.admin.InternalAdmin;
 import org.openspaces.admin.pu.ProcessingUnit;
 import org.openspaces.admin.pu.ProcessingUnitInstance;
 import org.openspaces.admin.pu.elastic.ElasticStatefulProcessingUnitDeployment;
@@ -60,19 +124,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.*;
-
-import javax.annotation.PostConstruct;
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import static org.cloudifysource.rest.ResponseConstants.FAILED_TO_LOCATE_LUS;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 
 /**
  * This controller is responsible for retrieving information about deployments. It is also the entry point for deploying
@@ -124,12 +180,15 @@ public class DeploymentsController extends BaseRestController {
 
     @Autowired
     private UninstallServiceValidator[] uninstallServiceValidators = new UninstallServiceValidator[0];
+    
+    @Autowired
+    private UninstallApplicationValidator[] uninstallApplicationValidators = new UninstallApplicationValidator[0];
 
     @Autowired(required = false)
 	private CustomPermissionEvaluator permissionEvaluator;
 
     @PostConstruct
-    public void init() throws IOException {
+    public void init() {
         this.eventsCache = new EventsCache(restConfig.getAdmin());
         this.controllerHelper = new ControllerHelper(gigaSpace, restConfig.getAdmin());
     }
@@ -298,6 +357,7 @@ public class DeploymentsController extends BaseRestController {
 	 * 			
 	 */
 	@RequestMapping(value = "/{name}", method = RequestMethod.POST)
+	@PreAuthorize("isFullyAuthenticated() and hasPermission(#authGroups, 'deploy')")
 	public InstallApplicationResponse installApplication(
             @PathVariable final String appName,
 			@RequestBody final InstallApplicationRequest request) throws RestErrorException {
@@ -508,7 +568,8 @@ public class DeploymentsController extends BaseRestController {
     @PreAuthorize("isFullyAuthenticated()")
     public UninstallServiceResponse uninstallService(@PathVariable final String appName,
                                                      @PathVariable final String serviceName,
-                                                     @RequestBody final UninstallServiceRequest uninstallServiceRequest) throws RestErrorException, ResourceNotFoundException {
+                                                     @RequestBody final UninstallServiceRequest uninstallServiceRequest) 
+                                                    		 throws RestErrorException, ResourceNotFoundException {
 
         final ProcessingUnit processingUnit = controllerHelper.getService(appName, serviceName);
 
@@ -918,10 +979,199 @@ public class DeploymentsController extends BaseRestController {
         throw new UnsupportedOperationException();
     }
 
+    /**
+     * 
+     * @param appName
+     * 		The application name.
+     * @param request
+     * 		The uninstall-application request.
+     * @return
+     * @throws RestErrorException
+     */
     @RequestMapping(value = "/{appName}", method = RequestMethod.DELETE)
-    public void uninstallApplication(@PathVariable final String appName) {
-        throw new UnsupportedOperationException();
+    @PreAuthorize("isFullyAuthenticated()")
+    public UninstallApplicationResponse uninstallApplication(@PathVariable final String appName,
+    								@RequestBody final UninstallApplicationRequest request) 
+    										throws RestErrorException {
+
+    	validateUninstallApplication(appName);
+    	
+		final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		// Check that Application exists
+		final Application app = this.restConfig.getAdmin().getApplications().waitFor(
+				appName, 10, TimeUnit.SECONDS);
+
+		final ProcessingUnit[] pus = app.getProcessingUnits()
+				.getProcessingUnits();
+
+		if (pus.length > 0) {
+			if (permissionEvaluator != null) {
+				final CloudifyAuthorizationDetails authDetails = new CloudifyAuthorizationDetails(authentication);
+				// all the application PUs are supposed to have the same auth-groups setting
+				final String puAuthGroups = pus[0].getBeanLevelProperties().getContextProperties().
+						getProperty(CloudifyConstants.CONTEXT_PROPERTY_AUTH_GROUPS);
+				permissionEvaluator.verifyPermission(authDetails, puAuthGroups, "deploy");
+			}
+		}
+
+		final StringBuilder sb = new StringBuilder();
+		final List<ProcessingUnit> uninstallOrder = createUninstallOrder(pus,
+				appName);
+		// TODO: Add timeout.
+		FutureTask<Boolean> undeployTask = null;
+		logger.log(Level.INFO, "Starting to poll for" + appName + " uninstall lifecycle events.");
+		if (uninstallOrder.size() > 0) {
+
+			undeployTask = new FutureTask<Boolean>(new Runnable() {
+				private final long startTime = System.currentTimeMillis();
+
+				@Override
+				public void run() {
+					for (final ProcessingUnit processingUnit : uninstallOrder) {
+						if (permissionEvaluator != null) {
+							final CloudifyAuthorizationDetails authDetails =
+									new CloudifyAuthorizationDetails(authentication);
+							final String puAuthGroups = processingUnit.getBeanLevelProperties().getContextProperties().
+									getProperty(CloudifyConstants.CONTEXT_PROPERTY_AUTH_GROUPS);
+							permissionEvaluator.verifyPermission(authDetails, puAuthGroups, "deploy");
+						}
+
+						final long undeployTimeout = TimeUnit.MINUTES.toMillis(request.getTimeoutInMinutes())
+								- (System.currentTimeMillis() - startTime);
+						try {
+							//TODO: move this to constant
+							if (processingUnit.waitForManaged(10,
+									TimeUnit.SECONDS) == null) {
+								logger.log(Level.WARNING,
+										"Failed to locate GSM that is managing Processing Unit "
+												+ processingUnit.getName());
+							} else {
+								logger.log(Level.INFO,
+										"Undeploying Processing Unit "
+												+ processingUnit.getName());
+								processingUnit.undeployAndWait(undeployTimeout,
+										TimeUnit.MILLISECONDS);
+								final String serviceName = ServiceUtils.getApplicationServiceName(
+										processingUnit.getName(), appName);
+								logger.info("Removing application service scope attributes for service " + serviceName);
+								deleteServiceAttributes(appName,
+										serviceName);
+								
+
+							}
+						} catch (final Exception e) {
+							final String msg = "Failed to undeploy processing unit: "
+									+ processingUnit.getName()
+									+ " while uninstalling application "
+									+ appName
+									+ ". Uninstall will continue, but service "
+									+ processingUnit.getName()
+									+ " may remain in an unstable state";
+
+							logger.log(Level.SEVERE, msg, e);
+						}
+					}
+					logger.log(Level.INFO, "Application " + appName
+							+ " undeployment complete");
+				}
+			}, Boolean.TRUE);
+
+			((InternalAdmin) this.restConfig.getAdmin()).scheduleAdminOperation(undeployTask);
+		}
+		
+		final String errors = sb.toString();
+		if (errors.length() == 0) {
+			logger.info("Removing all application scope attributes for application " + appName);
+			deleteApplicationScopeAttributes(appName);
+			final UninstallApplicationResponse response = new UninstallApplicationResponse();
+			return response;
+		}
+		throw new RestErrorException(errors);
     }
+    
+	private void deleteApplicationScopeAttributes(final String applicationName) {
+		final ApplicationCloudifyAttribute applicationAttributeTemplate =
+				new ApplicationCloudifyAttribute(applicationName, null, null);
+		gigaSpace.takeMultiple(applicationAttributeTemplate);
+	}
+    
+	private List<ProcessingUnit> createUninstallOrder(
+			final ProcessingUnit[] pus, final String applicationName) {
+
+		// TODO: Refactor this - merge with createServiceOrder, as methods are
+		// very similar
+		final DirectedGraph<ProcessingUnit, DefaultEdge> graph = new DefaultDirectedGraph<ProcessingUnit, DefaultEdge>(
+				DefaultEdge.class);
+
+		for (final ProcessingUnit processingUnit : pus) {
+			graph.addVertex(processingUnit);
+		}
+
+		final Map<String, ProcessingUnit> puByName = new HashMap<String, ProcessingUnit>();
+		for (final ProcessingUnit processingUnit : pus) {
+			puByName.put(processingUnit.getName(), processingUnit);
+		}
+
+		for (final ProcessingUnit processingUnit : pus) {
+			final String dependsOn = (String) processingUnit
+					.getBeanLevelProperties().getContextProperties()
+					.get(CloudifyConstants.CONTEXT_PROPERTY_DEPENDS_ON);
+			if (dependsOn == null) {
+				logger.warning("Could not find the "
+						+ CloudifyConstants.CONTEXT_PROPERTY_DEPENDS_ON
+						+ " property for processing unit "
+						+ processingUnit.getName());
+
+			} else {
+				final String[] dependencies = dependsOn.replace("[", "")
+						.replace("]", "").split(",");
+				for (final String puName : dependencies) {
+					final String normalizedPuName = puName.trim();
+					if (normalizedPuName.length() > 0) {
+						final ProcessingUnit dependency = puByName
+								.get(normalizedPuName);
+						if (dependency == null) {
+							logger.severe("Could not find Processing Unit "
+									+ normalizedPuName
+									+ " that Processing Unit "
+									+ processingUnit.getName() + " depends on");
+						} else {
+							// the reverse to the install order.
+							graph.addEdge(processingUnit, dependency);
+						}
+					}
+				}
+			}
+		}
+
+		final CycleDetector<ProcessingUnit, DefaultEdge> cycleDetector =
+				new CycleDetector<ProcessingUnit, DefaultEdge>(
+						graph);
+		final boolean containsCycle = cycleDetector.detectCycles();
+
+		if (containsCycle) {
+			logger.warning("Detected a cycle in the dependencies of application: "
+					+ applicationName
+					+ " while preparing to uninstall."
+					+ " The service in this application will be uninstalled in a random order");
+
+			return Arrays.asList(pus);
+		}
+
+		final TopologicalOrderIterator<ProcessingUnit, DefaultEdge> iterator =
+				new TopologicalOrderIterator<ProcessingUnit, DefaultEdge>(graph);
+
+		final List<ProcessingUnit> orderedList = new ArrayList<ProcessingUnit>();
+		while (iterator.hasNext()) {
+			final ProcessingUnit nextPU = iterator.next();
+			if (!orderedList.contains(nextPU)) {
+				orderedList.add(nextPU);
+			}
+		}
+		// Collections.reverse(orderedList);
+		return orderedList;
+
+	}
 
     @RequestMapping(value = "/{appName}/attributes/{attributeName}", method = RequestMethod.PUT)
     public void updateApplicationAttribute(@PathVariable final String appName,
@@ -1128,6 +1378,17 @@ public class DeploymentsController extends BaseRestController {
             validator.validate(validationContext);
         }
     }
+    
+    private void validateUninstallApplication(final String appName)
+            throws RestErrorException {
+        final UninstallApplicationValidationContext validationContext =
+                new UninstallApplicationValidationContext();
+        validationContext.setCloud(restConfig.getCloud());
+        validationContext.setApplicationName(appName);
+        for (final UninstallApplicationValidator validator : uninstallApplicationValidators) {
+            validator.validate(validationContext);
+        }
+    }
 
     private List<Service> createServiceDependencyOrder(
             final org.cloudifysource.dsl.Application application) {
@@ -1264,34 +1525,6 @@ public class DeploymentsController extends BaseRestController {
                         absolutePuName, e.getMessage());
             }
         }
-    }
-
-    private File getCloudConfigurationFile(final InstallServiceRequest request,
-                                           final String absolutePuName) throws RestErrorException {
-        File cloudConfigFile;
-        //TODO:adaml check application or service install
-        if (false) {
-            //TODO:figure out a way to obtain this file.
-            cloudConfigFile = null;//request.getCloudConfiguration();
-        } else {
-            cloudConfigFile = getFromRepo(request.getCloudConfigurationUploadKey(),
-                    CloudifyMessageKeys.WRONG_CLOUD_CONFIGURATION_UPLOAD_KEY.getName(), absolutePuName);
-        }
-        return cloudConfigFile;
-    }
-
-    private File getPackedFile(final InstallServiceRequest request, final String absolutePUName)
-            throws RestErrorException {
-        File packedFile;
-        //TODO:adaml check application or service install
-        if (false) {
-            packedFile = getFromRepo(request.getServiceFolderUploadKey(),
-                    CloudifyMessageKeys.WRONG_SERVICE_FOLDER_UPLOAD_KEY.getName(), absolutePUName);
-        } else {
-            //TODO:figure out a way to obtain this file.
-            packedFile = null;//request.getPackedFile();
-        }
-        return packedFile;
     }
 
     private void validateUninstallService() throws RestErrorException {

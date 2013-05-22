@@ -13,30 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *******************************************************************************/
-package org.cloudifysource.dsl.rest.request;
+package org.cloudifysource.dsl.rest.response;
 
 /**
- * A POJO representing a request to uninstallService command via the REST Gateway.
- * It holds the settings for the uninstall operation.
  * 
- * A JSON serialization of this POJO may be used as the request body of the above mentioned REST command.
- * 
- * @author noak
+ * @author adaml
+ *
  */
-public class UninstallServiceRequest {
-	
-	/**
-	 * The default timeout for service un-deployment.
-	 */
-	public static final int DEFAULT_TIMEOUT_IN_MINUTES = 5;
-	
-	private int timeoutInMinutes = DEFAULT_TIMEOUT_IN_MINUTES;
+public class UninstallApplicationResponse {
 
-	public int getTimeoutInMinutes() {
-		return timeoutInMinutes;
+	private String deploymentID = "";
+
+	public String getDeploymentID() {
+		return deploymentID;
 	}
 
-	public void setTimeoutInMinutes(final int timeoutInMinutes) {
-		this.timeoutInMinutes = timeoutInMinutes;
+	public void setDeploymentID(final String deploymentID) {
+		this.deploymentID = deploymentID;
 	}
+	
 }

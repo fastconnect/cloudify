@@ -17,6 +17,8 @@ package org.cloudifysource.restclient;
 
 
 import org.apache.http.*;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
@@ -251,4 +253,10 @@ public class RestClientExecutor {
 		return urlStr + safeRelativeURL;
 	}
 
+    public void setCredentials(final String username, final String password) {
+        if (StringUtils.notEmpty(username) && StringUtils.notEmpty(password)) {
+            httpClient.getCredentialsProvider().setCredentials(new AuthScope(AuthScope.ANY),
+                    new UsernamePasswordCredentials(username, password));
+        }
+    }
 }

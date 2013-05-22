@@ -13,6 +13,7 @@
 package org.cloudifysource.shell.rest;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
@@ -31,12 +32,19 @@ import org.cloudifysource.dsl.cloud.compute.ComputeTemplate;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.rest.ApplicationDescription;
 import org.cloudifysource.dsl.rest.ServiceDescription;
+import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
+import org.cloudifysource.dsl.rest.request.UninstallServiceRequest;
 import org.cloudifysource.dsl.rest.response.ControllerDetails;
+import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
+import org.cloudifysource.dsl.rest.response.UninstallServiceResponse;
+import org.cloudifysource.dsl.rest.response.UploadResponse;
 import org.cloudifysource.dsl.utils.ServiceUtils;
 import org.cloudifysource.restclient.GSRestClient;
 import org.cloudifysource.restclient.InvocationResult;
+import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.restclient.StringUtils;
 import org.cloudifysource.restclient.exceptions.ErrorStatusException;
+import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.cloudifysource.restclient.exceptions.RestException;
 import org.cloudifysource.shell.AbstractAdminFacade;
 import org.cloudifysource.shell.ShellUtils;
@@ -55,7 +63,7 @@ import com.j_spaces.kernel.PlatformVersion;
  * @author rafi, barakm, adaml, noak
  * @since 2.0.0
  */
-public class RestAdminFacade extends AbstractAdminFacade {
+public class RestAdminFacade extends AbstractAdminFacade implements Installer, Uploader {
 
 	private static final String GS_USM_COMMAND_NAME = "GS_USM_CommandName";
 	private static final String SERVICE_CONTROLLER_URL = "/service/";
@@ -63,6 +71,8 @@ public class RestAdminFacade extends AbstractAdminFacade {
 
 	private GSRestClient client;
 	private URL urlObj;
+
+    private RestClient newRestClient;
 
 	/**
 	 * {@inheritDoc}
@@ -72,11 +82,13 @@ public class RestAdminFacade extends AbstractAdminFacade {
 			throws CLIException {
 
 		try {
+
 			this.urlObj = new URL(ShellUtils.getFormattedRestUrl(url, sslUsed));
+
 			client = new GSRestClient(user, password, getUrl(), PlatformVersion.getVersionNumber());
-			//newRestClient = new RestClient(user, password, PlatformVersion.getVersion(), urlObj);
-			// test connection
+            newRestClient = new RestClient(urlObj, user, password, PlatformVersion.getVersion());
 			client.get(SERVICE_CONTROLLER_URL + "testrest");
+            newRestClient.connect();
 			if (user != null || password != null) {
 				reconnect(user, password);
 			}
@@ -85,6 +97,8 @@ public class RestAdminFacade extends AbstractAdminFacade {
 		} catch (final ErrorStatusException e) {
             e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
         } catch (final RestException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        } catch (RestClientException e) {
             e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
         }
     }
@@ -96,12 +110,17 @@ public class RestAdminFacade extends AbstractAdminFacade {
 	public void reconnect(final String username, final String password) throws CLIException {
 		try {
 			client.setCredentials(username, password);
+            newRestClient.setCredentials(username, password);
+
 			// test connection
 			client.get(SERVICE_CONTROLLER_URL + "testlogin");
+            newRestClient.connect();
 		} catch (final ErrorStatusException e) {
 			throw new CLIStatusException(e, e.getReasonCode(), e.getArgs());
-		}
-	}
+		} catch (RestClientException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        }
+    }
 
 	/**
 	 * {@inheritDoc}
@@ -121,6 +140,7 @@ public class RestAdminFacade extends AbstractAdminFacade {
 	@Override
 	public void doDisconnect() {
 		client = null;
+        newRestClient = null;
 	}
 
 	/**
@@ -937,4 +957,26 @@ public class RestAdminFacade extends AbstractAdminFacade {
 		}
 	}
 
+    @Override
+    public InstallServiceResponse installService(
+            final String applicationName,
+            final String serviceName,
+            final InstallServiceRequest request) throws RestClientException {
+        return newRestClient.installService(applicationName, serviceName, request);
+    }
+
+    @Override
+    public UninstallServiceResponse uninstallService(
+            final String applicationName,
+            final String serviceName,
+            final UninstallServiceRequest request) throws RestClientException {
+        return newRestClient.uninstallService(applicationName, serviceName, request);
+    }
+
+    @Override
+    public UploadResponse upload(
+            final String fileName,
+            final File file) throws RestClientException {
+        return newRestClient.upload(fileName, file);
+    }
 }

@@ -66,13 +66,6 @@ public class Connect extends AbstractGSCommand {
     protected Object doExecute() throws Exception {
         final AdminFacade adminFacade = (AdminFacade) session.get(Constants.ADMIN_FACADE);
         adminFacade.connect(user, password, url, ssl);
-
-        // create the rest client instance
-        String formattedRestUrl = ShellUtils.getFormattedRestUrl(url, ssl);
-
-        restClient = (RestClient) session.get(Constants.REST_CLIENT);
-        restClient.connect(new URL(formattedRestUrl), user, password, PlatformVersion.getVersion());
-
         String formattedMessage;
         if (ssl) {
         	formattedMessage = getFormattedMessage("connected_successfully_with_ssl", Color.GREEN);

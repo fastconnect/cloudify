@@ -69,6 +69,19 @@ public class RestClient {
 
 	private static final String HTTPS = "https";
 
+    public RestClient(final URL url,
+                      final String username,
+                      final String password,
+                      final String apiVersion) throws RestClientException {
+
+        this.executor = createExecutor(url, username, password, apiVersion);
+    }
+
+    public void setCredentials(final String username,
+                               final String password) {
+        executor.setCredentials(username, password);
+    }
+
 
 	/**
 	 * Returns a HTTP client configured to use SSL.
@@ -117,7 +130,7 @@ public class RestClient {
 	 */
 	public InstallServiceResponse installService(final String applicationName,
 			                                     final String serviceName,
-                                                 final InstallServiceRequest request) throws RestClientException , TimeoutException , IOException {
+                                                 final InstallServiceRequest request) throws RestClientException {
 		final String installServiceUrl = versionedDeploymentControllerUrl + applicationName + "/services/" + serviceName;
 		return executor.postObject(
                         installServiceUrl,
@@ -127,7 +140,7 @@ public class RestClient {
 	}
 
     public UninstallServiceResponse uninstallService(final String applicationName,
-                                                     final String serviceName, final UninstallServiceRequest request) throws RestClientException , TimeoutException , IOException {
+                                                     final String serviceName, final UninstallServiceRequest request) throws RestClientException {
         final String uninstallServiceUrl = versionedDeploymentControllerUrl + applicationName + "/services/" + serviceName;
         return executor.delete(uninstallServiceUrl,
                 new TypeReference<Response<UninstallServiceResponse>>() {
@@ -159,13 +172,7 @@ public class RestClient {
 		return response;
 	}
 
-    public void connect(final URL url,
-                        final String username,
-                        final String password,
-                        final String apiVersion) throws IOException, RestClientException, RestClientException {
-
-        this.executor = createExecutor(url, username, password, apiVersion);
-
+    public void connect() throws RestClientException {
         executor.get(versionedDeploymentControllerUrl + "/testrest", new TypeReference<Response<Void>>() {});
     }
 
@@ -182,12 +189,6 @@ public class RestClient {
         final HttpParams httpParams = httpClient.getParams();
         HttpConnectionParams.setConnectionTimeout(httpParams, CloudifyConstants.DEFAULT_HTTP_CONNECTION_TIMEOUT);
         HttpConnectionParams.setSoTimeout(httpParams, CloudifyConstants.DEFAULT_HTTP_READ_TIMEOUT);
-
-        if (StringUtils.notEmpty(username) && StringUtils.notEmpty(password)) {
-            httpClient.getCredentialsProvider().setCredentials(new AuthScope(AuthScope.ANY),
-                    new UsernamePasswordCredentials(username, password));
-        }
-
         versionedDeploymentControllerUrl = apiVersion + DEPLOYMENT_CONTROLLER_URL;
         versionedUploadControllerUrl = apiVersion + UPLOAD_CONTROLLER_URL;
         return new RestClientExecutor(httpClient, url);

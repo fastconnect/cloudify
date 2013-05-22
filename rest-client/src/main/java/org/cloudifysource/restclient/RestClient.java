@@ -17,16 +17,12 @@ package org.cloudifysource.restclient;
 
 
 import java.io.File;
-import java.io.IOException;
 import java.net.URL;
 import java.security.KeyStore;
-import java.util.concurrent.TimeoutException;
 import java.util.logging.Logger;
 
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.http.HttpVersion;
-import org.apache.http.auth.AuthScope;
-import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.conn.ClientConnectionManager;
 import org.apache.http.conn.scheme.Scheme;
 import org.apache.http.conn.scheme.SchemeRegistry;
@@ -46,6 +42,8 @@ import org.cloudifysource.dsl.rest.response.Response;
 import org.cloudifysource.dsl.rest.response.UninstallServiceResponse;
 import org.cloudifysource.dsl.rest.response.UploadResponse;
 import org.cloudifysource.restclient.exceptions.RestClientException;
+import org.cloudifysource.restclient.messages.MessagesUtils;
+import org.cloudifysource.restclient.messages.RestClientMessageKeys;
 import org.codehaus.jackson.type.TypeReference;
 
 /**
@@ -65,6 +63,8 @@ public class RestClient {
 	private static final String DEPLOYMENT_CONTROLLER_URL = "/deployments/";
 	private String versionedDeploymentControllerUrl;
 	private String versionedUploadControllerUrl;
+
+	private static MessagesUtils messageHandler;
 
 
 	private static final String HTTPS = "https";
@@ -91,7 +91,9 @@ public class RestClient {
 	 * @throws org.cloudifysource.restclient.exceptions.RestClientException
 	 *             Reporting different failures while creating the HTTP client
 	 */
-	private DefaultHttpClient getSSLHttpClient(final URL url) throws RestClientException {
+	private DefaultHttpClient getSSLHttpClient(
+			final URL url) 
+					throws RestClientException {
 		try {
 			final KeyStore trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
 			// TODO : support self-signed certs if configured by user upon
@@ -125,24 +127,28 @@ public class RestClient {
 	 * @param request The install service request.
 	 * @return The install service response.
 	 * @throws RestClientException .
-	 * @throws TimeoutException .
-	 * @throws IOException .
 	 */
-	public InstallServiceResponse installService(final String applicationName,
-			                                     final String serviceName,
-                                                 final InstallServiceRequest request) throws RestClientException {
-		final String installServiceUrl = versionedDeploymentControllerUrl + applicationName + "/services/" + serviceName;
+	public InstallServiceResponse installService(
+			final String applicationName,
+			final String serviceName,
+			final InstallServiceRequest request) 
+					throws RestClientException {
+		final String installServiceUrl = 
+				versionedDeploymentControllerUrl + applicationName + "/services/" + serviceName;
 		return executor.postObject(
-                        installServiceUrl,
-						request, 
-						new TypeReference<Response<InstallServiceResponse>>() { }
-						);
+				installServiceUrl,
+				request, 
+				new TypeReference<Response<InstallServiceResponse>>() { }
+				);
 	}
 
-    public UninstallServiceResponse uninstallService(final String applicationName,
-                                                     final String serviceName, final UninstallServiceRequest request) throws RestClientException {
-        final String uninstallServiceUrl = versionedDeploymentControllerUrl + applicationName + "/services/" + serviceName;
-        return executor.delete(uninstallServiceUrl,
+public UninstallServiceResponse uninstallService(
+		final String applicationName,
+		final String serviceName, final UninstallServiceRequest request) 
+				throws RestClientException {
+	final String uninstallServiceUrl = versionedDeploymentControllerUrl + applicationName + "/services/" + serviceName;
+	return executor.delete(
+			uninstallServiceUrl,
                 new TypeReference<Response<UninstallServiceResponse>>() {
                 });
     }
@@ -154,15 +160,14 @@ public class RestClient {
 	 * @return upload response.
 	 * @throws RestClientException .
 	 */
-	public UploadResponse upload(final String fileName, final File file) 
-			throws RestClientException {
-		if (file == null) {
-			throw new RestClientException("upload_file_missing", 
-					"the required file parameter (the file to upload) is missing", null);
-		}
+	public UploadResponse upload(
+			final String fileName, 
+			final File file) 
+					throws RestClientException {
+		validateFile(file);
 		String finalFileName = fileName == null ? file.getName() : fileName;
-		final String uploadUrl = 
-				versionedUploadControllerUrl + finalFileName;
+		logger.fine("uploading file " + file.getAbsolutePath() + " with name " + finalFileName);		
+		final String uploadUrl = versionedUploadControllerUrl + finalFileName;
 		UploadResponse response = executor.postFile(
 				uploadUrl, 
 				file, 
@@ -174,6 +179,35 @@ public class RestClient {
 
     public void connect() throws RestClientException {
         executor.get(versionedDeploymentControllerUrl + "/testrest", new TypeReference<Response<Void>>() {});
+    }
+        
+        
+        private void validateFile(
+    		final File file) 
+    				throws RestClientException {
+		if (file == null) {
+			throw MessagesUtils.createRestClientException(
+					RestClientMessageKeys.UPLOAD_FILE_MISSING.getName());
+		}		
+		String absolutePath = file.getAbsolutePath();
+		if (!file.exists()) {
+			throw MessagesUtils.createRestClientException(
+					RestClientMessageKeys.UPLOAD_FILE_DOESNT_EXIST.getName(), 
+					absolutePath);
+		}
+		if (!file.isFile()) {
+			throw MessagesUtils.createRestClientException(
+					RestClientMessageKeys.UPLOAD_FILE_NOT_FILE.getName(), 
+					absolutePath);
+		}
+		long length = file.length();
+		if (length > CloudifyConstants.DEFAULT_UPLOAD_SIZE_LIMIT_BYTES) {
+			throw MessagesUtils.createRestClientException(
+					RestClientMessageKeys.UPLOAD_FILE_SIZE_LIMIT_EXCEEDED.getName(), 
+					absolutePath, 
+					length, 
+					CloudifyConstants.DEFAULT_UPLOAD_SIZE_LIMIT_BYTES);
+		}
     }
 
     private RestClientExecutor createExecutor(final URL url,

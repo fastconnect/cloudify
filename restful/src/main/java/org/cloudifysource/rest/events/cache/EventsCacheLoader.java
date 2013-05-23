@@ -1,3 +1,15 @@
+/*******************************************************************************
+ * Copyright (c) 2013 GigaSpaces Technologies Ltd. All rights reserved
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ *******************************************************************************/
 package org.cloudifysource.rest.events.cache;
 
 import java.util.logging.Logger;
@@ -21,7 +33,15 @@ import com.google.common.util.concurrent.ListenableFuture;
  * User: elip
  * Date: 5/20/13
  * Time: 2:09 PM
- * To change this template use File | Settings | File Templates.
+ * <br/><br/>
+ * The cache loader used to load events to the events cache.
+ * implements load, for initial load. and reload, for continues cache population.
+ *
+ * Load and reload operation will execute a remote call to fetch container logs.
+ * These logs are then translated to events and saved inside the cache.
+ *
+ * @see ServiceDeploymentEvents
+ *
  */
 public class EventsCacheLoader extends CacheLoader<EventsCacheKey, EventsCacheValue> {
 
@@ -39,13 +59,15 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, EventsCacheVa
     @Override
     public EventsCacheValue load(final EventsCacheKey key) throws Exception {
 
-        logger.fine(EventsUtils.getThreadId() + "Could not find events for key " + key + " in cache. Loading from container logs...");
+        logger.fine(EventsUtils.getThreadId() + "Could not find events for key " + key
+                + " in cache. Loading from container logs...");
 
         ServiceDeploymentEvents events = new ServiceDeploymentEvents();
 
         // initial load. no events are present in the cache for this deployment.
         // iterate over all container and retrieve logs from logs cache.
-        GridServiceContainers containersForDeployment = EventsUtils.getContainersForDeployment(key.getDeploymentId(), admin);
+        GridServiceContainers containersForDeployment = EventsUtils.getContainersForDeployment(
+                key.getDeploymentId(), admin);
 
         if (containersForDeployment == null) {
             throw new ResourceNotFoundException("Deployment with id " + key.getDeploymentId());
@@ -57,10 +79,11 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, EventsCacheVa
             LogEntryMatcherProviderKey logEntryMatcherProviderKey = new LogEntryMatcherProviderKey();
             logEntryMatcherProviderKey.setContainerId(container.getUid());
             logEntryMatcherProviderKey.setEventsCacheKey(key);
-            LogEntries logEntries = container.logEntries(matcherProvider.getOrLoad(logEntryMatcherProviderKey));
+            LogEntries logEntries = container.logEntries(matcherProvider.get(logEntryMatcherProviderKey));
             for (LogEntry logEntry : logEntries) {
                 if (logEntry.isLog()) {
-                    ServiceDeploymentEvent event = EventsUtils.logToEvent(logEntry, logEntries.getHostName(), logEntries.getHostAddress());
+                    ServiceDeploymentEvent event = EventsUtils.logToEvent(logEntry,
+                            logEntries.getHostName(), logEntries.getHostAddress());
                     events.getEvents().put(index++, event);
                 }
             }
@@ -76,12 +99,14 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, EventsCacheVa
 
 
     @Override
-    public ListenableFuture<EventsCacheValue> reload(final EventsCacheKey key, final EventsCacheValue oldValue) throws Exception {
+    public ListenableFuture<EventsCacheValue> reload(final EventsCacheKey key, final EventsCacheValue oldValue)
+            throws Exception {
 
         logger.fine(EventsUtils.getThreadId() + "Reloading events cache entry for key " + key);
 
         // pickup any new containers along with the old ones
-        GridServiceContainers containersForDeployment = EventsUtils.getContainersForDeployment(oldValue.getProcessingUnit());
+        GridServiceContainers containersForDeployment = EventsUtils.getContainersForDeployment(
+                oldValue.getProcessingUnit());
         if (containersForDeployment != null) {
             int index = oldValue.getLastEventIndex();
             for (GridServiceContainer container : containersForDeployment) {
@@ -90,12 +115,13 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, EventsCacheVa
                 LogEntryMatcherProviderKey logEntryMatcherProviderKey = new LogEntryMatcherProviderKey();
                 logEntryMatcherProviderKey.setContainerId(container.getUid());
                 logEntryMatcherProviderKey.setEventsCacheKey(key);
-                LogEntryMatcher matcher = matcherProvider.getOrLoad(logEntryMatcherProviderKey);
+                LogEntryMatcher matcher = matcherProvider.get(logEntryMatcherProviderKey);
                 LogEntries logEntries = container.logEntries(matcher);
 
                 for (LogEntry logEntry : logEntries) {
                     if (logEntry.isLog()) {
-                        ServiceDeploymentEvent event = EventsUtils.logToEvent(logEntry, logEntries.getHostName(), logEntries.getHostAddress());
+                        ServiceDeploymentEvent event = EventsUtils.logToEvent(
+                                logEntry, logEntries.getHostName(), logEntries.getHostAddress());
                         oldValue.getEvents().getEvents().put(index++, event);
                     }
                 }

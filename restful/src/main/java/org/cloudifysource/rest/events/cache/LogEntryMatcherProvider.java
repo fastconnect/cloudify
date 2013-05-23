@@ -1,3 +1,15 @@
+/*******************************************************************************
+ * Copyright (c) 2013 GigaSpaces Technologies Ltd. All rights reserved
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ *******************************************************************************/
 package org.cloudifysource.rest.events.cache;
 
 import com.gigaspaces.log.ContinuousLogEntryMatcher;
@@ -7,7 +19,6 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 
 import java.util.HashSet;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 /**
@@ -15,7 +26,15 @@ import java.util.logging.Logger;
  * User: elip
  * Date: 5/18/13
  * Time: 8:52 PM
- * To change this template use File | Settings | File Templates.
+ * <br/><br/>
+ *
+ * A small cache implementation of matchers.
+ * <br></br>
+ *
+ * We dont want to use a different matcher for every reloading operation.
+ * Since this will lead in retrieving all logs every single time, even if some of them are already cache.
+ * This provides us with a mechanism for retrieving just the last logs we haven't retrieved yet.
+ *
  */
 public class LogEntryMatcherProvider {
 
@@ -25,7 +44,7 @@ public class LogEntryMatcherProvider {
 
     public LogEntryMatcherProvider() {
 
-        this.matcherCache = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES)
+        this.matcherCache = CacheBuilder.newBuilder()
                 .build(new CacheLoader<LogEntryMatcherProviderKey, ContinuousLogEntryMatcher>() {
 
                     @Override
@@ -44,14 +63,20 @@ public class LogEntryMatcherProvider {
     public void removeAll(final EventsCacheKey key) {
         System.out.println(EventsUtils.getThreadId() + "Removing matcher for key " + key);
 
-        for (LogEntryMatcherProviderKey logMatcherKey : new HashSet<LogEntryMatcherProviderKey>(matcherCache.asMap().keySet())) {
+        for (LogEntryMatcherProviderKey logMatcherKey
+                : new HashSet<LogEntryMatcherProviderKey>(matcherCache.asMap().keySet())) {
             if (logMatcherKey.getEventsCacheKey().equals(key)) {
                 matcherCache.asMap().remove(logMatcherKey);
             }
         }
     }
 
-    public LogEntryMatcher getOrLoad(final LogEntryMatcherProviderKey key) {
+    /**
+     * Retrieves a matcher for the given key.
+     * @param key The key.
+     * @return The matching matcher.
+     */
+    public LogEntryMatcher get(final LogEntryMatcherProviderKey key) {
         return matcherCache.getUnchecked(key);
     }
 }

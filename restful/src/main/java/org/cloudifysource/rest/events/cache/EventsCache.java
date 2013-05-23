@@ -1,3 +1,16 @@
+/*******************************************************************************
+ * Copyright (c) 2013 GigaSpaces Technologies Ltd. All rights reserved
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ *******************************************************************************/
+
 package org.cloudifysource.rest.events.cache;
 
 import com.google.common.cache.CacheBuilder;
@@ -15,11 +28,21 @@ import java.util.logging.Logger;
  * User: elip
  * Date: 5/13/13
  * Time: 8:41 AM
- * To change this template use File | Settings | File Templates.
+ * <br/><br/>
+ *
+ * This class is the cache implementation for life cycle events.
+ * Cache entries are deleted automatically in they haven't been accessed to in more than 5 minutes.
+ *
+ * Events are populated using a guava based {@link com.google.common.cache.CacheLoader}.
+ *
+ * @see EventsCacheLoader
+ *
  */
 public class EventsCache {
 
     private static final Logger logger = Logger.getLogger(EventsCache.class.getName());
+
+    private static final int CACHE_EXPIRATION_MINUTES = 5;
 
     private final LoadingCache<EventsCacheKey, EventsCacheValue> eventsLoadingCache;
     private final LogEntryMatcherProvider matcherProvider;
@@ -30,7 +53,7 @@ public class EventsCache {
 
         this.matcherProvider = loader.getMatcherProvider();
         this.eventsLoadingCache = CacheBuilder.newBuilder()
-                .expireAfterAccess(5, TimeUnit.MINUTES)
+                .expireAfterAccess(CACHE_EXPIRATION_MINUTES, TimeUnit.MINUTES)
                 .removalListener(new RemovalListener<Object, Object>() {
 
                     @Override
@@ -50,14 +73,30 @@ public class EventsCache {
                 .build(loader);
     }
 
+    /**
+     * Refresh the cache. this results in a call to {@link EventsCacheLoader#reload(EventsCacheKey, EventsCacheValue)}.
+     * @param key The key to refresh.
+     */
     public void refresh(final EventsCacheKey key) {
         eventsLoadingCache.refresh(key);
     }
 
+    /**
+     * Retrieve a cache entry. if the entry is not found, a cache loading is executed using
+     *              {@link EventsCacheLoader#load(EventsCacheKey)}
+     * @param key The key of the requested entry.
+     * @return The cache value. containing also the events.
+     * @throws ExecutionException Thrown in case a failure happened while loading the cache with a new entry.
+     */
     public EventsCacheValue get(final EventsCacheKey key) throws ExecutionException {
         return eventsLoadingCache.get(key);
     }
 
+    /**
+     * Explicitly put a new entry to the cache. this method is used only when installing or uninstalling the service.
+     * @param key The key of the requested entry.
+     * @param value The value of the requested entry.
+     */
     public void put(final EventsCacheKey key, final EventsCacheValue value) {
         if (!eventsLoadingCache.asMap().containsKey(key)) {
             eventsLoadingCache.asMap().put(key, value);

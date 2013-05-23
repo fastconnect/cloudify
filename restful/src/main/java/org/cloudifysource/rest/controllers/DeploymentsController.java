@@ -65,7 +65,6 @@ import org.cloudifysource.dsl.rest.response.GetServiceAttributesResponse;
 import org.cloudifysource.dsl.rest.response.GetServiceInstanceAttributesResponse;
 import org.cloudifysource.dsl.rest.response.InstallApplicationResponse;
 import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
-import org.cloudifysource.dsl.rest.response.Response;
 import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvents;
 import org.cloudifysource.dsl.rest.response.ServiceDetails;
 import org.cloudifysource.dsl.rest.response.ServiceInstanceDetails;
@@ -220,8 +219,10 @@ public class DeploymentsController extends BaseRestController {
      * @throws ResourceNotFoundException Thrown in case the requested service does not exist.
      */
     @RequestMapping(value = "/{appName}/service/{serviceName}/metadata", method = RequestMethod.GET)
-	public ServiceDetails getServiceDetails(@PathVariable final String appName,
-			                                @PathVariable final String serviceName) throws ResourceNotFoundException {
+	public ServiceDetails getServiceDetails(
+			@PathVariable final String appName,
+			@PathVariable final String serviceName) 
+					throws ResourceNotFoundException {
 
 		final ProcessingUnit processingUnit = controllerHelper.getService(appName, serviceName);
 		final ServiceDetails serviceDetails = new ServiceDetails();
@@ -312,10 +313,13 @@ public class DeploymentsController extends BaseRestController {
      * @return Meta data about the service instance.
      * @throws ResourceNotFoundException Thrown in case the service or service instance does not exist.
      */
-	@RequestMapping(value = "/{appName}/service/{serviceName}/instances/{instanceId}/metadata", method = RequestMethod.GET)
-	public ServiceInstanceDetails getServiceInstanceDetails(@PathVariable final String appName,
-			                                                @PathVariable final String serviceName,
-			                                                @PathVariable final Integer instanceId) throws ResourceNotFoundException {
+	@RequestMapping(value = "/{appName}/service/{serviceName}/instances/{instanceId}/metadata", 
+			method = RequestMethod.GET)
+	public ServiceInstanceDetails getServiceInstanceDetails(
+			@PathVariable final String appName,
+			@PathVariable final String serviceName,
+			@PathVariable final Integer instanceId) 
+						throws ResourceNotFoundException {
 		// get processingUnit instance
 		final ProcessingUnitInstance pui = controllerHelper.getServiceInstance(appName, serviceName, instanceId);
 
@@ -371,7 +375,8 @@ public class DeploymentsController extends BaseRestController {
     @RequestMapping(value = "/{appName}/service/{serviceName}/description", method = RequestMethod.GET)
     public ServiceDescription getServiceDescription(
             @PathVariable final String appName,
-            @PathVariable final String serviceName) throws ResourceNotFoundException {
+            @PathVariable final String serviceName) 
+            		throws ResourceNotFoundException {
 
         // validate service exists
         controllerHelper.getService(appName, serviceName);
@@ -397,7 +402,8 @@ public class DeploymentsController extends BaseRestController {
 	@PreAuthorize("isFullyAuthenticated() and hasPermission(#authGroups, 'deploy')")
 	public InstallApplicationResponse installApplication(
             @PathVariable final String appName,
-			@RequestBody final InstallApplicationRequest request) throws RestErrorException {
+			@RequestBody final InstallApplicationRequest request) 
+					throws RestErrorException {
 		
 		validateInstallApplication();
 		
@@ -641,7 +647,7 @@ public class DeploymentsController extends BaseRestController {
     		@PathVariable final String appName,
     		@PathVariable final String serviceName,
     		@RequestParam(required = false, defaultValue = "10") final Integer timeoutInMinutes)
-    throws ResourceNotFoundException, RestErrorException {
+    				throws ResourceNotFoundException, RestErrorException {
 
         final ProcessingUnit processingUnit = controllerHelper.getService(appName, serviceName);
 
@@ -969,7 +975,7 @@ public class DeploymentsController extends BaseRestController {
      * @param serviceName The service name.
      * @param instanceId The instance id.
      * @return Various USM metric details about the service instance.
-     * @throws ResourceNotFoundException
+     * @throws ResourceNotFoundException .
      */
 	@RequestMapping(value = "{appName}/service/{serviceName}/instances/{instanceId}/metrics", 
 			method = RequestMethod.GET)
@@ -1001,11 +1007,20 @@ public class DeploymentsController extends BaseRestController {
 	}
 
 
+	/**
+	 * 
+	 * @param deploymentId . 
+	 * @param from .
+	 * @param to .
+	 * @return .
+	 * @throws Throwable .
+	 */
     @RequestMapping(value = "{deploymentId}/events", method = RequestMethod.GET)
-    public ServiceDeploymentEvents getServiceDeploymentEvents(@PathVariable final String deploymentId,
-                                                              @RequestParam(required = false, defaultValue = "0") final int from,
-                                                              @RequestParam(required = false, defaultValue = "-1") final int to)
-                                                                               throws Throwable {
+    public ServiceDeploymentEvents getServiceDeploymentEvents(
+    		@PathVariable final String deploymentId,
+    		@RequestParam(required = false, defaultValue = "0") final int from,
+    		@RequestParam(required = false, defaultValue = "-1") final int to)
+    				throws Throwable {
 
         // limit the default number of events returned to the client.
         int actualTo = to;
@@ -1014,7 +1029,8 @@ public class DeploymentsController extends BaseRestController {
         }
 
         EventsCacheKey key = new EventsCacheKey(deploymentId);
-        logger.fine(EventsUtils.getThreadId() + "Received request for events [" + from + "]-[" + to + "] . key : " + key);
+        logger.fine(EventsUtils.getThreadId() 
+        		+ "Received request for events [" + from + "]-[" + to + "] . key : " + key);
         EventsCacheValue value;
         try {
             logger.fine(EventsUtils.getThreadId() + "Retrieving events from cache for key : " + key);
@@ -1051,10 +1067,11 @@ public class DeploymentsController extends BaseRestController {
      */
     @RequestMapping(value = "/{appName}/service/{serviceName}/instances/{instanceId}/attributes", 
     		method = RequestMethod.PUT)
-    public void updateServiceInstanceAttribute(@PathVariable final String appName,
-                                               @PathVariable final String serviceName,
-                                               @PathVariable final String instanceId) {
-        throw new UnsupportedOperationException();
+    public void updateServiceInstanceAttribute(
+    		@PathVariable final String appName,
+    		@PathVariable final String serviceName,
+    		@PathVariable final String instanceId) {
+    	throw new UnsupportedOperationException();
     }
 
     /**
@@ -1063,8 +1080,9 @@ public class DeploymentsController extends BaseRestController {
      * @param serviceName .
      */
     @RequestMapping(value = "/{appName}/service/{serviceName}/attributes", method = RequestMethod.PUT)
-    public void updateServiceAttribute(@PathVariable final String appName,
-                                       @PathVariable final String serviceName) {
+    public void updateServiceAttribute(
+    		@PathVariable final String appName,
+    		@PathVariable final String serviceName) {
         throw new UnsupportedOperationException();
     }
 
@@ -1083,8 +1101,9 @@ public class DeploymentsController extends BaseRestController {
      * @param serviceName .
      */
     @RequestMapping(value = "/{appName}/services/{serviceName}", method = RequestMethod.GET)
-    public void getServiceStatus(@PathVariable final String appName,
-                                 @PathVariable final String serviceName) {
+    public void getServiceStatus(
+    		@PathVariable final String appName,
+    		@PathVariable final String serviceName) {
         throw new UnsupportedOperationException();
     }
 
@@ -1103,8 +1122,9 @@ public class DeploymentsController extends BaseRestController {
      * @param serviceName .
      */
     @RequestMapping(value = "/{appName}/services/{serviceName}", method = RequestMethod.PUT)
-    public void updateService(@PathVariable final String appName,
-                              @PathVariable final String serviceName) {
+    public void updateService(
+    		@PathVariable final String appName,
+    		@PathVariable final String serviceName) {
         throw new UnsupportedOperationException();
     }
 
@@ -1226,7 +1246,8 @@ public class DeploymentsController extends BaseRestController {
 	}
     
 	private List<ProcessingUnit> createUninstallOrder(
-			final ProcessingUnit[] pus, final String applicationName) {
+			final ProcessingUnit[] pus, 
+			final String applicationName) {
 
 		// TODO: Refactor this - merge with createServiceOrder, as methods are
 		// very similar
@@ -1462,8 +1483,10 @@ public class DeploymentsController extends BaseRestController {
         return locators.toString();
     }
 
-    private ProcessingUnit deployAndWait(final String serviceName,
-                               final ElasticDeploymentTopology deployment) throws TimeoutException {
+    private ProcessingUnit deployAndWait(
+    		final String serviceName,
+    		final ElasticDeploymentTopology deployment) 
+    				throws TimeoutException {
         GridServiceManager gsm = getGridServiceManager();
         ProcessingUnit pu = null;
         if (deployment instanceof ElasticStatelessProcessingUnitDeployment) {
@@ -1563,8 +1586,7 @@ public class DeploymentsController extends BaseRestController {
         }
     }
 
-    private List<Service> createServiceDependencyOrder(
-            final org.cloudifysource.dsl.Application application) {
+    private List<Service> createServiceDependencyOrder(final org.cloudifysource.dsl.Application application) {
         final DirectedGraph<Service, DefaultEdge> graph = new DefaultDirectedGraph<Service, DefaultEdge>(
                 DefaultEdge.class);
 
@@ -1670,39 +1692,13 @@ public class DeploymentsController extends BaseRestController {
         return templateName;
     }
 
-    private void populateEventsCache(final String deploymentId, final ProcessingUnit processingUnit) {
+    private void populateEventsCache(
+    		final String deploymentId, 
+    		final ProcessingUnit processingUnit) {
         EventsCacheKey key = new EventsCacheKey(deploymentId);
         EventsCacheValue value = new EventsCacheValue();
         value.setProcessingUnit(processingUnit);
         eventsCache.put(key, value);
-    }
-
-    private File getCloudConfigurationFile(final InstallServiceRequest request,
-                                           final String absolutePuName) throws RestErrorException {
-        File cloudConfigFile;
-        //TODO:adaml check application or service install
-        if (false) {
-            //TODO:figure out a way to obtain this file.
-            cloudConfigFile = null;//request.getCloudConfiguration();
-        } else {
-            cloudConfigFile = getFromRepo(request.getCloudConfigurationUploadKey(),
-                    CloudifyMessageKeys.WRONG_CLOUD_CONFIGURATION_UPLOAD_KEY.getName(), absolutePuName);
-        }
-        return cloudConfigFile;
-    }
-
-    private File getPackedFile(final InstallServiceRequest request, final String absolutePUName)
-            throws RestErrorException {
-        File packedFile;
-        //TODO:adaml check application or service install
-        if (false) {
-            packedFile = getFromRepo(request.getServiceFolderUploadKey(),
-                    CloudifyMessageKeys.WRONG_SERVICE_FOLDER_UPLOAD_KEY.getName(), absolutePUName);
-        } else {
-            //TODO:figure out a way to obtain this file.
-            packedFile = null;//request.getPackedFile();
-        }
-        return packedFile;
     }
 
     private void validateUninstallService() throws RestErrorException {
@@ -1715,16 +1711,19 @@ public class DeploymentsController extends BaseRestController {
         }
     }
 
-    private void deleteServiceAttributes(final String applicationName,
-                                         final String serviceName) {
+    private void deleteServiceAttributes(
+    		final String applicationName,
+    		final String serviceName) {
         deleteServiceInstanceAttributes(applicationName, serviceName, null);
         final ServiceCloudifyAttribute serviceAttributeTemplate =
                 new ServiceCloudifyAttribute(applicationName, serviceName, null, null);
         gigaSpace.takeMultiple(serviceAttributeTemplate);
     }
 
-    private void deleteServiceInstanceAttributes(final String applicationName, final String serviceName,
-                                                 final Integer instanceId) {
+    private void deleteServiceInstanceAttributes(
+    		final String applicationName, 
+    		final String serviceName,
+    		final Integer instanceId) {
         final InstanceCloudifyAttribute instanceAttributesTemplate =
                 new InstanceCloudifyAttribute(applicationName, serviceName, instanceId, null, null);
         gigaSpace.takeMultiple(instanceAttributesTemplate);

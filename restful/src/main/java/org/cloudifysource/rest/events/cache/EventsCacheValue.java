@@ -1,6 +1,7 @@
 package org.cloudifysource.rest.events.cache;
 
 import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvents;
+import org.openspaces.admin.pu.ProcessingUnit;
 
 /**
  * Created with IntelliJ IDEA.
@@ -11,10 +12,19 @@ import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvents;
  */
 public class EventsCacheValue {
 
-    private ServiceDeploymentEvents events;
+    private ServiceDeploymentEvents events = new ServiceDeploymentEvents();
     private long lastRefreshedTimestamp;
     private int lastEventIndex;
     private volatile Object mutex = new Object();
+    private ProcessingUnit processingUnit;
+
+    public ProcessingUnit getProcessingUnit() {
+        return processingUnit;
+    }
+
+    public void setProcessingUnit(final ProcessingUnit processingUnit) {
+        this.processingUnit = processingUnit;
+    }
 
     public ServiceDeploymentEvents getEvents() {
         return events;

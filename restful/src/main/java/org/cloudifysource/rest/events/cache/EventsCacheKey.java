@@ -10,30 +10,14 @@ package org.cloudifysource.rest.events.cache;
  */
 public class EventsCacheKey {
 
-    private String appName;
-    private String serviceName;
+    private String deploymentId;
 
-
-
-    public EventsCacheKey(final String appName, final String serviceName) {
-        this.appName = appName;
-        this.serviceName = serviceName;
+    public EventsCacheKey(final String deploymentId) {
+        this.deploymentId = deploymentId;
     }
 
-    public String getAppName() {
-        return appName;
-    }
-
-    public void setAppName(final String appName) {
-        this.appName = appName;
-    }
-
-    public String getServiceName() {
-        return serviceName;
-    }
-
-    public void setServiceName(final String serviceName) {
-        this.serviceName = serviceName;
+    public String getDeploymentId() {
+        return deploymentId;
     }
 
     @Override
@@ -43,24 +27,20 @@ public class EventsCacheKey {
 
         EventsCacheKey that = (EventsCacheKey) o;
 
-        if (!appName.equals(that.appName)) return false;
-        if (!serviceName.equals(that.serviceName)) return false;
+        if (!deploymentId.equals(that.deploymentId)) return false;
 
         return true;
     }
 
     @Override
     public int hashCode() {
-        int result = appName.hashCode();
-        result = 31 * result + serviceName.hashCode();
-        return result;
+        return deploymentId.hashCode();
     }
 
     @Override
     public String toString() {
         return "EventsCacheKey{" +
-                "appName='" + appName + '\'' +
-                ", serviceName='" + serviceName + '\'' +
+                "deploymentId='" + deploymentId + '\'' +
                 '}';
     }
 }

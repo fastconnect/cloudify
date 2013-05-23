@@ -45,11 +45,10 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, EventsCacheVa
 
         // initial load. no events are present in the cache for this deployment.
         // iterate over all container and retrieve logs from logs cache.
-        final String fullServiceName = ServiceUtils.getAbsolutePUName(key.getAppName(), key.getServiceName());
-        GridServiceContainers containersForDeployment = EventsUtils.getContainersForDeployment(fullServiceName, admin);
+        GridServiceContainers containersForDeployment = EventsUtils.getContainersForDeployment(key.getDeploymentId(), admin);
 
         if (containersForDeployment == null) {
-            throw new ResourceNotFoundException(fullServiceName);
+            throw new ResourceNotFoundException("Deployment with id " + key.getDeploymentId());
         }
 
         int index = 0;
@@ -82,8 +81,7 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, EventsCacheVa
         logger.fine(EventsUtils.getThreadId() + "Reloading events cache entry for key " + key);
 
         // pickup any new containers along with the old ones
-        String absolutePUName = ServiceUtils.getAbsolutePUName(key.getAppName(), key.getServiceName());
-        GridServiceContainers containersForDeployment = EventsUtils.getContainersForDeployment(absolutePUName, admin);
+        GridServiceContainers containersForDeployment = EventsUtils.getContainersForDeployment(oldValue.getProcessingUnit());
         if (containersForDeployment != null) {
             int index = oldValue.getLastEventIndex();
             for (GridServiceContainer container : containersForDeployment) {

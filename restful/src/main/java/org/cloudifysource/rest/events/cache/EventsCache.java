@@ -42,7 +42,6 @@ public class EventsCache {
 
                             System.out.println("Entry with key " + notification.getKey() + " was removed from cache.");
                             final EventsCacheKey key = (EventsCacheKey) notification.getKey();
-
                             matcherProvider.removeAll(key);
                         }
 
@@ -57,5 +56,11 @@ public class EventsCache {
 
     public EventsCacheValue get(final EventsCacheKey key) throws ExecutionException {
         return eventsLoadingCache.get(key);
+    }
+
+    public void put(final EventsCacheKey key, final EventsCacheValue value) {
+        if (!eventsLoadingCache.asMap().containsKey(key)) {
+            eventsLoadingCache.asMap().put(key, value);
+        }
     }
 }

@@ -12,29 +12,7 @@
  *******************************************************************************/
 package org.cloudifysource.rest.controllers;
 
-import static org.cloudifysource.rest.ResponseConstants.FAILED_TO_LOCATE_LUS;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.FutureTask;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import javax.annotation.PostConstruct;
-
 import net.jini.core.discovery.LookupLocator;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.cloudifysource.dsl.ComputeDetails;
@@ -43,62 +21,25 @@ import org.cloudifysource.dsl.cloud.Cloud;
 import org.cloudifysource.dsl.context.kvstorage.spaceentries.ApplicationCloudifyAttribute;
 import org.cloudifysource.dsl.context.kvstorage.spaceentries.InstanceCloudifyAttribute;
 import org.cloudifysource.dsl.context.kvstorage.spaceentries.ServiceCloudifyAttribute;
-import org.cloudifysource.dsl.internal.CloudifyConstants;
-import org.cloudifysource.dsl.internal.CloudifyMessageKeys;
-import org.cloudifysource.dsl.internal.DSLApplicationCompilatioResult;
-import org.cloudifysource.dsl.internal.DSLServiceCompilationResult;
-import org.cloudifysource.dsl.internal.DSLUtils;
-import org.cloudifysource.dsl.internal.ServiceReader;
+import org.cloudifysource.dsl.internal.*;
 import org.cloudifysource.dsl.internal.packaging.FileAppender;
 import org.cloudifysource.dsl.internal.packaging.Packager;
-import org.cloudifysource.dsl.rest.request.InstallApplicationRequest;
-import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
-import org.cloudifysource.dsl.rest.request.SetApplicationAttributesRequest;
-import org.cloudifysource.dsl.rest.request.SetServiceAttributesRequest;
-import org.cloudifysource.dsl.rest.request.SetServiceInstanceAttributesRequest;
-import org.cloudifysource.dsl.rest.request.UninstallApplicationRequest;
-import org.cloudifysource.dsl.rest.request.UninstallServiceRequest;
-import org.cloudifysource.dsl.rest.request.UpdateApplicationAttributeRequest;
-import org.cloudifysource.dsl.rest.response.DeleteApplicationAttributeResponse;
-import org.cloudifysource.dsl.rest.response.DeleteServiceAttributeResponse;
-import org.cloudifysource.dsl.rest.response.DeleteServiceInstanceAttributeResponse;
-import org.cloudifysource.dsl.rest.response.GetApplicationAttributesResponse;
-import org.cloudifysource.dsl.rest.response.GetServiceAttributesResponse;
-import org.cloudifysource.dsl.rest.response.GetServiceInstanceAttributesResponse;
-import org.cloudifysource.dsl.rest.response.InstallApplicationResponse;
-import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
-import org.cloudifysource.dsl.rest.response.Response;
-import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvents;
-import org.cloudifysource.dsl.rest.response.ServiceDetails;
-import org.cloudifysource.dsl.rest.response.ServiceInstanceDetails;
-import org.cloudifysource.dsl.rest.response.ServiceInstanceMetricsData;
-import org.cloudifysource.dsl.rest.response.ServiceInstanceMetricsResponse;
-import org.cloudifysource.dsl.rest.response.ServiceMetricsResponse;
-import org.cloudifysource.dsl.rest.response.UninstallApplicationResponse;
-import org.cloudifysource.dsl.rest.response.UninstallServiceResponse;
+import org.cloudifysource.dsl.rest.ServiceDescription;
+import org.cloudifysource.dsl.rest.request.*;
+import org.cloudifysource.dsl.rest.response.*;
 import org.cloudifysource.dsl.utils.ServiceUtils;
 import org.cloudifysource.rest.RestConfiguration;
 import org.cloudifysource.rest.controllers.helpers.ControllerHelper;
-import org.cloudifysource.rest.deploy.ApplicationDeployerRunnable;
-import org.cloudifysource.rest.deploy.DeploymentConfig;
-import org.cloudifysource.rest.deploy.ElasticDeploymentCreationException;
-import org.cloudifysource.rest.deploy.ElasticProcessingUnitDeploymentFactory;
-import org.cloudifysource.rest.deploy.ElasticProcessingUnitDeploymentFactoryImpl;
+import org.cloudifysource.rest.deploy.*;
 import org.cloudifysource.rest.events.cache.EventsCache;
 import org.cloudifysource.rest.events.cache.EventsCacheKey;
 import org.cloudifysource.rest.events.cache.EventsCacheValue;
 import org.cloudifysource.rest.events.cache.EventsUtils;
 import org.cloudifysource.rest.exceptions.ResourceNotFoundException;
 import org.cloudifysource.rest.repo.UploadRepo;
+import org.cloudifysource.rest.util.ApplicationDescriptionFactory;
 import org.cloudifysource.rest.util.IsolationUtils;
-import org.cloudifysource.rest.validators.InstallApplicationValidationContext;
-import org.cloudifysource.rest.validators.InstallApplicationValidator;
-import org.cloudifysource.rest.validators.InstallServiceValidationContext;
-import org.cloudifysource.rest.validators.InstallServiceValidator;
-import org.cloudifysource.rest.validators.UninstallApplicationValidationContext;
-import org.cloudifysource.rest.validators.UninstallApplicationValidator;
-import org.cloudifysource.rest.validators.UninstallServiceValidationContext;
-import org.cloudifysource.rest.validators.UninstallServiceValidator;
+import org.cloudifysource.rest.validators.*;
 import org.cloudifysource.security.CloudifyAuthorizationDetails;
 import org.cloudifysource.security.CustomPermissionEvaluator;
 import org.jgrapht.DirectedGraph;
@@ -124,11 +65,20 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
+
+import javax.annotation.PostConstruct;
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import static org.cloudifysource.rest.ResponseConstants.FAILED_TO_LOCATE_LUS;
 
 /**
  * This controller is responsible for retrieving information about deployments. It is also the entry point for deploying
@@ -302,6 +252,7 @@ public class DeploymentsController extends BaseRestController {
 
 	}
 
+
     /**
      * Provides various meta data about the service instance.
      * @param appName The application name.
@@ -310,13 +261,10 @@ public class DeploymentsController extends BaseRestController {
      * @return Meta data about the service instance.
      * @throws ResourceNotFoundException Thrown in case the service or service instance does not exist.
      */
-	@RequestMapping(value = "/{appName}/service/{serviceName}/instances/{instanceId}/metadata", 
-			method = RequestMethod.GET)
-	public ServiceInstanceDetails getServiceInstanceDetails(
-			@PathVariable final String appName,
-			@PathVariable final String serviceName,
-			@PathVariable final Integer instanceId) 
-					throws ResourceNotFoundException {
+	@RequestMapping(value = "/{appName}/service/{serviceName}/instances/{instanceId}/metadata", method = RequestMethod.GET)
+	public ServiceInstanceDetails getServiceInstanceDetails(@PathVariable final String appName,
+			                                                @PathVariable final String serviceName,
+			                                                @PathVariable final Integer instanceId) throws ResourceNotFoundException {
 		// get processingUnit instance
 		final ProcessingUnitInstance pui = controllerHelper.getServiceInstance(appName, serviceName, instanceId);
 
@@ -361,6 +309,25 @@ public class DeploymentsController extends BaseRestController {
 		return sid;
 
 	}
+
+    /**
+     *
+     * @param appName
+     * @param serviceName
+     * @return
+     * @throws ResourceNotFoundException
+     */
+    @RequestMapping(value = "/{appName}/service/{serviceName}/description", method = RequestMethod.GET)
+    public ServiceDescription getServiceDescription(
+            @PathVariable final String appName,
+            @PathVariable final String serviceName) throws ResourceNotFoundException {
+
+        // validate service exists
+        controllerHelper.getService(appName, serviceName);
+
+        final ApplicationDescriptionFactory appDescriptionFactory = new ApplicationDescriptionFactory(restConfig.getAdmin());
+        return appDescriptionFactory.getServiceDescription(ServiceUtils.getAbsolutePUName(appName, serviceName), appName);
+    }
 
 	/**
 	 * 
@@ -579,8 +546,12 @@ public class DeploymentsController extends BaseRestController {
 		}
 		
 		try {
-			deployAndWait(serviceName, deployment);
-		} catch (final TimeoutException e) {
+            ProcessingUnit processingUnit = deployAndWait(serviceName, deployment);
+
+            // save a reference to the processing unit in the events cache.
+            // this is for easy container discovery during events polling from clients.
+            populateEventsCache(deploymentID.toString(), processingUnit);
+        } catch (final TimeoutException e) {
 			throw new RestErrorException("Timed out waiting for deployment.", e);
 		}
 
@@ -618,6 +589,9 @@ public class DeploymentsController extends BaseRestController {
 
         // validations
         validateUninstallService();
+
+        String deploymentId = (String) processingUnit.getBeanLevelProperties().getContextProperties().get(CloudifyConstants.CONTEXT_PROPERTY_DEPLOYMENT_ID);
+        populateEventsCache(deploymentId, processingUnit);
 
         processingUnit.undeployAndWait(uninstallServiceRequest.getTimeoutInMinutes(), TimeUnit.MINUTES);
         deleteServiceAttributes(appName, serviceName);
@@ -716,7 +690,7 @@ public class DeploymentsController extends BaseRestController {
 
 		// get attributes
 		final Map<String, Object> attributes = controllerHelper.getAttributes(appName, serviceName,
-				null);
+                null);
 
 		// create response object
 		final GetServiceAttributesResponse sar = new GetServiceAttributesResponse();
@@ -963,13 +937,11 @@ public class DeploymentsController extends BaseRestController {
 	}
 
 
-    @RequestMapping(value = "applications/{appName}/service/{serviceName}/events", method = RequestMethod.GET)
-    public ServiceDeploymentEvents getServiceDeploymentEventsByFullServiceName(
-    		@PathVariable final String appName,
-    		@PathVariable final String serviceName,
-    		@RequestParam(required = false, defaultValue = "0") final int from,
-    		@RequestParam(required = false, defaultValue = "-1") final int to)
-    				throws Throwable {
+    @RequestMapping(value = "{deploymentId}/events", method = RequestMethod.GET)
+    public ServiceDeploymentEvents getServiceDeploymentEvents(@PathVariable final String deploymentId,
+                                                              @RequestParam(required = false, defaultValue = "0") final int from,
+                                                              @RequestParam(required = false, defaultValue = "-1") final int to)
+                                                                               throws Throwable {
 
         // limit the default number of events returned to the client.
         int actualTo = to;
@@ -977,9 +949,8 @@ public class DeploymentsController extends BaseRestController {
             actualTo = from + MAX_NUMBER_OF_EVENTS;
         }
 
-        EventsCacheKey key = new EventsCacheKey(appName, serviceName);
-        logger.fine(EventsUtils.getThreadId() 
-        		+ "Received request for events [" + from + "]-[" + to + "] . key : " + key);
+        EventsCacheKey key = new EventsCacheKey(deploymentId);
+        logger.fine(EventsUtils.getThreadId() + "Received request for events [" + from + "]-[" + to + "] . key : " + key);
         EventsCacheValue value;
         try {
             logger.fine(EventsUtils.getThreadId() + "Retrieving events from cache for key : " + key);
@@ -1427,11 +1398,9 @@ public class DeploymentsController extends BaseRestController {
         return locators.toString();
     }
 
-    private void deployAndWait(
-    		final String serviceName,
-    		final ElasticDeploymentTopology deployment) 
-    				throws TimeoutException {
-    	GridServiceManager gsm = getGridServiceManager();
+    private ProcessingUnit deployAndWait(final String serviceName,
+                               final ElasticDeploymentTopology deployment) throws TimeoutException {
+        GridServiceManager gsm = getGridServiceManager();
         ProcessingUnit pu = null;
         if (deployment instanceof ElasticStatelessProcessingUnitDeployment) {
             pu = gsm.deploy((ElasticStatelessProcessingUnitDeployment) deployment, 60, TimeUnit.SECONDS);
@@ -1444,6 +1413,7 @@ public class DeploymentsController extends BaseRestController {
             throw new TimeoutException("Timed out waiting for Service "
                     + serviceName + " deployment.");
         }
+        return pu;
     }
 
     private GridServiceManager getGridServiceManager() {
@@ -1664,6 +1634,41 @@ public class DeploymentsController extends BaseRestController {
                         absolutePuName, e.getMessage());
             }
         }
+    }
+
+    private void populateEventsCache(final String deploymentId, final ProcessingUnit processingUnit) {
+        EventsCacheKey key = new EventsCacheKey(deploymentId);
+        EventsCacheValue value = new EventsCacheValue();
+        value.setProcessingUnit(processingUnit);
+        eventsCache.put(key, value);
+    }
+
+    private File getCloudConfigurationFile(final InstallServiceRequest request,
+                                           final String absolutePuName) throws RestErrorException {
+        File cloudConfigFile;
+        //TODO:adaml check application or service install
+        if (false) {
+            //TODO:figure out a way to obtain this file.
+            cloudConfigFile = null;//request.getCloudConfiguration();
+        } else {
+            cloudConfigFile = getFromRepo(request.getCloudConfigurationUploadKey(),
+                    CloudifyMessageKeys.WRONG_CLOUD_CONFIGURATION_UPLOAD_KEY.getName(), absolutePuName);
+        }
+        return cloudConfigFile;
+    }
+
+    private File getPackedFile(final InstallServiceRequest request, final String absolutePUName)
+            throws RestErrorException {
+        File packedFile;
+        //TODO:adaml check application or service install
+        if (false) {
+            packedFile = getFromRepo(request.getServiceFolderUploadKey(),
+                    CloudifyMessageKeys.WRONG_SERVICE_FOLDER_UPLOAD_KEY.getName(), absolutePUName);
+        } else {
+            //TODO:figure out a way to obtain this file.
+            packedFile = null;//request.getPackedFile();
+        }
+        return packedFile;
     }
 
     private void validateUninstallService() throws RestErrorException {

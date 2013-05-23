@@ -4,13 +4,17 @@ import static com.gigaspaces.log.LogEntryMatchers.regex;
 
 import java.text.MessageFormat;
 import java.util.HashSet;
+import java.util.Properties;
 import java.util.Set;
 
+import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvent;
 import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvents;
 import org.openspaces.admin.Admin;
 import org.openspaces.admin.gsc.GridServiceContainer;
 import org.openspaces.admin.gsc.GridServiceContainers;
+import org.openspaces.admin.pu.ProcessingUnit;
+import org.openspaces.admin.pu.ProcessingUnitInstance;
 import org.openspaces.admin.zone.Zone;
 
 import com.gigaspaces.log.LogEntry;
@@ -44,15 +48,27 @@ public class EventsUtils {
         return regex(regex);
     }
 
-    public static GridServiceContainers getContainersForDeployment(final String fullServiceName, final Admin admin) {
-
-        Set<GridServiceContainer> containers = new HashSet<GridServiceContainer>();
-        Zone zone = admin.getZones().getByName(fullServiceName);
+    public static GridServiceContainers getContainersForDeployment(final ProcessingUnit pu) {
+        Zone zone = pu.getAdmin().getZones().getByName(pu.getName());
         if (zone == null) {
             return null;
         } else {
             return zone.getGridServiceContainers();
         }
+    }
+
+    public static GridServiceContainers getContainersForDeployment(final String deploymentId, final Admin admin) {
+
+        for (ProcessingUnit pu : admin.getProcessingUnits()) {
+            String puDeploymentId = (String) pu.getBeanLevelProperties().getContextProperties().get(CloudifyConstants.CONTEXT_PROPERTY_DEPLOYMENT_ID);
+            if (puDeploymentId == null) {
+                throw new IllegalStateException("Service " + pu.getName() + " does not have a deployment id context property");
+            }
+            if (deploymentId.equals(puDeploymentId)) {
+                return getContainersForDeployment(pu);
+            }
+        }
+        return null;
     }
 
     public static ServiceDeploymentEvents extractDesiredEvents(final ServiceDeploymentEvents events,

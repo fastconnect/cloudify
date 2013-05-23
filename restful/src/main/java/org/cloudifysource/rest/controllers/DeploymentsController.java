@@ -549,12 +549,11 @@ public class DeploymentsController extends BaseRestController {
 		PropertiesOverridesMerger merger = new PropertiesOverridesMerger();
 		merger.setRePackFileName(absolutePuName);
 		merger.setRePackFolder(serviceDir);
-		merger.setOriginPackedFile(packedFile);
 		merger.setDestMergedPropertiesFile(servicePropertiesFile);
 		merger.addFileToMerge(applicationPropertiesFile, "application properties file")
 			  .addFileToMerge(servicePropertiesFile, "service origin properties file")
 			  .addFileToMerge(serviceOverridesFile, "service overrides file");
-		File updatedPackedFile = merger.merge();
+		File updatedPackedFile = merger.merge(packedFile);
 		
 		// Read the service
 		final Service service = readService(workingProjectDir, request.getServiceFileName(), absolutePuName);

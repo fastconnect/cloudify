@@ -16,6 +16,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 
+import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.internal.CloudifyMessageKeys;
 import org.cloudifysource.dsl.internal.packaging.FileAppender;
 import org.cloudifysource.dsl.internal.packaging.Packager;
@@ -28,16 +29,16 @@ import org.cloudifysource.rest.controllers.RestErrorException;
  */
 public class PropertiesOverridesMerger {
 
+	private static final String DEFAULT_MERGED_FILE_NAME = "mergedPropertiesFile.properties";
 	private String rePackFileName;
 	private File rePackFolder;
-	private File originPackedFile;
 	private File destMergedPropertiesFile;
 	private final LinkedHashMap<File, String> mergeFilesAndComments = new LinkedHashMap<File, String>();
 
 	/**
 	 * Adds the file to be merged. 
-	 * The file will be merged after files that were added before, 
-	 * meaning this file’s properties will overrides properties of files that were added before.
+	 * The file will be merged after files that were previously added, 
+	 * meaning this file’s properties will override properties of files that were already added before.
 	 * @param file The file to merge.
 	 * @param comment The comment will be appended to the beginning of the file to merge.
 	 * @return the updated merger.
@@ -57,28 +58,25 @@ public class PropertiesOverridesMerger {
 		this.rePackFolder = rePackFolder;
 	}
 
-	public void setOriginPackedFile(final File packedFile) {
-		this.originPackedFile = packedFile;
-	}
-
 	public void setDestMergedPropertiesFile(final File destMergedPropertiesFile) {
 		this.destMergedPropertiesFile = destMergedPropertiesFile;
 	}
 
 	/**
 	 * Merge application properties file with service properties and overrides files.
-	 * 
+	 * @param originPackedFile The packed file before merging. 
 	 * @return the updated packed file or the original one if no merge needed.
 	 * @throws RestErrorException .
 	 */
-	public File merge() throws RestErrorException {
+	public File merge(final File originPackedFile) throws RestErrorException {
+		updateDefaultValues(originPackedFile);
 		// check if merge is necessary
 		if (mergeFilesAndComments == null || mergeFilesAndComments.isEmpty()) {
-			return this.originPackedFile;
+			return originPackedFile;
 		} 
 		try {
 			// append application properties, service properties and overrides files
-			new FileAppender("finalPropertiesFile.properties")
+			new FileAppender(DEFAULT_MERGED_FILE_NAME)
 			.appendAll(destMergedPropertiesFile, mergeFilesAndComments);
 			return Packager.createZipFile(rePackFileName, rePackFolder);
 		} catch (final IOException e) {
@@ -86,6 +84,16 @@ public class PropertiesOverridesMerger {
 					rePackFileName, e.getMessage());
 
 		}
+	}
+
+	private void updateDefaultValues(final File originPackedFile) {
+		if (rePackFileName == null) {
+			rePackFileName = originPackedFile.getName();
+		}
+		if (rePackFolder == null) {
+			rePackFolder = new File(CloudifyConstants.REST_FOLDER + "/");
+		}
+		
 	}
 
 }

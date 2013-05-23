@@ -186,7 +186,6 @@ public class InstallService extends AdminAwareCommand {
 	protected Object doExecute() throws Exception {
 
         NameAndPackedFileResolver nameAndPackedFileResolver = getResolver(recipe);
-        nameAndPackedFileResolver.init();
         String actualServiceName = serviceName;
         if (actualServiceName == null) {
             // no override name was defined. use the default.

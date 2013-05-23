@@ -1,7 +1,6 @@
 package org.cloudifysource.shell.rest;
 
 import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
-import org.cloudifysource.dsl.rest.request.UninstallServiceRequest;
 import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
 import org.cloudifysource.dsl.rest.response.UninstallServiceResponse;
 
@@ -28,16 +27,16 @@ public interface Installer {
              final InstallServiceRequest request) throws Exception;
 
     /**
-     * Executes a rest api call to uninstall a specific service
+     * Executes a rest api call to uninstall a specific service.
      * @param applicationName The application name.
      * @param serviceName The service name.
-     * @param request The uninstall request.
+     * @param timeoutInMinutes Timeout in minutes
      * @return The uninstall service response.
      * @throws Exception .
      */
      UninstallServiceResponse uninstallService(
              final String applicationName,
              final String serviceName,
-             final UninstallServiceRequest request) throws Exception;
+             final int timeoutInMinutes) throws Exception;
 
 }

@@ -361,6 +361,11 @@ public final class CloudifyConstants {
 	public static final String ERROR_ARGS_KEY = "error_args";
 	public static final String ERROR_STATUS = "error";
 	public static final String SUCCESS_STATUS = "success";
+	
+	/*
+	 * Request and response keywords
+	 */
+	public static final String REQ_PARAM_TIMEOUT_IN_MINUTES = "timeout";
 
 
 	/**

@@ -19,6 +19,8 @@ package org.cloudifysource.restclient;
 import java.io.File;
 import java.net.URL;
 import java.security.KeyStore;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Logger;
 
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -36,7 +38,6 @@ import org.apache.http.params.HttpProtocolParams;
 import org.apache.http.protocol.HTTP;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
-import org.cloudifysource.dsl.rest.request.UninstallServiceRequest;
 import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
 import org.cloudifysource.dsl.rest.response.Response;
 import org.cloudifysource.dsl.rest.response.UninstallServiceResponse;
@@ -142,15 +143,22 @@ public class RestClient {
 				);
 	}
 
-public UninstallServiceResponse uninstallService(
-		final String applicationName,
-		final String serviceName, final UninstallServiceRequest request) 
-				throws RestClientException {
-	final String uninstallServiceUrl = versionedDeploymentControllerUrl + applicationName + "/services/" + serviceName;
-	return executor.delete(
-			uninstallServiceUrl,
-                new TypeReference<Response<UninstallServiceResponse>>() {
-                });
+	/**
+	 * 
+	 * @param applicationName .
+	 * @param serviceName .
+	 * @param timeoutInMinutes .
+	 * @return .
+	 * @throws RestClientException .
+	 */
+    public UninstallServiceResponse uninstallService(final String applicationName, final String serviceName, 
+    		final int timeoutInMinutes) throws RestClientException {
+    	
+        final String url = versionedDeploymentControllerUrl + applicationName + "/services/" + serviceName;
+        Map<String, Object> requestParams = new HashMap<String, Object>();
+        requestParams.put(CloudifyConstants.REQ_PARAM_TIMEOUT_IN_MINUTES, new Integer(timeoutInMinutes));
+        
+        return executor.delete(url, requestParams, new TypeReference<Response<UninstallServiceResponse>>() { });
     }
 
 	/**

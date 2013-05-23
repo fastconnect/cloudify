@@ -24,7 +24,6 @@ import org.apache.felix.gogo.commands.Command;
 import org.apache.felix.gogo.commands.CompleterValues;
 import org.apache.felix.gogo.commands.Option;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
-import org.cloudifysource.dsl.rest.request.UninstallServiceRequest;
 import org.cloudifysource.dsl.rest.response.UninstallServiceResponse;
 import org.cloudifysource.shell.ShellUtils;
 import org.cloudifysource.shell.rest.RestAdminFacade;
@@ -82,15 +81,14 @@ public class UninstallService extends AdminAwareCommand {
             return getFormattedMessage("uninstall_aborted");
         }
 
-        UninstallServiceRequest request = new UninstallServiceRequest();
-        request.setTimeoutInMinutes(timeoutInMinutes);
-
-        UninstallServiceResponse uninstallServiceResponse =
-                ((RestAdminFacade) adminFacade).uninstallService(CloudifyConstants.DEFAULT_APPLICATION_NAME, serviceName, request);
-        final String deploymentId = uninstallServiceResponse.getDeploymentID();
-
+        //TODO noak: use RestAdminFacade instead of directly calling the RestClient
+        UninstallServiceResponse uninstallServiceResponse = 
+        		((RestAdminFacade) adminFacade).uninstallService(CloudifyConstants.DEFAULT_APPLICATION_NAME, 
+        				serviceName, timeoutInMinutes);
+        
         // start polling for life cycle events
-        waitForLifeCycleEvents(deploymentId);
+        final String deploymentId = uninstallServiceResponse.getDeploymentID();
+        //waitForLifeCycleEvents(deploymentId);
 
         return getFormattedMessage("undeployed_successfully", Color.GREEN, serviceName);
     }

@@ -161,14 +161,15 @@ public class ApplicationDeployerRunnable implements Runnable {
 				packedFile.deleteOnExit();
 				// Deployment will be done using the service's absolute PU name.
 				final InstallServiceRequest installServiceReq = createInstallServiceRequest(
-						cloudConfiguration, applicationPropertiesFile,
+						cloudConfiguration, 
+						applicationPropertiesFile,
 						packedFile);
 				final String appName = this.request.getApplicationName();
 	
 				controller.installServiceInternal(appName, serviceName, 
 												installServiceReq, 
 												packedFile, 
-												null, 
+												null /* service overrides file */, 
 												cloudConfiguration,
 												applicationPropertiesFile);
 				try {
@@ -230,7 +231,8 @@ public class ApplicationDeployerRunnable implements Runnable {
 
 	InstallServiceRequest createInstallServiceRequest(
 			final File cloudConfiguration,
-			final File applicationPropertiesFile, final File packedFile) {
+			final File applicationPropertiesFile, 
+			final File packedFile) {
 		
 		final InstallServiceRequest installServiceReq = new InstallServiceRequest();
 		installServiceReq.setCloudOverridesUploadKey(request.getCloudOverridesUploadKey());

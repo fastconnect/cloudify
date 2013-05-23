@@ -34,6 +34,9 @@ import org.cloudifysource.shell.exceptions.CLIStatusException;
 import org.cloudifysource.shell.installer.CLIEventsDisplayer;
 import org.cloudifysource.shell.rest.RestAdminFacade;
 import org.cloudifysource.shell.rest.ServiceInstallationProcessInspector;
+import org.cloudifysource.shell.util.NameAndPackedFileResolver;
+import org.cloudifysource.shell.util.PreparedPackageResolver;
+import org.cloudifysource.shell.util.ServiceResolver;
 import org.fusesource.jansi.Ansi.Color;
 
 import java.io.File;
@@ -66,7 +69,8 @@ public class InstallService extends AdminAwareCommand {
 	private static final String TIMEOUT_ERROR_MESSAGE = "Service installation timed out."
 			+ " Configure the timeout using the -timeout flag.";
 	private static final long TEN_K = 10 * FileUtils.ONE_KB;
-    public static final int POLLING_INTERVAL_MILLI_SECONDS = 500;
+
+    private static final int POLLING_INTERVAL_MILLI_SECONDS = 500;
 
     @Argument(required = true, name = "recipe", description = "The service recipe folder or archive")
 	private File recipe = null;
@@ -210,11 +214,13 @@ public class InstallService extends AdminAwareCommand {
         request.setTimeoutInMillis(timeoutInMinutes * MILLIS_IN_MINUTES);
 
         // execute the request
-        InstallServiceResponse installServiceResponse = ((RestAdminFacade) adminFacade).installService(CloudifyConstants.DEFAULT_APPLICATION_NAME, actualServiceName, request);
+        InstallServiceResponse installServiceResponse = ((RestAdminFacade) adminFacade)
+                .installService(CloudifyConstants.DEFAULT_APPLICATION_NAME, actualServiceName, request);
 
         ServiceInstallationProcessInspector inspector = new ServiceInstallationProcessInspector(
                 ((RestAdminFacade) adminFacade).getNewRestClient(),
-                installServiceResponse.getDeploymentID(), CloudifyConstants.DEFAULT_APPLICATION_NAME, actualServiceName);
+                installServiceResponse.getDeploymentID(),
+                CloudifyConstants.DEFAULT_APPLICATION_NAME, actualServiceName);
 
         int actualTimeout = timeoutInMinutes;
         boolean isDone = false;
@@ -258,8 +264,10 @@ public class InstallService extends AdminAwareCommand {
                 "would_you_like_to_continue_service_installation", serviceName);
     }
 
-    private void waitForLifeCycleToEnd(final long timeout,
-                                       final ServiceInstallationProcessInspector inspector) throws InterruptedException, CLIException, TimeoutException {
+    private void waitForLifeCycleToEnd(
+            final long timeout,
+            final ServiceInstallationProcessInspector inspector)
+            throws InterruptedException, CLIException, TimeoutException {
 
         ConditionLatch conditionLatch = createConditionLatch(timeout);
 
@@ -287,7 +295,7 @@ public class InstallService extends AdminAwareCommand {
 
     }
 
-    private ConditionLatch createConditionLatch(long timeout) {
+    private ConditionLatch createConditionLatch(final long timeout) {
         return new ConditionLatch()
                 .verbose(verbose)
                 .pollingInterval(POLLING_INTERVAL_MILLI_SECONDS, TimeUnit.MILLISECONDS)

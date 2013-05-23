@@ -13,43 +13,37 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *******************************************************************************/
-package org.cloudifysource.shell.exceptions.handlers;
+package org.cloudifysource.shell.util;
 
-import org.apache.commons.lang.exception.ExceptionUtils;
+import org.cloudifysource.shell.exceptions.CLIStatusException;
 
-import java.util.logging.Level;
+import java.io.File;
 
 /**
  * Created with IntelliJ IDEA.
  * User: elip
  * Date: 5/21/13
- * Time: 10:51 PM
+ * Time: 12:13 PM
  *
- * Exception handler for {@link Throwable}
+ * Resolver interface for retrieving service name and packed file.
+ * <br/>
  *
  * @since 2.6.0
- *
  */
-public class ThrowableHandler extends AbstractClientSideExceptionHandler {
+public interface NameAndPackedFileResolver {
 
-    private Throwable t;
+    /**
+     *
+     * @return The service name.
+     * @throws CLIStatusException Thrown in case of an error.
+     */
+    String getName() throws CLIStatusException;
 
-    public ThrowableHandler(final Throwable t) {
-        this.t = t;
-    }
+    /**
+     *
+     * @return The final packed file to be uploaded to the rest client
+     * @throws CLIStatusException Thrown in case of an error.
+     */
+    File getPackedFile() throws CLIStatusException;
 
-    @Override
-    public String getFormattedMessage() {
-        return t.getMessage();
-    }
-
-    @Override
-    public String getVerbose() {
-        return ExceptionUtils.getFullStackTrace(t);
-    }
-
-    @Override
-    public Level getLoggingLevel() {
-        return Level.SEVERE;
-    }
 }

@@ -15,18 +15,12 @@
  *******************************************************************************/
 package org.cloudifysource.shell.commands;
 
-import java.net.URL;
-
 import org.apache.felix.gogo.commands.Argument;
 import org.apache.felix.gogo.commands.Command;
 import org.apache.felix.gogo.commands.Option;
-import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.shell.AdminFacade;
 import org.cloudifysource.shell.Constants;
-import org.cloudifysource.shell.ShellUtils;
 import org.fusesource.jansi.Ansi.Color;
-
-import com.j_spaces.kernel.PlatformVersion;
 
 /**
  * @author rafi, adaml, barakm

@@ -16,7 +16,18 @@
 package org.cloudifysource.restclient;
 
 
-import org.apache.http.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.util.Map;
+import java.util.logging.Logger;
+
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpHeaders;
+import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
+import org.apache.http.StatusLine;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.methods.HttpDelete;
@@ -34,16 +45,8 @@ import org.cloudifysource.restclient.exceptions.RestClientIOException;
 import org.cloudifysource.restclient.exceptions.RestClientResponseException;
 import org.cloudifysource.restclient.messages.MessagesUtils;
 import org.cloudifysource.restclient.messages.RestClientMessageKeys;
-import org.codehaus.jackson.JsonParseException;
-import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
-import java.util.logging.Logger;
 
 /**
  * 
@@ -157,18 +160,35 @@ public class RestClientExecutor {
      *          The URL to send the delete request to.
      * @param responseTypeReference
      *          The type reference of the response.
+     * @param params
+     *          Request parameters
      * @param <T> The type of the response.
      * @return The response object from the REST server.
      * @throws RestClientException .
      */
-    public <T> T delete(
-    		final String relativeUrl,
-    		final TypeReference<Response<T>> responseTypeReference) 
-    				throws RestClientException {
-        final HttpDelete getRequest = new HttpDelete(getFullUrl(relativeUrl));
-        return executeRequest(getRequest, responseTypeReference);
-    }
+    public <T> T delete(final String relativeUrl, final Map<String, Object> params,
+            final TypeReference<Response<T>> responseTypeReference) throws RestClientException {
+    	
+    	final HttpDelete deleteRequest = new HttpDelete(getFullUrl(relativeUrl));
+    	if (params != null) {
+    		for (final Map.Entry<String, Object> entry : params.entrySet()) {
+    			deleteRequest.getParams().setParameter(entry.getKey(), entry.getValue());
+    		}
+    	}
+    	
+    	return executeRequest(deleteRequest, responseTypeReference);
+}
 
+	/**
+	*
+	* @param relativeUrl
+	*          The URL to send the delete request to.
+	* @param responseTypeReference
+	*          The type reference of the response.
+	* @param <T> The type of the response.
+	* @return The response object from the REST server.
+	* @throws RestClientException .
+	*/
 	private <T> T post(final String relativeUrl,
                        final TypeReference<Response<T>> responseTypeReference,
 			           final HttpEntity entity) 

@@ -13,7 +13,6 @@
 package org.cloudifysource.shell.rest;
 
 import java.io.File;
-import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
@@ -33,7 +32,6 @@ import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.rest.ApplicationDescription;
 import org.cloudifysource.dsl.rest.ServiceDescription;
 import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
-import org.cloudifysource.dsl.rest.request.UninstallServiceRequest;
 import org.cloudifysource.dsl.rest.response.ControllerDetails;
 import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
 import org.cloudifysource.dsl.rest.response.UninstallServiceResponse;
@@ -969,8 +967,8 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
     public UninstallServiceResponse uninstallService(
             final String applicationName,
             final String serviceName,
-            final UninstallServiceRequest request) throws RestClientException {
-        return newRestClient.uninstallService(applicationName, serviceName, request);
+            final int timeoutInMinutes) throws RestClientException {
+        return newRestClient.uninstallService(applicationName, serviceName, timeoutInMinutes);
     }
 
     @Override

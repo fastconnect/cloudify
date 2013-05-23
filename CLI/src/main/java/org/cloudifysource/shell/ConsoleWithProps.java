@@ -15,17 +15,17 @@
  *******************************************************************************/
 package org.cloudifysource.shell;
 
-import jline.Terminal;
-import org.apache.felix.service.command.CommandProcessor;
-import org.apache.karaf.shell.console.jline.Console;
-import org.cloudifysource.restclient.RestClient;
-import org.cloudifysource.shell.rest.RestAdminFacade;
-
 import java.io.File;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.util.HashMap;
 import java.util.Properties;
+
+import jline.Terminal;
+
+import org.apache.felix.service.command.CommandProcessor;
+import org.apache.karaf.shell.console.jline.Console;
+import org.cloudifysource.shell.rest.RestAdminFacade;
 
 /**
  * @author uri

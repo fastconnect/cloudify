@@ -80,6 +80,7 @@ import java.util.logging.Logger;
 
 import static org.cloudifysource.rest.ResponseConstants.FAILED_TO_LOCATE_LUS;
 
+
 /**
  * This controller is responsible for retrieving information about deployments. It is also the entry point for deploying
  * services and application. <br>
@@ -561,21 +562,21 @@ public class DeploymentsController extends BaseRestController {
 	}
 
 	/**
-	 * 
-	 * @param appName .
-	 * @param serviceName .
-	 * @param uninstallServiceRequest .
-	 * @return uninstall response.
-	 * @throws RestErrorException .
-	 * @throws ResourceNotFoundException .
+	 * Uninstalls a service.
+	 * @param appName the application name
+	 * @param serviceName the service name
+	 * @param timeoutInMinutes timeout in minutes
+	 * @return UUID of this action, can be used to follow the relevant events
+	 * @throws ResourceNotFoundException Indicates the service could not be found
+	 * @throws RestErrorException Indicates the uninstall operation could not be performed
 	 */
     @RequestMapping(value = "/{appName}/services/{serviceName}", method = RequestMethod.DELETE)
     @PreAuthorize("isFullyAuthenticated()")
     public UninstallServiceResponse uninstallService(
     		@PathVariable final String appName,
     		@PathVariable final String serviceName,
-    		@RequestBody final UninstallServiceRequest uninstallServiceRequest) 
-    				throws RestErrorException, ResourceNotFoundException {
+    		@RequestParam(required = false, defaultValue = "10") final Integer timeoutInMinutes)
+    throws ResourceNotFoundException, RestErrorException {
 
         final ProcessingUnit processingUnit = controllerHelper.getService(appName, serviceName);
 
@@ -590,15 +591,13 @@ public class DeploymentsController extends BaseRestController {
         // validations
         validateUninstallService();
 
-        String deploymentId = (String) processingUnit.getBeanLevelProperties().getContextProperties().get(CloudifyConstants.CONTEXT_PROPERTY_DEPLOYMENT_ID);
+        String deploymentId = UUID.randomUUID().toString();
         populateEventsCache(deploymentId, processingUnit);
-
-        processingUnit.undeployAndWait(uninstallServiceRequest.getTimeoutInMinutes(), TimeUnit.MINUTES);
+        processingUnit.undeployAndWait(timeoutInMinutes, TimeUnit.MINUTES);
         deleteServiceAttributes(appName, serviceName);
 
-        final UUID lifecycleEventContainerID = null;
         final UninstallServiceResponse uninstallServiceResponse = new UninstallServiceResponse();
-        uninstallServiceResponse.setDeploymentID(lifecycleEventContainerID.toString());
+        uninstallServiceResponse.setDeploymentID(deploymentId.toString());
         return uninstallServiceResponse;
     }
 

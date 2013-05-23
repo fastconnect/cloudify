@@ -282,10 +282,9 @@ public class ElasticProcessingUnitDeploymentFactoryImpl implements ElasticProces
 					throw new ElasticDeploymentCreationException("Failed creating scale config." , e);
 				}
 			} else {
-				final int containerMemoryInMB = 128;
 				// the processing unit scales out whenever the specified memory capacity is breached
 				deployment.scale(new ManualCapacityScaleConfigurer()
-				.memoryCapacity(containerMemoryInMB * deploymentConfig.getService().getNumInstances(),
+				.memoryCapacity(externalProcessMemoryInMB * deploymentConfig.getService().getNumInstances(),
 						MemoryUnit.MEGABYTES).create());
 			}
 		}

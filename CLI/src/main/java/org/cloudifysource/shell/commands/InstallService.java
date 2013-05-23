@@ -18,10 +18,7 @@ import org.apache.felix.gogo.commands.Argument;
 import org.apache.felix.gogo.commands.Command;
 import org.apache.felix.gogo.commands.Option;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
-import org.cloudifysource.dsl.internal.CloudifyErrorMessages;
-import org.cloudifysource.dsl.internal.DSLErrorMessageException;
 import org.cloudifysource.dsl.internal.debug.DebugModes;
-import org.cloudifysource.dsl.internal.debug.DebugUtils;
 import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
 import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
 import org.cloudifysource.dsl.utils.RecipePathResolver;
@@ -324,20 +321,6 @@ public class InstallService extends AdminAwareCommand {
         return null;
     }
 
-    private void validateCloudConfigurationFile() throws CLIStatusException {
-        if (cloudConfiguration != null) {
-            if (!cloudConfiguration.exists()) {
-                throw new CLIStatusException("cloud_configuration_file_not_found",
-                        cloudConfiguration.getAbsolutePath());
-            }
-            if (!cloudConfiguration.isDirectory() && !cloudConfiguration.isFile()) {
-                throw new CLIStatusException("cloud_configuration_file_invalid",
-                        cloudConfiguration.getAbsolutePath());
-            }
-
-        }
-    }
-
     private File resolve(final File recipe) throws CLIStatusException {
         final RecipePathResolver pathResolver = new RecipePathResolver();
         if (pathResolver.resolveService(recipe)) {
@@ -345,30 +328,6 @@ public class InstallService extends AdminAwareCommand {
         } else {
             throw new CLIStatusException("service_file_doesnt_exist",
                     StringUtils.join(pathResolver.getPathsLooked().toArray(), ", "));
-        }
-    }
-
-    private void validateCloudOverridesFile() throws CLIStatusException {
-        if (cloudOverrides != null) {
-            if (cloudOverrides.length() >= TEN_K) {
-                throw new CLIStatusException(CloudifyErrorMessages.OVERRIDES_TO_LONG.getName());
-            }
-        }
-    }
-
-    private void validateOverridesFile() throws CLIStatusException {
-        if (overrides != null) {
-            if (overrides.length() >= TEN_K) {
-                throw new CLIStatusException(CloudifyErrorMessages.CLOUD_OVERRIDES_TO_LONG.getName());
-            }
-        }
-    }
-
-    private void validateDebugSetting() throws CLIStatusException {
-        try {
-            DebugUtils.validateDebugSettings(debugAll, debugEvents, debugModeString);
-        } catch (final DSLErrorMessageException e) {
-            throw new CLIStatusException(e, e.getErrorMessage().getName(), (Object[]) e.getArgs());
         }
     }
 }

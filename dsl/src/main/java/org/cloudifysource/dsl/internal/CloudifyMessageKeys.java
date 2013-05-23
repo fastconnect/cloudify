@@ -8,14 +8,8 @@ public enum CloudifyMessageKeys {
 	
 	API_VERSION_MISMATCH("version_mismatch"),
 
-	MISSING_APPLICATION("missing_application"),
-
     MISSING_RESOURCE("missing_resource"),
-	
-	MISSING_SERVICE("missing_service"),
 
-	MISSING_SERVICE_INSTANCE("missing_service_instance"),
-	
 	EMPTY_REQUEST_BODY_ERROR("empty_request_body_error"),
 	
 	EMPTY_ATTRIBUTE_NAME("empty_attribute_name"),

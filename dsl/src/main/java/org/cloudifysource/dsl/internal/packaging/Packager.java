@@ -154,12 +154,12 @@ public final class Packager {
 			throw new IllegalArgumentException(recipeFile + " is not a file");
 		}
 
-		logger.info("packing folder " + recipeFile.getParent());
+		logger.fine("Packing folder " + recipeFile.getParent());
 		final File createdPuFolder = buildPuFolder(service, recipeFile,
 				additionalServiceFiles);
 		final File puZipFile = createZippedPu(service, createdPuFolder,
 				recipeFile);
-		logger.info("created " + puZipFile.getCanonicalFile());
+		logger.fine("Created " + puZipFile.getCanonicalFile());
 		if (FileUtils.deleteQuietly(createdPuFolder)) {
 			logger.finer("deleted temp pu folder "
 					+ createdPuFolder.getAbsolutePath());

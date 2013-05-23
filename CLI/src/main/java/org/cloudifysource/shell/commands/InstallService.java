@@ -14,6 +14,7 @@ package org.cloudifysource.shell.commands;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import org.apache.commons.io.FileUtils;
@@ -27,11 +28,17 @@ import org.cloudifysource.dsl.internal.DSLErrorMessageException;
 import org.cloudifysource.dsl.internal.debug.DebugModes;
 import org.cloudifysource.dsl.internal.debug.DebugUtils;
 import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
+import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
 import org.cloudifysource.dsl.utils.RecipePathResolver;
 import org.cloudifysource.restclient.exceptions.RestClientException;
+import org.cloudifysource.shell.ConditionLatch;
+import org.cloudifysource.shell.Constants;
+import org.cloudifysource.shell.ShellUtils;
 import org.cloudifysource.shell.exceptions.CLIException;
 import org.cloudifysource.shell.exceptions.CLIStatusException;
+import org.cloudifysource.shell.installer.CLIEventsDisplayer;
 import org.cloudifysource.shell.rest.RestAdminFacade;
+import org.cloudifysource.shell.rest.ServiceInstallationProcessInspector;
 import org.fusesource.jansi.Ansi.Color;
 
 /**
@@ -58,8 +65,9 @@ public class InstallService extends AdminAwareCommand {
 	private static final String TIMEOUT_ERROR_MESSAGE = "Service installation timed out."
 			+ " Configure the timeout using the -timeout flag.";
 	private static final long TEN_K = 10 * FileUtils.ONE_KB;
+    public static final int POLLING_INTERVAL_MILLI_SECONDS = 500;
 
-	@Argument(required = true, name = "recipe", description = "The service recipe folder or archive")
+    @Argument(required = true, name = "recipe", description = "The service recipe folder or archive")
 	private File recipe = null;
 
 	@Option(required = false, name = "-authGroups", description = "The groups authorized to access this application "
@@ -106,6 +114,8 @@ public class InstallService extends AdminAwareCommand {
 	@Option(required = false, name = "-debug-mode",
 			description = "Debug mode. One of: instead, after or onError")
 	private String debugModeString = DebugModes.INSTEAD.getName();
+
+    private CLIEventsDisplayer displayer = new CLIEventsDisplayer();
 
 
     public File getCloudConfiguration() {
@@ -170,6 +180,7 @@ public class InstallService extends AdminAwareCommand {
 	@Override
 	protected Object doExecute() throws Exception {
 
+        final long endTime = System.currentTimeMillis() + TimeUnit.MILLISECONDS.convert(timeoutInMinutes, TimeUnit.MINUTES);
 
         NameAndPackedFileResolver nameAndPackedFileResolver = getResolver(recipe);
         nameAndPackedFileResolver.init();
@@ -200,12 +211,111 @@ public class InstallService extends AdminAwareCommand {
         request.setTimeoutInMillis(timeoutInMinutes * MILLIS_IN_MINUTES);
 
         // execute the request
-        ((RestAdminFacade) adminFacade).installService(CloudifyConstants.DEFAULT_APPLICATION_NAME, actualServiceName, request);
+        InstallServiceResponse installServiceResponse = ((RestAdminFacade) adminFacade).installService(CloudifyConstants.DEFAULT_APPLICATION_NAME, actualServiceName, request);
 
-        //events
+        ServiceInstallationProcessInspector inspector = new ServiceInstallationProcessInspector(
+                ((RestAdminFacade) adminFacade).getNewRestClient(),
+                installServiceResponse.getDeploymentID(), CloudifyConstants.DEFAULT_APPLICATION_NAME, actualServiceName);
 
-		return getFormattedMessage("service_install_ended", Color.GREEN, actualServiceName);
-	}
+        int actualTimeout = timeoutInMinutes;
+        boolean isDone = false;
+
+        while (!isDone) {
+            try {
+
+                displayer.printEvent("Waiting for lifecycle events to start");
+                // lets wait for the service life cycle to start.
+                waitForLifeCycleToStart(actualTimeout, inspector);
+
+                final long timeAfterLifeCycleStartedInMillis = endTime - System.currentTimeMillis();
+
+                // now lets wait for it to finish
+                waitForLifeCycleToEnd(TimeUnit.MINUTES.convert(timeAfterLifeCycleStartedInMillis, TimeUnit.MILLISECONDS), inspector);
+                isDone = true;
+
+            } catch (final TimeoutException e) {
+
+                // if non interactive, throw exception
+                if (!(Boolean) session.get(Constants.INTERACTIVE_MODE)) {
+                    throw new CLIException(e.getMessage(), e);
+                }
+
+                // ask user if he want to continue viewing the installation.
+                boolean continueViewing = promptWouldYouLikeToContinueQuestion();
+                if (continueViewing) {
+                    // prolong the polling timeouts
+                    actualTimeout = DEFAULT_TIMEOUT_MINUTES;
+                } else {
+                    throw new CLIStatusException(e,
+                            "service_installation_timed_out_on_client",
+                            serviceName);
+                }
+            }
+        }
+        return getFormattedMessage("service_install_ended", Color.GREEN, actualServiceName);
+    }
+
+
+    private boolean promptWouldYouLikeToContinueQuestion() throws IOException {
+        return ShellUtils.promptUser(session,
+                "would_you_like_to_continue_service_installation", serviceName);
+    }
+
+    private void waitForLifeCycleToStart(final long timeout,
+                                         final ServiceInstallationProcessInspector inspector) throws InterruptedException, CLIException, TimeoutException {
+
+        ConditionLatch conditionLatch = createConditionLatch(timeout);
+
+        conditionLatch.waitFor(new ConditionLatch.Predicate() {
+
+            @Override
+            public boolean isDone() throws CLIException, InterruptedException {
+                boolean started = inspector.lifeCycleStarted();
+                if (!started) {
+                    displayer.printNoChange();
+                }
+                return started;
+            }
+        });
+
+    }
+
+    private void waitForLifeCycleToEnd(final long timeout,
+                                       final ServiceInstallationProcessInspector inspector) throws InterruptedException, CLIException, TimeoutException {
+
+        ConditionLatch conditionLatch = createConditionLatch(timeout);
+
+        conditionLatch.waitFor(new ConditionLatch.Predicate() {
+
+            @Override
+            public boolean isDone() throws CLIException, InterruptedException {
+                boolean ended = inspector.lifeCycleEnded();
+                if (!ended) {
+                    String latestEvent;
+                    try {
+                        latestEvent = inspector.getLatestEvent();
+                    } catch (RestClientException e) {
+                        throw new CLIException(e.getMessage(), e);
+                    }
+                    if (latestEvent != null) {
+                        displayer.printEvent(latestEvent);
+                    } else {
+                        displayer.printNoChange();
+                    }
+                }
+                return ended;
+            }
+        });
+
+    }
+
+    private ConditionLatch createConditionLatch(long timeout) {
+        return new ConditionLatch()
+                .verbose(verbose)
+                .pollingInterval(POLLING_INTERVAL_MILLI_SECONDS, TimeUnit.MILLISECONDS)
+                .timeout(timeout, TimeUnit.MINUTES)
+                .timeoutErrorMessage(TIMEOUT_ERROR_MESSAGE);
+    }
 
     private NameAndPackedFileResolver getResolver(final File recipe) throws CLIStatusException {
         if (recipe.isFile()) {
@@ -222,6 +332,7 @@ public class InstallService extends AdminAwareCommand {
             if (!file.isFile()) {
                 throw new CLIException(file.getAbsolutePath() + " is not a file or is missing");
             } else {
+                displayer.printEvent("Uploading " + file.getAbsolutePath());
                 return ((RestAdminFacade) adminFacade).upload(null, file).getUploadKey();
             }
         }

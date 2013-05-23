@@ -120,7 +120,7 @@ public class ApplicationDescriptionFactory {
 	}
 	
 
-	private ServiceDescription getServiceDescription(final String absolutePuName, final String applicationName) {
+	public ServiceDescription getServiceDescription(final String absolutePuName, final String applicationName) {
 
 		String serviceName = ServiceUtils.getApplicationServiceName(absolutePuName, applicationName);
 		int plannedNumberOfInstances = getPlannedNumberOfInstances(absolutePuName);

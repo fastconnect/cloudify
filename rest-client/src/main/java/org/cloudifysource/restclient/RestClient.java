@@ -37,10 +37,7 @@ import org.apache.http.protocol.HTTP;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
 import org.cloudifysource.dsl.rest.request.UninstallServiceRequest;
-import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
-import org.cloudifysource.dsl.rest.response.Response;
-import org.cloudifysource.dsl.rest.response.UninstallServiceResponse;
-import org.cloudifysource.dsl.rest.response.UploadResponse;
+import org.cloudifysource.dsl.rest.response.*;
 import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.cloudifysource.restclient.messages.MessagesUtils;
 import org.cloudifysource.restclient.messages.RestClientMessageKeys;
@@ -64,9 +61,6 @@ public class RestClient {
 	private String versionedDeploymentControllerUrl;
 	private String versionedUploadControllerUrl;
 
-	private static MessagesUtils messageHandler;
-
-
 	private static final String HTTPS = "https";
 
     public RestClient(final URL url,
@@ -74,51 +68,14 @@ public class RestClient {
                       final String password,
                       final String apiVersion) throws RestClientException {
 
-        this.executor = createExecutor(url, username, password, apiVersion);
+        this.executor = createExecutor(url, apiVersion);
+        setCredentials(username, password);
     }
 
     public void setCredentials(final String username,
                                final String password) {
         executor.setCredentials(username, password);
     }
-
-
-	/**
-	 * Returns a HTTP client configured to use SSL.
-	 * @param url 
-	 * 
-	 * @return HTTP client configured to use SSL
-	 * @throws org.cloudifysource.restclient.exceptions.RestClientException
-	 *             Reporting different failures while creating the HTTP client
-	 */
-	private DefaultHttpClient getSSLHttpClient(
-			final URL url) 
-					throws RestClientException {
-		try {
-			final KeyStore trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
-			// TODO : support self-signed certs if configured by user upon
-			// "connect"
-			trustStore.load(null, null);
-
-			final SSLSocketFactory sf = new RestSSLSocketFactory(trustStore);
-			sf.setHostnameVerifier(SSLSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
-
-			final HttpParams params = new BasicHttpParams();
-			HttpProtocolParams.setVersion(params, HttpVersion.HTTP_1_1);
-			HttpProtocolParams.setContentCharset(params, HTTP.UTF_8);
-
-			final SchemeRegistry registry = new SchemeRegistry();
-			registry.register(new Scheme(HTTPS, sf, url.getPort()));
-
-			final ClientConnectionManager ccm = new ThreadSafeClientConnManager(params, registry);
-
-			return new DefaultHttpClient(ccm, params);
-		} catch (final Exception e) {
-			throw new RestClientException(FAILED_CREATING_CLIENT,
-                                          "Failed creating http client",
-                                          ExceptionUtils.getFullStackTrace(e));
-		}
-	}
 
 	/**
 	 * Executes a rest api call to install a specific service.
@@ -142,16 +99,16 @@ public class RestClient {
 				);
 	}
 
-public UninstallServiceResponse uninstallService(
-		final String applicationName,
-		final String serviceName, final UninstallServiceRequest request) 
-				throws RestClientException {
-	final String uninstallServiceUrl = versionedDeploymentControllerUrl + applicationName + "/services/" + serviceName;
-	return executor.delete(
-			uninstallServiceUrl,
-                new TypeReference<Response<UninstallServiceResponse>>() {
-                });
-    }
+    public UninstallServiceResponse uninstallService(
+            final String applicationName,
+            final String serviceName, final UninstallServiceRequest request)
+                    throws RestClientException {
+        final String uninstallServiceUrl = versionedDeploymentControllerUrl + applicationName + "/services/" + serviceName;
+        return executor.delete(
+                uninstallServiceUrl,
+                    new TypeReference<Response<UninstallServiceResponse>>() {
+                    });
+        }
 
 	/**
 	 * Uploads a file to the repository.
@@ -176,6 +133,14 @@ public UninstallServiceResponse uninstallService(
 		});
 		return response;
 	}
+
+    public ServiceDeploymentEvents getServiceDeploymentEvents(final String deploymentId,
+                                                              final int from,
+                                                              final int to) throws RestClientException {
+        return executor.get(
+                versionedDeploymentControllerUrl + "/" + deploymentId + "?from=" + from + "&to=" + to,
+                new TypeReference<Response<ServiceDeploymentEvents>>() {});
+    }
 
     public void connect() throws RestClientException {
         executor.get(versionedDeploymentControllerUrl + "/testrest", new TypeReference<Response<Void>>() {});
@@ -210,10 +175,10 @@ public UninstallServiceResponse uninstallService(
 		}
     }
 
-    private RestClientExecutor createExecutor(final URL url,
-                                              final String username,
-                                              final String password,
-                                              final String apiVersion) throws RestClientException {
+    private RestClientExecutor createExecutor(
+            final URL url,
+            final String apiVersion)
+            throws RestClientException {
         DefaultHttpClient httpClient;
         if (HTTPS.equals(url.getProtocol())) {
             httpClient = getSSLHttpClient(url);
@@ -226,5 +191,40 @@ public UninstallServiceResponse uninstallService(
         versionedDeploymentControllerUrl = apiVersion + DEPLOYMENT_CONTROLLER_URL;
         versionedUploadControllerUrl = apiVersion + UPLOAD_CONTROLLER_URL;
         return new RestClientExecutor(httpClient, url);
+    }
+
+    /**
+     * Returns a HTTP client configured to use SSL.
+     * @param url
+     *
+     * @return HTTP client configured to use SSL
+     * @throws org.cloudifysource.restclient.exceptions.RestClientException
+     *             Reporting different failures while creating the HTTP client
+     */
+    private DefaultHttpClient getSSLHttpClient(final URL url) throws RestClientException {
+        try {
+            final KeyStore trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
+            // TODO : support self-signed certs if configured by user upon
+            // "connect"
+            trustStore.load(null, null);
+
+            final SSLSocketFactory sf = new RestSSLSocketFactory(trustStore);
+            sf.setHostnameVerifier(SSLSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
+
+            final HttpParams params = new BasicHttpParams();
+            HttpProtocolParams.setVersion(params, HttpVersion.HTTP_1_1);
+            HttpProtocolParams.setContentCharset(params, HTTP.UTF_8);
+
+            final SchemeRegistry registry = new SchemeRegistry();
+            registry.register(new Scheme(HTTPS, sf, url.getPort()));
+
+            final ClientConnectionManager ccm = new ThreadSafeClientConnManager(params, registry);
+
+            return new DefaultHttpClient(ccm, params);
+        } catch (final Exception e) {
+            throw new RestClientException(FAILED_CREATING_CLIENT,
+                    "Failed creating http client",
+                    ExceptionUtils.getFullStackTrace(e));
+        }
     }
 }

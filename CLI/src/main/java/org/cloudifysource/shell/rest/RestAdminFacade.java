@@ -74,6 +74,10 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 
     private RestClient newRestClient;
 
+    public RestClient getNewRestClient() {
+        return newRestClient;
+    }
+
 	/**
 	 * {@inheritDoc}
 	 */

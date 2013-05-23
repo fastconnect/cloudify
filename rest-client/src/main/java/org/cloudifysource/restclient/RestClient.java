@@ -30,6 +30,7 @@ import org.apache.http.params.HttpParams;
 import org.apache.http.params.HttpProtocolParams;
 import org.apache.http.protocol.HTTP;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
+import org.cloudifysource.dsl.rest.ServiceDescription;
 import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
 import org.cloudifysource.dsl.rest.response.*;
 import org.cloudifysource.restclient.exceptions.RestClientException;
@@ -142,12 +143,26 @@ public class RestClient {
 		return response;
 	}
 
+    /**
+     * Provides access to life cycle events of a service.
+     * @param deploymentId The deployment id given at installation time.
+     * @param from The starting event index.
+     * @param to The last event index. passing -1 means all events (limit to 100 at a time)
+     * @return The events.
+     * @throws RestClientException
+     */
     public ServiceDeploymentEvents getServiceDeploymentEvents(final String deploymentId,
                                                               final int from,
                                                               final int to) throws RestClientException {
         return executor.get(
-                versionedDeploymentControllerUrl + "/" + deploymentId + "?from=" + from + "&to=" + to,
+                versionedDeploymentControllerUrl + "/" + deploymentId + "/events/" + "?from=" + from + "&to=" + to,
                 new TypeReference<Response<ServiceDeploymentEvents>>() {});
+    }
+
+    public ServiceDescription getServiceDescription(final String appName,
+                                                    final String serviceName) throws RestClientException {
+        return executor.get(versionedDeploymentControllerUrl + "/" + appName + "/service/" + serviceName + "/description",
+                new TypeReference<Response<ServiceDescription>>() {});
     }
 
     public void connect() throws RestClientException {

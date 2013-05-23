@@ -38,6 +38,7 @@ import org.fusesource.jansi.Ansi.Color;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -180,8 +181,6 @@ public class InstallService extends AdminAwareCommand {
 	@Override
 	protected Object doExecute() throws Exception {
 
-        final long endTime = System.currentTimeMillis() + TimeUnit.MILLISECONDS.convert(timeoutInMinutes, TimeUnit.MINUTES);
-
         NameAndPackedFileResolver nameAndPackedFileResolver = getResolver(recipe);
         nameAndPackedFileResolver.init();
         String actualServiceName = serviceName;
@@ -220,17 +219,11 @@ public class InstallService extends AdminAwareCommand {
         int actualTimeout = timeoutInMinutes;
         boolean isDone = false;
 
+        displayer.printEvent("Waiting for life cycle events for service " + actualServiceName);
         while (!isDone) {
             try {
 
-                displayer.printEvent("Waiting for lifecycle events to start");
-                // lets wait for the service life cycle to start.
-                waitForLifeCycleToStart(actualTimeout, inspector);
-
-                final long timeAfterLifeCycleStartedInMillis = endTime - System.currentTimeMillis();
-
-                // now lets wait for it to finish
-                waitForLifeCycleToEnd(TimeUnit.MINUTES.convert(timeAfterLifeCycleStartedInMillis, TimeUnit.MILLISECONDS), inspector);
+                waitForLifeCycleToEnd(actualTimeout, inspector);
                 isDone = true;
 
             } catch (final TimeoutException e) {
@@ -241,6 +234,7 @@ public class InstallService extends AdminAwareCommand {
                 }
 
                 // ask user if he want to continue viewing the installation.
+                displayer.printEvent("");
                 boolean continueViewing = promptWouldYouLikeToContinueQuestion();
                 if (continueViewing) {
                     // prolong the polling timeouts
@@ -248,10 +242,13 @@ public class InstallService extends AdminAwareCommand {
                 } else {
                     throw new CLIStatusException(e,
                             "service_installation_timed_out_on_client",
-                            serviceName);
+                            actualServiceName);
                 }
             }
         }
+
+        // drop one line before printing the last message
+        displayer.printEvent("");
         return getFormattedMessage("service_install_ended", Color.GREEN, actualServiceName);
     }
 
@@ -259,25 +256,6 @@ public class InstallService extends AdminAwareCommand {
     private boolean promptWouldYouLikeToContinueQuestion() throws IOException {
         return ShellUtils.promptUser(session,
                 "would_you_like_to_continue_service_installation", serviceName);
-    }
-
-    private void waitForLifeCycleToStart(final long timeout,
-                                         final ServiceInstallationProcessInspector inspector) throws InterruptedException, CLIException, TimeoutException {
-
-        ConditionLatch conditionLatch = createConditionLatch(timeout);
-
-        conditionLatch.waitFor(new ConditionLatch.Predicate() {
-
-            @Override
-            public boolean isDone() throws CLIException, InterruptedException {
-                boolean started = inspector.lifeCycleStarted();
-                if (!started) {
-                    displayer.printNoChange();
-                }
-                return started;
-            }
-        });
-
     }
 
     private void waitForLifeCycleToEnd(final long timeout,
@@ -289,21 +267,21 @@ public class InstallService extends AdminAwareCommand {
 
             @Override
             public boolean isDone() throws CLIException, InterruptedException {
-                boolean ended = inspector.lifeCycleEnded();
-                if (!ended) {
-                    String latestEvent;
-                    try {
-                        latestEvent = inspector.getLatestEvent();
-                    } catch (RestClientException e) {
-                        throw new CLIException(e.getMessage(), e);
+                try {
+                    boolean ended = inspector.lifeCycleEnded();
+                    if (!ended) {
+
+                        List<String> latestEvents = inspector.getLatestEvents();
+                        if (latestEvents != null) {
+                            displayer.printEvents(latestEvents);
+                        } else {
+                            displayer.printNoChange();
+                        }
                     }
-                    if (latestEvent != null) {
-                        displayer.printEvent(latestEvent);
-                    } else {
-                        displayer.printNoChange();
-                    }
+                    return ended;
+                } catch (final RestClientException e) {
+                    throw new CLIException(e.getMessage(), e);
                 }
-                return ended;
             }
         });
 

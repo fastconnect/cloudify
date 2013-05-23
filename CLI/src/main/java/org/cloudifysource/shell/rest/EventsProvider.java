@@ -12,22 +12,31 @@ import org.cloudifysource.restclient.exceptions.RestClientException;
  * Time: 7:40 PM
  * To change this template use File | Settings | File Templates.
  */
-public class EventsIterator {
+public class EventsProvider {
 
     private String deploymentId;
     private RestClient restClient;
 
     private int index = 0;
 
-    public EventsIterator(final String deploymentId,
+    private ServiceDeploymentEvents events = new ServiceDeploymentEvents();
+
+    public EventsProvider(final String deploymentId,
                           final RestClient restClient) {
         this.deploymentId = deploymentId;
         this.restClient = restClient;
+
     }
 
-
     public ServiceDeploymentEvent next() throws RestClientException {
-        ServiceDeploymentEvents serviceDeploymentEvents = restClient.getServiceDeploymentEvents(deploymentId, index, index);
+
+        if (events.getEvents().isEmpty()) {
+            // get all events
+            events = restClient.getServiceDeploymentEvents(deploymentId, index, -1);
+        }
+
+
+        ServiceDeploymentEvents serviceDeploymentEvents = restClient.getServiceDeploymentEvents(deploymentId, index, -1);
         if (serviceDeploymentEvents.getEvents().isEmpty()) {
             return null;
         } else {

@@ -12,7 +12,29 @@
  *******************************************************************************/
 package org.cloudifysource.rest.controllers;
 
+
+import static org.cloudifysource.rest.ResponseConstants.FAILED_TO_LOCATE_LUS;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import javax.annotation.PostConstruct;
+
 import net.jini.core.discovery.LookupLocator;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.cloudifysource.dsl.ComputeDetails;
@@ -21,16 +43,46 @@ import org.cloudifysource.dsl.cloud.Cloud;
 import org.cloudifysource.dsl.context.kvstorage.spaceentries.ApplicationCloudifyAttribute;
 import org.cloudifysource.dsl.context.kvstorage.spaceentries.InstanceCloudifyAttribute;
 import org.cloudifysource.dsl.context.kvstorage.spaceentries.ServiceCloudifyAttribute;
-import org.cloudifysource.dsl.internal.*;
-import org.cloudifysource.dsl.internal.packaging.FileAppender;
-import org.cloudifysource.dsl.internal.packaging.Packager;
+import org.cloudifysource.dsl.internal.CloudifyConstants;
+import org.cloudifysource.dsl.internal.CloudifyMessageKeys;
+import org.cloudifysource.dsl.internal.DSLApplicationCompilatioResult;
+import org.cloudifysource.dsl.internal.DSLServiceCompilationResult;
+import org.cloudifysource.dsl.internal.DSLUtils;
+import org.cloudifysource.dsl.internal.ServiceReader;
 import org.cloudifysource.dsl.rest.ServiceDescription;
-import org.cloudifysource.dsl.rest.request.*;
-import org.cloudifysource.dsl.rest.response.*;
+import org.cloudifysource.dsl.rest.request.InstallApplicationRequest;
+import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
+import org.cloudifysource.dsl.rest.request.SetApplicationAttributesRequest;
+import org.cloudifysource.dsl.rest.request.SetServiceAttributesRequest;
+import org.cloudifysource.dsl.rest.request.SetServiceInstanceAttributesRequest;
+import org.cloudifysource.dsl.rest.request.UninstallApplicationRequest;
+import org.cloudifysource.dsl.rest.request.UpdateApplicationAttributeRequest;
+import org.cloudifysource.dsl.rest.response.DeleteApplicationAttributeResponse;
+import org.cloudifysource.dsl.rest.response.DeleteServiceAttributeResponse;
+import org.cloudifysource.dsl.rest.response.DeleteServiceInstanceAttributeResponse;
+import org.cloudifysource.dsl.rest.response.GetApplicationAttributesResponse;
+import org.cloudifysource.dsl.rest.response.GetServiceAttributesResponse;
+import org.cloudifysource.dsl.rest.response.GetServiceInstanceAttributesResponse;
+import org.cloudifysource.dsl.rest.response.InstallApplicationResponse;
+import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
+import org.cloudifysource.dsl.rest.response.Response;
+import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvents;
+import org.cloudifysource.dsl.rest.response.ServiceDetails;
+import org.cloudifysource.dsl.rest.response.ServiceInstanceDetails;
+import org.cloudifysource.dsl.rest.response.ServiceInstanceMetricsData;
+import org.cloudifysource.dsl.rest.response.ServiceInstanceMetricsResponse;
+import org.cloudifysource.dsl.rest.response.ServiceMetricsResponse;
+import org.cloudifysource.dsl.rest.response.UninstallApplicationResponse;
+import org.cloudifysource.dsl.rest.response.UninstallServiceResponse;
 import org.cloudifysource.dsl.utils.ServiceUtils;
 import org.cloudifysource.rest.RestConfiguration;
 import org.cloudifysource.rest.controllers.helpers.ControllerHelper;
-import org.cloudifysource.rest.deploy.*;
+import org.cloudifysource.rest.controllers.helpers.PropertiesOverridesMerger;
+import org.cloudifysource.rest.deploy.ApplicationDeployerRunnable;
+import org.cloudifysource.rest.deploy.DeploymentConfig;
+import org.cloudifysource.rest.deploy.ElasticDeploymentCreationException;
+import org.cloudifysource.rest.deploy.ElasticProcessingUnitDeploymentFactory;
+import org.cloudifysource.rest.deploy.ElasticProcessingUnitDeploymentFactoryImpl;
 import org.cloudifysource.rest.events.cache.EventsCache;
 import org.cloudifysource.rest.events.cache.EventsCacheKey;
 import org.cloudifysource.rest.events.cache.EventsCacheValue;
@@ -39,7 +91,14 @@ import org.cloudifysource.rest.exceptions.ResourceNotFoundException;
 import org.cloudifysource.rest.repo.UploadRepo;
 import org.cloudifysource.rest.util.ApplicationDescriptionFactory;
 import org.cloudifysource.rest.util.IsolationUtils;
-import org.cloudifysource.rest.validators.*;
+import org.cloudifysource.rest.validators.InstallApplicationValidationContext;
+import org.cloudifysource.rest.validators.InstallApplicationValidator;
+import org.cloudifysource.rest.validators.InstallServiceValidationContext;
+import org.cloudifysource.rest.validators.InstallServiceValidator;
+import org.cloudifysource.rest.validators.UninstallApplicationValidationContext;
+import org.cloudifysource.rest.validators.UninstallApplicationValidator;
+import org.cloudifysource.rest.validators.UninstallServiceValidationContext;
+import org.cloudifysource.rest.validators.UninstallServiceValidator;
 import org.cloudifysource.security.CloudifyAuthorizationDetails;
 import org.cloudifysource.security.CustomPermissionEvaluator;
 import org.jgrapht.DirectedGraph;
@@ -65,20 +124,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.*;
-
-import javax.annotation.PostConstruct;
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.FutureTask;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import static org.cloudifysource.rest.ResponseConstants.FAILED_TO_LOCATE_LUS;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 
 
 /**
@@ -313,10 +363,10 @@ public class DeploymentsController extends BaseRestController {
 
     /**
      *
-     * @param appName
-     * @param serviceName
-     * @return
-     * @throws ResourceNotFoundException
+     * @param appName .
+     * @param serviceName .
+     * @return .
+     * @throws ResourceNotFoundException .
      */
     @RequestMapping(value = "/{appName}/service/{serviceName}/description", method = RequestMethod.GET)
     public ServiceDescription getServiceDescription(
@@ -326,8 +376,10 @@ public class DeploymentsController extends BaseRestController {
         // validate service exists
         controllerHelper.getService(appName, serviceName);
 
-        final ApplicationDescriptionFactory appDescriptionFactory = new ApplicationDescriptionFactory(restConfig.getAdmin());
-        return appDescriptionFactory.getServiceDescription(ServiceUtils.getAbsolutePUName(appName, serviceName), appName);
+        final ApplicationDescriptionFactory appDescriptionFactory = 
+        		new ApplicationDescriptionFactory(restConfig.getAdmin());
+        return appDescriptionFactory.
+        		getServiceDescription(ServiceUtils.getAbsolutePUName(appName, serviceName), appName);
     }
 
 	/**
@@ -481,14 +533,21 @@ public class DeploymentsController extends BaseRestController {
 				CloudifyMessageKeys.WRONG_CLOUD_OVERRIDES_UPLOAD_KEY.getName(),
 				absolutePuName);
 		final File workingProjectDir = new File(serviceDir, "ext");
-		final File updatedPackedFile = updatePropertiesFile(
-				request,
-				serviceOverridesFile,
-				serviceDir,
-				absolutePuName,
-				workingProjectDir,
-				packedFile);
-
+	
+        // get properties file from working directory
+		final File servicePropertiesFile = extractServicePropertiesFile(workingProjectDir);
+        
+		// merge properties with overrides files and re-pack the service folder
+		PropertiesOverridesMerger merger = new PropertiesOverridesMerger();
+		merger.setRePackFileName(absolutePuName);
+		merger.setRePackFolder(serviceDir);
+		merger.setOriginPackedFile(packedFile);
+		merger.setDestMergedPropertiesFile(servicePropertiesFile);
+		merger.addFileToMerge(applicationPropertiesFile, "application properties file")
+			  .addFileToMerge(servicePropertiesFile, "service origin properties file")
+			  .addFileToMerge(serviceOverridesFile, "service overrides file");
+		File updatedPackedFile = merger.merge();
+		
 		// Read the service
 		final Service service = readService(workingProjectDir, request.getServiceFileName(), absolutePuName);
 
@@ -559,6 +618,12 @@ public class DeploymentsController extends BaseRestController {
 		final InstallServiceResponse installServiceResponse = new InstallServiceResponse();
 		installServiceResponse.setDeploymentID(deploymentID.toString());
 		return installServiceResponse;
+	}
+
+	private File extractServicePropertiesFile(final File workingProjectDir) {
+        final String propertiesFileName =
+                DSLUtils.getPropertiesFileName(workingProjectDir, DSLUtils.SERVICE_DSL_FILE_NAME_SUFFIX);
+        return new File(workingProjectDir, propertiesFileName);
 	}
 
 	/**
@@ -1603,36 +1668,6 @@ public class DeploymentsController extends BaseRestController {
             }
         }
         return templateName;
-    }
-
-    private File updatePropertiesFile(final InstallServiceRequest request, final File overridesFile,
-                                      final File serviceDir, final String absolutePuName, final File workingProjectDir, final File srcFile)
-            throws RestErrorException {
-        final File applicationProeprtiesFile = null;
-        // check if merge is necessary
-        if (overridesFile == null && applicationProeprtiesFile == null) {
-            return srcFile;
-        } else {
-            // get properties file from working directory
-            final String propertiesFileName =
-                    DSLUtils.getPropertiesFileName(workingProjectDir, DSLUtils.SERVICE_DSL_FILE_NAME_SUFFIX);
-            final File servicePropertiesFile = new File(workingProjectDir, propertiesFileName);
-            final LinkedHashMap<File, String> filesToAppend = new LinkedHashMap<File, String>();
-            try {
-                // append application properties, service properties and overrides files
-                final FileAppender appender = new FileAppender("finalPropertiesFile.properties");
-                filesToAppend.put(applicationProeprtiesFile, "application proeprties file");
-                filesToAppend.put(servicePropertiesFile, "service proeprties file");
-                if (overridesFile != null) {
-                    filesToAppend.put(overridesFile, "service overrides file");
-                }
-                appender.appendAll(servicePropertiesFile, filesToAppend);
-                return Packager.createZipFile(absolutePuName, serviceDir);
-            } catch (final IOException e) {
-                throw new RestErrorException(CloudifyMessageKeys.FAILED_TO_MERGE_OVERRIDES.getName(),
-                        absolutePuName, e.getMessage());
-            }
-        }
     }
 
     private void populateEventsCache(final String deploymentId, final ProcessingUnit processingUnit) {

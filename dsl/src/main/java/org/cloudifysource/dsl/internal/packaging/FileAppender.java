@@ -32,7 +32,7 @@ import org.apache.commons.io.FileUtils;
  */
 public class FileAppender {
 	
-	public static final String LINE_SEPARATOR = System.getProperty("line.separator");
+	private static final String LINE_SEPARATOR = System.getProperty("line.separator");
 	
 	private FileWriter writer;
 	private File finalFile;

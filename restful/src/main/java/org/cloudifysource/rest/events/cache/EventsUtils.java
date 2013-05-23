@@ -3,18 +3,13 @@ package org.cloudifysource.rest.events.cache;
 import static com.gigaspaces.log.LogEntryMatchers.regex;
 
 import java.text.MessageFormat;
-import java.util.HashSet;
-import java.util.Properties;
-import java.util.Set;
 
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvent;
 import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvents;
 import org.openspaces.admin.Admin;
-import org.openspaces.admin.gsc.GridServiceContainer;
 import org.openspaces.admin.gsc.GridServiceContainers;
 import org.openspaces.admin.pu.ProcessingUnit;
-import org.openspaces.admin.pu.ProcessingUnitInstance;
 import org.openspaces.admin.zone.Zone;
 
 import com.gigaspaces.log.LogEntry;

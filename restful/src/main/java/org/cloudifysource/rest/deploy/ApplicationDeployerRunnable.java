@@ -17,7 +17,6 @@ package org.cloudifysource.rest.deploy;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -29,7 +28,6 @@ import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.internal.DSLApplicationCompilatioResult;
 import org.cloudifysource.dsl.internal.DSLReader;
 import org.cloudifysource.dsl.internal.DSLUtils;
-import org.cloudifysource.dsl.internal.packaging.FileAppender;
 import org.cloudifysource.dsl.internal.packaging.Packager;
 import org.cloudifysource.dsl.rest.request.InstallApplicationRequest;
 import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
@@ -120,23 +118,12 @@ public class ApplicationDeployerRunnable implements Runnable {
 					CloudifyConstants.SERVICE_CLOUD_CONFIGURATION_FILE_NAME);
 
 			boolean found = false;
-
+			
 			try {
-				// this will actually create an empty props file.
-				final FileAppender appender = new FileAppender("finalPropsFile.properties");
-				final LinkedHashMap<File, String> filesToAppend = new LinkedHashMap<File, String>();
 
-				// first add the application properties file. least important overrides.
 				// lookup application properties file
 				final File applicationPropertiesFile =
 						DSLReader.findDefaultDSLFileIfExists(DSLUtils.APPLICATION_PROPERTIES_FILE_NAME, appDir);
-				filesToAppend.put(applicationPropertiesFile, "Application Properties File");
-				// add the service properties file, second level overrides.
-				// lookup service properties file
-				final String propertiesFileName = DSLUtils.getPropertiesFileName(serviceDirectory,
-						DSLUtils.SERVICE_DSL_FILE_NAME_SUFFIX);
-				final File servicePropertiesFile = new File(serviceDirectory, propertiesFileName);
-				filesToAppend.put(servicePropertiesFile, "Service Properties File");
 				// lookup overrides file
 				File actualOverridesFile = overridesFile;
 				if (actualOverridesFile == null) {
@@ -144,14 +131,6 @@ public class ApplicationDeployerRunnable implements Runnable {
 					actualOverridesFile =
 							DSLReader.findDefaultDSLFileIfExists(DSLUtils.APPLICATION_OVERRIDES_FILE_NAME, appDir);
 				}
-				// add the overrides file given in the command or via REST, most important overrides.
-				filesToAppend.put(actualOverridesFile, "Overrides Properties File");
-				/*
-				 * name the merged properties file as the original properties file. this will allow all properties to be
-				 * available by anyone who parses the default properties file. (like Lifecycle scripts)
-				 */
-				appender.appendAll(servicePropertiesFile, filesToAppend);
-
 				// Pack the folder and name it absolutePuName
 				final File packedFile = Packager.pack(service, 
 													serviceDirectory, 
@@ -163,12 +142,14 @@ public class ApplicationDeployerRunnable implements Runnable {
 				final InstallServiceRequest installServiceReq = createInstallServiceRequest(packedFile);
 				final String appName = this.request.getApplicationName();
 	
-				controller.installServiceInternal(appName, serviceName, 
-												installServiceReq, 
-												packedFile, 
-												null /* service overrides file */, 
-												cloudConfiguration,
-												applicationPropertiesFile);
+				controller.installServiceInternal(
+						appName, 
+						serviceName, 
+						installServiceReq, 
+						packedFile, 
+						actualOverridesFile, 
+						cloudConfiguration,
+						applicationPropertiesFile);
 				try {
 					FileUtils.deleteDirectory(packedFile.getParentFile());
 				} catch (final IOException ioe) {

@@ -513,7 +513,7 @@ public class DeploymentsController extends BaseRestController {
 	 * 			Install service request.
 	 * @param packedFile
 	 * 			packed service file.
-	 * @param serviceOverridesFile
+	 * @param proeprtiesOverridesFile
 	 * 			A file containing overrides for service's properties file.
 	 * @param cloudConfigurationFile
 	 * 			The cloud config file.
@@ -524,10 +524,11 @@ public class DeploymentsController extends BaseRestController {
 	 * @throws RestErrorException .
 	 */
 	public InstallServiceResponse installServiceInternal(
-			final String appName, final String serviceName,
+			final String appName, 
+			final String serviceName,
 			final InstallServiceRequest request,
 			final File packedFile, 
-			final File serviceOverridesFile, 
+			final File proeprtiesOverridesFile, 
 			final File cloudConfigurationFile,
 			final File applicationPropertiesFile)
 					throws RestErrorException {
@@ -549,11 +550,16 @@ public class DeploymentsController extends BaseRestController {
 		PropertiesOverridesMerger merger = new PropertiesOverridesMerger();
 		merger.setRePackFileName(absolutePuName);
 		merger.setRePackFolder(serviceDir);
-		merger.setDestMergedPropertiesFile(servicePropertiesFile);
-		merger.addFileToMerge(applicationPropertiesFile, "application properties file")
-			  .addFileToMerge(servicePropertiesFile, "service origin properties file")
-			  .addFileToMerge(serviceOverridesFile, "service overrides file");
-		File updatedPackedFile = merger.merge(packedFile);
+		merger.setDestMergeFile(servicePropertiesFile);
+		// first add the application properties file. least important overrides.
+		merger.setApplicationPropertiesFile(applicationPropertiesFile);
+		// add the service properties file, second level overrides.
+		merger.setServicePropertiesFile(servicePropertiesFile);
+		// add the overrides file, most important overrides.
+		merger.setOverridesFile(proeprtiesOverridesFile);
+		// merge and get the updates packed file (or the original one if no merge needed).
+		merger.setOriginPackedFile(packedFile);		
+		File updatedPackedFile = merger.merge();
 		
 		// Read the service
 		final Service service = readService(workingProjectDir, request.getServiceFileName(), absolutePuName);
@@ -573,7 +579,7 @@ public class DeploymentsController extends BaseRestController {
                                service,
                                templateName,
 				               cloudOverridesFile,
-                               serviceOverridesFile,
+                               proeprtiesOverridesFile,
                                cloudConfigurationFile);
 
 		String cloudOverrides = null;

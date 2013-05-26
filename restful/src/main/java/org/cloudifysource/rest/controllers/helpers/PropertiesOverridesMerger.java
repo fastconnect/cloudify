@@ -32,23 +32,11 @@ public class PropertiesOverridesMerger {
 	private static final String DEFAULT_MERGED_FILE_NAME = "mergedPropertiesFile.properties";
 	private String rePackFileName;
 	private File rePackFolder;
-	private File destMergedPropertiesFile;
-	private final LinkedHashMap<File, String> mergeFilesAndComments = new LinkedHashMap<File, String>();
-
-	/**
-	 * Adds the file to be merged. 
-	 * The file will be merged after files that were previously added, 
-	 * meaning this file’s properties will override properties of files that were already added before.
-	 * @param file The file to merge.
-	 * @param comment The comment will be appended to the beginning of the file to merge.
-	 * @return the updated merger.
-	 */
-	public PropertiesOverridesMerger addFileToMerge(final File file, final String comment) {
-		if (file != null) {
-			mergeFilesAndComments.put(file, comment);
-		}
-		return this;
-	}
+	private File originPackedFile;
+	private File applicationPropertiesFile;
+	private File servicePropertiesFile;
+	private File overridesFile;
+	private File destMergeFile;
 
 	public void setRePackFileName(final String rePackFileName) {
 		this.rePackFileName = rePackFileName;
@@ -58,26 +46,46 @@ public class PropertiesOverridesMerger {
 		this.rePackFolder = rePackFolder;
 	}
 
-	public void setDestMergedPropertiesFile(final File destMergedPropertiesFile) {
-		this.destMergedPropertiesFile = destMergedPropertiesFile;
+	public void setOriginPackedFile(final File originPackedFile) {
+		this.originPackedFile = originPackedFile;
+	}
+	
+	public void setApplicationPropertiesFile(final File applicationPropertiesFile) {
+		this.applicationPropertiesFile = applicationPropertiesFile;
 	}
 
+	public void setServicePropertiesFile(final File servicePropertiesFile) {
+		this.servicePropertiesFile = servicePropertiesFile;
+	}
+
+	public void setOverridesFile(final File overridesFile) {
+		this.overridesFile = overridesFile;
+	}
+	
 	/**
 	 * Merge application properties file with service properties and overrides files.
-	 * @param originPackedFile The packed file before merging. 
+	 * 
 	 * @return the updated packed file or the original one if no merge needed.
 	 * @throws RestErrorException .
 	 */
-	public File merge(final File originPackedFile) throws RestErrorException {
+	public File merge() throws RestErrorException {
+		if (destMergeFile == null) {
+			throw new RestErrorException(CloudifyMessageKeys.DEST_MERGE_FILE_MISSING.getName());
+		}
 		updateDefaultValues(originPackedFile);
 		// check if merge is necessary
-		if (mergeFilesAndComments == null || mergeFilesAndComments.isEmpty()) {
+		if (applicationPropertiesFile == null && overridesFile == null) {
 			return originPackedFile;
-		} 
+		}
 		try {
 			// append application properties, service properties and overrides files
-			new FileAppender(DEFAULT_MERGED_FILE_NAME)
-			.appendAll(destMergedPropertiesFile, mergeFilesAndComments);
+			LinkedHashMap<File, String> mergeFilesAndComments = new LinkedHashMap<File, String>();
+			mergeFilesAndComments.put(applicationPropertiesFile, "application properties file");
+			mergeFilesAndComments.put(servicePropertiesFile, "service properties file");
+			mergeFilesAndComments.put(overridesFile, "properties overrides file");
+			// use FileAppender to append all files to one file and store it in the service properties file 
+			// (creates one if not exist).
+			new FileAppender(DEFAULT_MERGED_FILE_NAME).appendAll(destMergeFile, mergeFilesAndComments);
 			return Packager.createZipFile(rePackFileName, rePackFolder);
 		} catch (final IOException e) {
 			throw new RestErrorException(CloudifyMessageKeys.FAILED_TO_MERGE_OVERRIDES.getName(),
@@ -91,9 +99,12 @@ public class PropertiesOverridesMerger {
 			rePackFileName = originPackedFile.getName();
 		}
 		if (rePackFolder == null) {
-			rePackFolder = new File(CloudifyConstants.REST_FOLDER + "/");
+			rePackFolder = new File(CloudifyConstants.REST_FOLDER + File.separator);
 		}
-		
+	}
+
+	public void setDestMergeFile(final File destMergeFile) {
+		this.destMergeFile = destMergeFile;
 	}
 
 }

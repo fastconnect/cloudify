@@ -57,9 +57,11 @@ public class RestClientExecutor {
 	private static final Logger logger = Logger.getLogger(RestClient.class.getName());
 
     private static final String FORWARD_SLASH = "/";
+    private static final int GET_TRIALS_NUM = 3;
 
     private final DefaultHttpClient httpClient;
     private String urlStr;
+
 
     /**
      * C'tor.
@@ -150,8 +152,24 @@ public class RestClientExecutor {
     		final String relativeUrl,
     		final TypeReference<Response<T>> responseTypeReference) 
     				throws RestClientException {
-        final HttpGet getRequest = new HttpGet(getFullUrl(relativeUrl));
-        return executeRequest(getRequest, responseTypeReference);
+        String fullUrl = getFullUrl(relativeUrl);
+		final HttpGet getRequest = new HttpGet(fullUrl);
+        T resposne = null;
+        for (int i = 0; i < GET_TRIALS_NUM - 1; i++) { 
+        	try {
+        		resposne = executeRequest(getRequest, responseTypeReference);
+        		break;
+        	} catch (RestClientIOException e) {
+        		logger.finer("Execute get request to " + fullUrl 
+        				+ ". try number " + (i + 1) + " out of " + GET_TRIALS_NUM 
+        				+ ", error is " + e.getMessage());
+        	}
+		}
+        if (resposne == null) {
+        	logger.finer("Execute get request to " + fullUrl + " last try (try number " + GET_TRIALS_NUM + ").");
+        	return executeRequest(getRequest, responseTypeReference);
+        } 
+		return resposne;
     }
 
     /**
@@ -233,10 +251,9 @@ public class RestClientExecutor {
 			final HttpRequestBase request, 
 			final TypeReference<Response<T>> responseTypeReference) 
 					throws RestClientException {
+		HttpResponse httpResponse = null;
 		try {
-			final HttpResponse httpResponse = httpClient.execute(request);
-			checkForError(httpResponse);
-			return getResponseObject(responseTypeReference, httpResponse);
+			httpResponse = httpClient.execute(request);
 		} catch (final IOException e) {
 			throw MessagesUtils.createRestClientIOException(
 					RestClientMessageKeys.EXECUTION_FAILURE.getName(),
@@ -245,6 +262,8 @@ public class RestClientExecutor {
 		} finally {
 			request.abort();
 		}
+		checkForError(httpResponse);
+		return getResponseObject(responseTypeReference, httpResponse);
 	}
 
 	private void checkForError(

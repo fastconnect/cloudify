@@ -16,6 +16,7 @@
 package org.cloudifysource.rest;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -158,6 +159,18 @@ public class UploadControllerTest extends ControllerTest {
 		
 		File expectedToBeDeletedFolder = new File(parentPath);
 		Assert.assertFalse(expectedToBeDeletedFolder.exists());
+	}
+	
+	@Test
+	public void testUplaodFileNotExist() throws Exception {
+		File file = new File("notExist.zip");
+		try {
+			uploadFile(file);
+			Assert.fail();
+		} catch (FileNotFoundException e) {
+		
+		}
+		
 	}
 	
 	private File assertUploadedFileExists(final File expectedFile, final String uploadKey) 

@@ -74,8 +74,14 @@ public class RestClient {
         setCredentials(username, password);
     }
 
-    public void setCredentials(final String username,
-                               final String password) {
+    /**
+     * Sets the credentials.
+     * @param username .
+     * @param password .
+     */
+    public void setCredentials(
+    		final String username,
+    		final String password) {
         executor.setCredentials(username, password);
     }
 
@@ -149,24 +155,41 @@ public class RestClient {
      * @param from The starting event index.
      * @param to The last event index. passing -1 means all events (limit to 100 at a time)
      * @return The events.
-     * @throws RestClientException
+     * @throws RestClientException .
      */
-    public ServiceDeploymentEvents getServiceDeploymentEvents(final String deploymentId,
-                                                              final int from,
-                                                              final int to) throws RestClientException {
-        return executor.get(
+    public ServiceDeploymentEvents getServiceDeploymentEvents(
+    		final String deploymentId,
+    		final int from,
+    		final int to) 
+    				throws RestClientException {
+    	return executor.get(
                 versionedDeploymentControllerUrl + "/" + deploymentId + "/events/" + "?from=" + from + "&to=" + to,
-                new TypeReference<Response<ServiceDeploymentEvents>>() {});
+                new TypeReference<Response<ServiceDeploymentEvents>>() { });
     }
 
-    public ServiceDescription getServiceDescription(final String appName,
-                                                    final String serviceName) throws RestClientException {
-        return executor.get(versionedDeploymentControllerUrl + "/" + appName + "/service/" + serviceName + "/description",
-                new TypeReference<Response<ServiceDescription>>() {});
+    /**
+     * 
+     * @param appName .
+     * @param serviceName .
+     * @return ServiceDescription.
+     * @throws RestClientException .
+     */
+    public ServiceDescription getServiceDescription(
+    		final String appName,
+    		final String serviceName) 
+    				throws RestClientException {
+        return executor.get(versionedDeploymentControllerUrl + "/" + appName 
+        		+ "/service/" + serviceName + "/description",
+                new TypeReference<Response<ServiceDescription>>() { });
     }
 
-    public void connect() throws RestClientException {
-        executor.get(versionedDeploymentControllerUrl + "/testrest", new TypeReference<Response<Void>>() {});
+    /**
+     * 
+     * @throws RestClientException .
+     */
+    public void connect() 
+    		throws RestClientException {
+        executor.get(versionedDeploymentControllerUrl + "/testrest", new TypeReference<Response<Void>>() { });
     }
         
         

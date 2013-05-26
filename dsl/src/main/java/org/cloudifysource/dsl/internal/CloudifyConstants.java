@@ -366,7 +366,7 @@ public final class CloudifyConstants {
 	/*
 	 * Request and response keywords
 	 */
-	public static final String REQ_PARAM_TIMEOUT_IN_MINUTES = "timeout";
+	public static final String REQ_PARAM_TIMEOUT_IN_MINUTES = "timeoutInMinutes";
 
 
 	/**

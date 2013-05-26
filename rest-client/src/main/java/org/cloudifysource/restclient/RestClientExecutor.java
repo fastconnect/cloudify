@@ -181,7 +181,24 @@ public class RestClientExecutor {
     	}
     	
     	return executeRequest(deleteRequest, responseTypeReference);
-}
+    }
+    
+    /**
+    *
+    * @param relativeUrl
+    *          The URL to send the delete request to.
+    * @param responseTypeReference
+    *          The type reference of the response.
+    * @param <T> The type of the response.
+    * @return The response object from the REST server.
+    * @throws RestClientException .
+    */
+   public <T> T delete(final String relativeUrl, final TypeReference<Response<T>> responseTypeReference) 
+		   throws RestClientException {
+   	
+   	final HttpDelete deleteRequest = new HttpDelete(getFullUrl(relativeUrl));
+   	return executeRequest(deleteRequest, responseTypeReference);
+   }
 
 	/**
 	*

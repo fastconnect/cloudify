@@ -13,6 +13,29 @@
 package org.cloudifysource.rest.controllers;
 
 
+import static org.cloudifysource.rest.ResponseConstants.FAILED_TO_LOCATE_LUS;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import javax.annotation.PostConstruct;
+
 import net.jini.core.discovery.LookupLocator;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
@@ -124,6 +147,7 @@ public class DeploymentsController extends BaseRestController {
     private static final int REFRESH_INTERVAL_MILLIS = 500;
     private EventsCache eventsCache;
     private ControllerHelper controllerHelper;
+    private final ExecutorService serviceUndeployExecutor = Executors.newFixedThreadPool(10);
 
     @GigaSpaceContext(name = "gigaSpace")
     protected GigaSpace gigaSpace;
@@ -656,14 +680,23 @@ public class DeploymentsController extends BaseRestController {
 
         // validations
         validateUninstallService();
-
-        String deploymentId = UUID.randomUUID().toString();
-        populateEventsCache(deploymentId, processingUnit);
-        processingUnit.undeployAndWait(timeoutInMinutes, TimeUnit.MINUTES);
+        
+		final FutureTask<Boolean> undeployTask = new FutureTask<Boolean>(
+				new Callable<Boolean>() {
+					@Override
+					public Boolean call() throws Exception {
+						boolean result = processingUnit.undeployAndWait(timeoutInMinutes,
+								TimeUnit.MINUTES);
+						deleteServiceAttributes(appName, serviceName);
+						return result;
+					}
+				});
+		serviceUndeployExecutor.execute(undeployTask);        
+        
         deleteServiceAttributes(appName, serviceName);
 
         final UninstallServiceResponse uninstallServiceResponse = new UninstallServiceResponse();
-        uninstallServiceResponse.setDeploymentID(deploymentId.toString());
+        uninstallServiceResponse.setDeploymentID(UUID.randomUUID().toString());
         return uninstallServiceResponse;
     }
 

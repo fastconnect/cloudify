@@ -147,6 +147,21 @@ public class RestClient {
         
         return executor.delete(url, requestParams, new TypeReference<Response<UninstallServiceResponse>>() { });
     }
+    
+	/**
+	 * 
+	 * @param applicationName 
+	 * 			The application name.
+	 * @return 
+	 * 		an uninstall application response.
+	 * 
+	 * @throws RestClientException .
+	 */
+    public UninstallApplicationResponse uninstallApplication(final String applicationName) throws RestClientException {
+        final String url = versionedDeploymentControllerUrl + applicationName;
+        Map<String, Object> requestParams = new HashMap<String, Object>();
+        return executor.delete(url, requestParams, new TypeReference<Response<UninstallApplicationResponse>>() { });
+    }
 
 	/**
 	 * Uploads a file to the repository.
@@ -212,7 +227,7 @@ public class RestClient {
      */
     public void connect() 
     		throws RestClientException {
-        executor.get(versionedDeploymentControllerUrl + "/testrest", new TypeReference<Response<Void>>() { });
+        executor.get(versionedDeploymentControllerUrl + "testrest", new TypeReference<Response<Void>>() { });
     }
         
         

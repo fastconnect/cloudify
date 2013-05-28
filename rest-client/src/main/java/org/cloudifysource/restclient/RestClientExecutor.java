@@ -38,6 +38,7 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.entity.mime.MultipartEntity;
 import org.apache.http.entity.mime.content.FileBody;
 import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.protocol.HTTP;
 import org.cloudifysource.dsl.rest.response.Response;
 import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.cloudifysource.restclient.exceptions.RestClientHttpException;
@@ -57,6 +58,7 @@ public class RestClientExecutor {
 	private static final Logger logger = Logger.getLogger(RestClient.class.getName());
 
     private static final String FORWARD_SLASH = "/";
+    private static final int DEFAULT_TRIALS_NUM = 1;
     private static final int GET_TRIALS_NUM = 3;
 
     private final DefaultHttpClient httpClient;
@@ -154,22 +156,7 @@ public class RestClientExecutor {
     				throws RestClientException {
         String fullUrl = getFullUrl(relativeUrl);
 		final HttpGet getRequest = new HttpGet(fullUrl);
-        T resposne = null;
-        for (int i = 0; i < GET_TRIALS_NUM - 1; i++) { 
-        	try {
-        		resposne = executeRequest(getRequest, responseTypeReference);
-        		break;
-        	} catch (RestClientIOException e) {
-        		logger.finer("Execute get request to " + fullUrl 
-        				+ ". try number " + (i + 1) + " out of " + GET_TRIALS_NUM 
-        				+ ", error is " + e.getMessage());
-        	}
-		}
-        if (resposne == null) {
-        	logger.finer("Execute get request to " + fullUrl + " last try (try number " + GET_TRIALS_NUM + ").");
-        	return executeRequest(getRequest, responseTypeReference);
-        } 
-		return resposne;
+		return executeRequest(getRequest, responseTypeReference);
     }
 
     /**
@@ -247,24 +234,41 @@ public class RestClientExecutor {
     	}
     }
 
-	private <T> T executeRequest(
-			final HttpRequestBase request, 
-			final TypeReference<Response<T>> responseTypeReference) 
-					throws RestClientException {
-		HttpResponse httpResponse = null;
-		try {
-			httpResponse = httpClient.execute(request);
-		} catch (final IOException e) {
-			throw MessagesUtils.createRestClientIOException(
-					RestClientMessageKeys.EXECUTION_FAILURE.getName(),
-					e,
-					request.getURI());
-		} finally {
-			request.abort();
-		}
-		checkForError(httpResponse);
-		return getResponseObject(responseTypeReference, httpResponse);
-	}
+    private <T> T executeRequest(
+    		final HttpRequestBase request, 
+    		final TypeReference<Response<T>> responseTypeReference) 
+    				throws RestClientException {
+    	HttpResponse httpResponse = null;
+    	try {
+    		IOException lastException = null;
+    		int numOfTrials = DEFAULT_TRIALS_NUM;
+    		if (HttpGet.METHOD_NAME.equals(request.getMethod())) {
+    			numOfTrials = GET_TRIALS_NUM;
+    		}
+    		for (int i = 0; i < numOfTrials; i++) {
+    			try {
+    				httpResponse = httpClient.execute(request);
+    				lastException = null;
+    				break;
+    			} catch (IOException e) {
+    				logger.finer("Execute get request to " + request.getURI() 
+    						+ ". try number " + (i + 1) + " out of " + GET_TRIALS_NUM 
+    						+ ", error is " + e.getMessage());
+    				lastException = e;
+    			}
+    		} 
+    		if (lastException != null) {
+    			throw MessagesUtils.createRestClientIOException(
+    					RestClientMessageKeys.EXECUTION_FAILURE.getName(),
+    					lastException,
+    					request.getURI());
+    		}
+    		checkForError(httpResponse);
+    		return getResponseObject(responseTypeReference, httpResponse);
+    	} finally {
+    		request.abort();
+    	}
+    }
 
 	private void checkForError(
 			final HttpResponse response) 

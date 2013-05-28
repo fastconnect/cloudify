@@ -44,7 +44,9 @@ public class ValidateTemplate implements InstallServiceValidator, InstallApplica
 		final Application application = validationContext.getApplication();
 		final Cloud cloud = validationContext.getCloud();
 		for (Service service : application.getServices()) {
-			validateTemplate(service.getCompute().getTemplate(), cloud);
+			if (service.getCompute() != null) {
+				validateTemplate(service.getCompute().getTemplate(), cloud);
+			}
 		}
 	}
 

@@ -15,8 +15,6 @@
  *******************************************************************************/
 package org.cloudifysource.rest.validators;
 
-import org.apache.commons.lang.StringUtils;
-import org.cloudifysource.dsl.internal.CloudifyMessageKeys;
 import org.cloudifysource.dsl.internal.DSLErrorMessageException;
 import org.cloudifysource.dsl.internal.debug.DebugUtils;
 import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
@@ -33,15 +31,16 @@ public class ValidateInstallServiceRequest implements InstallServiceValidator {
 
 	@Override
 	public void validate(final InstallServiceValidationContext validationContext) throws RestErrorException {
-		String absolutePuName = validationContext.getAbsolutePuName();
+//		String absolutePuName = validationContext.getAbsolutePuName();
 		InstallServiceRequest request = validationContext.getRequest();
 		if (request == null) {
 			return;
 		}
-		String uploadKey = request.getServiceFolderUploadKey();
-		if (StringUtils.isBlank(uploadKey)) {
-			throw new RestErrorException(CloudifyMessageKeys.UPLOAD_KEY_PARAMETER_MISSING.getName(), absolutePuName);
-		}
+		//this validation throws exception on application install. already validated in getFromRepo
+//		String uploadKey = request.getServiceFolderUploadKey();
+//		if (StringUtils.isBlank(uploadKey)) {
+//			throw new RestErrorException(CloudifyMessageKeys.UPLOAD_KEY_PARAMETER_MISSING.getName(), absolutePuName);
+//		}
 
 		boolean debugAll = request.isDebugAll();
 		String debugEvents = request.getDebugEvents();

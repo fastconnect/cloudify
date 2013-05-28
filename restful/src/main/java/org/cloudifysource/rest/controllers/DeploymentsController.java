@@ -37,6 +37,7 @@ import net.jini.core.discovery.LookupLocator;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
+import org.cloudifysource.dsl.Application;
 import org.cloudifysource.dsl.ComputeDetails;
 import org.cloudifysource.dsl.Service;
 import org.cloudifysource.dsl.cloud.Cloud;
@@ -107,7 +108,6 @@ import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.traverse.TopologicalOrderIterator;
 import org.openspaces.admin.Admin;
 import org.openspaces.admin.AdminException;
-import org.openspaces.admin.application.Application;
 import org.openspaces.admin.gsm.GridServiceManager;
 import org.openspaces.admin.internal.admin.InternalAdmin;
 import org.openspaces.admin.pu.ProcessingUnit;
@@ -400,14 +400,14 @@ public class DeploymentsController extends BaseRestController {
 	 * @throws RestErrorException .
 	 * 			
 	 */
-	@RequestMapping(value = "/{name}", method = RequestMethod.POST)
+	@RequestMapping(value = "/{appName}", method = RequestMethod.POST)
 	@PreAuthorize("isFullyAuthenticated() and hasPermission(#authGroups, 'deploy')")
 	public InstallApplicationResponse installApplication(
             @PathVariable final String appName,
 			@RequestBody final InstallApplicationRequest request) 
 					throws RestErrorException {
 		
-		validateInstallApplication();
+		
 		
 		//get the application file
 		final String applcationFileUploadKey = request.getApplcationFileUploadKey();
@@ -430,7 +430,7 @@ public class DeploymentsController extends BaseRestController {
 			throw new RestErrorException("Failed reading application file."
 					+ " Reason: " + e.getMessage(), e);
 		}
-		
+		validateInstallApplication(result.getApplication());
 		// update effective authGroups
 		String effectiveAuthGroups = getEffectiveAuthGroups(request.getAuthGroups());
 		request.setAuthGroups(effectiveAuthGroups);
@@ -1155,7 +1155,7 @@ public class DeploymentsController extends BaseRestController {
     	
 		final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		// Check that Application exists
-		final Application app = this.restConfig.getAdmin().getApplications().waitFor(
+		final org.openspaces.admin.application.Application app = this.restConfig.getAdmin().getApplications().waitFor(
 				appName, 10, TimeUnit.SECONDS);
 
 		final ProcessingUnit[] pus = app.getProcessingUnits()
@@ -1541,6 +1541,7 @@ public class DeploymentsController extends BaseRestController {
     		final String serviceFileName, 
     		final String absolutePuName)
     				throws RestErrorException {
+    	logger.info("Working proj dir: " + workingProjectDir.getAbsolutePath() + " service name: " + serviceFileName + " absolutPuName: " + absolutePuName);
         DSLServiceCompilationResult result;
         try {
             if (serviceFileName != null) {
@@ -1551,7 +1552,7 @@ public class DeploymentsController extends BaseRestController {
             }
         } catch (final Exception e) {
             throw new RestErrorException(CloudifyMessageKeys.FAILED_TO_READ_SERVICE.getName(),
-                    absolutePuName, e.getMessage());
+                    absolutePuName, e);
         }
         return result.getService();
     }
@@ -1561,21 +1562,23 @@ public class DeploymentsController extends BaseRestController {
     		final String absolutePuName)
     				throws RestErrorException {
         byte[] serviceCloudConfigurationContents = null;
-        if (serviceCloudConfigurationFile != null) {
+        if (serviceCloudConfigurationFile != null && serviceCloudConfigurationFile.exists()) {
             try {
+            	logger.info("File location is " + serviceCloudConfigurationFile.getAbsolutePath());
                 serviceCloudConfigurationContents = FileUtils.readFileToByteArray(serviceCloudConfigurationFile);
             } catch (final IOException e) {
                 throw new RestErrorException(CloudifyMessageKeys.FAILED_TO_READ_SERVICE_CLOUD_CONFIGURATION.getName(),
-                        absolutePuName, e.getMessage());
+                        absolutePuName, e.getMessage(), e);
             }
         }
         return serviceCloudConfigurationContents;
     }
 
-    private void validateInstallApplication()
+    private void validateInstallApplication(final Application application)
             throws RestErrorException {
         final InstallApplicationValidationContext validationContext =
                 new InstallApplicationValidationContext();
+        validationContext.setApplication(application);
         validationContext.setCloud(restConfig.getCloud());
         for (final InstallApplicationValidator validator : installApplicationValidators) {
             validator.validate(validationContext);

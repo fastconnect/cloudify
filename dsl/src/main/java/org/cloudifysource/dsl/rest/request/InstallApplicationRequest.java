@@ -15,7 +15,8 @@
  *******************************************************************************/
 package org.cloudifysource.dsl.rest.request;
 
-import java.util.concurrent.TimeUnit;
+import org.cloudifysource.dsl.internal.debug.DebugModes;
+
 
 /**
  * POJO representation of an installApplication command request via the REST gateway.
@@ -39,14 +40,12 @@ public class InstallApplicationRequest {
 	
 	private boolean isDebugAll;
 	
-	private String debugModeString;
+	private String debugMode = DebugModes.INSTEAD.getName();
 	
 	private String debugEvents;
 	
-	private int timeout;
+	private int timeoutInMillis;
 	
-	private TimeUnit timeUnit;
-
 	public String getApplcationFileUploadKey() {
 		return applcationFileUploadKey;
 	}
@@ -104,35 +103,27 @@ public class InstallApplicationRequest {
 		this.isDebugAll = isDebugAll;
 	}
 
-	public String getDebugModeString() {
-		return debugModeString;
+	public String getDebugMode() {
+		return debugMode;
 	}
 
-	public void setDebugModeString(final String debugModeString) {
-		this.debugModeString = debugModeString;
+	public void setDebugMode(final String debugMode) {
+		this.debugMode = debugMode;
 	}
 
 	public String getDebugEvents() {
 		return debugEvents;
 	}
 
-	public void setDebugString(final String debugEvents) {
+	public void setdebugEvents(final String debugEvents) {
 		this.debugEvents = debugEvents;
 	}
 
-	public int getTimeout() {
-		return timeout;
+	public int getTimeoutInMillis() {
+		return timeoutInMillis;
 	}
 
-	public void setTimeout(final int timeout) {
-		this.timeout = timeout;
-	}
-
-	public TimeUnit getTimeUnit() {
-		return timeUnit;
-	}
-
-	public void setTimeUnit(final TimeUnit timeUnit) {
-		this.timeUnit = timeUnit;
+	public void setTimeoutInMillis(final int timeout) {
+		this.timeoutInMillis = timeout;
 	}
 }

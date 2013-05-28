@@ -214,9 +214,9 @@ public class ApplicationDeployerRunnable implements Runnable {
 		installServiceReq.setAuthGroups(this.request.getAuthGroups());
 		installServiceReq.setDebugAll(this.request.isDebugAll());
 		installServiceReq.setDebugEvents(this.request.getDebugEvents());
-		installServiceReq.setDebugMode(this.request.getDebugModeString());
+		installServiceReq.setDebugMode(this.request.getDebugMode());
 		installServiceReq.setSelfHealing(this.request.isSelfHealing());
-		installServiceReq.setServiceFileName(packedFile.getName());
+		installServiceReq.setServiceFileName(null);
 		installServiceReq.setTimeoutInMillis(0);
 
 		return installServiceReq;

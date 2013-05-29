@@ -83,7 +83,12 @@ public class ApplicationResolver implements NameAndPackedFileResolver {
 		return this.packedFile;
 	}
 
-	private void init() throws CLIStatusException, 
+    @Override
+    public int getPlannedNumberOfInstances() throws CLIStatusException {
+        return 0;  //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    private void init() throws CLIStatusException,
 				IOException, PackagingException, DSLException {
 		final RecipePathResolver pathResolver = new RecipePathResolver();
 		if (pathResolver.resolveApplication(applicationDir)) {

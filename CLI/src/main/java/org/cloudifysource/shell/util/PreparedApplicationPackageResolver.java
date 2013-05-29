@@ -64,8 +64,13 @@ public class PreparedApplicationPackageResolver implements NameAndPackedFileReso
 		// TODO Auto-generated method stub
 		return null;
 	}
-	
-	private void init() throws IOException, DSLException {
+
+    @Override
+    public int getPlannedNumberOfInstances() throws CLIStatusException {
+        return 0;  //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    private void init() throws IOException, DSLException {
 		
             final File applicationFolder = ServiceReader.extractProjectFile(packedFile);
             final File applicationFile = DSLReader

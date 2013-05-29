@@ -32,6 +32,7 @@ import org.cloudifysource.dsl.utils.ServiceUtils;
 import org.cloudifysource.rest.RestConfiguration;
 import org.cloudifysource.rest.controllers.helpers.ControllerHelper;
 import org.cloudifysource.rest.controllers.helpers.PropertiesOverridesMerger;
+import org.cloudifysource.rest.deploy.*;
 import org.cloudifysource.rest.events.cache.EventsCache;
 import org.cloudifysource.rest.events.cache.EventsCacheKey;
 import org.cloudifysource.rest.events.cache.EventsCacheValue;
@@ -604,7 +605,7 @@ public class DeploymentsController extends BaseRestController {
 		deployConfig.setService(service);
 		
 		//create elastic deployment object. 
-		final ElasticProcessingUnitDeploymentFactory fac = 
+		final ElasticProcessingUnitDeploymentFactory fac =
 						new ElasticProcessingUnitDeploymentFactoryImpl();
 		final ElasticDeploymentTopology deployment;
 		try {

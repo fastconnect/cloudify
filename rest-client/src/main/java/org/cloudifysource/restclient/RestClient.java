@@ -159,7 +159,7 @@ public class RestClient {
 	 */
     public UninstallApplicationResponse uninstallApplication(final String applicationName) throws RestClientException {
         final String url = versionedDeploymentControllerUrl + applicationName;
-        Map<String, Object> requestParams = new HashMap<String, Object>();
+        Map<String, String> requestParams = new HashMap<String, String>();
         return executor.delete(url, requestParams, new TypeReference<Response<UninstallApplicationResponse>>() { });
     }
 

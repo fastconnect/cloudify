@@ -19,6 +19,7 @@ package org.cloudifysource.restclient;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -34,6 +35,7 @@ import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpRequestBase;
+import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.entity.mime.MultipartEntity;
 import org.apache.http.entity.mime.content.FileBody;
@@ -170,16 +172,26 @@ public class RestClientExecutor {
      * @return The response object from the REST server.
      * @throws RestClientException .
      */
-    public <T> T delete(final String relativeUrl, final Map<String, Object> params,
+    public <T> T delete(final String relativeUrl, final Map<String, String> params,
             final TypeReference<Response<T>> responseTypeReference) throws RestClientException {
     	
-    	final HttpDelete deleteRequest = new HttpDelete(getFullUrl(relativeUrl));
+    	URIBuilder builder;
+    	
+    	try {
+			builder = new URIBuilder(getFullUrl(relativeUrl));
+		} catch (URISyntaxException e) {
+			throw MessagesUtils.createRestClientException(RestClientMessageKeys.INVALID_URL.getName(), e,
+					getFullUrl(relativeUrl));
+		}
+
     	if (params != null) {
-    		for (final Map.Entry<String, Object> entry : params.entrySet()) {
-    			deleteRequest.getParams().setParameter(entry.getKey(), entry.getValue());
+    		for (final Map.Entry<String, String> entry : params.entrySet()) {
+    			builder.addParameter(entry.getKey(), entry.getValue());
     		}
     	}
     	
+    	final HttpDelete deleteRequest = new HttpDelete(builder.toString());
+    	    	
     	return executeRequest(deleteRequest, responseTypeReference);
     }
     

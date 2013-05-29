@@ -53,7 +53,11 @@ public enum RestClientMessageKeys {
 	/**
 	 * HTTP failure message.
 	 */
-	HTTP_FAILURE("http_failure");
+	HTTP_FAILURE("http_failure"),
+	/**
+	 * Invalid URL.
+	 */
+	INVALID_URL("invalid_url");
 	
 	private final String name;
 	

@@ -142,8 +142,8 @@ public class RestClient {
     		final int timeoutInMinutes) throws RestClientException {
     	
         final String url = versionedDeploymentControllerUrl + applicationName + "/services/" + serviceName;
-        Map<String, Object> requestParams = new HashMap<String, Object>();
-        requestParams.put(CloudifyConstants.REQ_PARAM_TIMEOUT_IN_MINUTES, new Integer(timeoutInMinutes));
+        Map<String, String> requestParams = new HashMap<String, String>();
+        requestParams.put(CloudifyConstants.REQ_PARAM_TIMEOUT_IN_MINUTES, String.valueOf(timeoutInMinutes));
         
         return executor.delete(url, requestParams, new TypeReference<Response<UninstallServiceResponse>>() { });
     }

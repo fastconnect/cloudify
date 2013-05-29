@@ -665,11 +665,12 @@ public class DeploymentsController extends BaseRestController {
     public UninstallServiceResponse uninstallService(
     		@PathVariable final String appName,
     		@PathVariable final String serviceName,
-    		@RequestParam(required = false, defaultValue = "10") final Integer timeoutInMinutes)
+    		@RequestParam(required = false, defaultValue = "5") final Integer timeoutInMinutes)
     				throws ResourceNotFoundException, RestErrorException {
 
         final ProcessingUnit processingUnit = controllerHelper.getService(appName, serviceName);
-
+        String undeploymentId = UUID.randomUUID().toString();
+        
         if (permissionEvaluator != null) {
             final String puAuthGroups = processingUnit.getBeanLevelProperties().getContextProperties().
                     getProperty(CloudifyConstants.CONTEXT_PROPERTY_AUTH_GROUPS);
@@ -680,6 +681,8 @@ public class DeploymentsController extends BaseRestController {
 
         // validations
         validateUninstallService();
+        
+        populateEventsCache(undeploymentId, processingUnit);
         
 		final FutureTask<Boolean> undeployTask = new FutureTask<Boolean>(
 				new Callable<Boolean>() {
@@ -693,10 +696,8 @@ public class DeploymentsController extends BaseRestController {
 				});
 		serviceUndeployExecutor.execute(undeployTask);        
         
-        deleteServiceAttributes(appName, serviceName);
-
         final UninstallServiceResponse uninstallServiceResponse = new UninstallServiceResponse();
-        uninstallServiceResponse.setDeploymentID(UUID.randomUUID().toString());
+        uninstallServiceResponse.setDeploymentID(undeploymentId);
         return uninstallServiceResponse;
     }
 
@@ -1061,10 +1062,10 @@ public class DeploymentsController extends BaseRestController {
 
         EventsCacheKey key = new EventsCacheKey(operationId);
         logger.fine(EventsUtils.getThreadId() 
-        		+ "Received request for events [" + from + "]-[" + to + "] . key : " + key);
+        		+ " Received request for events [" + from + "]-[" + to + "] . key : " + key);
         EventsCacheValue value;
         try {
-            logger.fine(EventsUtils.getThreadId() + "Retrieving events from cache for key : " + key);
+            logger.fine(EventsUtils.getThreadId() + " Retrieving events from cache for key : " + key);
             value = eventsCache.get(key);
         } catch (final ExecutionException e) {
             throw e.getCause();
@@ -1076,12 +1077,12 @@ public class DeploymentsController extends BaseRestController {
                 // enforce time restriction on refresh operations.
                 long now = System.currentTimeMillis();
                 if (now - value.getLastRefreshedTimestamp() > REFRESH_INTERVAL_MILLIS) {
-                    logger.fine(EventsUtils.getThreadId() + "Some events are missing from cache. Refreshing...");
+                    logger.fine(EventsUtils.getThreadId() + " Some events are missing from cache. Refreshing...");
                     // refresh the cache for this deployment.
                     eventsCache.refresh(key);
                 }
             } else {
-                logger.fine(EventsUtils.getThreadId() + "Found all desired events in cache.");
+                logger.fine(EventsUtils.getThreadId() + " Found all relevant events in cache.");
             }
 
             // return the events. this MAY or MAY NOT be the complete set of events requested.

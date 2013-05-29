@@ -19,8 +19,13 @@ import org.openspaces.admin.gsc.GridServiceContainer;
  * User: elip
  * Date: 5/20/13
  * Time: 2:45 PM
+ * <br></br>
+ * Key for log entry matchers. <br></br>
  *
- * Key for log entry matchers.
+ * container - the GridServiceContainer this matcher will match logs from. <br></br>
+ * operationId - the operation if this matcher was deidcated to. <br></br>
+ * isUndeploy - whther or not the operation was a deploy or undeploy operation.
+ * this is important since we need to create different matchers for different operation types<br></br>
  */
 public class LogEntryMatcherProviderKey {
 
@@ -32,7 +37,7 @@ public class LogEntryMatcherProviderKey {
         return container;
     }
 
-    public void setContainer(GridServiceContainer container) {
+    public void setContainer(final GridServiceContainer container) {
         this.container = container;
     }
 
@@ -40,7 +45,7 @@ public class LogEntryMatcherProviderKey {
         return operationId;
     }
 
-    public void setOperationId(String operationId) {
+    public void setOperationId(final String operationId) {
         this.operationId = operationId;
     }
 
@@ -48,12 +53,12 @@ public class LogEntryMatcherProviderKey {
         return isUndeploy;
     }
 
-    public void setUndeploy(boolean undeploy) {
+    public void setUndeploy(final boolean undeploy) {
         isUndeploy = undeploy;
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
@@ -76,10 +81,8 @@ public class LogEntryMatcherProviderKey {
 
     @Override
     public String toString() {
-        return "LogEntryMatcherProviderKey{" +
-                "container=" + container +
-                ", operationId='" + operationId + '\'' +
-                ", isUndeploy=" + isUndeploy +
-                '}';
+        return "LogEntryMatcherProviderKey{" + "container=" + container
+                + ", operationId='" + operationId + '\''
+                + ", isUndeploy=" + isUndeploy + '}';
     }
 }

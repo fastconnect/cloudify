@@ -58,6 +58,14 @@ public class PreparedPackageResolver implements NameAndPackedFileResolver {
         return zipFile;
     }
 
+    @Override
+    public int getPlannedNumberOfInstances() throws CLIStatusException {
+        if (!initialized) {
+            init();
+        }
+        return service.getNumInstances();
+    }
+
     private void init() throws CLIStatusException  {
         try {
             this.service = ServiceReader.readServiceFromZip(zipFile);

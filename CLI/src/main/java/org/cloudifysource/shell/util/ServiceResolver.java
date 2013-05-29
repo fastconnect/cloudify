@@ -75,6 +75,14 @@ public class ServiceResolver implements NameAndPackedFileResolver {
         }
     }
 
+    @Override
+    public int getPlannedNumberOfInstances() throws CLIStatusException {
+        if (!initialized) {
+            init();
+        }
+        return service.getNumInstances();
+    }
+
     private void init() throws CLIStatusException {
         if (serviceFileName != null) {
             // use overriden service file if defined.

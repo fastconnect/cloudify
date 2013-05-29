@@ -15,14 +15,16 @@ package org.cloudifysource.rest.events.cache;
 import com.gigaspaces.log.LogEntry;
 import com.gigaspaces.log.LogEntryMatcher;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
-import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvent;
-import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvents;
+import org.cloudifysource.dsl.rest.response.DeploymentEvent;
+import org.cloudifysource.dsl.rest.response.DeploymentEvents;
 import org.openspaces.admin.Admin;
-import org.openspaces.admin.gsc.GridServiceContainers;
+import org.openspaces.admin.gsc.GridServiceContainer;
 import org.openspaces.admin.pu.ProcessingUnit;
 import org.openspaces.admin.zone.Zone;
 
 import java.text.MessageFormat;
+import java.util.HashSet;
+import java.util.Set;
 
 import static com.gigaspaces.log.LogEntryMatchers.regex;
 
@@ -51,13 +53,13 @@ public final class EventsUtils {
      * @param hostAddress The host address.
      * @return The event.
      */
-    public static ServiceDeploymentEvent logToEvent(final LogEntry logEntry,
+    public static DeploymentEvent logToEvent(final LogEntry logEntry,
                                                      final String hostName,
                                                      final String hostAddress) {
         String text = logEntry.getText();
         String textWithoutLogger = text.split(" - ")[1];
         String actualEvent = textWithoutLogger.substring(textWithoutLogger.indexOf(".") + 1);
-        ServiceDeploymentEvent event = new ServiceDeploymentEvent();
+        DeploymentEvent event = new DeploymentEvent();
         event.setDescription("[" + hostName + "/" + hostAddress + "] - " + actualEvent);
         return event;
     }
@@ -136,12 +138,16 @@ public final class EventsUtils {
      * @param pu The processing unit.
      * @return The containers.
      */
-    public static GridServiceContainers getContainersForDeployment(final ProcessingUnit pu) {
+    public static Set<GridServiceContainer> getContainersForProcessingUnit(final ProcessingUnit pu) {
         Zone zone = pu.getAdmin().getZones().getByName(pu.getName());
         if (zone == null) {
             return null;
         } else {
-            return zone.getGridServiceContainers();
+            Set<GridServiceContainer> containers = new HashSet<GridServiceContainer>();
+            for (GridServiceContainer container : zone.getGridServiceContainers()) {
+                containers.add(container);
+            }
+            return containers;
         }
     }
 
@@ -151,16 +157,21 @@ public final class EventsUtils {
      * @param admin The admin object for admin api access.
      * @return The containers.
      */
-    public static GridServiceContainers getContainersForDeployment(final String deploymentId, final Admin admin) {
+    public static Set<GridServiceContainer> getContainersForDeployment(final String deploymentId, final Admin admin) {
 
+        Set<ProcessingUnit> processingUnitsForDeploymentId = new HashSet<ProcessingUnit>();
+        Set<GridServiceContainer> containers = new HashSet<GridServiceContainer>();
         for (ProcessingUnit pu : admin.getProcessingUnits()) {
             String puDeploymentId = (String) pu.getBeanLevelProperties().getContextProperties()
                     .get(CloudifyConstants.CONTEXT_PROPERTY_DEPLOYMENT_ID);
             if (deploymentId.equals(puDeploymentId)) {
-                return getContainersForDeployment(pu);
+                processingUnitsForDeploymentId.add(pu);
             }
         }
-        return null;
+        for (ProcessingUnit pu : processingUnitsForDeploymentId) {
+            containers.addAll(getContainersForProcessingUnit(pu));
+        }
+        return containers;
     }
 
     /**
@@ -169,16 +180,21 @@ public final class EventsUtils {
      * @param admin The admin object for admin api access.
      * @return The containers.
      */
-    public static GridServiceContainers getContainersForUnDeployment(final String unDeploymentId, final Admin admin) {
+    public static Set<GridServiceContainer> getContainersForUnDeployment(final String unDeploymentId, final Admin admin) {
 
+        Set<ProcessingUnit> processingUnitsForUnDeploymentId = new HashSet<ProcessingUnit>();
+        Set<GridServiceContainer> containers = new HashSet<GridServiceContainer>();
         for (ProcessingUnit pu : admin.getProcessingUnits()) {
-            String puDeploymentId = (String) pu.getBeanLevelProperties().getContextProperties()
+            String puUnDeploymentId = (String) pu.getBeanLevelProperties().getContextProperties()
                     .get(CloudifyConstants.CONTEXT_PROPERTY_UNDEPLOYMENT_ID);
-            if (unDeploymentId.equals(puDeploymentId)) {
-                return getContainersForDeployment(pu);
+            if (unDeploymentId.equals(puUnDeploymentId)) {
+                processingUnitsForUnDeploymentId.add(pu);
             }
         }
-        return null;
+        for (ProcessingUnit pu : processingUnitsForUnDeploymentId) {
+            containers.addAll(getContainersForProcessingUnit(pu));
+        }
+        return containers;
     }
 
 
@@ -189,13 +205,13 @@ public final class EventsUtils {
      * @param to The end index.
      * @return The requested events.
      */
-    public static ServiceDeploymentEvents extractDesiredEvents(final ServiceDeploymentEvents events,
+    public static DeploymentEvents extractDesiredEvents(final DeploymentEvents events,
                                                          final int from,
                                                          final int to) {
 
-        ServiceDeploymentEvents desiredEvents = new ServiceDeploymentEvents();
+        DeploymentEvents desiredEvents = new DeploymentEvents();
         for (int i = from; i <= to; i++) {
-            ServiceDeploymentEvent serviceDeploymentEvent = events.getEvents().get(i);
+            DeploymentEvent serviceDeploymentEvent = events.getEvents().get(i);
             if (serviceDeploymentEvent != null) {
                 desiredEvents.getEvents().put(i, serviceDeploymentEvent);
             }
@@ -211,7 +227,7 @@ public final class EventsUtils {
      * @param to The end index.
      * @return true if all events in the range are present. false otherwise.
      */
-    public static boolean eventsPresent(final ServiceDeploymentEvents events,
+    public static boolean eventsPresent(final DeploymentEvents events,
                                   final int from,
                                   final int to) {
 

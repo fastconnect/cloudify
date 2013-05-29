@@ -70,13 +70,9 @@ public class ApplicationDescriptionFactory {
 	 * @throws RestErrorException 
 	 * 		if application is not found.
 	 */
-	public ApplicationDescription getApplicationDescription(final String applicationName) 
-			throws RestErrorException {
-		
-		Application application = admin.getApplications().waitFor(applicationName, 5, TimeUnit.SECONDS);
-		if (application == null) {
-			throw new RestErrorException(FAILED_TO_LOCATE_APP, applicationName);
-		}
+	public ApplicationDescription getApplicationDescription(final String applicationName) {
+
+		Application application = admin.getApplications().getApplication(applicationName);
 		return getApplicationDescription(application);
 	}
 	
@@ -89,8 +85,7 @@ public class ApplicationDescriptionFactory {
 	 * @throws RestErrorException 
 	 * 		if application is not found.
 	 */
-	public ApplicationDescription getApplicationDescription(final Application application) 
-			throws RestErrorException {
+	public ApplicationDescription getApplicationDescription(final Application application) {
 		
 		String applicationName = application.getName();
 		List<ServiceDescription> serviceDescriptionList = getServicesDescription(

@@ -61,7 +61,6 @@ public class EventsCacheKey {
 
     @Override
     public String toString() {
-        return "EventsCacheKey{"
-                + "operationId='" + operationId + '\'' + '}';
+        return "EventsCacheKey{" + "operationId='" + operationId + '\'' + '}';
     }
 }

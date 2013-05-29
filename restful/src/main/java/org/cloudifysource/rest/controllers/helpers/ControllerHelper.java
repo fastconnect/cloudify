@@ -65,7 +65,7 @@ public class ControllerHelper {
         String absolutePUName = ServiceUtils.getAbsolutePUName(appName, serviceName);
         ProcessingUnit processingUnit = admin.getProcessingUnits().getProcessingUnit(absolutePUName);
         if (processingUnit == null) {
-            throw new ResourceNotFoundException(serviceName);
+            throw new ResourceNotFoundException(ServiceUtils.getAbsolutePUName(appName, serviceName));
         }
         return processingUnit;
     }

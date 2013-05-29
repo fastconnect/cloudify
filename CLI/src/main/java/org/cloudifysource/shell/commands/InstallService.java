@@ -23,7 +23,6 @@ import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
 import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
 import org.cloudifysource.dsl.utils.RecipePathResolver;
 import org.cloudifysource.restclient.exceptions.RestClientException;
-import org.cloudifysource.shell.ConditionLatch;
 import org.cloudifysource.shell.Constants;
 import org.cloudifysource.shell.ShellUtils;
 import org.cloudifysource.shell.exceptions.CLIException;
@@ -38,8 +37,6 @@ import org.fusesource.jansi.Ansi.Color;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
@@ -183,12 +180,12 @@ public class InstallService extends AdminAwareCommand {
 	protected Object doExecute() throws Exception {
 
         NameAndPackedFileResolver nameAndPackedFileResolver = getResolver(recipe);
-        String actualServiceName = serviceName;
-        if (actualServiceName == null) {
+        if (serviceName == null) {
             // no override name was defined. use the default.
-            actualServiceName = nameAndPackedFileResolver.getName();
+            serviceName = nameAndPackedFileResolver.getName();
         }
         File packedFile = nameAndPackedFileResolver.getPackedFile();
+        int plannedNumberOfInstances = nameAndPackedFileResolver.getPlannedNumberOfInstances();
 
         // upload the files if necessary
         final String cloudConfigurationFileKey = uploadToRepo(cloudConfiguration);
@@ -211,21 +208,23 @@ public class InstallService extends AdminAwareCommand {
 
         // execute the request
         InstallServiceResponse installServiceResponse = ((RestAdminFacade) adminFacade)
-                .installService(CloudifyConstants.DEFAULT_APPLICATION_NAME, actualServiceName, request);
+                .installService(CloudifyConstants.DEFAULT_APPLICATION_NAME, serviceName, request);
 
         ServiceInstallationProcessInspector inspector = new ServiceInstallationProcessInspector(
                 ((RestAdminFacade) adminFacade).getNewRestClient(),
                 installServiceResponse.getDeploymentID(),
-                CloudifyConstants.DEFAULT_APPLICATION_NAME, actualServiceName);
+                verbose,
+                serviceName,
+                plannedNumberOfInstances);
 
         int actualTimeout = timeoutInMinutes;
         boolean isDone = false;
-
-        displayer.printEvent("Waiting for life cycle events for service " + actualServiceName);
+        displayer.printEvent("installing_service", serviceName, plannedNumberOfInstances);
+        displayer.printEvent("waiting_for_lifecycle_of_service", serviceName);
         while (!isDone) {
             try {
 
-                waitForLifeCycleToEnd(actualTimeout, inspector);
+                inspector.waitForLifeCycleToEnd(actualTimeout);
                 isDone = true;
 
             } catch (final TimeoutException e) {
@@ -244,59 +243,19 @@ public class InstallService extends AdminAwareCommand {
                 } else {
                     throw new CLIStatusException(e,
                             "service_installation_timed_out_on_client",
-                            actualServiceName);
+                            serviceName);
                 }
             }
         }
 
         // drop one line before printing the last message
         displayer.printEvent("");
-        return getFormattedMessage("service_install_ended", Color.GREEN, actualServiceName);
+        return getFormattedMessage("service_install_ended", Color.GREEN, serviceName);
     }
-
 
     private boolean promptWouldYouLikeToContinueQuestion() throws IOException {
         return ShellUtils.promptUser(session,
                 "would_you_like_to_continue_service_installation", serviceName);
-    }
-
-    private void waitForLifeCycleToEnd(
-            final long timeout,
-            final ServiceInstallationProcessInspector inspector)
-            throws InterruptedException, CLIException, TimeoutException {
-
-        ConditionLatch conditionLatch = createConditionLatch(timeout);
-
-        conditionLatch.waitFor(new ConditionLatch.Predicate() {
-
-            @Override
-            public boolean isDone() throws CLIException, InterruptedException {
-                try {
-                    boolean ended = inspector.lifeCycleEnded();
-                    if (!ended) {
-
-                        List<String> latestEvents = inspector.getLatestEvents();
-                        if (latestEvents != null) {
-                            displayer.printEvents(latestEvents);
-                        } else {
-                            displayer.printNoChange();
-                        }
-                    }
-                    return ended;
-                } catch (final RestClientException e) {
-                    throw new CLIException(e.getMessage(), e);
-                }
-            }
-        });
-
-    }
-
-    private ConditionLatch createConditionLatch(final long timeout) {
-        return new ConditionLatch()
-                .verbose(verbose)
-                .pollingInterval(POLLING_INTERVAL_MILLI_SECONDS, TimeUnit.MILLISECONDS)
-                .timeout(timeout, TimeUnit.MINUTES)
-                .timeoutErrorMessage(TIMEOUT_ERROR_MESSAGE);
     }
 
     private NameAndPackedFileResolver getResolver(final File recipe) throws CLIStatusException {

@@ -30,6 +30,7 @@ import org.apache.http.params.HttpParams;
 import org.apache.http.params.HttpProtocolParams;
 import org.apache.http.protocol.HTTP;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
+import org.cloudifysource.dsl.rest.ApplicationDescription;
 import org.cloudifysource.dsl.rest.ServiceDescription;
 import org.cloudifysource.dsl.rest.request.InstallApplicationRequest;
 import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
@@ -112,7 +113,6 @@ public class RestClient {
 	 * Executes a rest api call to install an application.
 	 * 
 	 * @param applicationName The name of the application.
-	 * @param serviceName The name of the service to install.
 	 * @param request The install service request.
 	 * @return The install service response.
 	 * @throws RestClientException .
@@ -195,14 +195,14 @@ public class RestClient {
      * @return The events.
      * @throws RestClientException .
      */
-    public ServiceDeploymentEvents getServiceDeploymentEvents(
-    		final String deploymentId,
-    		final int from,
-    		final int to) 
+    public DeploymentEvents getDeploymentEvents(
+            final String deploymentId,
+            final int from,
+            final int to)
     				throws RestClientException {
     	return executor.get(
                 versionedDeploymentControllerUrl + "/" + deploymentId + "/events/" + "?from=" + from + "&to=" + to,
-                new TypeReference<Response<ServiceDeploymentEvents>>() { });
+                new TypeReference<Response<DeploymentEvents>>() { });
     }
 
     /**
@@ -219,6 +219,19 @@ public class RestClient {
         return executor.get(versionedDeploymentControllerUrl + "/" + appName 
         		+ "/service/" + serviceName + "/description",
                 new TypeReference<Response<ServiceDescription>>() { });
+    }
+
+    /**
+     *
+     * @param appName .
+     * @return ApplicationDescription.
+     * @throws RestClientException .
+     */
+    public ApplicationDescription getApplicationDescription(
+            final String appName)
+            throws RestClientException {
+        return executor.get(versionedDeploymentControllerUrl + "/" + appName + "/description",
+                new TypeReference<Response<ApplicationDescription>>() { });
     }
 
     /**

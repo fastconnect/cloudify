@@ -1,7 +1,7 @@
 package org.cloudifysource.shell.rest;
 
-import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvent;
-import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvents;
+import org.cloudifysource.dsl.rest.response.DeploymentEvent;
+import org.cloudifysource.dsl.rest.response.DeploymentEvents;
 import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.restclient.exceptions.RestClientException;
 
@@ -19,7 +19,7 @@ public class EventsProvider {
 
     private int index = 0;
 
-    private ServiceDeploymentEvents events = new ServiceDeploymentEvents();
+    private DeploymentEvents events = new DeploymentEvents();
 
     public EventsProvider(final String deploymentId,
                           final RestClient restClient) {
@@ -28,15 +28,15 @@ public class EventsProvider {
 
     }
 
-    public ServiceDeploymentEvent next() throws RestClientException {
+    public DeploymentEvent next() throws RestClientException {
 
         if (events.getEvents().isEmpty()) {
             // get all events
-            events = restClient.getServiceDeploymentEvents(deploymentId, index, -1);
+            events = restClient.getDeploymentEvents(deploymentId, index, -1);
         }
 
 
-        ServiceDeploymentEvents serviceDeploymentEvents = restClient.getServiceDeploymentEvents(deploymentId, index, -1);
+        DeploymentEvents serviceDeploymentEvents = restClient.getDeploymentEvents(deploymentId, index, -1);
         if (serviceDeploymentEvents.getEvents().isEmpty()) {
             return null;
         } else {

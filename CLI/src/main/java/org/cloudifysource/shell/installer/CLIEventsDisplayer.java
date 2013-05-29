@@ -71,6 +71,11 @@ public class CLIEventsDisplayer {
 		}
 	}
 
+    public void printEvent(final String messageCode, final Object... args) {
+        String message = ShellUtils.getFormattedMessage(messageCode, args);
+        printEvent(message);
+    }
+
 	public void eraseCurrentLine() {
 		System.out.print(Ansi.ansi().cursorLeft(this.progressCounter).eraseLine());
 	}

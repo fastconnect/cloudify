@@ -46,4 +46,10 @@ public interface NameAndPackedFileResolver {
      */
     File getPackedFile() throws CLIStatusException;
 
+    /**
+     * Determines the planned number of instances for the installation.
+     * @return the planned number of instances
+     * @throws CLIStatusException Thrown in case of an error.
+     */
+    int getPlannedNumberOfInstances() throws CLIStatusException;
 }

@@ -12,7 +12,7 @@
  *******************************************************************************/
 package org.cloudifysource.rest.events.cache;
 
-import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvents;
+import org.cloudifysource.dsl.rest.response.DeploymentEvents;
 import org.openspaces.admin.pu.ProcessingUnit;
 
 /**
@@ -26,7 +26,7 @@ import org.openspaces.admin.pu.ProcessingUnit;
  */
 public class EventsCacheValue {
 
-    private ServiceDeploymentEvents events = new ServiceDeploymentEvents();
+    private DeploymentEvents events = new DeploymentEvents();
     private long lastRefreshedTimestamp;
     private int lastEventIndex;
     private volatile Object mutex = new Object();
@@ -40,11 +40,11 @@ public class EventsCacheValue {
         this.processingUnit = processingUnit;
     }
 
-    public ServiceDeploymentEvents getEvents() {
+    public DeploymentEvents getEvents() {
         return events;
     }
 
-    public void setEvents(final ServiceDeploymentEvents events) {
+    public void setEvents(final DeploymentEvents events) {
         this.events = events;
     }
 

@@ -2,14 +2,11 @@ package org.cloudifysource.shell.rest;
 
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.rest.ServiceDescription;
-import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvents;
 import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.restclient.exceptions.RestClientException;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Created with IntelliJ IDEA.
@@ -17,50 +14,44 @@ import java.util.Set;
  * Date: 5/22/13
  * Time: 5:38 PM
  */
-public class ServiceInstallationProcessInspector {
+public class ServiceInstallationProcessInspector extends InstallationProcessInspector {
 
-    private String applicationName;
+    private static final String TIMEOUT_ERROR_MESSAGE = "Service installation timed out. Configure the timeout using the -timeout flag.";
+
     private String serviceName;
-    private RestClient restClient;
-    private String deploymentId;
+    private int plannedNumberOfInstances;
 
-    private int lastEventIndex = 0;
-
-    public ServiceInstallationProcessInspector(
-            final RestClient restClient,
-            final String deploymentId,
-            final String applicationName,
-            final String serviceName) {
-        this.applicationName = applicationName;
+    public ServiceInstallationProcessInspector(final RestClient restClient,
+                                               final String deploymentId,
+                                               final boolean verbose,
+                                               final String serviceName,
+                                               final int plannedNumberOfInstances) {
+        super(restClient, deploymentId, verbose);
         this.serviceName = serviceName;
-        this.restClient = restClient;
-        this.deploymentId = deploymentId;
+        this.plannedNumberOfInstances = plannedNumberOfInstances;
     }
 
-    public List<String> getLatestEvents() throws RestClientException {
-
-        List<String> eventsStrings = new ArrayList<String>();
-
-        ServiceDeploymentEvents events = restClient.getServiceDeploymentEvents(deploymentId, lastEventIndex, -1);
-        if (events == null || events.getEvents().isEmpty()) {
-            return null;
-        }
-        Set<Integer> eventIndices = events.getEvents().keySet();
-
-        Integer[] integers = eventIndices.toArray(new Integer[eventIndices.size()]);
-
-        // sort by event index (corresponds to order of events on the server, pretty much)
-        Arrays.sort(integers);
-
-        for (Integer index : integers) {
-            eventsStrings.add(events.getEvents().get(index).getDescription());
-        }
-        lastEventIndex = integers[integers.length - 1] + 1;
-        return eventsStrings;
-    }
-
+    @Override
     public boolean lifeCycleEnded() throws RestClientException {
-        ServiceDescription serviceDescription = restClient.getServiceDescription(applicationName, serviceName);
+        ServiceDescription serviceDescription = restClient.getServiceDescription(CloudifyConstants.DEFAULT_APPLICATION_NAME, serviceName);
         return serviceDescription.getServiceState().equals(CloudifyConstants.DeploymentState.STARTED);
+    }
+
+    @Override
+    public Map<String, Integer> getPlannedNumberOfInstancesPerService() throws RestClientException {
+        Map<String, Integer> plannedNumberOfInstancesPerService = new HashMap<String, Integer>();
+        plannedNumberOfInstancesPerService.put(serviceName, plannedNumberOfInstances);
+        return plannedNumberOfInstancesPerService;
+    }
+
+    @Override
+    public int getNumberOfRunningInstances(final String serviceName) throws RestClientException {
+        ServiceDescription serviceDescription = restClient.getServiceDescription(CloudifyConstants.DEFAULT_APPLICATION_NAME, serviceName);
+        return serviceDescription.getInstanceCount();
+    }
+
+    @Override
+    public String getTimeoutErrorMessage() {
+        return TIMEOUT_ERROR_MESSAGE;
     }
 }

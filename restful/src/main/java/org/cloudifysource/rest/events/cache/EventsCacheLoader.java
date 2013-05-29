@@ -12,21 +12,20 @@
  *******************************************************************************/
 package org.cloudifysource.rest.events.cache;
 
-import java.util.logging.Logger;
-
-import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvent;
-import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvents;
-import org.cloudifysource.rest.exceptions.ResourceNotFoundException;
-import org.openspaces.admin.Admin;
-import org.openspaces.admin.gsc.GridServiceContainer;
-import org.openspaces.admin.gsc.GridServiceContainers;
-
 import com.gigaspaces.log.LogEntries;
 import com.gigaspaces.log.LogEntry;
 import com.gigaspaces.log.LogEntryMatcher;
 import com.google.common.cache.CacheLoader;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import org.cloudifysource.dsl.rest.response.DeploymentEvent;
+import org.cloudifysource.dsl.rest.response.DeploymentEvents;
+import org.cloudifysource.rest.exceptions.ResourceNotFoundException;
+import org.openspaces.admin.Admin;
+import org.openspaces.admin.gsc.GridServiceContainer;
+
+import java.util.Set;
+import java.util.logging.Logger;
 
 /**
  * Created with IntelliJ IDEA.
@@ -40,7 +39,7 @@ import com.google.common.util.concurrent.ListenableFuture;
  * Load and reload operation will execute a remote call to fetch container logs.
  * These logs are then translated to events and saved inside the cache.
  *
- * @see ServiceDeploymentEvents
+ * @see org.cloudifysource.dsl.rest.response.DeploymentEvents
  *
  */
 public class EventsCacheLoader extends CacheLoader<EventsCacheKey, EventsCacheValue> {
@@ -62,13 +61,13 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, EventsCacheVa
         logger.fine(EventsUtils.getThreadId() + "Could not find events for key " + key
                 + " in cache. Loading from container logs...");
 
-        ServiceDeploymentEvents events = new ServiceDeploymentEvents();
+        DeploymentEvents events = new DeploymentEvents();
 
         boolean isUndeploy = EventsUtils.isUnDeploymentOperation(key.getOperationId(), admin);
 
         // initial load. no events are present in the cache for this deployment.
         // iterate over all container and retrieve logs from logs cache.
-        GridServiceContainers containersForDeployment = null;
+        Set<GridServiceContainer> containersForDeployment;
         if (isUndeploy) {
         containersForDeployment = EventsUtils.getContainersForUnDeployment(
                 key.getOperationId(), admin);
@@ -90,7 +89,7 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, EventsCacheVa
             LogEntries logEntries = container.logEntries(matcherProvider.get(logEntryMatcherProviderKey));
             for (LogEntry logEntry : logEntries) {
                 if (logEntry.isLog()) {
-                    ServiceDeploymentEvent event = EventsUtils.logToEvent(logEntry,
+                    DeploymentEvent event = EventsUtils.logToEvent(logEntry,
                             logEntries.getHostName(), logEntries.getHostAddress());
                     events.getEvents().put(index++, event);
                 }
@@ -120,7 +119,7 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, EventsCacheVa
         }
 
         // pickup any new containers along with the old ones
-        GridServiceContainers containersForDeployment = EventsUtils.getContainersForDeployment(
+        Set<GridServiceContainer> containersForDeployment = EventsUtils.getContainersForProcessingUnit(
                 oldValue.getProcessingUnit());
         if (containersForDeployment != null) {
             int index = oldValue.getLastEventIndex();
@@ -133,7 +132,7 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, EventsCacheVa
 
                 for (LogEntry logEntry : logEntries) {
                     if (logEntry.isLog()) {
-                        ServiceDeploymentEvent event = EventsUtils.logToEvent(
+                        DeploymentEvent event = EventsUtils.logToEvent(
                                 logEntry, logEntries.getHostName(), logEntries.getHostAddress());
                         oldValue.getEvents().getEvents().put(index++, event);
                     }

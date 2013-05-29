@@ -55,6 +55,8 @@ public class ApplicationDeployerRunnable implements Runnable {
 	private final File overridesFile;
 	private final List<Service> services;
 	private final DSLApplicationCompilatioResult result;
+	//a list of deployment IDs, one for each service.
+	private final String deploymentID;
 
 	/**
 	 * Constructor.
@@ -74,11 +76,13 @@ public class ApplicationDeployerRunnable implements Runnable {
 						final InstallApplicationRequest request, 
 						final DSLApplicationCompilatioResult result, 
 						final List<Service> services,
+						final String deploymentID,
 						final File overridesFile) throws RestErrorException {
 		this.request = request;
 		this.controller = controller;
 		this.result = result;
 		this.services = services;
+		this.deploymentID = deploymentID;
 		this.applicationName = request.getApplicationName();
 		this.overridesFile = overridesFile;
 	}
@@ -120,7 +124,6 @@ public class ApplicationDeployerRunnable implements Runnable {
 			boolean found = false;
 			
 			try {
-
 				// lookup application properties file
 				final File applicationPropertiesFile =
 						DSLReader.findDefaultDSLFileIfExists(DSLUtils.APPLICATION_PROPERTIES_FILE_NAME, appDir);
@@ -141,15 +144,19 @@ public class ApplicationDeployerRunnable implements Runnable {
 				// Deployment will be done using the service's absolute PU name.
 				final InstallServiceRequest installServiceReq = createInstallServiceRequest(packedFile);
 				final String appName = this.request.getApplicationName();
-	
+
+				final DeploymentFileHolder fileHolder = new DeploymentFileHolder();
+				fileHolder.setPackedFile(packedFile);
+				fileHolder.setServiceOverridesFile(actualOverridesFile);
+				fileHolder.setCloudConfigurationFile(cloudConfiguration);
+				fileHolder.setApplicationPropertiesFile(applicationPropertiesFile);
+				
 				controller.installServiceInternal(
 						appName, 
 						serviceName, 
 						installServiceReq, 
-						packedFile, 
-						actualOverridesFile, 
-						cloudConfiguration,
-						applicationPropertiesFile);
+						deploymentID,
+						fileHolder);
 				try {
 					FileUtils.deleteDirectory(packedFile.getParentFile());
 				} catch (final IOException ioe) {

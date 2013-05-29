@@ -80,6 +80,7 @@ import org.cloudifysource.rest.controllers.helpers.ControllerHelper;
 import org.cloudifysource.rest.controllers.helpers.PropertiesOverridesMerger;
 import org.cloudifysource.rest.deploy.ApplicationDeployerRunnable;
 import org.cloudifysource.rest.deploy.DeploymentConfig;
+import org.cloudifysource.rest.deploy.DeploymentFileHolder;
 import org.cloudifysource.rest.deploy.ElasticDeploymentCreationException;
 import org.cloudifysource.rest.deploy.ElasticProcessingUnitDeploymentFactory;
 import org.cloudifysource.rest.deploy.ElasticProcessingUnitDeploymentFactoryImpl;
@@ -407,8 +408,6 @@ public class DeploymentsController extends BaseRestController {
 			@RequestBody final InstallApplicationRequest request) 
 					throws RestErrorException {
 		
-		
-		
 		//get the application file
 		final String applcationFileUploadKey = request.getApplcationFileUploadKey();
 		final File applicationFile = getFromRepo(applcationFileUploadKey, 
@@ -439,11 +438,15 @@ public class DeploymentsController extends BaseRestController {
 		final List<Service> services = createServiceDependencyOrder(result
 				.getApplication());
 		
+		//create a deployment ID that would be used across all services.
+		final String deploymentID = UUID.randomUUID().toString();
+		
 		final ApplicationDeployerRunnable installer =
 				new ApplicationDeployerRunnable(this, 
 								request, 
 								result, 
 								services,
+								deploymentID,
 								applicationOverridesFile);
 		
 		//start install thread.
@@ -453,13 +456,32 @@ public class DeploymentsController extends BaseRestController {
 			restConfig.getExecutorService().execute(installer);
 		}
 		//creating response
+		final List<String> serviceNames = createServiceNamesList(services);
 		final InstallApplicationResponse response = new InstallApplicationResponse();
-		response.setDeploymentID("");
+		response.setServiceOrder(serviceNames);
+		response.setDeploymentIDs(deploymentIDs);
 		
 		return response;
 	}
 
-    /**
+	List<String> createDeploymentIDList(final int numberOfIDs) {
+		final List<String> deploymentIDs = new ArrayList<String>();
+		for (int i = 0; i < numberOfIDs; i++) {
+			final UUID deploymentID = UUID.randomUUID();
+			deploymentIDs.add(deploymentID.toString());
+		}
+		return deploymentIDs;
+	}
+
+    private List<String> createServiceNamesList(final List<Service> services) {
+		final List<String> serviceNames = new ArrayList<String>();
+		for (Service service : services) {
+			serviceNames.add(service.getName());
+		}
+		return serviceNames;
+	}
+
+	/**
      * Executes an install service request onto the grid.
      * This method is not synchronous, it does not wait for the installation to complete.
      * @param appName The application name this service belongs to.
@@ -491,15 +513,20 @@ public class DeploymentsController extends BaseRestController {
 				CloudifyMessageKeys.WRONG_CLOUD_CONFIGURATION_UPLOAD_KEY.getName(),
 				absolutePuName);
 		
+		final DeploymentFileHolder fileHolder = new DeploymentFileHolder();
+		fileHolder.setPackedFile(packedFile);
+		fileHolder.setServiceOverridesFile(serviceOverridesFile);
+		fileHolder.setCloudConfigurationFile(cloudConfigurationFile);
+		fileHolder.setApplicationPropertiesFile(null);/* application properties file */
+		
+		final String deploymentID = UUID.randomUUID().toString();
 		// install the service
 		return installServiceInternal(
 				appName, 
 				serviceName, 
 				request,
-				packedFile, 
-				serviceOverridesFile,
-				cloudConfigurationFile, 
-				null /* application properties file */);
+				deploymentID,
+				fileHolder);
 	}
 
 	/**
@@ -527,15 +554,13 @@ public class DeploymentsController extends BaseRestController {
 			final String appName, 
 			final String serviceName,
 			final InstallServiceRequest request,
-			final File packedFile, 
-			final File proeprtiesOverridesFile, 
-			final File cloudConfigurationFile,
-			final File applicationPropertiesFile)
+			final String deploymentID,
+			final DeploymentFileHolder fileHolder)
 					throws RestErrorException {
 		
 		final String absolutePuName = ServiceUtils.getAbsolutePUName(appName, serviceName);
 		// extract the service folder
-		final File serviceDir = extractServiceDir(packedFile, absolutePuName);
+		final File serviceDir = extractServiceDir(fileHolder.getPackedFile(), absolutePuName);
 		// get cloud overrides file
 		final File cloudOverridesFile = getFromRepo(
 				request.getCloudOverridesUploadKey(), 
@@ -552,13 +577,13 @@ public class DeploymentsController extends BaseRestController {
 		merger.setRePackFolder(serviceDir);
 		merger.setDestMergeFile(servicePropertiesFile);
 		// first add the application properties file. least important overrides.
-		merger.setApplicationPropertiesFile(applicationPropertiesFile);
+		merger.setApplicationPropertiesFile(fileHolder.getApplicationPropertiesFile());
 		// add the service properties file, second level overrides.
 		merger.setServicePropertiesFile(servicePropertiesFile);
 		// add the overrides file, most important overrides.
-		merger.setOverridesFile(proeprtiesOverridesFile);
+		merger.setOverridesFile(fileHolder.getServiceOverridesFile());
 		// merge and get the updates packed file (or the original one if no merge needed).
-		merger.setOriginPackedFile(packedFile);		
+		merger.setOriginPackedFile(fileHolder.getPackedFile());		
 		File updatedPackedFile = merger.merge();
 		
 		// Read the service
@@ -567,7 +592,7 @@ public class DeploymentsController extends BaseRestController {
 		// update template name
 		final String templateName = getTempalteNameFromService(service);
 
-		final byte[] cloudConfigurationContents = getCloudConfigurationContent(cloudConfigurationFile, absolutePuName);
+		final byte[] cloudConfigurationContents = getCloudConfigurationContent(fileHolder.getCloudConfigurationFile(), absolutePuName);
 
 		// update effective authGroups
 		String effectiveAuthGroups = getEffectiveAuthGroups(request.getAuthGroups());
@@ -579,8 +604,8 @@ public class DeploymentsController extends BaseRestController {
                                service,
                                templateName,
 				               cloudOverridesFile,
-                               proeprtiesOverridesFile,
-                               cloudConfigurationFile);
+                               fileHolder.getServiceOverridesFile(),
+                               fileHolder.getCloudConfigurationFile());
 
 		String cloudOverrides = null;
 		try {
@@ -592,7 +617,6 @@ public class DeploymentsController extends BaseRestController {
 		}
 		// deploy
 		final DeploymentConfig deployConfig = new DeploymentConfig();
-		final UUID deploymentID = UUID.randomUUID();
 		final String locators = extractLocators(restConfig.getAdmin());
 		final Cloud cloud = restConfig.getCloud();
 		deployConfig.setCloudConfig(cloudConfigurationContents);

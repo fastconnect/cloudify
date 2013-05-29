@@ -26,14 +26,14 @@ import org.cloudifysource.dsl.Application;
 import org.cloudifysource.dsl.Service;
 import org.cloudifysource.dsl.internal.CloudifyErrorMessages;
 import org.cloudifysource.dsl.internal.DSLErrorMessageException;
-import org.cloudifysource.dsl.internal.DSLReader;
-import org.cloudifysource.dsl.internal.DSLUtils;
 import org.cloudifysource.dsl.internal.debug.DebugModes;
 import org.cloudifysource.dsl.internal.debug.DebugUtils;
 import org.cloudifysource.dsl.rest.request.InstallApplicationRequest;
 import org.cloudifysource.dsl.rest.response.InstallApplicationResponse;
 import org.cloudifysource.dsl.utils.RecipePathResolver;
 import org.cloudifysource.restclient.exceptions.RestClientException;
+import org.cloudifysource.shell.Constants;
+import org.cloudifysource.shell.GigaShellMain;
 import org.cloudifysource.shell.ShellUtils;
 import org.cloudifysource.shell.exceptions.CLIException;
 import org.cloudifysource.shell.exceptions.CLIStatusException;
@@ -101,8 +101,6 @@ public class InstallApplication extends AdminAwareCommand {
 					+ "configuration for this application and its services.")
 	private File cloudOverrides;
 
-
-
 	@Option(required = false, name = "-debug-all",
 			description = "Debug all supported lifecycle events")
 	private boolean debugAll;
@@ -117,6 +115,37 @@ public class InstallApplication extends AdminAwareCommand {
 
 	private CLIEventsDisplayer displayer = new CLIEventsDisplayer();
 
+	public File getCloudConfiguration() {
+		return cloudConfiguration;
+	}
+
+	public void setCloudConfiguration(final File cloudConfiguration) {
+		this.cloudConfiguration = cloudConfiguration;
+	}
+
+	public int getTimeoutInMinutes() {
+		return timeoutInMinutes;
+	}
+
+	public void setTimeoutInMinutes(final int timeoutInMinutes) {
+		this.timeoutInMinutes = timeoutInMinutes;
+	}
+
+	public String getDebugModeString() {
+		return debugModeString;
+	}
+
+	public void setDebugModeString(final String debugModeString) {
+		this.debugModeString = debugModeString;
+	}
+
+	public boolean isDisableSelfHealing() {
+		return disableSelfHealing;
+	}
+
+	public void setDisableSelfHealing(final boolean disableSelfHealing) {
+		this.disableSelfHealing = disableSelfHealing;
+	}
 
 	/**
 	 * {@inheritDoc}
@@ -131,12 +160,13 @@ public class InstallApplication extends AdminAwareCommand {
 		} catch (final DSLErrorMessageException e) {
 			throw new CLIStatusException(e.getErrorMessage().getName(), (Object[]) e.getArgs());
 		}
+		//verify cloud overrides is no more then 10k
 		if (cloudOverrides != null) {
 			if (cloudOverrides.length() >= TEN_K) {
 				throw new CLIStatusException(CloudifyErrorMessages.CLOUD_OVERRIDES_TO_LONG.getName());
 			}
 		}
-		
+		//resolve the path for the given app input
 		final RecipePathResolver pathResolver = new RecipePathResolver();
 		if (pathResolver.resolveApplication(applicationFile)) {
 			applicationFile = pathResolver.getResolved();
@@ -144,27 +174,28 @@ public class InstallApplication extends AdminAwareCommand {
 			throw new CLIStatusException("application_not_found",
 					StringUtils.join(pathResolver.getPathsLooked().toArray(), ", "));
 		}
-		
+		//resolve packed file and application name
 		final NameAndPackedFileResolver nameAndPackedFileResolver = getResolver(applicationFile);
 		if (StringUtils.isBlank(applicationName)) {
 			applicationName = nameAndPackedFileResolver.getName();
 		}
-		
+		//validate application name (does not contain parentheses)
 		if (!org.cloudifysource.restclient.StringUtils.isValidRecipeName(applicationName)) {
 			throw new CLIStatusException(CloudifyErrorMessages.APPLICATION_NAME_INVALID_CHARS.getName(),
 					applicationName);
 		}
-		
+		//verify application is not already installed
 		if (adminFacade.getApplicationNamesList().contains(applicationName)) {
 			throw new CLIStatusException("application_already_deployed", applicationName);
 		}
 		
 		final File packedFile = nameAndPackedFileResolver.getPackedFile();
-		
+		//upload relevant application deployment files 
 		final String packedFileKey = uploadToRepo(packedFile);
 		final String overridesFileKey = uploadToRepo(this.overrides);
 		final String cloudOverridesFileKey = uploadToRepo(this.cloudOverrides);
 		
+		//create the install request
 		InstallApplicationRequest request = new InstallApplicationRequest();
 		request.setApplcationFileUploadKey(packedFileKey);
 		request.setApplicationOverridesUploadKey(overridesFileKey);
@@ -175,106 +206,24 @@ public class InstallApplication extends AdminAwareCommand {
 		request.setdebugEvents(this.debugEvents);
 		request.setDebugMode(this.debugModeString);
 		request.setSelfHealing(this.disableSelfHealing);
-		request.setTimeoutInMillis((int) TimeUnit.MINUTES.toMillis(timeoutInMinutes));
+		request.setTimeoutInMillis(TimeUnit.MINUTES.toMillis(timeoutInMinutes));
 		
+		//install application
 		final InstallApplicationResponse installApplicationResponse = 
 				((RestAdminFacade) adminFacade).installApplication(cloudOverridesFileKey, request);
 		
-		
-		
-//		final RecipePathResolver pathResolver = new RecipePathResolver();
-//		if (pathResolver.resolveApplication(applicationFile)) {
-//			applicationFile = pathResolver.getResolved();
-//		} else {
-//			throw new CLIStatusException("application_not_found",
-//					StringUtils.join(pathResolver.getPathsLooked().toArray(), ", "));
-//		}
-//
-//		logger.info("Validating file " + applicationFile.getName());
-//		final DSLReader dslReader = createDslReader();
-//		final Application application = dslReader.readDslEntity(Application.class);
-//
-//		if (StringUtils.isBlank(applicationName)) {
-//			applicationName = application.getName();
-//		}
-//
-//		if (!org.cloudifysource.restclient.StringUtils.isValidRecipeName(applicationName)) {
-//			throw new CLIStatusException(CloudifyErrorMessages.APPLICATION_NAME_INVALID_CHARS.getName(),
-//					applicationName);
-//		}
-//
-//		if (adminFacade.getApplicationNamesList().contains(applicationName)) {
-//			throw new CLIStatusException("application_already_deployed", application.getName());
-//		}
-//
-//		final File cloudConfigurationZipFile = createCloudConfigurationZipFile();
-//		File zipFile;
-//		if (applicationFile.isFile()) {
-//			if (applicationFile.getName().endsWith(".zip") || applicationFile.getName().endsWith(".jar")) {
-//				zipFile = applicationFile;
-//			} else {
-//				throw new CLIStatusException("application_file_format_mismatch", applicationFile.getPath());
-//			}
-//		} else { // pack an application folder
-//			final List<File> additionalServiceFiles = new LinkedList<File>();
-//			if (cloudConfigurationZipFile != null) {
-//				additionalServiceFiles.add(cloudConfigurationZipFile);
-//			}
-//			zipFile = Packager.packApplication(application, applicationFile, additionalServiceFiles);
-//		}
-//
-//		// toString of string list (i.e. [service1, service2])
-//		logger.info("Uploading application " + applicationName);
-//
-//		final Map<String, String> result =
-//				adminFacade.installApplication(zipFile, applicationName,
-//						authGroups, getTimeoutInMinutes(), !isDisableSelfHealing(),
-//						overrides, cloudOverrides, debugAll, debugEvents, getDebugModeString());
-//
-//		final String serviceOrder = result.get(CloudifyConstants.SERVICE_ORDER);
-//
-//		// If temp file was created, Delete it.
-//		if (!applicationFile.isFile()) {
-//			final boolean delete = zipFile.delete();
-//			if (!delete) {
-//				logger.info("Failed to delete application file: " + zipFile.getAbsolutePath());
-//			}
-//		}
-//
-//		if (serviceOrder.charAt(0) != '[' && serviceOrder.charAt(serviceOrder.length() - 1) != ']') {
-//			throw new IllegalStateException("Cannot parse service order response: " + serviceOrder);
-//		}
+		if (!applicationFile.isFile()) {
+			final boolean delete = packedFile.delete();
+			if (!delete) {
+				logger.info("Failed to delete application file: " + packedFile.getAbsolutePath());
+			}
+		}
+		//print application info.
 //		printApplicationInfo(application);
-//
-//		session.put(Constants.ACTIVE_APP, applicationName);
-//		GigaShellMain.getInstance().setCurrentApplicationName(applicationName);
-//
-//		final String pollingID = result.get(CloudifyConstants.LIFECYCLE_EVENT_CONTAINER_ID);
-//		final RestLifecycleEventsLatch lifecycleEventsPollingLatch =
-//				this.adminFacade.getLifecycleEventsPollingLatch(pollingID, TIMEOUT_ERROR_MESSAGE);
-//		boolean isDone = false;
-//		boolean continuous = false;
-//		while (!isDone) {
-//			try {
-//				if (!continuous) {
-//					lifecycleEventsPollingLatch.waitForLifecycleEvents(getTimeoutInMinutes(), TimeUnit.MINUTES);
-//				} else {
-//					lifecycleEventsPollingLatch.continueWaitForLifecycleEvents(getTimeoutInMinutes(), TimeUnit.MINUTES);
-//				}
-//				isDone = true;
-//			} catch (final TimeoutException e) {
-//				if (!(Boolean) session.get(Constants.INTERACTIVE_MODE)) {
-//					throw e;
-//				}
-//				final boolean continueInstallation = promptWouldYouLikeToContinueQuestion();
-//				if (!continueInstallation) {
-//					throw new CLIStatusException(e, "application_installation_timed_out_on_client",
-//							applicationName);
-//				}
-//				continuous = true;
-//			}
-//		}
-
+		//set the active application in the CLI.
+		session.put(Constants.ACTIVE_APP, applicationName);
+		GigaShellMain.getInstance().setCurrentApplicationName(applicationName);
+		
 		return this.getFormattedMessage("application_installed_successfully", Color.GREEN, applicationName);
 	}
 
@@ -292,53 +241,6 @@ public class InstallApplication extends AdminAwareCommand {
 		}
 	}
 
-	private DSLReader createDslReader() {
-		final DSLReader dslReader = new DSLReader();
-		final File dslFile = DSLReader.findDefaultDSLFile(DSLUtils.APPLICATION_DSL_FILE_NAME_SUFFIX, applicationFile);
-		dslReader.setDslFile(dslFile);
-		dslReader.setCreateServiceContext(false);
-		dslReader.addProperty(DSLUtils.APPLICATION_DIR, dslFile.getParentFile().getAbsolutePath());
-		dslReader.setOverridesFile(overrides);
-		return dslReader;
-	}
-
-//	private File createCloudConfigurationZipFile()
-//			throws CLIStatusException, IOException {
-//		if (this.cloudConfiguration == null) {
-//			return null;
-//		}
-//
-//		if (!this.cloudConfiguration.exists()) {
-//			throw new CLIStatusException("cloud_configuration_file_not_found",
-//					this.cloudConfiguration.getAbsolutePath());
-//		}
-//
-//		// create a temp file in a temp directory
-//		final File tempDir = File.createTempFile("__Cloudify_Cloud_configuration", ".tmp");
-//		FileUtils.forceDelete(tempDir);
-//		final boolean mkdirs = tempDir.mkdirs();
-//		if (!mkdirs) {
-//			logger.info("Field to create temporary directory " + tempDir.getAbsolutePath());
-//		}
-//		final File tempFile = new File(tempDir, CloudifyConstants.SERVICE_CLOUD_CONFIGURATION_FILE_NAME);
-//		logger.info("Created temporary file " + tempFile.getAbsolutePath()
-//				+ " in temporary directory" + tempDir.getAbsolutePath());
-//
-//		// mark files for deletion on JVM exit
-//		tempFile.deleteOnExit();
-//		tempDir.deleteOnExit();
-//
-//		if (this.cloudConfiguration.isDirectory()) {
-//			ZipUtils.zip(this.cloudConfiguration, tempFile);
-//		} else if (this.cloudConfiguration.isFile()) {
-//			ZipUtils.zipSingleFile(this.cloudConfiguration, tempFile);
-//		} else {
-//			throw new IOException(this.cloudConfiguration + " is neither a file nor a directory");
-//		}
-//
-//		return tempFile;
-//	}
-	
     private String uploadToRepo(final File file) throws RestClientException, CLIException {
         if (file != null) {
             if (!file.isFile()) {
@@ -374,37 +276,5 @@ public class InstallApplication extends AdminAwareCommand {
 						+ " " + service.getNumInstances() + " planned instances");
 			}
 		}
-	}
-
-	public File getCloudConfiguration() {
-		return cloudConfiguration;
-	}
-
-	public void setCloudConfiguration(final File cloudConfiguration) {
-		this.cloudConfiguration = cloudConfiguration;
-	}
-
-	public int getTimeoutInMinutes() {
-		return timeoutInMinutes;
-	}
-
-	public void setTimeoutInMinutes(final int timeoutInMinutes) {
-		this.timeoutInMinutes = timeoutInMinutes;
-	}
-
-	public String getDebugModeString() {
-		return debugModeString;
-	}
-
-	public void setDebugModeString(final String debugModeString) {
-		this.debugModeString = debugModeString;
-	}
-
-	public boolean isDisableSelfHealing() {
-		return disableSelfHealing;
-	}
-
-	public void setDisableSelfHealing(final boolean disableSelfHealing) {
-		this.disableSelfHealing = disableSelfHealing;
 	}
 }

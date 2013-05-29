@@ -44,7 +44,7 @@ public class InstallApplicationRequest {
 	
 	private String debugEvents;
 	
-	private int timeoutInMillis;
+	private long timeoutInMillis;
 	
 	public String getApplcationFileUploadKey() {
 		return applcationFileUploadKey;
@@ -119,11 +119,11 @@ public class InstallApplicationRequest {
 		this.debugEvents = debugEvents;
 	}
 
-	public int getTimeoutInMillis() {
+	public long getTimeoutInMillis() {
 		return timeoutInMillis;
 	}
 
-	public void setTimeoutInMillis(final int timeout) {
+	public void setTimeoutInMillis(final long timeout) {
 		this.timeoutInMillis = timeout;
 	}
 }

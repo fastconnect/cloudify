@@ -27,7 +27,7 @@ import java.util.List;
 public class InstallApplicationResponse {
 	
 	private List<String> serviceOrder;
-	private List<String> deploymentIDs;
+	private String deploymentID;
 			
 	public List<String> getServiceOrder() {
 		return serviceOrder;
@@ -37,11 +37,11 @@ public class InstallApplicationResponse {
 		this.serviceOrder = serviceOrder;
 	}
 
-	public List<String> getDeploymentIDs() {
-		return deploymentIDs;
+	public String getDeploymentIDs() {
+		return deploymentID;
 	}
 
-	public void setDeploymentIDs(final List<String> deploymentIDs) {
-		this.deploymentIDs = deploymentIDs;
+	public void setDeploymentIDs(final String deploymentID) {
+		this.deploymentID = deploymentID;
 	} 
 }

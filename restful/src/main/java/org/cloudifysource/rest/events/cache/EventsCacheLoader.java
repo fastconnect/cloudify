@@ -64,21 +64,29 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, EventsCacheVa
 
         ServiceDeploymentEvents events = new ServiceDeploymentEvents();
 
+        boolean isUndeploy = EventsUtils.isUnDeploymentOperation(key.getOperationId(), admin);
+
         // initial load. no events are present in the cache for this deployment.
         // iterate over all container and retrieve logs from logs cache.
-        GridServiceContainers containersForDeployment = EventsUtils.getContainersForDeployment(
-                key.getDeploymentId(), admin);
+        GridServiceContainers containersForDeployment = null;
+        if (isUndeploy) {
+        containersForDeployment = EventsUtils.getContainersForUnDeployment(
+                key.getOperationId(), admin);
+        } else {
+            containersForDeployment = EventsUtils.getContainersForDeployment(
+                    key.getOperationId(), admin);
+        }
+
 
         if (containersForDeployment == null) {
-            throw new ResourceNotFoundException("Deployment with id " + key.getDeploymentId());
+            throw new ResourceNotFoundException("Deployment with id " + key.getOperationId());
         }
 
         int index = 0;
         for (GridServiceContainer container : containersForDeployment) {
 
-            LogEntryMatcherProviderKey logEntryMatcherProviderKey = new LogEntryMatcherProviderKey();
-            logEntryMatcherProviderKey.setContainerId(container.getUid());
-            logEntryMatcherProviderKey.setEventsCacheKey(key);
+            LogEntryMatcherProviderKey logEntryMatcherProviderKey = createKey(isUndeploy, container, key);
+
             LogEntries logEntries = container.logEntries(matcherProvider.get(logEntryMatcherProviderKey));
             for (LogEntry logEntry : logEntries) {
                 if (logEntry.isLog()) {
@@ -104,6 +112,13 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, EventsCacheVa
 
         logger.fine(EventsUtils.getThreadId() + "Reloading events cache entry for key " + key);
 
+        boolean isUndeploy = EventsUtils.isUnDeploymentOperation(key.getOperationId(), admin);
+
+        if (!isUndeploy && EventsUtils.isUndeploymentInProgress(oldValue.getProcessingUnit())) {
+            // prevent client who are requesting installation events from seeing un-installation events
+            Futures.immediateFuture(oldValue);
+        }
+
         // pickup any new containers along with the old ones
         GridServiceContainers containersForDeployment = EventsUtils.getContainersForDeployment(
                 oldValue.getProcessingUnit());
@@ -112,9 +127,7 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, EventsCacheVa
             for (GridServiceContainer container : containersForDeployment) {
 
                 // this will give us just the new logs.
-                LogEntryMatcherProviderKey logEntryMatcherProviderKey = new LogEntryMatcherProviderKey();
-                logEntryMatcherProviderKey.setContainerId(container.getUid());
-                logEntryMatcherProviderKey.setEventsCacheKey(key);
+                LogEntryMatcherProviderKey logEntryMatcherProviderKey = createKey(isUndeploy, container, key);
                 LogEntryMatcher matcher = matcherProvider.get(logEntryMatcherProviderKey);
                 LogEntries logEntries = container.logEntries(matcher);
 
@@ -136,5 +149,15 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, EventsCacheVa
 
     public LogEntryMatcherProvider getMatcherProvider() {
         return matcherProvider;
+    }
+
+    private LogEntryMatcherProviderKey createKey(final boolean isUndeploy,
+                                                 final GridServiceContainer container,
+                                                 final EventsCacheKey key) {
+        LogEntryMatcherProviderKey logEntryMatcherProviderKey = new LogEntryMatcherProviderKey();
+        logEntryMatcherProviderKey.setUndeploy(isUndeploy);
+        logEntryMatcherProviderKey.setOperationId(key.getOperationId());
+        logEntryMatcherProviderKey.setContainer(container);
+        return logEntryMatcherProviderKey;
     }
 }

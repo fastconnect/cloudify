@@ -12,6 +12,7 @@
  *******************************************************************************/
 package org.cloudifysource.rest.events.cache;
 
+import com.gigaspaces.log.AfterTimeLogEntryMatcher;
 import com.gigaspaces.log.ContinuousLogEntryMatcher;
 import com.gigaspaces.log.LogEntryMatcher;
 import com.google.common.cache.CacheBuilder;
@@ -49,9 +50,26 @@ public class LogEntryMatcherProvider {
 
                     @Override
                     public ContinuousLogEntryMatcher load(final LogEntryMatcherProviderKey key) throws Exception {
-                        LogEntryMatcher matcher = EventsUtils.createMatcher();
+
                         logger.fine(EventsUtils.getThreadId() + "Loading matcher cache with matcher for key " + key);
-                        return new ContinuousLogEntryMatcher(matcher, matcher);
+
+                        // continuousMatcher is always the one with the USM event logger prefix.
+                        LogEntryMatcher continuousMatcher = EventsUtils.createUSMEventLoggerMatcher();
+
+                        LogEntryMatcher initialMatcher;
+                        if (key.isUndeploy()) {
+                            // in this case we just want events starting from now
+                            // since we don't want to return install events.
+                            initialMatcher = new AfterTimeLogEntryMatcher(
+                                    key.getContainer().getGridServiceAgent().getOperatingSystem().getCurrentTimeInMillis(), EventsUtils.createUSMEventLoggerMatcher());
+                        } else {
+                            // in this case we want all events from the start, matching the USM event
+                            // logger prefix.
+                            initialMatcher = EventsUtils.createUSMEventLoggerMatcher();
+                        }
+
+
+                        return new ContinuousLogEntryMatcher(initialMatcher, continuousMatcher);
                     }
                 });
     }
@@ -65,7 +83,7 @@ public class LogEntryMatcherProvider {
 
         for (LogEntryMatcherProviderKey logMatcherKey
                 : new HashSet<LogEntryMatcherProviderKey>(matcherCache.asMap().keySet())) {
-            if (logMatcherKey.getEventsCacheKey().equals(key)) {
+            if (logMatcherKey.getOperationId().equals(key.getOperationId())) {
                 matcherCache.asMap().remove(logMatcherKey);
             }
         }

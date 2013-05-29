@@ -12,6 +12,8 @@
  *******************************************************************************/
 package org.cloudifysource.rest.events.cache;
 
+import org.openspaces.admin.gsc.GridServiceContainer;
+
 /**
  * Created with IntelliJ IDEA.
  * User: elip
@@ -22,50 +24,62 @@ package org.cloudifysource.rest.events.cache;
  */
 public class LogEntryMatcherProviderKey {
 
-    private String containerId;
-    private EventsCacheKey eventsCacheKey;
+    private GridServiceContainer container;
+    private String operationId;
+    private boolean isUndeploy;
 
-    public String getContainerId() {
-        return containerId;
+    public GridServiceContainer getContainer() {
+        return container;
     }
 
-    public void setContainerId(final String containerId) {
-        this.containerId = containerId;
+    public void setContainer(GridServiceContainer container) {
+        this.container = container;
     }
 
-    public EventsCacheKey getEventsCacheKey() {
-        return eventsCacheKey;
+    public String getOperationId() {
+        return operationId;
     }
 
-    public void setEventsCacheKey(final EventsCacheKey eventsCacheKey) {
-        this.eventsCacheKey = eventsCacheKey;
+    public void setOperationId(String operationId) {
+        this.operationId = operationId;
+    }
+
+    public boolean isUndeploy() {
+        return isUndeploy;
+    }
+
+    public void setUndeploy(boolean undeploy) {
+        isUndeploy = undeploy;
     }
 
     @Override
-    public boolean equals(final Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
 
         LogEntryMatcherProviderKey that = (LogEntryMatcherProviderKey) o;
 
-        if (!containerId.equals(that.containerId)) {
-            return false;
-        }
-        if (!eventsCacheKey.equals(that.eventsCacheKey)) {
-            return false;
-        }
+        if (isUndeploy != that.isUndeploy) return false;
+        if (!container.getUid().equals(that.container.getUid())) return false;
+        if (!operationId.equals(that.operationId)) return false;
 
         return true;
     }
 
     @Override
     public int hashCode() {
-        int result = containerId.hashCode();
-        result = 31 * result + eventsCacheKey.hashCode();
+        int result = container.hashCode();
+        result = 31 * result + operationId.hashCode();
+        result = 31 * result + (isUndeploy ? 1 : 0);
         return result;
+    }
+
+    @Override
+    public String toString() {
+        return "LogEntryMatcherProviderKey{" +
+                "container=" + container +
+                ", operationId='" + operationId + '\'' +
+                ", isUndeploy=" + isUndeploy +
+                '}';
     }
 }

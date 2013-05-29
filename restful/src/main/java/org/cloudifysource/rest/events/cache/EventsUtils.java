@@ -63,11 +63,69 @@ public final class EventsUtils {
     }
 
     /**
+     * Given an operation id, determine whether this operation is a deployment operation on some processing unit.
+     * @param operationId The operation id.
+     * @param admin The admin instance to perform lookup with.
+     * @return true if the operation is deployment.
+     */
+    public static boolean isDeploymentOperation(final String operationId, final Admin admin) {
+        for (ProcessingUnit pu : admin.getProcessingUnits()) {
+
+            if (isManagementService(pu)) {
+                // ignore management services
+                continue;
+            }
+
+            final String puDeploymentId = (String) pu.getBeanLevelProperties().getContextProperties()
+                    .get(CloudifyConstants.CONTEXT_PROPERTY_DEPLOYMENT_ID);
+            if (operationId.equals(puDeploymentId)) {
+                // this operation id is a deployment id for this processing unit.
+                return true;
+            }
+        }
+        // could not find any pu with a matching deployment id.
+        return false;
+    }
+
+    /**
+     * Given an operation id, determine whether this operation is an un-deployment operation on some processing unit.
+     * @param operationId The operation id.
+     * @param admin The admin instance to perform lookup with.
+     * @return true if the operation is un-deployment.
+     */
+    public static boolean isUnDeploymentOperation(final String operationId, final Admin admin) {
+        return !isDeploymentOperation(operationId, admin);
+    }
+
+
+    /**
+     * Determines if the current pu is being undeployed.
+     * @param pu The processing unit.
+     * @return true if an uninstall call was executed on this pu.
+     */
+    public static boolean isUndeploymentInProgress(final ProcessingUnit pu) {
+        return pu.getBeanLevelProperties().getContextProperties()
+                .containsKey(CloudifyConstants.CONTEXT_PROPERTY_UNDEPLOYMENT_ID);
+    }
+
+    /**
+     * Given a processing unit, determine whether or not it is a management service or not.
+     * @param pu The processing unit.
+     * @return true if the pu is a management pu, false otherwise.
+     */
+    public static boolean isManagementService(final ProcessingUnit pu) {
+        final String applicationName = (String) pu.getBeanLevelProperties().getContextProperties()
+                .get(CloudifyConstants.CONTEXT_PROPERTY_APPLICATION_NAME);
+        return CloudifyConstants.MANAGEMENT_APPLICATION_NAME.equals(applicationName);
+    }
+
+
+    /**
      * Creates a matcher for {@link org.openspaces.admin.gsc.GridServiceContainer#logEntries(com.gigaspaces.log.LogEntryMatcher)}.
      * This matcher will find USM related event only using the {@code USM_EVENT_LOGGER_NAME} regex.
      * @return The log entry matcher.
      */
-    public static LogEntryMatcher createMatcher(){
+    public static LogEntryMatcher createUSMEventLoggerMatcher(){
         final String regex = MessageFormat.format(USM_EVENT_LOGGER_NAME, new Object() {
         });
         return regex(regex);
@@ -91,21 +149,38 @@ public final class EventsUtils {
      * Retrieves containers of a processing unit by its deployment id.
      * @param deploymentId The deployment id.
      * @param admin The admin object for admin api access.
-     * @return The continers.
+     * @return The containers.
      */
     public static GridServiceContainers getContainersForDeployment(final String deploymentId, final Admin admin) {
 
         for (ProcessingUnit pu : admin.getProcessingUnits()) {
-            String puDeploymentId = (String) pu.getBeanLevelProperties().getContextProperties().get(CloudifyConstants.CONTEXT_PROPERTY_DEPLOYMENT_ID);
-            if (puDeploymentId == null) {
-                throw new IllegalStateException("Service " + pu.getName() + " does not have a deployment id context property");
-            }
+            String puDeploymentId = (String) pu.getBeanLevelProperties().getContextProperties()
+                    .get(CloudifyConstants.CONTEXT_PROPERTY_DEPLOYMENT_ID);
             if (deploymentId.equals(puDeploymentId)) {
                 return getContainersForDeployment(pu);
             }
         }
         return null;
     }
+
+    /**
+     * Retrieves containers of a processing unit by its undeployment id.
+     * @param unDeploymentId The undeployment id.
+     * @param admin The admin object for admin api access.
+     * @return The containers.
+     */
+    public static GridServiceContainers getContainersForUnDeployment(final String unDeploymentId, final Admin admin) {
+
+        for (ProcessingUnit pu : admin.getProcessingUnits()) {
+            String puDeploymentId = (String) pu.getBeanLevelProperties().getContextProperties()
+                    .get(CloudifyConstants.CONTEXT_PROPERTY_UNDEPLOYMENT_ID);
+            if (unDeploymentId.equals(puDeploymentId)) {
+                return getContainersForDeployment(pu);
+            }
+        }
+        return null;
+    }
+
 
     /**
      * Given a set of events and indices, extract only events who's index is in range.

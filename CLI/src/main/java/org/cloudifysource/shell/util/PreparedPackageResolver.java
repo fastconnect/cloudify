@@ -59,7 +59,7 @@ public class PreparedPackageResolver implements NameAndPackedFileResolver {
     }
 
     @Override
-    public int getPlannedNumberOfInstances() throws CLIStatusException {
+    public int getPlannedNumberOfInstancesPerService() throws CLIStatusException {
         if (!initialized) {
             init();
         }

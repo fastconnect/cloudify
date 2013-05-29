@@ -18,6 +18,7 @@ package org.cloudifysource.shell.util;
 import org.cloudifysource.shell.exceptions.CLIStatusException;
 
 import java.io.File;
+import java.util.Map;
 
 /**
  * Created with IntelliJ IDEA.
@@ -47,9 +48,9 @@ public interface NameAndPackedFileResolver {
     File getPackedFile() throws CLIStatusException;
 
     /**
-     * Determines the planned number of instances for the installation.
+     * Determines the planned number of instances for the installation per service.
      * @return the planned number of instances
      * @throws CLIStatusException Thrown in case of an error.
      */
-    int getPlannedNumberOfInstances() throws CLIStatusException;
+    Map<String, Integer> getPlannedNumberOfInstancesPerService() throws CLIStatusException;
 }

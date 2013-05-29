@@ -24,6 +24,7 @@ public abstract class InstallationProcessInspector {
     protected RestClient restClient;
     private boolean verbose;
     private String deploymentId;
+    private Map<String, Integer> plannedNumberOfInstancesPerService;
 
     private int lastEventIndex = 0;
 
@@ -31,10 +32,12 @@ public abstract class InstallationProcessInspector {
 
     public InstallationProcessInspector(final RestClient restClient,
                                         final String deploymentId,
-                                        final boolean verbose) {
+                                        final boolean verbose,
+                                        final Map<String, Integer> plannedNumberOfInstancesPerService) {
         this.restClient = restClient;
         this.deploymentId = deploymentId;
         this.verbose = verbose;
+        this.plannedNumberOfInstancesPerService = plannedNumberOfInstancesPerService;
     }
 
     public void waitForLifeCycleToEnd(final long timeout) throws InterruptedException, CLIException, TimeoutException, RestClientException {
@@ -42,7 +45,6 @@ public abstract class InstallationProcessInspector {
 
         conditionLatch.waitFor(new ConditionLatch.Predicate() {
 
-            Map<String, Integer> plannedNumberOfInstancesPerService = getPlannedNumberOfInstancesPerService();
             Map<String, Integer> currentRunningInstancesPerService = initWithZeros(plannedNumberOfInstancesPerService.keySet());
 
             @Override
@@ -87,8 +89,6 @@ public abstract class InstallationProcessInspector {
     }
 
     public abstract boolean lifeCycleEnded() throws RestClientException;
-
-    public abstract Map<String, Integer> getPlannedNumberOfInstancesPerService() throws RestClientException;
 
     public abstract int getNumberOfRunningInstances(final String serviceName) throws RestClientException;
 

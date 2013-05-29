@@ -63,8 +63,7 @@ import org.fusesource.jansi.Ansi.Color;
 public class InstallApplication extends AdminAwareCommand {
 
 	private static final int DEFAULT_TIMEOUT_MINUTES = 10;
-	private static final String TIMEOUT_ERROR_MESSAGE = "Application installation timed out."
-			+ " Configure the timeout using the -timeout flag.";
+
 	private static final long TEN_K = 10 * FileUtils.ONE_KB;
 
 	@Argument(required = true, name = "application-file", description = "The application recipe file path, folder "
@@ -201,11 +200,11 @@ public class InstallApplication extends AdminAwareCommand {
 		request.setApplicationOverridesUploadKey(overridesFileKey);
 		request.setCloudOverridesUploadKey(cloudOverridesFileKey);
 		request.setApplicationName(applicationName);
-		request.setAuthGroups(this.authGroups);
-		request.setDebugAll(this.debugAll);
-		request.setdebugEvents(this.debugEvents);
-		request.setDebugMode(this.debugModeString);
-		request.setSelfHealing(this.disableSelfHealing);
+		request.setAuthGroups(authGroups);
+		request.setDebugAll(debugAll);
+		request.setdebugEvents(debugEvents);
+		request.setDebugMode(debugModeString);
+		request.setSelfHealing(disableSelfHealing);
 		request.setTimeoutInMillis(TimeUnit.MINUTES.toMillis(timeoutInMinutes));
 		
 		//install application

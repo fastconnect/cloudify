@@ -66,7 +66,7 @@ public class PreparedApplicationPackageResolver implements NameAndPackedFileReso
 	}
 
     @Override
-    public int getPlannedNumberOfInstances() throws CLIStatusException {
+    public int getPlannedNumberOfInstancesPerService() throws CLIStatusException {
         return 0;  //To change body of implemented methods use File | Settings | File Templates.
     }
 

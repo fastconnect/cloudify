@@ -21,9 +21,13 @@ import org.cloudifysource.dsl.internal.DSLReader;
 import org.cloudifysource.dsl.internal.DSLUtils;
 import org.cloudifysource.dsl.internal.ServiceReader;
 import org.cloudifysource.dsl.internal.packaging.Packager;
+import org.cloudifysource.dsl.internal.packaging.PackagingException;
 import org.cloudifysource.shell.exceptions.CLIStatusException;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Created with IntelliJ IDEA.
@@ -69,18 +73,23 @@ public class ServiceResolver implements NameAndPackedFileResolver {
                 init();
             }
             return Packager.pack(serviceGroovyFile, false, service, null);
-        } catch (final Exception e) {
+        } catch (final IOException e) {
+            throw new CLIStatusException(e, "failed_to_package_service",
+                    serviceGroovyFile);
+        } catch (final PackagingException e) {
             throw new CLIStatusException(e, "failed_to_package_service",
                     serviceGroovyFile);
         }
     }
 
     @Override
-    public int getPlannedNumberOfInstances() throws CLIStatusException {
+    public Map<String, Integer> getPlannedNumberOfInstancesPerService() throws CLIStatusException {
         if (!initialized) {
             init();
         }
-        return service.getNumInstances();
+        Map<String, Integer> plannedNumberOfInstancesPerService = new HashMap<String, Integer>();
+        plannedNumberOfInstancesPerService.put(getName(), service.getNumInstances());
+        return plannedNumberOfInstancesPerService;
     }
 
     private void init() throws CLIStatusException {

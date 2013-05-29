@@ -37,6 +37,7 @@ import org.fusesource.jansi.Ansi.Color;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
 /**
@@ -185,7 +186,6 @@ public class InstallService extends AdminAwareCommand {
             serviceName = nameAndPackedFileResolver.getName();
         }
         File packedFile = nameAndPackedFileResolver.getPackedFile();
-        int plannedNumberOfInstances = nameAndPackedFileResolver.getPlannedNumberOfInstances();
 
         // upload the files if necessary
         final String cloudConfigurationFileKey = uploadToRepo(cloudConfiguration);
@@ -210,16 +210,17 @@ public class InstallService extends AdminAwareCommand {
         InstallServiceResponse installServiceResponse = ((RestAdminFacade) adminFacade)
                 .installService(CloudifyConstants.DEFAULT_APPLICATION_NAME, serviceName, request);
 
+        Map<String, Integer> plannedNumberOfInstancesPerService = nameAndPackedFileResolver.getPlannedNumberOfInstancesPerService();
         ServiceInstallationProcessInspector inspector = new ServiceInstallationProcessInspector(
                 ((RestAdminFacade) adminFacade).getNewRestClient(),
                 installServiceResponse.getDeploymentID(),
                 verbose,
-                serviceName,
-                plannedNumberOfInstances);
+                plannedNumberOfInstancesPerService,
+                serviceName);
 
         int actualTimeout = timeoutInMinutes;
         boolean isDone = false;
-        displayer.printEvent("installing_service", serviceName, plannedNumberOfInstances);
+        displayer.printEvent("installing_service", serviceName, plannedNumberOfInstancesPerService.get(serviceName));
         displayer.printEvent("waiting_for_lifecycle_of_service", serviceName);
         while (!isDone) {
             try {

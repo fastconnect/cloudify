@@ -5,7 +5,6 @@ import org.cloudifysource.dsl.rest.ServiceDescription;
 import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.restclient.exceptions.RestClientException;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -19,29 +18,20 @@ public class ServiceInstallationProcessInspector extends InstallationProcessInsp
     private static final String TIMEOUT_ERROR_MESSAGE = "Service installation timed out. Configure the timeout using the -timeout flag.";
 
     private String serviceName;
-    private int plannedNumberOfInstances;
 
     public ServiceInstallationProcessInspector(final RestClient restClient,
                                                final String deploymentId,
                                                final boolean verbose,
-                                               final String serviceName,
-                                               final int plannedNumberOfInstances) {
-        super(restClient, deploymentId, verbose);
+                                               final Map<String, Integer> plannedNumberOfInstancesPerService,
+                                               final String serviceName) {
+        super(restClient, deploymentId, verbose, plannedNumberOfInstancesPerService);
         this.serviceName = serviceName;
-        this.plannedNumberOfInstances = plannedNumberOfInstances;
     }
 
     @Override
     public boolean lifeCycleEnded() throws RestClientException {
         ServiceDescription serviceDescription = restClient.getServiceDescription(CloudifyConstants.DEFAULT_APPLICATION_NAME, serviceName);
         return serviceDescription.getServiceState().equals(CloudifyConstants.DeploymentState.STARTED);
-    }
-
-    @Override
-    public Map<String, Integer> getPlannedNumberOfInstancesPerService() throws RestClientException {
-        Map<String, Integer> plannedNumberOfInstancesPerService = new HashMap<String, Integer>();
-        plannedNumberOfInstancesPerService.put(serviceName, plannedNumberOfInstances);
-        return plannedNumberOfInstancesPerService;
     }
 
     @Override

@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 import org.apache.commons.io.FileUtils;
@@ -84,8 +85,8 @@ public class ApplicationResolver implements NameAndPackedFileResolver {
 	}
 
     @Override
-    public int getPlannedNumberOfInstances() throws CLIStatusException {
-        return 0;  //To change body of implemented methods use File | Settings | File Templates.
+    public Map<String, Integer> getPlannedNumberOfInstancesPerService() throws CLIStatusException {
+        return null;  //To change body of implemented methods use File | Settings | File Templates.
     }
 
     private void init() throws CLIStatusException,

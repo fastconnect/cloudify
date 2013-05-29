@@ -15,7 +15,9 @@ package org.cloudifysource.shell.commands;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
@@ -40,6 +42,7 @@ import org.cloudifysource.shell.ShellUtils;
 import org.cloudifysource.shell.exceptions.CLIException;
 import org.cloudifysource.shell.exceptions.CLIStatusException;
 import org.cloudifysource.shell.installer.CLIEventsDisplayer;
+import org.cloudifysource.shell.rest.ApplicationInstallationProcessInspector;
 import org.cloudifysource.shell.rest.RestAdminFacade;
 import org.cloudifysource.shell.util.ApplicationResolver;
 import org.cloudifysource.shell.util.NameAndPackedFileResolver;
@@ -214,20 +217,62 @@ public class InstallApplication extends AdminAwareCommand {
 		
 		//install application
 		final InstallApplicationResponse installApplicationResponse = 
-				((RestAdminFacade) adminFacade).installApplication(cloudOverridesFileKey, request);
+				((RestAdminFacade) adminFacade).installApplication(applicationName, request);
 		
+        Map<String, Integer> plannedNumberOfInstancesPerService = nameAndPackedFileResolver
+                .getPlannedNumberOfInstancesPerService();
+        ApplicationInstallationProcessInspector inspector = new ApplicationInstallationProcessInspector(
+        		((RestAdminFacade) adminFacade).getNewRestClient(), 
+        		installApplicationResponse.getDeploymentID(), 
+        		applicationName,
+        		verbose,
+        		plannedNumberOfInstancesPerService);	
+        		
+		//print application info.
+//		printApplicationInfo(application);
+        int actualTimeout = timeoutInMinutes;
+        boolean isDone = false;
+//        displayer.printEvent("installing_service", applicationName, plannedNumberOfInstancesPerService.get(serviceName));
+//        displayer.printEvent("waiting_for_lifecycle_of_service", serviceName);
+        while (!isDone) {
+            try {
+
+                inspector.waitForLifeCycleToEnd(actualTimeout);
+                isDone = true;
+
+            } catch (final TimeoutException e) {
+
+                // if non interactive, throw exception
+                if (!(Boolean) session.get(Constants.INTERACTIVE_MODE)) {
+                    throw new CLIException(e.getMessage(), e);
+                }
+
+                // ask user if he want to continue viewing the installation.
+                displayer.printEvent("");
+                boolean continueViewing = promptWouldYouLikeToContinueQuestion();
+                if (continueViewing) {
+                    // prolong the polling timeouts
+                    actualTimeout = DEFAULT_TIMEOUT_MINUTES;
+                } else {
+                    throw new CLIStatusException(e,
+                            "service_installation_timed_out_on_client",
+                            applicationName);
+                }
+            }
+        }
+
 		if (!applicationFile.isFile()) {
 			final boolean delete = packedFile.delete();
 			if (!delete) {
 				logger.info("Failed to delete application file: " + packedFile.getAbsolutePath());
 			}
 		}
-		//print application info.
-//		printApplicationInfo(application);
+
 		//set the active application in the CLI.
 		session.put(Constants.ACTIVE_APP, applicationName);
 		GigaShellMain.getInstance().setCurrentApplicationName(applicationName);
-		
+		// drop one line before printing the last message
+        displayer.printEvent("");
 		return this.getFormattedMessage("application_installed_successfully", Color.GREEN, applicationName);
 	}
 
@@ -236,7 +281,7 @@ public class InstallApplication extends AdminAwareCommand {
 		// this is a prepared package we can just use.
 		if (applicationFile.isFile()) {
 			if (applicationFile.getName().endsWith("zip") || applicationFile.getName().endsWith("jar")) {
-				return new PreparedApplicationPackageResolver(applicationFile);
+				return new PreparedApplicationPackageResolver(applicationFile, overrides);
 			} 
 			throw new CLIStatusException("application_file_format_mismatch", applicationFile.getPath()); 
 		} else {

@@ -288,7 +288,7 @@ public class RestClientExecutor {
                                                       entity.getMessage(),
                                                       statusCode,
                                                       reasonPhrase,
-                                                      entity.getVerbose());
+                                                      responseBody);
 
             } catch (final IOException e) {
                 // this means we got the response, but it is not in the correct format.

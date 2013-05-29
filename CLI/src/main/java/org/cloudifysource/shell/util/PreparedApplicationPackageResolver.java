@@ -17,9 +17,11 @@ package org.cloudifysource.shell.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.cloudifysource.dsl.Application;
+import org.cloudifysource.dsl.Service;
 import org.cloudifysource.dsl.internal.DSLApplicationCompilatioResult;
 import org.cloudifysource.dsl.internal.DSLException;
 import org.cloudifysource.dsl.internal.DSLReader;
@@ -39,8 +41,10 @@ public class PreparedApplicationPackageResolver implements NameAndPackedFileReso
 	private File packedFile;
 	
 	private boolean initialized = false;
+	private File overridesFile;
 	
-	public PreparedApplicationPackageResolver(final File packedFile) {
+	public PreparedApplicationPackageResolver(final File packedFile, 
+												final File overridesFile) {
 		this.packedFile = packedFile;
 	}
 	
@@ -61,17 +65,26 @@ public class PreparedApplicationPackageResolver implements NameAndPackedFileReso
 	}
 
     @Override
-    public Map<String, Integer> getPlannedNumberOfInstancesPerService() throws CLIStatusException {
-        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    public Map<String, Integer> getPlannedNumberOfInstancesPerService() 
+    		throws CLIStatusException {
+    	if (!initialized) {
+    		init();
+    	}
+    	final Map<String, Integer> deploymentIDsMap = new HashMap<String, Integer>(); 
+        for (Service service : application.getServices()) {
+			deploymentIDsMap.put(service.getName(), service.getNumInstances());
+		}
+        return deploymentIDsMap;
     }
-
+    
     private void init() throws CLIStatusException {
     	File applicationFile = null;
     	try {
             final File applicationFolder = ServiceReader.extractProjectFile(packedFile);
             applicationFile = DSLReader
             				.findDefaultDSLFile(DSLUtils.APPLICATION_DSL_FILE_NAME_SUFFIX, applicationFolder);
-            final DSLApplicationCompilatioResult result = ServiceReader.getApplicationFromFile(applicationFile);
+            final DSLApplicationCompilatioResult result = ServiceReader.getApplicationFromFile(applicationFile, 
+            																		this.overridesFile);
             this.application = result.getApplication();
     	} catch (final IOException e) {
     		throw new CLIStatusException("read_dsl_file_failed", 

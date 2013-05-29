@@ -17,11 +17,13 @@ package org.cloudifysource.shell.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Logger;
 
 import org.apache.commons.lang.StringUtils;
 import org.cloudifysource.dsl.Application;
+import org.cloudifysource.dsl.Service;
 import org.cloudifysource.dsl.internal.DSLException;
 import org.cloudifysource.dsl.internal.DSLReader;
 import org.cloudifysource.dsl.internal.DSLUtils;
@@ -73,10 +75,25 @@ public class ApplicationResolver implements NameAndPackedFileResolver {
 					applicationDir);
 		}
 	}
+	
+	public Application getApplication() throws CLIStatusException{
+		if (!initialized) {
+			init();
+		}
+		return this.application;
+	}
 
     @Override
-    public Map<String, Integer> getPlannedNumberOfInstancesPerService() throws CLIStatusException {
-        return null;  //To change body of implemented methods use File | Settings | File Templates.
+    public Map<String, Integer> getPlannedNumberOfInstancesPerService() 
+    		throws CLIStatusException {
+    	if (!initialized) {
+    		init();
+    	}
+    	final Map<String, Integer> deploymentIDsMap = new HashMap<String, Integer>(); 
+        for (Service service : application.getServices()) {
+			deploymentIDsMap.put(service.getName(), service.getNumInstances());
+		}
+        return deploymentIDsMap;
     }
 
     private void init() throws CLIStatusException {

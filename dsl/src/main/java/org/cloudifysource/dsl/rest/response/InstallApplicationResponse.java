@@ -26,22 +26,13 @@ import java.util.List;
  */
 public class InstallApplicationResponse {
 	
-	private List<String> serviceOrder;
 	private String deploymentID;
 			
-	public List<String> getServiceOrder() {
-		return serviceOrder;
-	}
-
-	public void setServiceOrder(final List<String> serviceOrder) {
-		this.serviceOrder = serviceOrder;
-	}
-
-	public String getDeploymentIDs() {
+	public String getDeploymentID() {
 		return deploymentID;
 	}
 
-	public void setDeploymentIDs(final String deploymentID) {
+	public void setDeploymentID(final String deploymentID) {
 		this.deploymentID = deploymentID;
 	} 
 }

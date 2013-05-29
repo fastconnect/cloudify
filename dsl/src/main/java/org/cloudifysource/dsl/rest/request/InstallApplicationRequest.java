@@ -130,7 +130,7 @@ public class InstallApplicationRequest {
 	}
 
 	public String getCloudConfigurationUploadKey() {
-		return this.cloudConfigurationUploadKey;
+		return cloudConfigurationUploadKey;
 	}
 
 	public void setCloudConfigurationUploadKey(

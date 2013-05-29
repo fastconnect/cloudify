@@ -350,8 +350,7 @@ public class DeploymentsController extends BaseRestController {
      */
     @RequestMapping(value = "/{appName}/description", method = RequestMethod.GET)
     public ApplicationDescription getApplicationDescription(
-            @PathVariable final String appName,
-            @PathVariable final String serviceName)
+            @PathVariable final String appName)
             throws ResourceNotFoundException {
 
         // validate service exists
@@ -428,29 +427,10 @@ public class DeploymentsController extends BaseRestController {
 			restConfig.getExecutorService().execute(installer);
 		}
 		//creating response
-		final List<String> serviceNames = createServiceNamesList(services);
 		final InstallApplicationResponse response = new InstallApplicationResponse();
-		response.setServiceOrder(serviceNames);
-		response.setDeploymentIDs(deploymentID);
+		response.setDeploymentID(deploymentID);
 		
 		return response;
-	}
-
-	List<String> createDeploymentIDList(final int numberOfIDs) {
-		final List<String> deploymentIDs = new ArrayList<String>();
-		for (int i = 0; i < numberOfIDs; i++) {
-			final UUID deploymentID = UUID.randomUUID();
-			deploymentIDs.add(deploymentID.toString());
-		}
-		return deploymentIDs;
-	}
-
-    private List<String> createServiceNamesList(final List<Service> services) {
-		final List<String> serviceNames = new ArrayList<String>();
-		for (Service service : services) {
-			serviceNames.add(service.getName());
-		}
-		return serviceNames;
 	}
 
 	/**
@@ -1538,7 +1518,8 @@ public class DeploymentsController extends BaseRestController {
     		final String serviceFileName, 
     		final String absolutePuName)
     				throws RestErrorException {
-    	logger.info("Working proj dir: " + workingProjectDir.getAbsolutePath() + " service name: " + serviceFileName + " absolutPuName: " + absolutePuName);
+    	logger.info("Working proj dir: " + workingProjectDir.getAbsolutePath() + " service name: " 
+    				+ serviceFileName + " absolutPuName: " + absolutePuName);
         DSLServiceCompilationResult result;
         try {
             if (serviceFileName != null) {

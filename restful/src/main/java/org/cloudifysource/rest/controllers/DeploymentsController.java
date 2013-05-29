@@ -459,7 +459,7 @@ public class DeploymentsController extends BaseRestController {
 		final List<String> serviceNames = createServiceNamesList(services);
 		final InstallApplicationResponse response = new InstallApplicationResponse();
 		response.setServiceOrder(serviceNames);
-		response.setDeploymentIDs(deploymentIDs);
+		response.setDeploymentIDs(deploymentID);
 		
 		return response;
 	}

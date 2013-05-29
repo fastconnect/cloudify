@@ -47,23 +47,17 @@ public class PreparedApplicationPackageResolver implements NameAndPackedFileReso
 	@Override
 	public String getName() throws CLIStatusException {
 		if (!initialized) {
-			try {
-				init();
-			} catch (final IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (final DSLException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			init();
 		}
 		return application.getName();
 	}
 
 	@Override
 	public File getPackedFile() throws CLIStatusException {
-		// TODO Auto-generated method stub
-		return null;
+		if (!initialized) {
+			init();
+		}
+		return packedFile;
 	}
 
     @Override
@@ -71,15 +65,22 @@ public class PreparedApplicationPackageResolver implements NameAndPackedFileReso
         return null;  //To change body of implemented methods use File | Settings | File Templates.
     }
 
-    private void init() throws IOException, DSLException {
-		
+    private void init() throws CLIStatusException {
+    	File applicationFile = null;
+    	try {
             final File applicationFolder = ServiceReader.extractProjectFile(packedFile);
-            final File applicationFile = DSLReader
+            applicationFile = DSLReader
             				.findDefaultDSLFile(DSLUtils.APPLICATION_DSL_FILE_NAME_SUFFIX, applicationFolder);
             final DSLApplicationCompilatioResult result = ServiceReader.getApplicationFromFile(applicationFile);
             this.application = result.getApplication();
-        
-		
+    	} catch (final IOException e) {
+    		throw new CLIStatusException("read_dsl_file_failed", 
+					applicationFile.getAbsolutePath(), e.getMessage(), e);
+    	} catch (final DSLException e) {
+    		throw new CLIStatusException("read_dsl_file_failed", 
+    						applicationFile.getAbsolutePath(), e.getMessage(), e);
+    	}
+    	
 	}
 
 }

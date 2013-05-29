@@ -29,8 +29,6 @@ public class DeploymentFileHolder {
 	
 	private File serviceOverridesFile;
 	
-	private File cloudConfigurationFile;
-	
 	private File applicationPropertiesFile;
 	
 	public File getPackedFile() {
@@ -47,14 +45,6 @@ public class DeploymentFileHolder {
 	
 	public void setServiceOverridesFile(final File serviceOverridesFile) {
 		this.serviceOverridesFile = serviceOverridesFile;
-	}
-	
-	public File getCloudConfigurationFile() {
-		return cloudConfigurationFile;
-	}
-	
-	public void setCloudConfigurationFile(final File cloudConfigurationFile) {
-		this.cloudConfigurationFile = cloudConfigurationFile;
 	}
 	
 	public File getApplicationPropertiesFile() {

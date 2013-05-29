@@ -24,7 +24,6 @@ import java.util.logging.Level;
 
 import org.apache.commons.io.FileUtils;
 import org.cloudifysource.dsl.Service;
-import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.internal.DSLApplicationCompilatioResult;
 import org.cloudifysource.dsl.internal.DSLReader;
 import org.cloudifysource.dsl.internal.DSLUtils;
@@ -117,10 +116,6 @@ public class ApplicationDeployerRunnable implements Runnable {
 					applicationName, serviceName);
 			final File serviceDirectory = new File(appDir, serviceName);
 
-			// scan for service cloud configuration file
-			final File cloudConfiguration = new File(serviceDirectory,
-					CloudifyConstants.SERVICE_CLOUD_CONFIGURATION_FILE_NAME);
-
 			boolean found = false;
 			
 			try {
@@ -148,7 +143,6 @@ public class ApplicationDeployerRunnable implements Runnable {
 				final DeploymentFileHolder fileHolder = new DeploymentFileHolder();
 				fileHolder.setPackedFile(packedFile);
 				fileHolder.setServiceOverridesFile(actualOverridesFile);
-				fileHolder.setCloudConfigurationFile(cloudConfiguration);
 				fileHolder.setApplicationPropertiesFile(applicationPropertiesFile);
 				
 				controller.installServiceInternal(
@@ -215,9 +209,9 @@ public class ApplicationDeployerRunnable implements Runnable {
 	}
 
 	InstallServiceRequest createInstallServiceRequest(final File packedFile) {
-		
 		final InstallServiceRequest installServiceReq = new InstallServiceRequest();
 		installServiceReq.setCloudOverridesUploadKey(request.getCloudOverridesUploadKey());
+		installServiceReq.setCloudConfigurationUploadKey(request.getCloudConfigurationUploadKey());
 		installServiceReq.setAuthGroups(this.request.getAuthGroups());
 		installServiceReq.setDebugAll(this.request.isDebugAll());
 		installServiceReq.setDebugEvents(this.request.getDebugEvents());

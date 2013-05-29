@@ -480,16 +480,11 @@ public class DeploymentsController extends BaseRestController {
 		final File serviceOverridesFile = getFromRepo(request.getServiceOverridesUploadKey(),
 				                                      CloudifyMessageKeys.WRONG_SERVICE_OVERRIDES_UPLOAD_KEY.getName(),
                                                       absolutePuName);
-		// get cloud configuration file and content
-		final File cloudConfigurationFile = getFromRepo(request.getCloudConfigurationUploadKey(),
-				CloudifyMessageKeys.WRONG_CLOUD_CONFIGURATION_UPLOAD_KEY.getName(),
-				absolutePuName);
 		
 		final DeploymentFileHolder fileHolder = new DeploymentFileHolder();
 		fileHolder.setPackedFile(packedFile);
 		fileHolder.setServiceOverridesFile(serviceOverridesFile);
-		fileHolder.setCloudConfigurationFile(cloudConfigurationFile);
-		fileHolder.setApplicationPropertiesFile(null);/* application properties file */
+		fileHolder.setApplicationPropertiesFile(null); /* application properties file */
 		
 		final String deploymentID = UUID.randomUUID().toString();
 		// install the service
@@ -510,14 +505,10 @@ public class DeploymentsController extends BaseRestController {
 	 * 			Service name.
 	 * @param request
 	 * 			Install service request.
-	 * @param packedFile
-	 * 			packed service file.
-	 * @param proeprtiesOverridesFile
-	 * 			A file containing overrides for service's properties file.
-	 * @param cloudConfigurationFile
-	 * 			The cloud config file.
-	 * @param applicationPropertiesFile
-	 * 			The application overrides file - to overrides the application properties.
+	 * @param deploymentID
+	 * 			the application deployment ID.
+	 * @param fileHolder
+	 * 			A file holder for necessary deployment files
 	 * @return
 	 * 		an install service response.
 	 * @throws RestErrorException .
@@ -534,10 +525,6 @@ public class DeploymentsController extends BaseRestController {
 		// extract the service folder
 		final File serviceDir = extractServiceDir(fileHolder.getPackedFile(), absolutePuName);
 		// get cloud overrides file
-		final File cloudOverridesFile = getFromRepo(
-				request.getCloudOverridesUploadKey(), 
-				CloudifyMessageKeys.WRONG_CLOUD_OVERRIDES_UPLOAD_KEY.getName(),
-				absolutePuName);
 		final File workingProjectDir = new File(serviceDir, "ext");
 	
         // get properties file from working directory
@@ -564,7 +551,18 @@ public class DeploymentsController extends BaseRestController {
 		// update template name
 		final String templateName = getTempalteNameFromService(service);
 
-		final byte[] cloudConfigurationContents = getCloudConfigurationContent(fileHolder.getCloudConfigurationFile(), absolutePuName);
+		// get cloud overrides file
+		final File cloudOverridesFile = getFromRepo(
+				request.getCloudOverridesUploadKey(), 
+				CloudifyMessageKeys.WRONG_CLOUD_OVERRIDES_UPLOAD_KEY.getName(),
+				absolutePuName);
+		
+		// get cloud configuration file and content
+		final File cloudConfigurationFile = getFromRepo(
+				request.getCloudConfigurationUploadKey(), 
+				CloudifyMessageKeys.WRONG_CLOUD_CONFIGURATION_UPLOAD_KEY.getName(),
+				absolutePuName);
+		final byte[] cloudConfigurationContents = getCloudConfigurationContent(cloudConfigurationFile, absolutePuName);
 
 		// update effective authGroups
 		String effectiveAuthGroups = getEffectiveAuthGroups(request.getAuthGroups());
@@ -577,7 +575,7 @@ public class DeploymentsController extends BaseRestController {
                                templateName,
 				               cloudOverridesFile,
                                fileHolder.getServiceOverridesFile(),
-                               fileHolder.getCloudConfigurationFile());
+                               cloudConfigurationFile);
 
 		String cloudOverrides = null;
 		try {

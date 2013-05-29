@@ -45,6 +45,8 @@ public class InstallApplicationRequest {
 	private String debugEvents;
 	
 	private long timeoutInMillis;
+
+	private String cloudConfigurationUploadKey;
 	
 	public String getApplcationFileUploadKey() {
 		return applcationFileUploadKey;
@@ -115,7 +117,7 @@ public class InstallApplicationRequest {
 		return debugEvents;
 	}
 
-	public void setdebugEvents(final String debugEvents) {
+	public void setDebugEvents(final String debugEvents) {
 		this.debugEvents = debugEvents;
 	}
 
@@ -125,5 +127,14 @@ public class InstallApplicationRequest {
 
 	public void setTimeoutInMillis(final long timeout) {
 		this.timeoutInMillis = timeout;
+	}
+
+	public String getCloudConfigurationUploadKey() {
+		return this.cloudConfigurationUploadKey;
+	}
+
+	public void setCloudConfigurationUploadKey(
+			final String cloudConfigurationUploadKey) {
+		this.cloudConfigurationUploadKey = cloudConfigurationUploadKey;
 	}
 }

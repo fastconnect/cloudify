@@ -17,21 +17,16 @@ package org.cloudifysource.shell.util;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.cloudifysource.dsl.Application;
-import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.internal.DSLException;
 import org.cloudifysource.dsl.internal.DSLReader;
 import org.cloudifysource.dsl.internal.DSLUtils;
 import org.cloudifysource.dsl.internal.packaging.Packager;
 import org.cloudifysource.dsl.internal.packaging.PackagingException;
-import org.cloudifysource.dsl.internal.packaging.ZipUtils;
 import org.cloudifysource.dsl.utils.RecipePathResolver;
 import org.cloudifysource.shell.exceptions.CLIStatusException;
 
@@ -47,33 +42,17 @@ public class ApplicationResolver implements NameAndPackedFileResolver {
 	private File overridesFile;
 	private Application application;
 	private boolean initialized = false;
-	private File cloudConfiguration = null;
-	private File packedFile;
 	
 	protected static final Logger logger = Logger.getLogger(ApplicationResolver.class.getName());
 	
-	public ApplicationResolver(final File appDir,
-							   final File overrides,
-							   final File cloudConfiguration) {
+	public ApplicationResolver(final File appDir) {
 		this.applicationDir = appDir;
-		this.overridesFile = overrides;
-		this.cloudConfiguration  = cloudConfiguration;
 	}
 	
 	@Override
 	public String getName() throws CLIStatusException {
 		if (!initialized) {
-			try {
-				init();
-				//TODO:adaml change this to proper messages
-			} catch (IOException e) {
-				throw new CLIStatusException("");
-			} catch (PackagingException e) {
-				throw new CLIStatusException("");
-			} catch (DSLException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			init();
 		}
 		return application.getName();
 	}
@@ -81,7 +60,18 @@ public class ApplicationResolver implements NameAndPackedFileResolver {
 
 	@Override
 	public File getPackedFile() throws CLIStatusException {
-		return this.packedFile;
+		try {
+			if (!initialized) {
+				init();
+			}
+			return Packager.packApplication(application, applicationDir);
+		} catch (final IOException e) {
+			throw new CLIStatusException(e, "failed_to_package_application",
+					applicationDir);
+		} catch (final PackagingException e) {
+			throw new CLIStatusException(e, "failed_to_package_application",
+					applicationDir);
+		}
 	}
 
     @Override
@@ -89,8 +79,7 @@ public class ApplicationResolver implements NameAndPackedFileResolver {
         return null;  //To change body of implemented methods use File | Settings | File Templates.
     }
 
-    private void init() throws CLIStatusException,
-				IOException, PackagingException, DSLException {
+    private void init() throws CLIStatusException {
 		final RecipePathResolver pathResolver = new RecipePathResolver();
 		if (pathResolver.resolveApplication(applicationDir)) {
 			applicationDir = pathResolver.getResolved();
@@ -98,60 +87,19 @@ public class ApplicationResolver implements NameAndPackedFileResolver {
 			throw new CLIStatusException("application_not_found",
 					StringUtils.join(pathResolver.getPathsLooked().toArray(), ", "));
 		}
-
-	
-		final DSLReader dslReader = createDslReader();
-		this.application = dslReader.readDslEntity(Application.class);
-
-		final File cloudConfigurationZipFile = createCloudConfigurationZipFile();
-		final List<File> additionalServiceFiles = new LinkedList<File>();
-		if (cloudConfigurationZipFile != null) {
-			additionalServiceFiles.add(cloudConfigurationZipFile);
-		}
-		this.packedFile = Packager.packApplication(application, applicationDir, additionalServiceFiles);
-
-	}
-
-	private File createCloudConfigurationZipFile()
-			throws CLIStatusException, IOException {
-		if (this.cloudConfiguration == null) {
-			return null;
-		}
-
-		if (!this.cloudConfiguration.exists()) {
-			throw new CLIStatusException("cloud_configuration_file_not_found",
-					this.cloudConfiguration.getAbsolutePath());
-		}
-
-		// create a temp file in a temp directory
-		final File tempDir = File.createTempFile("__Cloudify_Cloud_configuration", ".tmp");
-		FileUtils.forceDelete(tempDir);
-		final boolean mkdirs = tempDir.mkdirs();
-		if (!mkdirs) {
-			logger.info("Field to create temporary directory " + tempDir.getAbsolutePath());
-		}
-		final File tempFile = new File(tempDir, CloudifyConstants.SERVICE_CLOUD_CONFIGURATION_FILE_NAME);
-		logger.info("Created temporary file " + tempFile.getAbsolutePath()
-				+ " in temporary directory" + tempDir.getAbsolutePath());
-
-		// mark files for deletion on JVM exit
-		tempFile.deleteOnExit();
-		tempDir.deleteOnExit();
-
-		if (this.cloudConfiguration.isDirectory()) {
-			ZipUtils.zip(this.cloudConfiguration, tempFile);
-		} else if (this.cloudConfiguration.isFile()) {
-			ZipUtils.zipSingleFile(this.cloudConfiguration, tempFile);
-		} else {
-			throw new IOException(this.cloudConfiguration + " is neither a file nor a directory");
-		}
-
-		return tempFile;
-	}
-	
-	private DSLReader createDslReader() {
-		final DSLReader dslReader = new DSLReader();
 		final File dslFile = DSLReader.findDefaultDSLFile(DSLUtils.APPLICATION_DSL_FILE_NAME_SUFFIX, applicationDir);
+		final DSLReader dslReader = createDslReader(dslFile);
+		try {
+			this.application = dslReader.readDslEntity(Application.class);
+		} catch (DSLException e) {
+			throw new CLIStatusException(e, "read_dsl_file_failed",
+                    dslFile, e.getMessage());
+		}
+		initialized = true;
+	}
+
+	private DSLReader createDslReader(final File dslFile) {
+		final DSLReader dslReader = new DSLReader();
 		dslReader.setDslFile(dslFile);
 		dslReader.setCreateServiceContext(false);
 		dslReader.addProperty(DSLUtils.APPLICATION_DIR, dslFile.getParentFile().getAbsolutePath());

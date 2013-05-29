@@ -24,10 +24,12 @@ import org.apache.felix.gogo.commands.Command;
 import org.apache.felix.gogo.commands.Option;
 import org.cloudifysource.dsl.Application;
 import org.cloudifysource.dsl.Service;
+import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.internal.CloudifyErrorMessages;
 import org.cloudifysource.dsl.internal.DSLErrorMessageException;
 import org.cloudifysource.dsl.internal.debug.DebugModes;
 import org.cloudifysource.dsl.internal.debug.DebugUtils;
+import org.cloudifysource.dsl.internal.packaging.ZipUtils;
 import org.cloudifysource.dsl.rest.request.InstallApplicationRequest;
 import org.cloudifysource.dsl.rest.response.InstallApplicationResponse;
 import org.cloudifysource.dsl.utils.RecipePathResolver;
@@ -189,22 +191,25 @@ public class InstallApplication extends AdminAwareCommand {
 		}
 		
 		final File packedFile = nameAndPackedFileResolver.getPackedFile();
+		final File cloudConfigurationFile = createCloudConfigurationZipFile();
 		//upload relevant application deployment files 
 		final String packedFileKey = uploadToRepo(packedFile);
 		final String overridesFileKey = uploadToRepo(this.overrides);
 		final String cloudOverridesFileKey = uploadToRepo(this.cloudOverrides);
+		final String cloudConfigurationFileKey = uploadToRepo(cloudConfigurationFile);
 		
 		//create the install request
 		InstallApplicationRequest request = new InstallApplicationRequest();
 		request.setApplcationFileUploadKey(packedFileKey);
 		request.setApplicationOverridesUploadKey(overridesFileKey);
 		request.setCloudOverridesUploadKey(cloudOverridesFileKey);
+		request.setCloudConfigurationUploadKey(cloudConfigurationFileKey);
 		request.setApplicationName(applicationName);
-		request.setAuthGroups(authGroups);
-		request.setDebugAll(debugAll);
-		request.setdebugEvents(debugEvents);
-		request.setDebugMode(debugModeString);
-		request.setSelfHealing(disableSelfHealing);
+		request.setAuthGroups(this.authGroups);
+		request.setDebugAll(this.debugAll);
+		request.setDebugEvents(this.debugEvents);
+		request.setDebugMode(this.debugModeString);
+		request.setSelfHealing(this.disableSelfHealing);
 		request.setTimeoutInMillis(TimeUnit.MINUTES.toMillis(timeoutInMinutes));
 		
 		//install application
@@ -236,7 +241,7 @@ public class InstallApplication extends AdminAwareCommand {
 			throw new CLIStatusException("application_file_format_mismatch", applicationFile.getPath()); 
 		} else {
 			// this is an actual application directory
-			return new ApplicationResolver(applicationFile, this.overrides, this.cloudConfiguration);
+			return new ApplicationResolver(applicationFile);
 		}
 	}
 
@@ -275,5 +280,42 @@ public class InstallApplication extends AdminAwareCommand {
 						+ " " + service.getNumInstances() + " planned instances");
 			}
 		}
+	}
+	
+	private File createCloudConfigurationZipFile()
+			throws CLIStatusException, IOException {
+		if (this.cloudConfiguration == null) {
+			return null;
+		}
+
+		if (!this.cloudConfiguration.exists()) {
+			throw new CLIStatusException("cloud_configuration_file_not_found",
+					this.cloudConfiguration.getAbsolutePath());
+		}
+
+		// create a temp file in a temp directory
+		final File tempDir = File.createTempFile("__Cloudify_Cloud_configuration", ".tmp");
+		FileUtils.forceDelete(tempDir);
+		final boolean mkdirs = tempDir.mkdirs();
+		if (!mkdirs) {
+			logger.info("Field to create temporary directory " + tempDir.getAbsolutePath());
+		}
+		final File tempFile = new File(tempDir, CloudifyConstants.SERVICE_CLOUD_CONFIGURATION_FILE_NAME);
+		logger.info("Created temporary file " + tempFile.getAbsolutePath()
+				+ " in temporary directory" + tempDir.getAbsolutePath());
+
+		// mark files for deletion on JVM exit
+		tempFile.deleteOnExit();
+		tempDir.deleteOnExit();
+
+		if (this.cloudConfiguration.isDirectory()) {
+			ZipUtils.zip(this.cloudConfiguration, tempFile);
+		} else if (this.cloudConfiguration.isFile()) {
+			ZipUtils.zipSingleFile(this.cloudConfiguration, tempFile);
+		} else {
+			throw new IOException(this.cloudConfiguration + " is neither a file nor a directory");
+		}
+
+		return tempFile;
 	}
 }

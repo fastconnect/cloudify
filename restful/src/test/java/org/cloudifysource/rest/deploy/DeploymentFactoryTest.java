@@ -95,6 +95,8 @@ public class DeploymentFactoryTest {
 	private void assertStatelessUSMLocalcloudProperties(
 			final ElasticStatelessProcessingUnitConfig deploymentHolder) {
 		final Map<String, String> elasticProperties = deploymentHolder.getElasticProperties();
+		Assert.assertTrue("memory capacity should be set to 512", 
+				deploymentHolder.getScaleStrategy().getProperties().get("memory-capacity-megabytes").equals("512"));
 		Assert.assertTrue("container memory capacity should be set to 512", 
 				elasticProperties.get("container.memory-capacity").equals("512"));
 	}
@@ -126,11 +128,6 @@ public class DeploymentFactoryTest {
 		Assert.assertTrue("elastic isolation property should be set to true", 
 				elasticProperties.get("elastic-machine-isolation-public-id").equals("true"));
 		
-		//assert scale strategy
-		final ScaleStrategyConfig scaleStrategy = deploymentHolder.getScaleStrategy();
-		Assert.assertTrue("cpu capacity cores is expected to be equal to 0", 
-				scaleStrategy.getProperties().get("memory-capacity-megabytes").equals("128"));
-
 		//assert machine provisioning
 		ElasticMachineProvisioningConfig machineProvisioning = deploymentHolder.getMachineProvisioning();
 		Assert.assertTrue("reserved capacity for machine should be 1024MB", 
@@ -148,23 +145,6 @@ public class DeploymentFactoryTest {
 				machineProps.get("reserved-memory-capacity-per-management-machine-megabytes").equals("256"));
 		Assert.assertTrue("reserved memory per machine should be set to 1024", 
 				machineProps.get("reserved-memory-capacity-per-machine-megabytes").equals("256"));
-		
-//		System.out.println("commandline arguments: " + Arrays.toString(deploymentHolder.getCommandLineArguments()));
-//		System.out.println("overrides commandline arguments:" + deploymentHolder.getOverrideCommandLineArguments());
-//		System.out.println("memoryCapacity for container" + deploymentHolder.getMemoryCapacityPerContainerInMB());
-//		System.out.println("public isolation config: " + deploymentHolder.getPublicIsolationConfig());
-//		System.out.println("shared isolation: " + deploymentHolder.getSharedIsolation());
-//		System.out.println("context properties" + deploymentHolder.getContextProperties());
-//		System.out.println("default context properties" + deploymentHolder.getDefaultContextProperties());
-//		System.out.println("elastic properties: " + deploymentHolder.getElasticProperties());
-//		System.out.println("env variables: " + deploymentHolder.getEnvironmentVariables());
-//		System.out.println("scale strategy properties: " + deploymentHolder.getScaleStrategy().getProperties());
-//		System.out.println("reserved capacity per machine: " + machineProvisioning.getReservedCapacityPerMachine());
-//		System.out.println("minimum number of cpu cores: " 
-//				+ machineProvisioning.getMinimumNumberOfCpuCoresPerMachine());
-//		System.out.println("reserved capacity per management machine: "
-//				+ machineProvisioning.getReservedCapacityPerManagementMachine());
-//		System.out.println("machine provisioning properties" + machineProvisioning.getProperties());
 	}
 
 	private void assertStatelessUSMDeploymentIntegrity(final ElasticStatelessProcessingUnitConfig deploymentHolder) {
@@ -251,6 +231,10 @@ public class DeploymentFactoryTest {
 		final Map<String, String> contextProperties = deploymentHolder.getContextProperties();
 		Assert.assertTrue("mirror-interval context property is ont set", 
 				contextProperties.get("cluster-config.mirror-service.interval-opers").equals("1000"));
+		//assert scale strategy
+		final ScaleStrategyConfig scaleStrategy = deploymentHolder.getScaleStrategy();
+		Assert.assertTrue("cpu capacity cores is expected to be equal to 0", 
+				scaleStrategy.getProperties().get("memory-capacity-megabytes").equals("128"));
 	}
 
 	private void assertSharedCloudDeploymentPropertiesSet(final AbstractElasticProcessingUnitConfig deploymentHolder) {
@@ -373,6 +357,10 @@ public class DeploymentFactoryTest {
 		final Map<String, String> contextProperties = deploymentHolder.getContextProperties();
 		Assert.assertTrue("mirror-interval context property is ont set", 
 				contextProperties.get("cluster-config.mirror-service.interval-opers").equals("1000"));
+		//assert scale strategy
+		final ScaleStrategyConfig scaleStrategy = deploymentHolder.getScaleStrategy();
+		Assert.assertTrue("cpu capacity cores is expected to be equal to 0", 
+				scaleStrategy.getProperties().get("memory-capacity-megabytes").equals("128"));
 	}
 	
 	private void assertSpacePropertiesSet(final ElasticSpaceConfig deploymentHolder) {
@@ -415,6 +403,10 @@ public class DeploymentFactoryTest {
 		final Map<String, String> contextProperties = deploymentHolder.getContextProperties();
 		Assert.assertTrue("mirror-interval context property is ont set", 
 				contextProperties.get("com.gs.dummy").equals("value"));
+		//assert scale strategy
+		final ScaleStrategyConfig scaleStrategy = deploymentHolder.getScaleStrategy();
+		Assert.assertTrue("cpu capacity cores is expected to be equal to 0", 
+				scaleStrategy.getProperties().get("memory-capacity-megabytes").equals("128"));
 		
 	}
 

@@ -15,12 +15,9 @@
  *******************************************************************************/
 package org.cloudifysource.rest.util;
 
-import static org.cloudifysource.rest.ResponseConstants.FAILED_TO_LOCATE_APP;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 

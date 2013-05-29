@@ -17,6 +17,7 @@ package org.cloudifysource.shell.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Map;
 
 import org.cloudifysource.dsl.Application;
 import org.cloudifysource.dsl.internal.DSLApplicationCompilatioResult;
@@ -66,8 +67,8 @@ public class PreparedApplicationPackageResolver implements NameAndPackedFileReso
 	}
 
     @Override
-    public int getPlannedNumberOfInstancesPerService() throws CLIStatusException {
-        return 0;  //To change body of implemented methods use File | Settings | File Templates.
+    public Map<String, Integer> getPlannedNumberOfInstancesPerService() throws CLIStatusException {
+        return null;  //To change body of implemented methods use File | Settings | File Templates.
     }
 
     private void init() throws IOException, DSLException {

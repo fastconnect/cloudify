@@ -20,6 +20,8 @@ import org.cloudifysource.dsl.internal.ServiceReader;
 import org.cloudifysource.shell.exceptions.CLIStatusException;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Created with IntelliJ IDEA.
@@ -59,11 +61,14 @@ public class PreparedPackageResolver implements NameAndPackedFileResolver {
     }
 
     @Override
-    public int getPlannedNumberOfInstancesPerService() throws CLIStatusException {
+    public Map<String, Integer> getPlannedNumberOfInstancesPerService() throws CLIStatusException {
         if (!initialized) {
             init();
         }
-        return service.getNumInstances();
+        final Map<String, Integer> instanceCountMap = new HashMap<String, Integer>();
+        instanceCountMap.put(service.getName(), service.getNumInstances());
+        //return a map with one entry
+        return instanceCountMap;
     }
 
     private void init() throws CLIStatusException  {

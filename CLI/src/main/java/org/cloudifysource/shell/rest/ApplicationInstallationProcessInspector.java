@@ -26,7 +26,7 @@ public class ApplicationInstallationProcessInspector extends InstallationProcess
                                                    final String applicationName,
                                                    final boolean verbose,
                                                    final Map<String, Integer> plannedNumberOfInstancesPerService) {
-        super(restClient, deploymentId, verbose);
+        super(restClient, deploymentId, verbose, plannedNumberOfInstancesPerService);
         this.applicationName = applicationName;
         this.plannedNumberOfInstancesPerService = plannedNumberOfInstancesPerService;
     }
@@ -37,10 +37,6 @@ public class ApplicationInstallationProcessInspector extends InstallationProcess
         return applicationDescription.getApplicationState().equals(CloudifyConstants.DeploymentState.STARTED);
     }
 
-    @Override
-    public Map<String, Integer> getPlannedNumberOfInstancesPerService() throws RestClientException {
-        return plannedNumberOfInstancesPerService;
-    }
 
     @Override
     public int getNumberOfRunningInstances(final String serviceName) throws RestClientException {

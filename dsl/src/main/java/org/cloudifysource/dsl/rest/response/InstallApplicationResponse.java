@@ -15,6 +15,8 @@
  *******************************************************************************/	
 package org.cloudifysource.dsl.rest.response;
 
+import java.util.List;
+
 
 /**
  * an install application response POJO.
@@ -24,13 +26,22 @@ package org.cloudifysource.dsl.rest.response;
  */
 public class InstallApplicationResponse {
 	
-	private String deploymentID;
+	private List<String> serviceOrder;
+	private List<String> deploymentIDs;
+			
+	public List<String> getServiceOrder() {
+		return serviceOrder;
+	}
 
-	public void setDeploymentID(String id) {
-		this.deploymentID = id;
+	public void setServiceOrder(final List<String> serviceOrder) {
+		this.serviceOrder = serviceOrder;
 	}
-	
-	public String getDeploymentID() {
-		return this.deploymentID;
+
+	public List<String> getDeploymentIDs() {
+		return deploymentIDs;
 	}
+
+	public void setDeploymentIDs(final List<String> deploymentIDs) {
+		this.deploymentIDs = deploymentIDs;
+	} 
 }

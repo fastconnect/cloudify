@@ -1,6 +1,8 @@
 package org.cloudifysource.shell.rest;
 
+import org.cloudifysource.dsl.rest.request.InstallApplicationRequest;
 import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
+import org.cloudifysource.dsl.rest.response.InstallApplicationResponse;
 import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
 import org.cloudifysource.dsl.rest.response.UninstallServiceResponse;
 
@@ -25,6 +27,17 @@ public interface Installer {
              final String applicationName,
              final String serviceName,
              final InstallServiceRequest request) throws Exception;
+     
+     /**
+      * Executes a rest api call to install an application.
+      * @param applicationName The name of the application.
+      * @param request The install application request.
+      * @return The install application response.
+      * @throws Exception .
+      */
+     InstallApplicationResponse installApplication(
+              final String applicationName,
+              final InstallApplicationRequest request) throws Exception;
 
     /**
      * Executes a rest api call to uninstall a specific service.
@@ -38,5 +51,4 @@ public interface Installer {
              final String applicationName,
              final String serviceName,
              final int timeoutInMinutes) throws Exception;
-
 }

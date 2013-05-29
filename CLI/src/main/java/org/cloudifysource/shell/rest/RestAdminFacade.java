@@ -31,8 +31,10 @@ import org.cloudifysource.dsl.cloud.compute.ComputeTemplate;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.rest.ApplicationDescription;
 import org.cloudifysource.dsl.rest.ServiceDescription;
+import org.cloudifysource.dsl.rest.request.InstallApplicationRequest;
 import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
 import org.cloudifysource.dsl.rest.response.ControllerDetails;
+import org.cloudifysource.dsl.rest.response.InstallApplicationResponse;
 import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
 import org.cloudifysource.dsl.rest.response.UninstallServiceResponse;
 import org.cloudifysource.dsl.rest.response.UploadResponse;
@@ -961,6 +963,13 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
             final String serviceName,
             final InstallServiceRequest request) throws RestClientException {
         return newRestClient.installService(applicationName, serviceName, request);
+    }
+    
+    @Override
+    public InstallApplicationResponse installApplication(
+            final String applicationName,
+            final InstallApplicationRequest request) throws RestClientException {
+        return newRestClient.installApplication(applicationName, request);
     }
 
     @Override

@@ -210,7 +210,8 @@ public class InstallService extends AdminAwareCommand {
         InstallServiceResponse installServiceResponse = ((RestAdminFacade) adminFacade)
                 .installService(CloudifyConstants.DEFAULT_APPLICATION_NAME, serviceName, request);
 
-        Map<String, Integer> plannedNumberOfInstancesPerService = nameAndPackedFileResolver.getPlannedNumberOfInstancesPerService();
+        Map<String, Integer> plannedNumberOfInstancesPerService = nameAndPackedFileResolver
+                .getPlannedNumberOfInstancesPerService();
         ServiceInstallationProcessInspector inspector = new ServiceInstallationProcessInspector(
                 ((RestAdminFacade) adminFacade).getNewRestClient(),
                 installServiceResponse.getDeploymentID(),

@@ -36,7 +36,7 @@ import org.cloudifysource.rest.deploy.*;
 import org.cloudifysource.rest.events.cache.EventsCache;
 import org.cloudifysource.rest.events.cache.EventsCacheKey;
 import org.cloudifysource.rest.events.cache.EventsCacheValue;
-import org.cloudifysource.rest.events.cache.EventsUtils;
+import org.cloudifysource.rest.events.EventsUtils;
 import org.cloudifysource.rest.exceptions.ResourceNotFoundException;
 import org.cloudifysource.rest.repo.UploadRepo;
 import org.cloudifysource.rest.util.ApplicationDescriptionFactory;

@@ -10,7 +10,7 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  *******************************************************************************/
-package org.cloudifysource.rest.events.cache;
+package org.cloudifysource.rest.events;
 
 import com.gigaspaces.log.LogEntry;
 import com.gigaspaces.log.LogEntryMatcher;
@@ -123,11 +123,12 @@ public final class EventsUtils {
 
 
     /**
-     * Creates a matcher for {@link org.openspaces.admin.gsc.GridServiceContainer#logEntries(com.gigaspaces.log.LogEntryMatcher)}.
+     * Creates a matcher for
+     *  {@link org.openspaces.admin.gsc.GridServiceContainer#logEntries(com.gigaspaces.log.LogEntryMatcher)}.
      * This matcher will find USM related event only using the {@code USM_EVENT_LOGGER_NAME} regex.
      * @return The log entry matcher.
      */
-    public static LogEntryMatcher createUSMEventLoggerMatcher(){
+    public static LogEntryMatcher createUSMEventLoggerMatcher() {
         final String regex = MessageFormat.format(USM_EVENT_LOGGER_NAME, new Object() {
         });
         return regex(regex);
@@ -180,7 +181,8 @@ public final class EventsUtils {
      * @param admin The admin object for admin api access.
      * @return The containers.
      */
-    public static Set<GridServiceContainer> getContainersForUnDeployment(final String unDeploymentId, final Admin admin) {
+    public static Set<GridServiceContainer> getContainersForUnDeployment(final String unDeploymentId,
+                                                                         final Admin admin) {
 
         Set<ProcessingUnit> processingUnitsForUnDeploymentId = new HashSet<ProcessingUnit>();
         Set<GridServiceContainer> containers = new HashSet<GridServiceContainer>();

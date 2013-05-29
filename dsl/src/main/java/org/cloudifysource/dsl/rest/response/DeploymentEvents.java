@@ -23,6 +23,7 @@ import java.util.Map;
  * Date: 5/8/13
  * Time: 4:27 PM
  * <br></br>
+ *
  * Represents all deployment events. the deployment can either be a service/application installation/uninstallation.
  */
 public class DeploymentEvents {

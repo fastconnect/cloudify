@@ -63,10 +63,11 @@ public abstract class AbstractAdminFacade implements AdminFacade {
      * Connects to the server, using the given credentials and URL.
      *
      * @param user     The user name, used to create the connection
-     * @param password The user name, used to create the connection
+     * @param password The password, used to create the connection
      * @param url      The URL to connect to
      * @param isSecureConnection  Is this a secure connection (SSL)
-     * @throws CLIException Reporting a failure to the connect to the server
+     * @throws CLIException Reporting a failure to the connect to the server.
+     * @throws RestClientException Reporting a failure to the connect to the server.
      */
     protected abstract void doConnect(String user, String password, String url, boolean isSecureConnection)
             throws CLIException, RestClientException;

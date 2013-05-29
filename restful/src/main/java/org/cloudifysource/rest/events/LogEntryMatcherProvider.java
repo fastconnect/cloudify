@@ -10,7 +10,7 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  *******************************************************************************/
-package org.cloudifysource.rest.events.cache;
+package org.cloudifysource.rest.events;
 
 import com.gigaspaces.log.AfterTimeLogEntryMatcher;
 import com.gigaspaces.log.ContinuousLogEntryMatcher;
@@ -18,6 +18,7 @@ import com.gigaspaces.log.LogEntryMatcher;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import org.cloudifysource.rest.events.cache.EventsCacheKey;
 
 import java.util.HashSet;
 import java.util.logging.Logger;
@@ -61,7 +62,9 @@ public class LogEntryMatcherProvider {
                             // in this case we just want events starting from now
                             // since we don't want to return install events.
                             initialMatcher = new AfterTimeLogEntryMatcher(
-                                    key.getContainer().getGridServiceAgent().getOperatingSystem().getCurrentTimeInMillis(), EventsUtils.createUSMEventLoggerMatcher());
+                                    key.getContainer().getGridServiceAgent()
+                                            .getOperatingSystem().getCurrentTimeInMillis(),
+                                    EventsUtils.createUSMEventLoggerMatcher());
                         } else {
                             // in this case we want all events from the start, matching the USM event
                             // logger prefix.

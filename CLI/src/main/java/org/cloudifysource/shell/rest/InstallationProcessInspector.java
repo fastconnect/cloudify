@@ -1,3 +1,18 @@
+/*******************************************************************************
+ * Copyright (c) 2011 GigaSpaces Technologies Ltd. All rights reserved
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *******************************************************************************/
 package org.cloudifysource.shell.rest;
 
 import org.cloudifysource.dsl.rest.response.DeploymentEvents;
@@ -16,6 +31,10 @@ import java.util.concurrent.TimeoutException;
  * User: elip
  * Date: 5/29/13
  * Time: 1:50 PM
+ * <br></br>
+ *
+ * Provides functionality for inspecting the installation process of services/application.
+ *
  */
 public abstract class InstallationProcessInspector {
 
@@ -40,12 +59,21 @@ public abstract class InstallationProcessInspector {
         this.plannedNumberOfInstancesPerService = plannedNumberOfInstancesPerService;
     }
 
-    public void waitForLifeCycleToEnd(final long timeout) throws InterruptedException, CLIException, TimeoutException, RestClientException {
+    /**
+     * Waits until the application/service lifecycle ends.
+     * As long as the installation continues, it will print out the most recent events not yet printed.
+     * @param timeout the timeout.
+     * @throws InterruptedException Thrown in case the thread was interrupted.
+     * @throws CLIException Thrown in case an error happened while trying to retrieve events.
+     * @throws TimeoutException Thrown in case the timeout is reached.
+     */
+    public void waitForLifeCycleToEnd(final long timeout) throws InterruptedException, CLIException, TimeoutException {
         ConditionLatch conditionLatch = createConditionLatch(timeout);
 
         conditionLatch.waitFor(new ConditionLatch.Predicate() {
 
-            Map<String, Integer> currentRunningInstancesPerService = initWithZeros(plannedNumberOfInstancesPerService.keySet());
+            private Map<String, Integer> currentRunningInstancesPerService =
+                    initWithZeros(plannedNumberOfInstancesPerService.keySet());
 
             @Override
             public boolean isDone() throws CLIException, InterruptedException {
@@ -88,10 +116,25 @@ public abstract class InstallationProcessInspector {
         });
     }
 
+    /**
+     * Determines whether or not the life cycle for this installation has ended.
+     * @return true if the service/application are fully running.
+     * @throws RestClientException Thrown in case an error happened during a rest call.
+     */
     public abstract boolean lifeCycleEnded() throws RestClientException;
 
+    /**
+     * Query the number of running instances for a particular service.
+     * @param serviceName The service name.
+     * @return how many instances are in running state.
+     * @throws RestClientException Thrown in case an error happened during a rest call.
+     */
     public abstract int getNumberOfRunningInstances(final String serviceName) throws RestClientException;
 
+    /**
+     *
+     * @return the error message presented upon timeout.
+     */
     public abstract String getTimeoutErrorMessage();
 
     private List<String> getLatestEvents() throws RestClientException {

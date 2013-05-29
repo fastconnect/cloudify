@@ -1,3 +1,15 @@
+/*******************************************************************************
+ * Copyright (c) 2013 GigaSpaces Technologies Ltd. All rights reserved
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ *******************************************************************************/
 package org.cloudifysource.rest.controllers.helpers;
 
 import com.gigaspaces.client.WriteModifiers;
@@ -33,6 +45,12 @@ public class ControllerHelper {
         this.admin = admin;
     }
 
+    /**
+     * Retrieves an application by name.
+     * @param appName The application name.
+     * @return {@link Application} - The application.
+     * @throws ResourceNotFoundException Thrown in case the application is not found.
+     */
     public Application getApplication(final String appName) throws ResourceNotFoundException {
 
         Application application = admin.getApplications().getApplication(appName);
@@ -43,6 +61,13 @@ public class ControllerHelper {
 
     }
 
+    /**
+     * Retrieves a service instance from a processing unit by instance id.
+     * @param processingUnit The processing unit.
+     * @param instanceId The instance id.
+     * @return {@link ProcessingUnitInstance} - The processing unit instance.
+     * @throws ResourceNotFoundException Thrown in case the instance does not exist.
+     */
     public ProcessingUnitInstance getServiceInstance(final ProcessingUnit processingUnit,
                                                         final int instanceId) throws ResourceNotFoundException {
 
@@ -59,6 +84,13 @@ public class ControllerHelper {
         return pui;
     }
 
+    /**
+     * Retrieves a service by application name and service name.
+     * @param appName The application name.
+     * @param serviceName The service name.
+     * @return {@link ProcessingUnit} - The service.
+     * @throws ResourceNotFoundException Thrown in case the service is not found.
+     */
     public ProcessingUnit getService(final String appName,
                                         final String serviceName) throws ResourceNotFoundException {
 
@@ -70,8 +102,14 @@ public class ControllerHelper {
         return processingUnit;
     }
 
+    /**
+     * Retrieves a service instance environment variable from the JVM's environment.
+     * @param serviceInstance The service instance.
+     * @param variable The name of the variable.
+     * @return the value of the variable.
+     */
     public String getServiceInstanceEnvVariable(final ProcessingUnitInstance serviceInstance,
-                                                   final String variable) {
+                                                final String variable) {
 
         if (StringUtils.isNotBlank(variable)) {
             return serviceInstance.getVirtualMachine().getDetails().getEnvironmentVariables().get(variable);
@@ -79,19 +117,36 @@ public class ControllerHelper {
         return null;
     }
 
+    /**
+     * Retrieves a service instance by application name, service name, and instance id.
+     * @param appName The application name.
+     * @param serviceName The service name.
+     * @param instanceId The instance id.
+     * @return {@link ProcessingUnitInstance} - The processing unit instance.
+     * @throws ResourceNotFoundException Thrown in case the instance does not exist.
+     */
     public ProcessingUnitInstance getServiceInstance(final String appName,
-                                                        final String serviceName,
-                                                        final int instanceId) throws ResourceNotFoundException {
+                                                     final String serviceName,
+                                                     final int instanceId) throws ResourceNotFoundException {
         ProcessingUnit processingUnit = getService(appName, serviceName);
         return getServiceInstance(processingUnit, instanceId);
 
     }
 
+    /**
+     * Retrieves service instance level attributes.
+     * @param appName The application name.
+     * @param serviceName The service name.
+     * @param instanceId The instance id.
+     * @return An instance of {@link org.cloudifysource.dsl.rest.response.GetServiceInstanceAttributesResponse}
+     * containing all the service instance attributes names and values.
+     */
     public Map<String, Object> getAttributes(final String appName,
-                                                final String serviceName, final Integer instanceId) {
+                                             final String serviceName, final Integer instanceId) {
 
 
-        final AbstractCloudifyAttribute templateAttribute = createCloudifyAttribute(appName, serviceName, instanceId, null, null);
+        final AbstractCloudifyAttribute templateAttribute =
+                createCloudifyAttribute(appName, serviceName, instanceId, null, null);
 
         // read the matching multiple attributes from the space
         final AbstractCloudifyAttribute[] currAttributes = gigaSpace.readMultiple(templateAttribute);
@@ -118,6 +173,15 @@ public class ControllerHelper {
         return attributes;
     }
 
+    /**
+     * Creates a cloudify attribute.
+     * @param applicationName The application name.
+     * @param serviceName The service name.
+     * @param instanceId The instance id.
+     * @param name The attribute name.
+     * @param value The attribute value.
+     * @return the attribute.
+     */
     public AbstractCloudifyAttribute createCloudifyAttribute(final String applicationName,
                                                                 final String serviceName,
                                                                 final Integer instanceId,
@@ -142,10 +206,20 @@ public class ControllerHelper {
                 instanceId, name, value);
     }
 
+    /**
+     * Delete an instance level attribute.
+     * @param appName The application name.
+     * @param serviceName The service name.
+     * @param instanceId The instance id.
+     * @param attributeName The attribute name.
+     * @return The previous value for this attribute in the response.
+     * @throws ResourceNotFoundException Thrown in case the requested service or service instance does not exist.
+     * @throws RestErrorException Thrown in case the requested attribute name is empty.
+     */
     public Object deleteAttribute(final String appName,
-                                     final String serviceName,
-                                     final Integer instanceId,
-                                     final String attributeName) throws ResourceNotFoundException, RestErrorException {
+                                  final String serviceName,
+                                  final Integer instanceId,
+                                  final String attributeName) throws ResourceNotFoundException, RestErrorException {
 
         // attribute name is null
         if (StringUtils.isBlank(attributeName)) {
@@ -153,7 +227,8 @@ public class ControllerHelper {
         }
 
         // get attribute template
-        final AbstractCloudifyAttribute attributeTemplate = createCloudifyAttribute(appName, serviceName, instanceId, attributeName, null);
+        final AbstractCloudifyAttribute attributeTemplate =
+                createCloudifyAttribute(appName, serviceName, instanceId, attributeName, null);
 
         // delete value
         final AbstractCloudifyAttribute previousValue = gigaSpace.take(attributeTemplate);
@@ -168,10 +243,19 @@ public class ControllerHelper {
 
     }
 
+    /**
+     * Sets service instance level attributes for the given application.
+     * @param appName The application name.
+     * @param serviceName The service name.
+     * @param instanceId The instance id.
+     * @param attributesMap specifying the attributes names and values.
+     * @throws RestErrorException Thrown in case the request body is empty.
+     * @throws ResourceNotFoundException Thrown in case the service instance does not exist.
+     */
     public void setAttributes(final String appName,
-                                 final String serviceName,
-                                 final Integer serviceInstance,
-                                 final Map<String, Object> attributesMap) throws RestErrorException {
+                              final String serviceName,
+                              final Integer instanceId,
+                              final Map<String, Object> attributesMap) throws RestErrorException {
 
         // validate attributes map
         if (attributesMap == null) {
@@ -183,7 +267,8 @@ public class ControllerHelper {
 
         int i = 0;
         for (final Map.Entry<String, Object> attrEntry : attributesMap.entrySet()) {
-            final AbstractCloudifyAttribute newAttr = createCloudifyAttribute(appName, serviceName, serviceInstance, attrEntry.getKey(), null);
+            final AbstractCloudifyAttribute newAttr =
+                    createCloudifyAttribute(appName, serviceName, instanceId, attrEntry.getKey(), null);
             gigaSpace.take(newAttr);
             newAttr.setValue(attrEntry.getValue());
             attributesToWrite[i++] = newAttr;

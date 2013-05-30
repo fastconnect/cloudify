@@ -102,8 +102,8 @@ public class ApplicationResolver implements NameAndPackedFileResolver {
 		try {
 			this.application = dslReader.readDslEntity(Application.class);
 		} catch (DSLException e) {
-			throw new CLIStatusException(e, "read_dsl_file_failed",
-                    dslFile, e.getMessage());
+			throw new CLIStatusException(e, "failed_while_reading_dsl_file",
+								e.getMessage());
 		}
 		initialized = true;
 	}

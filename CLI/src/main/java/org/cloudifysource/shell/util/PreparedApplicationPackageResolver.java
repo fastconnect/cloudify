@@ -88,11 +88,11 @@ public class PreparedApplicationPackageResolver implements NameAndPackedFileReso
             																		this.overridesFile);
             this.application = result.getApplication();
     	} catch (final IOException e) {
-    		throw new CLIStatusException("read_dsl_file_failed", 
-					packedFile.getAbsolutePath(), e.getMessage(), e);
+    		throw new CLIStatusException("failed_while_reading_dsl_file",
+    									 e.getMessage(), e);
     	} catch (final DSLException e) {
-    		throw new CLIStatusException("read_dsl_file_failed", 
-    				packedFile.getAbsolutePath(), e.getMessage(), e);
+    		throw new CLIStatusException("failed_while_reading_dsl_file",
+    									 e.getMessage(), e);
     	}
     	
 	}

@@ -15,9 +15,6 @@
  *******************************************************************************/	
 package org.cloudifysource.dsl.rest.response;
 
-import java.util.List;
-
-
 /**
  * an install application response POJO.
  *  

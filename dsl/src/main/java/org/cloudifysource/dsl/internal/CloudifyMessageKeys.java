@@ -58,7 +58,9 @@ public enum CloudifyMessageKeys {
 	
 	DEST_MERGE_FILE_MISSING("destination_merge_file_is_missing"), 
 	
-	APPLICATION_NAME_IS_ALREADY_IN_USE("application_name_is_alreay_in_use");
+	APPLICATION_NAME_IS_ALREADY_IN_USE("application_name_is_alreay_in_use"), 
+	
+	APPLICATION_NAME_CONTAINS_INVALID_CHARS("application_name_contains_invalid_chars");
 	
 	private final String name;
 	

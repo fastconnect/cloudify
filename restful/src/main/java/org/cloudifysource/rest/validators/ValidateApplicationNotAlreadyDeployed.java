@@ -40,7 +40,7 @@ public class ValidateApplicationNotAlreadyDeployed implements InstallApplication
 		final Applications apps = admin.getApplications();
 		for (Application application : apps) {
 			if (application.getName().equals(appName)) {
-				throw new RestErrorException(CloudifyMessageKeys.APPLICATION_NAME_IS_ALREADY_IN_USE.name(), appName);
+				throw new RestErrorException(CloudifyMessageKeys.APPLICATION_NAME_IS_ALREADY_IN_USE.getName(), appName);
 			}
 		}
 	}

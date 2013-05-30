@@ -31,16 +31,10 @@ public class ValidateInstallServiceRequest implements InstallServiceValidator {
 
 	@Override
 	public void validate(final InstallServiceValidationContext validationContext) throws RestErrorException {
-//		String absolutePuName = validationContext.getAbsolutePuName();
-		InstallServiceRequest request = validationContext.getRequest();
+		final InstallServiceRequest request = validationContext.getRequest();
 		if (request == null) {
 			return;
 		}
-		//this validation throws exception on application install. already validated in getFromRepo
-//		String uploadKey = request.getServiceFolderUploadKey();
-//		if (StringUtils.isBlank(uploadKey)) {
-//			throw new RestErrorException(CloudifyMessageKeys.UPLOAD_KEY_PARAMETER_MISSING.getName(), absolutePuName);
-//		}
 
 		boolean debugAll = request.isDebugAll();
 		String debugEvents = request.getDebugEvents();

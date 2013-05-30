@@ -452,8 +452,15 @@ public class DeploymentsController extends BaseRestController {
 		
 		final String absolutePuName = ServiceUtils.getAbsolutePUName(appName, serviceName);
 		
+		//this validation should only happen on install service.
+		String uploadKey = request.getServiceFolderUploadKey();
+		if (StringUtils.isBlank(uploadKey)) {
+			throw new RestErrorException(CloudifyMessageKeys.UPLOAD_KEY_PARAMETER_MISSING.getName(),
+										absolutePuName);
+		}
+		
 		// get service folder
-		final File packedFile = getFromRepo(request.getServiceFolderUploadKey(),
+		final File packedFile = getFromRepo(uploadKey,
                                             CloudifyMessageKeys.WRONG_SERVICE_FOLDER_UPLOAD_KEY.getName(),
                                             absolutePuName);
 		// get overrides file

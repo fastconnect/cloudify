@@ -46,6 +46,7 @@ public class PreparedApplicationPackageResolver implements NameAndPackedFileReso
 	public PreparedApplicationPackageResolver(final File packedFile, 
 												final File overridesFile) {
 		this.packedFile = packedFile;
+		this.overridesFile = overridesFile;
 	}
 	
 	@Override
@@ -88,10 +89,10 @@ public class PreparedApplicationPackageResolver implements NameAndPackedFileReso
             this.application = result.getApplication();
     	} catch (final IOException e) {
     		throw new CLIStatusException("read_dsl_file_failed", 
-					applicationFile.getAbsolutePath(), e.getMessage(), e);
+					packedFile.getAbsolutePath(), e.getMessage(), e);
     	} catch (final DSLException e) {
     		throw new CLIStatusException("read_dsl_file_failed", 
-    						applicationFile.getAbsolutePath(), e.getMessage(), e);
+    				packedFile.getAbsolutePath(), e.getMessage(), e);
     	}
     	
 	}

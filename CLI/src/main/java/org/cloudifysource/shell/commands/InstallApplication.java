@@ -27,10 +27,7 @@ import org.apache.felix.gogo.commands.Option;
 import org.cloudifysource.dsl.Application;
 import org.cloudifysource.dsl.Service;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
-import org.cloudifysource.dsl.internal.CloudifyErrorMessages;
-import org.cloudifysource.dsl.internal.DSLErrorMessageException;
 import org.cloudifysource.dsl.internal.debug.DebugModes;
-import org.cloudifysource.dsl.internal.debug.DebugUtils;
 import org.cloudifysource.dsl.internal.packaging.ZipUtils;
 import org.cloudifysource.dsl.rest.request.InstallApplicationRequest;
 import org.cloudifysource.dsl.rest.response.InstallApplicationResponse;
@@ -159,17 +156,6 @@ public class InstallApplication extends AdminAwareCommand {
 	protected Object doExecute()
 			throws Exception {
 
-		try {
-			DebugUtils.validateDebugSettings(debugAll, debugEvents, getDebugModeString());
-		} catch (final DSLErrorMessageException e) {
-			throw new CLIStatusException(e.getErrorMessage().getName(), (Object[]) e.getArgs());
-		}
-		//verify cloud overrides is no more then 10k
-		if (cloudOverrides != null) {
-			if (cloudOverrides.length() >= TEN_K) {
-				throw new CLIStatusException(CloudifyErrorMessages.CLOUD_OVERRIDES_TO_LONG.getName());
-			}
-		}
 		//resolve the path for the given app input
 		final RecipePathResolver pathResolver = new RecipePathResolver();
 		if (pathResolver.resolveApplication(applicationFile)) {
@@ -182,15 +168,6 @@ public class InstallApplication extends AdminAwareCommand {
 		final NameAndPackedFileResolver nameAndPackedFileResolver = getResolver(applicationFile);
 		if (StringUtils.isBlank(applicationName)) {
 			applicationName = nameAndPackedFileResolver.getName();
-		}
-		//validate application name (does not contain parentheses)
-		if (!org.cloudifysource.restclient.StringUtils.isValidRecipeName(applicationName)) {
-			throw new CLIStatusException(CloudifyErrorMessages.APPLICATION_NAME_INVALID_CHARS.getName(),
-					applicationName);
-		}
-		//verify application is not already installed
-		if (adminFacade.getApplicationNamesList().contains(applicationName)) {
-			throw new CLIStatusException("application_already_deployed", applicationName);
 		}
 		
 		final File packedFile = nameAndPackedFileResolver.getPackedFile();

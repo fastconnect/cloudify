@@ -75,13 +75,6 @@ public class ApplicationResolver implements NameAndPackedFileResolver {
 					applicationDir);
 		}
 	}
-	
-	public Application getApplication() throws CLIStatusException{
-		if (!initialized) {
-			init();
-		}
-		return this.application;
-	}
 
     @Override
     public Map<String, Integer> getPlannedNumberOfInstancesPerService() 

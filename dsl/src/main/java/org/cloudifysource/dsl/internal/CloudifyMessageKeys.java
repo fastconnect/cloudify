@@ -56,7 +56,9 @@ public enum CloudifyMessageKeys {
 	
 	WRONG_APPLICTION_OVERRIDES_FILE_UPLOAD_KEY("wrong_application_overrides_file_upload_key"),
 	
-	DEST_MERGE_FILE_MISSING("destination_merge_file_is_missing");
+	DEST_MERGE_FILE_MISSING("destination_merge_file_is_missing"), 
+	
+	APPLICATION_NAME_IS_ALREADY_IN_USE("application_name_is_alreay_in_use");
 	
 	private final String name;
 	

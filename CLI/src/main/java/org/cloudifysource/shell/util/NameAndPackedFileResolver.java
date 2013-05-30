@@ -54,10 +54,10 @@ public interface NameAndPackedFileResolver {
      */
     Map<String, Integer> getPlannedNumberOfInstancesPerService() throws CLIStatusException;
     
-//    /**
-//     * returns the recipe dsl file.
-//     * @return the planned number of instances
-//     * @throws CLIStatusException Thrown in case of an error.
-//     */
-//    Map<String, Integer> getDSLObject() throws CLIStatusException;
+    /**
+     * returns the recipe dsl file.
+     * @return the planned number of instances
+     * @throws CLIStatusException Thrown in case of an error.
+     */
+    Object getDSLObject() throws CLIStatusException;
 }

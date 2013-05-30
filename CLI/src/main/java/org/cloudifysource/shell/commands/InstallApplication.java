@@ -228,12 +228,13 @@ public class InstallApplication extends AdminAwareCommand {
         		verbose,
         		plannedNumberOfInstancesPerService);	
         		
+        Application application = ((Application) nameAndPackedFileResolver.getDSLObject());
 		//print application info.
-//		printApplicationInfo(application);
+		printApplicationInfo(application);
         int actualTimeout = timeoutInMinutes;
         boolean isDone = false;
-//        displayer.printEvent("installing_service", applicationName, plannedNumberOfInstancesPerService.get(serviceName));
-//        displayer.printEvent("waiting_for_lifecycle_of_service", serviceName);
+        displayer.printEvent("installing_application", applicationName);
+        displayer.printEvent("waiting_for_lifecycle_of_application", applicationName);
         while (!isDone) {
             try {
 
@@ -254,9 +255,8 @@ public class InstallApplication extends AdminAwareCommand {
                     // prolong the polling timeouts
                     actualTimeout = DEFAULT_TIMEOUT_MINUTES;
                 } else {
-                    throw new CLIStatusException(e,
-                            "service_installation_timed_out_on_client",
-                            applicationName);
+                	throw new CLIStatusException(e, "application_installation_timed_out_on_client",
+							applicationName);
                 }
             }
         }

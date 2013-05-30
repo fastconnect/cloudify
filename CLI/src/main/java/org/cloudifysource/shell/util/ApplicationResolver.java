@@ -123,4 +123,12 @@ public class ApplicationResolver implements NameAndPackedFileResolver {
 		dslReader.setOverridesFile(this.overridesFile);
 		return dslReader;
 	}
+
+	@Override
+	public Object getDSLObject() throws CLIStatusException {
+		if (!initialized) {
+			init();
+		}
+		return this.application;
+	}
 }

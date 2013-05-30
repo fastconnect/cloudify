@@ -114,4 +114,12 @@ public class ServiceResolver implements NameAndPackedFileResolver {
         }
         this.initialized = true;
     }
+
+	@Override
+	public Object getDSLObject() throws CLIStatusException {
+		if (!initialized) {
+			init();
+		}
+		return this.service;
+	}
 }

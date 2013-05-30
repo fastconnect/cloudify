@@ -96,4 +96,12 @@ public class PreparedApplicationPackageResolver implements NameAndPackedFileReso
     	
 	}
 
+	@Override
+	public Object getDSLObject() throws CLIStatusException {
+		if (!initialized) {
+			init();
+		}
+		return this.application;
+	}
+
 }

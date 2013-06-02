@@ -12,10 +12,17 @@
  *******************************************************************************/
 package org.cloudifysource.rest.controllers.helpers;
 
-import com.gigaspaces.client.WriteModifiers;
+import java.util.HashMap;
+import java.util.Map;
+
 import net.jini.core.lease.Lease;
+
 import org.apache.commons.lang.StringUtils;
-import org.cloudifysource.dsl.context.kvstorage.spaceentries.*;
+import org.cloudifysource.dsl.context.kvstorage.spaceentries.AbstractCloudifyAttribute;
+import org.cloudifysource.dsl.context.kvstorage.spaceentries.ApplicationCloudifyAttribute;
+import org.cloudifysource.dsl.context.kvstorage.spaceentries.GlobalCloudifyAttribute;
+import org.cloudifysource.dsl.context.kvstorage.spaceentries.InstanceCloudifyAttribute;
+import org.cloudifysource.dsl.context.kvstorage.spaceentries.ServiceCloudifyAttribute;
 import org.cloudifysource.dsl.internal.CloudifyMessageKeys;
 import org.cloudifysource.dsl.utils.ServiceUtils;
 import org.cloudifysource.rest.controllers.RestErrorException;
@@ -26,8 +33,7 @@ import org.openspaces.admin.pu.ProcessingUnit;
 import org.openspaces.admin.pu.ProcessingUnitInstance;
 import org.openspaces.core.GigaSpace;
 
-import java.util.HashMap;
-import java.util.Map;
+import com.gigaspaces.client.WriteModifiers;
 
 /**
  * Created with IntelliJ IDEA.
@@ -276,4 +282,5 @@ public class ControllerHelper {
         // write attributes
         gigaSpace.writeMultiple(attributesToWrite, Lease.FOREVER, WriteModifiers.UPDATE_OR_WRITE);
     }
+
 }

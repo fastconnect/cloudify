@@ -48,7 +48,7 @@ public class ServiceDescription {
 	}
 
 
-	public void setInstanceCount(int instanceCount) {
+	public void setInstanceCount(final int instanceCount) {
 		this.instanceCount = instanceCount;
 	}
 
@@ -68,7 +68,7 @@ public class ServiceDescription {
 	}
 
 
-	public void setPlannedInstances(int plannedInstances) {
+	public void setPlannedInstances(final int plannedInstances) {
 		this.plannedInstances = plannedInstances;
 	}
 	
@@ -99,7 +99,7 @@ public class ServiceDescription {
 	}
 
 
-	public void setServiceState(DeploymentState serviceState) {
+	public void setServiceState(final DeploymentState serviceState) {
 		this.serviceState = serviceState;
 	}
 	

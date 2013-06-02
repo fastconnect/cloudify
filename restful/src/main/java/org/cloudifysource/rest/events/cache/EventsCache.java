@@ -17,6 +17,9 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.LoadingCache;
 import com.google.common.cache.RemovalListener;
 import com.google.common.cache.RemovalNotification;
+
+import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvent;
+import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvents;
 import org.cloudifysource.rest.events.LogEntryMatcherProvider;
 import org.openspaces.admin.Admin;
 
@@ -111,5 +114,16 @@ public class EventsCache {
         if (!eventsLoadingCache.asMap().containsKey(key)) {
             eventsLoadingCache.asMap().put(key, value);
         }
+    }
+    
+    /**
+     * Adds the latest event to the events of the specified key.
+     * @param key A key of ServiceDeploymentEvents
+     * @param event The event to add
+     */
+    public void add(final EventsCacheKey key, final ServiceDeploymentEvent event) {
+    	EventsCacheValue eventsCacheValue = eventsLoadingCache.asMap().get(key);
+		ServiceDeploymentEvents events = eventsCacheValue.getEvents();
+    	events.addEvent(eventsCacheValue.getLastEventIndex() + 1, event);
     }
 }

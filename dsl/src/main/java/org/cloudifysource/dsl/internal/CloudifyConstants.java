@@ -47,7 +47,9 @@ public final class CloudifyConstants {
 	public static enum DeploymentState {
 		INSTALLING,
 		FAILED,
-		STARTED
+		STARTED,
+		UNINSTALLING,
+		UNINSTALLED
 	}
 
 	/***
@@ -407,6 +409,9 @@ public final class CloudifyConstants {
 	public static final String INSTALL_SERVICE_REQUEST_PARAM_NAME = "install-service-request";
 	public static final String EXTRACTED_FILES_FOLDER_NAME = "extracted";	
 	public static final int LIFECYCLE_EVENT_POLLING_INTERVAL_SEC = 4;
+	
+	// uninstall-service constants
+	public static final String SERVICE_UNDEPLOYED_SUCCESSFULLY = "Service undeployed successfully";
 
 	// CHECKSTYLE:ON
 }

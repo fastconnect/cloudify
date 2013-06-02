@@ -15,7 +15,12 @@
  *******************************************************************************/
 package org.cloudifysource.shell.rest;
 
-import org.cloudifysource.dsl.internal.CloudifyConstants;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
+
+import org.cloudifysource.dsl.internal.CloudifyConstants.DeploymentState;
 import org.cloudifysource.dsl.rest.ServiceDescription;
 import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.restclient.exceptions.RestClientException;
@@ -47,6 +52,13 @@ public class ServiceInstallationProcessInspector extends InstallationProcessInsp
         this.serviceName = serviceName;
     }
 
+    /**
+     * Gets the latest events of this deployment id. Events are sorted by event index.
+     * @return A list of events. If this is the first time events are requested, all events are retrieved.
+     * Otherwise, only new events (that were not reported earlier) are retrieved. 
+     * @throws RestClientException Indicates a failure to get events from the server.
+     */
+
     @Override
     public boolean lifeCycleEnded() throws RestClientException {
         ServiceDescription serviceDescription = restClient
@@ -54,6 +66,23 @@ public class ServiceInstallationProcessInspector extends InstallationProcessInsp
         return serviceDescription.getServiceState().equals(CloudifyConstants.DeploymentState.STARTED);
     }
 
+        List<String> eventsStrings = new ArrayList<String>();
+
+        ServiceDeploymentEvents events = restClient.getServiceDeploymentEvents(deploymentId, lastEventIndex, -1);
+        if (events == null || events.getEvents().isEmpty()) {
+            return eventsStrings;
+        }
+        
+        // sort by event index (corresponds to order of events on the server, pretty much)
+        Set<Integer> eventIndices = events.getEvents().keySet();
+        Integer[] integers = eventIndices.toArray(new Integer[eventIndices.size()]);
+        Arrays.sort(integers);
+
+        for (Integer index : integers) {
+            eventsStrings.add(events.getEvents().get(index).getDescription());
+        }
+        lastEventIndex = integers[integers.length - 1] + 1;
+        return eventsStrings;
     @Override
     public int getNumberOfRunningInstances(final String serviceName) throws RestClientException {
         ServiceDescription serviceDescription = restClient
@@ -61,6 +90,15 @@ public class ServiceInstallationProcessInspector extends InstallationProcessInsp
         return serviceDescription.getInstanceCount();
     }
 
+    /**
+     * Checks if the specified service is in the target state.
+     * @param targetState The desired deployment state
+     * @return True - if the service is in the specified state, False otherwise
+     * @throws RestClientException Indicates a failure to retrieve the service state
+     */
+    public boolean isServiceInState(final DeploymentState targetState) throws RestClientException {
+        ServiceDescription serviceDescription = restClient.getServiceDescription(applicationName, serviceName);
+        return serviceDescription.getServiceState().equals(targetState);
     @Override
     public String getTimeoutErrorMessage() {
         return TIMEOUT_ERROR_MESSAGE;

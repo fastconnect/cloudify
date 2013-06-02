@@ -31,6 +31,8 @@ import org.cloudifysource.dsl.utils.ServiceUtils;
 import org.cloudifysource.rest.controllers.RestErrorException;
 import org.openspaces.admin.Admin;
 import org.openspaces.admin.application.Application;
+import org.openspaces.admin.gsc.GridServiceContainer;
+import org.openspaces.admin.gsc.GridServiceContainers;
 import org.openspaces.admin.internal.pu.DefaultProcessingUnit;
 import org.openspaces.admin.pu.DeploymentStatus;
 import org.openspaces.admin.pu.ProcessingUnit;
@@ -38,6 +40,8 @@ import org.openspaces.admin.pu.ProcessingUnitInstance;
 import org.openspaces.admin.pu.ProcessingUnitInstanceStatistics;
 import org.openspaces.admin.pu.ProcessingUnitType;
 import org.openspaces.admin.pu.ProcessingUnits;
+import org.openspaces.admin.zone.Zone;
+import org.openspaces.admin.zone.Zones;
 import org.openspaces.pu.service.ServiceMonitors;
 /**
  * This factory class is responsible for manufacturing an application description POJO.
@@ -98,7 +102,14 @@ public class ApplicationDescriptionFactory {
 		
 		return applicationDescription;
 	}
+	
 
+	/**
+	 * Gets a list of {@link ServiceDescription} objects, representing the application's services.
+	 * @param applicationName The name of the application containing the services
+	 * @param app The {@link Application} object of the application containing the services
+	 * @return a list of {@link ServiceDescription} objects, representing the application's services.
+	 */
 	private List<ServiceDescription> getServicesDescription(
 			final String applicationName, final Application app) {
 		List<ServiceDescription> serviceDescriptionList = new ArrayList<ServiceDescription>();
@@ -112,25 +123,53 @@ public class ApplicationDescriptionFactory {
 	}
 	
 
+	/**
+	 * Gets a populated service description object for the specified service.
+	 * @param absolutePuName The full service name (<application name>.<service name>)
+	 * @param applicationName The name of the application that contains this service
+	 * @return A populated service description object
+	 */
 	public ServiceDescription getServiceDescription(final String absolutePuName, final String applicationName) {
 
-		String serviceName = ServiceUtils.getApplicationServiceName(absolutePuName, applicationName);
-		int plannedNumberOfInstances = getPlannedNumberOfInstances(absolutePuName);
-		int numberOfServiceInstances = getNumberOfServiceInstances(absolutePuName);
-		List<InstanceDescription> serviceInstancesDescription = getServiceInstacesDescription(absolutePuName);
-		DeploymentState serviceState = getServiceState(serviceInstancesDescription, absolutePuName);
+		int plannedNumberOfInstances, numberOfServiceInstances;
+		DeploymentState serviceState;
+		Zone zone = null;
+		ProcessingUnit processingUnit = null;
+		
+		zone = getZone(absolutePuName); 
+		if (zone != null) {
+			GridServiceContainers gridServiceContainers = zone.getGridServiceContainers();
+			if (gridServiceContainers != null && !gridServiceContainers.isEmpty()) {
+				GridServiceContainer gsc = gridServiceContainers.getContainers()[0];
+				ProcessingUnitInstance[] puInstances = gsc.getProcessingUnitInstances();
+				if (puInstances != null && puInstances.length > 0) {
+					processingUnit = puInstances[0].getProcessingUnit();
+				}
+			}
+		}
+		
+		plannedNumberOfInstances = getPlannedNumberOfInstances(processingUnit);
+		numberOfServiceInstances = getNumberOfServiceInstances(processingUnit);
+		List<InstanceDescription> serviceInstancesDescription = getServiceInstacesDescription(processingUnit);
+		serviceState = getServiceState(zone, processingUnit, serviceInstancesDescription);
+		logger.log(Level.FINE, "Service \"" + absolutePuName + "\" is in state: " + serviceState);
 		
 		ServiceDescription serviceDescription = new ServiceDescription();
 		serviceDescription.setPlannedInstances(plannedNumberOfInstances);
 		serviceDescription.setInstanceCount(numberOfServiceInstances);
 		serviceDescription.setApplicationName(applicationName);
-		serviceDescription.setServiceName(serviceName);
+		serviceDescription.setServiceName(ServiceUtils.getApplicationServiceName(absolutePuName, applicationName));
 		serviceDescription.setInstancesDescription(serviceInstancesDescription);
 		serviceDescription.setServiceState(serviceState);
 		
 		return serviceDescription;
 	}
 	
+	/**
+	 * Gets a populated {@link InstanceDescription} object describing the instance (name, id, state, etc.).
+	 * @param processingUnitInstance The processing unit instance to describe
+	 * @return a populated {@link InstanceDescription} object describing the instance (name, id, state, etc.)
+	 */
 	private InstanceDescription getInstanceDescription(final ProcessingUnitInstance processingUnitInstance) {
 		String instanceState = getInstanceState(processingUnitInstance);
 		int instanceId = processingUnitInstance.getInstanceId();
@@ -147,7 +186,13 @@ public class ApplicationDescriptionFactory {
 		
 		return instanceDescription;
 	}
+	
 
+	/**
+	 * Get the state of a processing unit instance.
+	 * @param processingUnitInstance The processing unit instance to examine
+	 * @return the state of a processing unit instance.
+	 */
 	private String getInstanceState(
 			final ProcessingUnitInstance processingUnitInstance) {
 		String instanceState;
@@ -160,22 +205,38 @@ public class ApplicationDescriptionFactory {
 		return instanceState;
 	}
 	
+	
+	/**
+	 * Gets a list of {@link InstanceDescription} objects, describing the service instances.
+	 * @param processingUnit The service's processing unit of which instances are described
+	 * @return a list of {@link InstanceDescription} objects, describing the service instances.
+	 */
 	private List<InstanceDescription> getServiceInstacesDescription(
-			final String absolutePuName) {
-		ProcessingUnit processingUnit = getProcessingUnit(absolutePuName);
+			final ProcessingUnit processingUnit) {
+
 		List<InstanceDescription> instancesDescriptionList = new ArrayList<InstanceDescription>();
 		
-		for (ProcessingUnitInstance processingUnitInstance : processingUnit) {
-			InstanceDescription instanceDescription = getInstanceDescription(processingUnitInstance);
-            instancesDescriptionList.add(instanceDescription);
+		if (processingUnit != null) {
+			for (ProcessingUnitInstance processingUnitInstance : processingUnit) {
+				InstanceDescription instanceDescription = getInstanceDescription(processingUnitInstance);
+	            instancesDescriptionList.add(instanceDescription);
+			}	
 		}
 		
 		return instancesDescriptionList;
 	}
 	
-	//This method will return failed status only if all of the services reached a final state.
-	private DeploymentState getApplicationState(final 
-			List<ServiceDescription> serviceDescriptionList) {
+	
+	/**
+	 * Gets the application state - STARTED, INSTALLING or FAILED.
+	 * The method returns FAILED status only if all of the services reached a final state.
+	 * 
+	 * @param serviceDescriptionList a list of {@link ServiceDescription} objects, representing the application's
+	 * services' state.
+	 * @return The applications' state
+	 */
+	private DeploymentState getApplicationState(
+			final List<ServiceDescription> serviceDescriptionList) {
 		logger.log(Level.FINE, "Determining services deployment state");
 		boolean servicesStillInstalling = false;
 		boolean atLeastOneServiceFailed = false;
@@ -199,60 +260,139 @@ public class ApplicationDescriptionFactory {
 		return DeploymentState.STARTED;
 	}
 	
-	private DeploymentState getServiceState(final List<InstanceDescription> serviceInstancesStatus, 
-			final String absolutePuName) {
-		ProcessingUnit pu = getProcessingUnit(absolutePuName);
-		logger.log(Level.FINE, "Determining service state for service " + absolutePuName);
-		if (pu.getType() == ProcessingUnitType.UNIVERSAL) {
+
+	/**
+	 * Gets a zone by its name.
+	 * @param zoneName The name of the requested zone
+	 * @return The zone matching the specified name, if found. Null otherwise.
+	 */
+	private Zone getZone(final String zoneName) {
+		Zone zone = null;
+		Zones zones = admin.getZones();
+		if (zones != null) {
+			zone = zones.getByName(zoneName);
+		}
+		
+		return zone;
+	}
+	
+	
+	/**
+	 * Gets the state of the specified service - STARTED, INSTALLING.
+	 * If the zone is null - the service state is uninstalled
+	 * If the zone is not null but the PU is null- the service is currently being uninstalled.
+	 * If PU instances are found - the service is either running, installing, or in error,
+	 * depending on the instances' states.
+	 * 
+	 * @param zone the service's zone (optionally null)
+	 * @param processingUnit the service's processing unit (optionally null)
+	 * @param serviceInstancesStatus a list of {@link InstanceDescription} objects representing the service's
+	 * instances' state
+	 * @return DeploymentState populated with service state details
+	 */
+	private DeploymentState getServiceState(
+			final Zone zone,
+			final ProcessingUnit processingUnit, 
+			final List<InstanceDescription> serviceInstancesStatus) {
+
+		// if the zone is not found - the service was uninstalled.
+		if (zone == null) {
+			return DeploymentState.UNINSTALLED;
+		}
+		
+		// if the zone is found but doesn't contain an active PU - the service is currently being uninstalled.
+		if (zone != null && processingUnit == null) {
+			return DeploymentState.UNINSTALLING;
+		}
+		
+		// PU instances found - the service is either running, installing, or in error
+		if (processingUnit.getType() == ProcessingUnitType.UNIVERSAL) {
 			for (InstanceDescription instanceDescription : serviceInstancesStatus) {
 				String instanceState = instanceDescription.getInstanceStatus();
 				if (instanceState.equals(USMState.ERROR.toString())) {
 					return DeploymentState.FAILED;
 				} 
 			}
-			if (getNumberOfServiceInstances(absolutePuName) != getPlannedNumberOfInstances(absolutePuName)) {
+			if (getNumberOfServiceInstances(processingUnit) != getPlannedNumberOfInstances(processingUnit)) {
 				return DeploymentState.INSTALLING;
 			}
 			return DeploymentState.STARTED;
 
 		} else { //The service is not a USM service.
-			if (pu.getStatus() != DeploymentStatus.INTACT) {
+			if (processingUnit.getStatus() != DeploymentStatus.INTACT) {
 				return DeploymentState.INSTALLING;
 			} else {
 				return DeploymentState.STARTED;
 			}
 		}
 	}
-
-	private int getNumberOfServiceInstances(final String absolutePuName) {
-        ProcessingUnit processingUnit = getProcessingUnit(absolutePuName);
+	
+	
+	
+	
+	/**
+	 * Gets a service's number of instances. 
+	 * @param processingUnit The processing unit implementing this service
+	 * @return the planned number of instances for the specified service (PU)
+	 */
+	private int getNumberOfServiceInstances(final ProcessingUnit processingUnit) {
 
         if (processingUnit != null) {
             if (processingUnit.getType() == ProcessingUnitType.UNIVERSAL) {
-                return getNumberOfUSMServicesWithRunningState(absolutePuName);
+                return getNumberOfUSMServicesWithRunningState(processingUnit);
             }
 
-            return getProcessingUnit(absolutePuName).getInstances().length;
+            return processingUnit.getInstances().length;
         }
         return 0;
     }
-
-	private ProcessingUnit getProcessingUnit(final String absolutePuName) {
-		return admin.getProcessingUnits().getProcessingUnit(absolutePuName);
+	
+	
+	/**
+	 * Gets a service's planned number of instances. 
+	 * @param processingUnit The processing unit implementing this service
+	 * @return the planned number of instances for the specified service (PU)
+	 */
+	private int getPlannedNumberOfInstances(final ProcessingUnit processingUnit) {
+		
+		if (processingUnit == null) {
+			return 0;
+		}
+		
+		Map<String, String> elasticProperties = ((DefaultProcessingUnit) processingUnit).getElasticProperties();
+		int plannedNumberOfInstances;
+		if (elasticProperties.containsKey("schema")) {
+			String clusterSchemaValue = elasticProperties.get("schema");
+            if ("partitioned-sync2backup".equals(clusterSchemaValue)) {
+            	plannedNumberOfInstances = processingUnit.getTotalNumberOfInstances();
+            } else {
+            	plannedNumberOfInstances = processingUnit.getNumberOfInstances();
+            }
+		} else {
+			plannedNumberOfInstances = processingUnit.getNumberOfInstances();
+		}
+		return plannedNumberOfInstances;
 	}
-    
-    // returns the number of RUNNING processing unit instances.
+	
+	
+	/**
+	 * Gets the number of RUNNING processing unit instances.
+	 * @param processingUnit the PU to examine
+	 * @return the number of RUNNING processing unit instances.
+	 */
     private int getNumberOfUSMServicesWithRunningState(
-            final String absolutePUName) {
+            final ProcessingUnit processingUnit) {
 
         int puInstanceCounter = 0;
-        ProcessingUnit processingUnit = getProcessingUnit(absolutePUName);
 
-        for (ProcessingUnitInstance pui : processingUnit) {
-            if (isUsmStateOfPuiRunning(pui)) {
-                puInstanceCounter++;
+        if (processingUnit != null) {
+        	for (ProcessingUnitInstance pui : processingUnit) {
+                if (isUsmStateOfPuiRunning(pui)) {
+                    puInstanceCounter++;
+                }
             }
         }
+        
         return puInstanceCounter;
     }
 
@@ -260,8 +400,14 @@ public class ApplicationDescriptionFactory {
         USMState instanceState = getInstanceUsmState(pui);
         return (instanceState == CloudifyConstants.USMState.RUNNING);
     }
+    
 
-    //returns the USM state of a 
+
+    /**
+     * Gets a PU instance's USM state.
+     * @param pui the PU instance to examine
+     * @return the USM state of the specified PU instance
+     */
 	private USMState getInstanceUsmState(final ProcessingUnitInstance pui) {
 		ProcessingUnitInstanceStatistics statistics = pui.getStatistics();
         if (statistics == null) {
@@ -283,31 +429,15 @@ public class ApplicationDescriptionFactory {
         return USMState.values()[(Integer) monitors.get(CloudifyConstants.USM_MONITORS_STATE_ID)];
 	}
 	
-	//returns a service's planned number of instances.
-	private int getPlannedNumberOfInstances(final String absolutePuName) {
-		ProcessingUnit processingUnit = getProcessingUnit(absolutePuName);
-		Map<String, String> elasticProperties = ((DefaultProcessingUnit) processingUnit).getElasticProperties();
-		int plannedNumberOfInstances;
-		if (elasticProperties.containsKey("schema")) {
-			String clusterSchemaValue = elasticProperties.get("schema");
-            if ("partitioned-sync2backup".equals(clusterSchemaValue)) {
-            	plannedNumberOfInstances = processingUnit.getTotalNumberOfInstances();
-            } else {
-            	plannedNumberOfInstances = processingUnit.getNumberOfInstances();
-            }
-		} else {
-			plannedNumberOfInstances = processingUnit.getNumberOfInstances();
-		}
-		return plannedNumberOfInstances;
-	}
-	
-	private String getApplicationAuthorizationGroups(Application application) {
+
+	private String getApplicationAuthorizationGroups(final Application application) {
 		String appAuthGroups = "";
 		// getting the application's authGroups from its first service,
 		// assuming they all have the same authorization groups.
 		ProcessingUnit pu = application.getProcessingUnits().iterator().next();
 		if (pu != null) {
-			appAuthGroups = pu.getBeanLevelProperties().getContextProperties().getProperty(CloudifyConstants.CONTEXT_PROPERTY_AUTH_GROUPS);
+			appAuthGroups = pu.getBeanLevelProperties().getContextProperties().
+					getProperty(CloudifyConstants.CONTEXT_PROPERTY_AUTH_GROUPS);
 		}
 		
 		return appAuthGroups;

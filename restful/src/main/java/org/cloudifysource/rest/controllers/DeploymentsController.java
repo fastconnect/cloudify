@@ -49,8 +49,30 @@ import org.cloudifysource.dsl.context.kvstorage.spaceentries.ServiceCloudifyAttr
 import org.cloudifysource.dsl.internal.*;
 import org.cloudifysource.dsl.rest.ApplicationDescription;
 import org.cloudifysource.dsl.rest.ServiceDescription;
-import org.cloudifysource.dsl.rest.request.*;
-import org.cloudifysource.dsl.rest.response.*;
+import org.cloudifysource.dsl.rest.request.InstallApplicationRequest;
+import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
+import org.cloudifysource.dsl.rest.request.SetApplicationAttributesRequest;
+import org.cloudifysource.dsl.rest.request.SetServiceAttributesRequest;
+import org.cloudifysource.dsl.rest.request.SetServiceInstanceAttributesRequest;
+import org.cloudifysource.dsl.rest.request.UninstallApplicationRequest;
+import org.cloudifysource.dsl.rest.request.UpdateApplicationAttributeRequest;
+import org.cloudifysource.dsl.rest.response.DeleteApplicationAttributeResponse;
+import org.cloudifysource.dsl.rest.response.DeleteServiceAttributeResponse;
+import org.cloudifysource.dsl.rest.response.DeleteServiceInstanceAttributeResponse;
+import org.cloudifysource.dsl.rest.response.GetApplicationAttributesResponse;
+import org.cloudifysource.dsl.rest.response.GetServiceAttributesResponse;
+import org.cloudifysource.dsl.rest.response.GetServiceInstanceAttributesResponse;
+import org.cloudifysource.dsl.rest.response.InstallApplicationResponse;
+import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
+import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvent;
+import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvents;
+import org.cloudifysource.dsl.rest.response.ServiceDetails;
+import org.cloudifysource.dsl.rest.response.ServiceInstanceDetails;
+import org.cloudifysource.dsl.rest.response.ServiceInstanceMetricsData;
+import org.cloudifysource.dsl.rest.response.ServiceInstanceMetricsResponse;
+import org.cloudifysource.dsl.rest.response.ServiceMetricsResponse;
+import org.cloudifysource.dsl.rest.response.UninstallApplicationResponse;
+import org.cloudifysource.dsl.rest.response.UninstallServiceResponse;
 import org.cloudifysource.dsl.utils.ServiceUtils;
 import org.cloudifysource.rest.RestConfiguration;
 import org.cloudifysource.rest.controllers.helpers.ControllerHelper;
@@ -364,9 +386,6 @@ public class DeploymentsController extends BaseRestController {
             @PathVariable final String serviceName) 
             		throws ResourceNotFoundException {
 
-        // validate service exists
-        controllerHelper.getService(appName, serviceName);
-
         final ApplicationDescriptionFactory appDescriptionFactory = 
         		new ApplicationDescriptionFactory(restConfig.getAdmin());
         return appDescriptionFactory.
@@ -669,7 +688,7 @@ public class DeploymentsController extends BaseRestController {
     				throws ResourceNotFoundException, RestErrorException {
 
         final ProcessingUnit processingUnit = controllerHelper.getService(appName, serviceName);
-        String undeploymentId = UUID.randomUUID().toString();
+        final String undeploymentId = UUID.randomUUID().toString();
         
         if (permissionEvaluator != null) {
             final String puAuthGroups = processingUnit.getBeanLevelProperties().getContextProperties().
@@ -683,6 +702,8 @@ public class DeploymentsController extends BaseRestController {
         validateUninstallService();
         
         populateEventsCache(undeploymentId, processingUnit);
+        processingUnit.getBeanLevelProperties().getContextProperties().
+        	setProperty(CloudifyConstants.CONTEXT_PROPERTY_UNDEPLOYMENT_ID, undeploymentId);
         
 		final FutureTask<Boolean> undeployTask = new FutureTask<Boolean>(
 				new Callable<Boolean>() {
@@ -691,10 +712,14 @@ public class DeploymentsController extends BaseRestController {
 						boolean result = processingUnit.undeployAndWait(timeoutInMinutes,
 								TimeUnit.MINUTES);
 						deleteServiceAttributes(appName, serviceName);
+						//write to events cache
+						ServiceDeploymentEvent undeployFinishedEvent = new ServiceDeploymentEvent();
+						undeployFinishedEvent.setDescription(CloudifyConstants.SERVICE_UNDEPLOYED_SUCCESSFULLY);
+						eventsCache.add(new EventsCacheKey(undeploymentId), undeployFinishedEvent);
 						return result;
 					}
 				});
-		serviceUndeployExecutor.execute(undeployTask);        
+		serviceUndeployExecutor.execute(undeployTask);
         
         final UninstallServiceResponse uninstallServiceResponse = new UninstallServiceResponse();
         uninstallServiceResponse.setDeploymentID(undeploymentId);
@@ -1182,7 +1207,7 @@ public class DeploymentsController extends BaseRestController {
 		// Check that Application exists
 		final org.openspaces.admin.application.Application app = this.restConfig.getAdmin().getApplications().waitFor(
 				appName, 10, TimeUnit.SECONDS);
-
+		
 		final ProcessingUnit[] pus = app.getProcessingUnits()
 				.getProcessingUnits();
 
@@ -1270,6 +1295,7 @@ public class DeploymentsController extends BaseRestController {
 		}
 		throw new RestErrorException(errors);
     }
+    
     
 	private void deleteApplicationScopeAttributes(final String applicationName) {
 		final ApplicationCloudifyAttribute applicationAttributeTemplate =

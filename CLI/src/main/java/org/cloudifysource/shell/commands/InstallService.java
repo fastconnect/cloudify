@@ -18,6 +18,7 @@ import org.apache.felix.gogo.commands.Argument;
 import org.apache.felix.gogo.commands.Command;
 import org.apache.felix.gogo.commands.Option;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
+import org.cloudifysource.dsl.internal.CloudifyConstants.DeploymentState;
 import org.cloudifysource.dsl.internal.debug.DebugModes;
 import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
 import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
@@ -258,6 +259,45 @@ public class InstallService extends AdminAwareCommand {
     private boolean promptWouldYouLikeToContinueQuestion() throws IOException {
         return ShellUtils.promptUser(session,
                 "would_you_like_to_continue_service_installation", serviceName);
+    }
+
+    private void waitForLifeCycleToEnd(
+            final long timeout,
+            final ServiceInstallationProcessInspector inspector)
+            throws InterruptedException, CLIException, TimeoutException {
+
+        ConditionLatch conditionLatch = createConditionLatch(timeout);
+
+        conditionLatch.waitFor(new ConditionLatch.Predicate() {
+
+            @Override
+            public boolean isDone() throws CLIException, InterruptedException {
+                try {
+                    boolean ended = inspector.isServiceInState(DeploymentState.STARTED);
+                    if (!ended) {
+
+                        List<String> latestEvents = inspector.getLatestEvents();
+                        if (latestEvents != null && !latestEvents.isEmpty()) {
+                            displayer.printEvents(latestEvents);
+                        } else {
+                            displayer.printNoChange();
+                        }
+                    }
+                    return ended;
+                } catch (final RestClientException e) {
+                    throw new CLIException(e.getMessage(), e);
+                }
+            }
+        });
+
+    }
+
+    private ConditionLatch createConditionLatch(final long timeout) {
+        return new ConditionLatch()
+                .verbose(verbose)
+                .pollingInterval(POLLING_INTERVAL_MILLI_SECONDS, TimeUnit.MILLISECONDS)
+                .timeout(timeout, TimeUnit.MINUTES)
+                .timeoutErrorMessage(TIMEOUT_ERROR_MESSAGE);
     }
 
     private NameAndPackedFileResolver getResolver(final File recipe) throws CLIStatusException {

@@ -15,6 +15,9 @@ package org.cloudifysource.rest.events.cache;
 import org.cloudifysource.dsl.rest.response.DeploymentEvents;
 import org.openspaces.admin.pu.ProcessingUnit;
 
+import java.util.HashSet;
+import java.util.Set;
+
 /**
  * Created with IntelliJ IDEA.
  * User: elip
@@ -30,14 +33,14 @@ public class EventsCacheValue {
     private long lastRefreshedTimestamp;
     private int lastEventIndex;
     private volatile Object mutex = new Object();
-    private ProcessingUnit processingUnit;
+    private Set<ProcessingUnit> processingUnits = new HashSet<ProcessingUnit>();
 
-    public ProcessingUnit getProcessingUnit() {
-        return processingUnit;
+    public Set<ProcessingUnit> getProcessingUnits() {
+        return processingUnits;
     }
 
-    public void setProcessingUnit(final ProcessingUnit processingUnit) {
-        this.processingUnit = processingUnit;
+    public void setProcessingUnits(Set<ProcessingUnit> processingUnits) {
+        this.processingUnits = processingUnits;
     }
 
     public DeploymentEvents getEvents() {

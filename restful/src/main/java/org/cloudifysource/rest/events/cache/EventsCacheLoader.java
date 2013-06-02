@@ -26,7 +26,9 @@ import org.cloudifysource.rest.events.LogEntryMatcherProviderKey;
 import org.cloudifysource.rest.exceptions.ResourceNotFoundException;
 import org.openspaces.admin.Admin;
 import org.openspaces.admin.gsc.GridServiceContainer;
+import org.openspaces.admin.pu.ProcessingUnit;
 
+import java.util.HashSet;
 import java.util.Set;
 import java.util.logging.Logger;
 
@@ -116,15 +118,26 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, EventsCacheVa
 
         boolean isUndeploy = EventsUtils.isUnDeploymentOperation(key.getOperationId(), admin);
 
-        if (!isUndeploy && EventsUtils.isUndeploymentInProgress(oldValue.getProcessingUnit())) {
+        boolean isUndeployInProgress = false;
+        for (ProcessingUnit pu : oldValue.getProcessingUnits()) {
+            if (EventsUtils.isUndeploymentInProgress(pu)) {
+                // if one processing unit is undeploying. we assume
+                // the entire applicaion is undeploying.
+                isUndeployInProgress = true;
+                break;
+            }
+        }
+        if (!isUndeploy && isUndeployInProgress) {
             // prevent client who are requesting installation events from seeing un-installation events
             Futures.immediateFuture(oldValue);
         }
 
         // pickup any new containers along with the old ones
-        Set<GridServiceContainer> containersForDeployment = EventsUtils.getContainersForProcessingUnit(
-                oldValue.getProcessingUnit());
-        if (containersForDeployment != null) {
+        Set<GridServiceContainer> containersForDeployment = new HashSet<GridServiceContainer>();
+        for (ProcessingUnit pu : oldValue.getProcessingUnits()) {
+            containersForDeployment.addAll(EventsUtils.getContainersForProcessingUnit(pu));
+        }
+        if (!containersForDeployment.isEmpty()) {
             int index = oldValue.getLastEventIndex();
             for (GridServiceContainer container : containersForDeployment) {
 

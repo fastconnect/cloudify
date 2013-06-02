@@ -94,6 +94,15 @@ public class EventsCache {
     }
 
     /**
+     * Retrieves a cache entry only if it exists. otherwise will return null.
+     * @param key The key of the requested entry.
+     * @return The cache value. containing also the events. null if doesnt exist.
+     */
+    public EventsCacheValue getIfExists(final EventsCacheKey key) {
+        return eventsLoadingCache.getIfPresent(key);
+    }
+
+    /**
      * Explicitly put a new entry to the cache. this method is used only when installing or uninstalling the service.
      * @param key The key of the requested entry.
      * @param value The value of the requested entry.

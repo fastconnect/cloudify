@@ -1691,9 +1691,17 @@ public class DeploymentsController extends BaseRestController {
     		final String deploymentId, 
     		final ProcessingUnit processingUnit) {
         EventsCacheKey key = new EventsCacheKey(deploymentId);
-        EventsCacheValue value = new EventsCacheValue();
-        value.setProcessingUnit(processingUnit);
-        eventsCache.put(key, value);
+        EventsCacheValue value = eventsCache.getIfExists(key);
+        if (value == null) {
+            // first time populating the cache with this deployment id.
+            value = new EventsCacheValue();
+            value.getProcessingUnits().add(processingUnit);
+            eventsCache.put(key, value);
+        } else {
+            // a value already exists for this deployment id.
+            // just add the reference for the current pu.
+            value.getProcessingUnits().add(processingUnit);
+        }
     }
 
     private void validateUninstallService() throws RestErrorException {

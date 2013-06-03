@@ -13,19 +13,19 @@
 
 package org.cloudifysource.rest.events.cache;
 
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
+
+import org.cloudifysource.dsl.rest.response.DeploymentEvent;
+import org.cloudifysource.dsl.rest.response.DeploymentEvents;
+import org.cloudifysource.rest.events.LogEntryMatcherProvider;
+import org.openspaces.admin.Admin;
+
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.LoadingCache;
 import com.google.common.cache.RemovalListener;
 import com.google.common.cache.RemovalNotification;
-
-import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvent;
-import org.cloudifysource.dsl.rest.response.ServiceDeploymentEvents;
-import org.cloudifysource.rest.events.LogEntryMatcherProvider;
-import org.openspaces.admin.Admin;
-
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
 
 /**
  * Created with IntelliJ IDEA.
@@ -121,9 +121,9 @@ public class EventsCache {
      * @param key A key of ServiceDeploymentEvents
      * @param event The event to add
      */
-    public void add(final EventsCacheKey key, final ServiceDeploymentEvent event) {
+    public void add(final EventsCacheKey key, final DeploymentEvent event) {
     	EventsCacheValue eventsCacheValue = eventsLoadingCache.asMap().get(key);
-		ServiceDeploymentEvents events = eventsCacheValue.getEvents();
+		DeploymentEvents events = eventsCacheValue.getEvents();
     	events.addEvent(eventsCacheValue.getLastEventIndex() + 1, event);
     }
 }

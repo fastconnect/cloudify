@@ -37,4 +37,13 @@ public class DeploymentEvents {
     public void setEvents(final Map<Integer, DeploymentEvent> events) {
         this.events = events;
     }
+    
+    /**
+     * Add an event to the map. Might override an existing event if the index is already in use.
+     * @param index The event index. Higher index indicates a recent event. 
+     * @param event The event object to add at the given index.
+     */
+    public void addEvent(final Integer index, final DeploymentEvent event) {
+    	events.put(index, event);
+    }
 }

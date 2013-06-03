@@ -12,13 +12,16 @@
  *******************************************************************************/
 package org.cloudifysource.shell.commands;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.Map;
+import java.util.concurrent.TimeoutException;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.felix.gogo.commands.Argument;
 import org.apache.felix.gogo.commands.Command;
 import org.apache.felix.gogo.commands.Option;
-import org.cloudifysource.dsl.internal.CloudifyConstants;
-import org.cloudifysource.dsl.internal.CloudifyConstants.DeploymentState;
 import org.cloudifysource.dsl.internal.debug.DebugModes;
 import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
 import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
@@ -35,11 +38,6 @@ import org.cloudifysource.shell.util.NameAndPackedFileResolver;
 import org.cloudifysource.shell.util.PreparedPackageResolver;
 import org.cloudifysource.shell.util.ServiceResolver;
 import org.fusesource.jansi.Ansi.Color;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Map;
-import java.util.concurrent.TimeoutException;
 
 /**
  * @author rafi, adaml, barakm
@@ -209,7 +207,7 @@ public class InstallService extends AdminAwareCommand {
 
         // execute the request
         InstallServiceResponse installServiceResponse = ((RestAdminFacade) adminFacade)
-                .installService(CloudifyConstants.DEFAULT_APPLICATION_NAME, serviceName, request);
+                .installService(getCurrentApplicationName(), serviceName, request);
 
         Map<String, Integer> plannedNumberOfInstancesPerService = nameAndPackedFileResolver
                 .getPlannedNumberOfInstancesPerService();
@@ -218,7 +216,8 @@ public class InstallService extends AdminAwareCommand {
                 installServiceResponse.getDeploymentID(),
                 verbose,
                 plannedNumberOfInstancesPerService,
-                serviceName);
+                serviceName,
+                getCurrentApplicationName());
 
         int actualTimeout = timeoutInMinutes;
         boolean isDone = false;
@@ -237,7 +236,7 @@ public class InstallService extends AdminAwareCommand {
                     throw new CLIException(e.getMessage(), e);
                 }
 
-                // ask user if he want to continue viewing the installation.
+                // ask the user whether to continue viewing the installation or to stop
                 displayer.printEvent("");
                 boolean continueViewing = promptWouldYouLikeToContinueQuestion();
                 if (continueViewing) {
@@ -261,44 +260,6 @@ public class InstallService extends AdminAwareCommand {
                 "would_you_like_to_continue_service_installation", serviceName);
     }
 
-    private void waitForLifeCycleToEnd(
-            final long timeout,
-            final ServiceInstallationProcessInspector inspector)
-            throws InterruptedException, CLIException, TimeoutException {
-
-        ConditionLatch conditionLatch = createConditionLatch(timeout);
-
-        conditionLatch.waitFor(new ConditionLatch.Predicate() {
-
-            @Override
-            public boolean isDone() throws CLIException, InterruptedException {
-                try {
-                    boolean ended = inspector.isServiceInState(DeploymentState.STARTED);
-                    if (!ended) {
-
-                        List<String> latestEvents = inspector.getLatestEvents();
-                        if (latestEvents != null && !latestEvents.isEmpty()) {
-                            displayer.printEvents(latestEvents);
-                        } else {
-                            displayer.printNoChange();
-                        }
-                    }
-                    return ended;
-                } catch (final RestClientException e) {
-                    throw new CLIException(e.getMessage(), e);
-                }
-            }
-        });
-
-    }
-
-    private ConditionLatch createConditionLatch(final long timeout) {
-        return new ConditionLatch()
-                .verbose(verbose)
-                .pollingInterval(POLLING_INTERVAL_MILLI_SECONDS, TimeUnit.MILLISECONDS)
-                .timeout(timeout, TimeUnit.MINUTES)
-                .timeoutErrorMessage(TIMEOUT_ERROR_MESSAGE);
-    }
 
     private NameAndPackedFileResolver getResolver(final File recipe) throws CLIStatusException {
         if (recipe.isFile()) {

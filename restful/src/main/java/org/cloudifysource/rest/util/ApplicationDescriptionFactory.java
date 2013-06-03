@@ -28,7 +28,7 @@ import org.cloudifysource.dsl.rest.ApplicationDescription;
 import org.cloudifysource.dsl.rest.InstanceDescription;
 import org.cloudifysource.dsl.rest.ServiceDescription;
 import org.cloudifysource.dsl.utils.ServiceUtils;
-import org.cloudifysource.rest.controllers.RestErrorException;
+import org.cloudifysource.rest.exceptions.ResourceNotFoundException;
 import org.openspaces.admin.Admin;
 import org.openspaces.admin.application.Application;
 import org.openspaces.admin.gsc.GridServiceContainer;
@@ -68,10 +68,11 @@ public class ApplicationDescriptionFactory {
 	 * @param applicationName the application name.
 	 * @return 
 	 * 		the application description.
-	 * @throws RestErrorException 
-	 * 		if application is not found.
+	 * @throws ResourceNotFoundException 
+	 * 		thrown if one or more of the expected zones were not found.
 	 */
-	public ApplicationDescription getApplicationDescription(final String applicationName) {
+	public ApplicationDescription getApplicationDescription(final String applicationName) 
+			throws ResourceNotFoundException { 
 
 		Application application = admin.getApplications().getApplication(applicationName);
 		return getApplicationDescription(application);
@@ -83,10 +84,11 @@ public class ApplicationDescriptionFactory {
 	 * @param application the application name.
 	 * @return 
 	 * 		the application description.
-	 * @throws RestErrorException 
-	 * 		if application is not found.
+	 * @throws ResourceNotFoundException 
+	 * 		thrown if one or more of the expected zones were not found.
 	 */
-	public ApplicationDescription getApplicationDescription(final Application application) {
+	public ApplicationDescription getApplicationDescription(final Application application) 
+			throws ResourceNotFoundException {
 		
 		String applicationName = application.getName();
 		List<ServiceDescription> serviceDescriptionList = getServicesDescription(
@@ -111,7 +113,8 @@ public class ApplicationDescriptionFactory {
 	 * @return a list of {@link ServiceDescription} objects, representing the application's services.
 	 */
 	private List<ServiceDescription> getServicesDescription(
-			final String applicationName, final Application app) {
+			final String applicationName, final Application app)
+			throws ResourceNotFoundException {
 		List<ServiceDescription> serviceDescriptionList = new ArrayList<ServiceDescription>();
 		final ProcessingUnits pus = app.getProcessingUnits();
 		for (final ProcessingUnit pu : pus) {
@@ -128,8 +131,10 @@ public class ApplicationDescriptionFactory {
 	 * @param absolutePuName The full service name (<application name>.<service name>)
 	 * @param applicationName The name of the application that contains this service
 	 * @return A populated service description object
+	 * @throws ResourceNotFoundException Thrown if a matching zone was not found
 	 */
-	public ServiceDescription getServiceDescription(final String absolutePuName, final String applicationName) {
+	public ServiceDescription getServiceDescription(final String absolutePuName, final String applicationName) 
+			throws ResourceNotFoundException {
 
 		int plannedNumberOfInstances, numberOfServiceInstances;
 		DeploymentState serviceState;
@@ -137,21 +142,20 @@ public class ApplicationDescriptionFactory {
 		ProcessingUnit processingUnit = null;
 		
 		zone = getZone(absolutePuName); 
-		if (zone != null) {
-			GridServiceContainers gridServiceContainers = zone.getGridServiceContainers();
-			if (gridServiceContainers != null && !gridServiceContainers.isEmpty()) {
-				GridServiceContainer gsc = gridServiceContainers.getContainers()[0];
-				ProcessingUnitInstance[] puInstances = gsc.getProcessingUnitInstances();
-				if (puInstances != null && puInstances.length > 0) {
-					processingUnit = puInstances[0].getProcessingUnit();
-				}
+		GridServiceContainers gridServiceContainers = zone.getGridServiceContainers();
+		if (gridServiceContainers != null && !gridServiceContainers.isEmpty()) {
+			GridServiceContainer gsc = gridServiceContainers.getContainers()[0];
+			ProcessingUnitInstance[] puInstances = gsc.getProcessingUnitInstances();
+			if (puInstances != null && puInstances.length > 0) {
+				processingUnit = puInstances[0].getProcessingUnit();
 			}
 		}
 		
 		plannedNumberOfInstances = getPlannedNumberOfInstances(processingUnit);
 		numberOfServiceInstances = getNumberOfServiceInstances(processingUnit);
 		List<InstanceDescription> serviceInstancesDescription = getServiceInstacesDescription(processingUnit);
-		serviceState = getServiceState(zone, processingUnit, serviceInstancesDescription);
+		serviceState = getServiceState(processingUnit, serviceInstancesDescription, numberOfServiceInstances, 
+				plannedNumberOfInstances);
 		logger.log(Level.FINE, "Service \"" + absolutePuName + "\" is in state: " + serviceState);
 		
 		ServiceDescription serviceDescription = new ServiceDescription();
@@ -265,15 +269,20 @@ public class ApplicationDescriptionFactory {
 	 * Gets a zone by its name.
 	 * @param zoneName The name of the requested zone
 	 * @return The zone matching the specified name, if found. Null otherwise.
+	 * @throws ResourceNotFoundException Indicates the zone was not found
 	 */
-	private Zone getZone(final String zoneName) {
+	private Zone getZone(final String zoneName) throws ResourceNotFoundException {
 		Zone zone = null;
 		Zones zones = admin.getZones();
 		if (zones != null) {
 			zone = zones.getByName(zoneName);
 		}
 		
-		return zone;
+		if (zone == null) {
+			throw new ResourceNotFoundException(zoneName);			
+		}
+		
+		return zone; 
 	}
 	
 	
@@ -284,24 +293,20 @@ public class ApplicationDescriptionFactory {
 	 * If PU instances are found - the service is either running, installing, or in error,
 	 * depending on the instances' states.
 	 * 
-	 * @param zone the service's zone (optionally null)
 	 * @param processingUnit the service's processing unit (optionally null)
 	 * @param serviceInstancesStatus a list of {@link InstanceDescription} objects representing the service's
 	 * instances' state
 	 * @return DeploymentState populated with service state details
 	 */
 	private DeploymentState getServiceState(
-			final Zone zone,
 			final ProcessingUnit processingUnit, 
-			final List<InstanceDescription> serviceInstancesStatus) {
+			final List<InstanceDescription> serviceInstancesStatus,
+			final int numberOfServiceInstances,
+			final int plannedNumberOfInstances) {
 
-		// if the zone is not found - the service was uninstalled.
-		if (zone == null) {
-			return DeploymentState.UNINSTALLED;
-		}
-		
-		// if the zone is found but doesn't contain an active PU - the service is currently being uninstalled.
-		if (zone != null && processingUnit == null) {
+		// if the zone is found but doesn't contain an active PU, or the number of running instances is larger than 
+		// the planned number of resources - the service is currently being uninstalled.
+		if (processingUnit == null || numberOfServiceInstances > plannedNumberOfInstances) {
 			return DeploymentState.UNINSTALLING;
 		}
 		
@@ -313,7 +318,7 @@ public class ApplicationDescriptionFactory {
 					return DeploymentState.FAILED;
 				} 
 			}
-			if (getNumberOfServiceInstances(processingUnit) != getPlannedNumberOfInstances(processingUnit)) {
+			if (numberOfServiceInstances < plannedNumberOfInstances) {
 				return DeploymentState.INSTALLING;
 			}
 			return DeploymentState.STARTED;

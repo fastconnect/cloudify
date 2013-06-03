@@ -20,6 +20,7 @@ import org.cloudifysource.dsl.rest.ApplicationDescription;
 import org.cloudifysource.dsl.rest.ServiceDescription;
 import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.restclient.exceptions.RestClientException;
+import org.cloudifysource.restclient.exceptions.RestClientResponseException;
 
 import java.util.Map;
 
@@ -59,8 +60,20 @@ public class ApplicationInstallationProcessInspector extends InstallationProcess
 
     @Override
     public int getNumberOfRunningInstances(final String serviceName) throws RestClientException {
-        ServiceDescription serviceDescription = restClient.getServiceDescription(applicationName, serviceName);
-        return serviceDescription.getInstanceCount();
+    	int instanceCount;
+    	try {
+    		ServiceDescription serviceDescription = restClient.getServiceDescription(applicationName, serviceName);
+    		instanceCount = serviceDescription.getInstanceCount();
+    	} catch (RestClientResponseException e) {
+    		if (e.getStatusCode() == RESOURCE_NOT_FOUND_EXCEPTION_CODE) {
+    			//if we got here - the service is not installed yet
+    			instanceCount = 0;
+        	} else {
+        		throw e;
+        	}
+    	}
+    	
+    	return instanceCount;
 
     }
 

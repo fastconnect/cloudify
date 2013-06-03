@@ -15,17 +15,14 @@
  *******************************************************************************/
 package org.cloudifysource.shell.rest;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
+import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.internal.CloudifyConstants.DeploymentState;
 import org.cloudifysource.dsl.rest.ServiceDescription;
 import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.restclient.exceptions.RestClientException;
-
-import java.util.Map;
+import org.cloudifysource.restclient.exceptions.RestClientResponseException;
 
 /**
  * Created with IntelliJ IDEA.
@@ -42,14 +39,17 @@ public class ServiceInstallationProcessInspector extends InstallationProcessInsp
             + "Configure the timeout using the -timeout flag.";
 
     private String serviceName;
+    private String applicationName;
 
     public ServiceInstallationProcessInspector(final RestClient restClient,
                                                final String deploymentId,
                                                final boolean verbose,
                                                final Map<String, Integer> plannedNumberOfInstancesPerService,
-                                               final String serviceName) {
+                                               final String serviceName,
+                                               final String applicationName) {
         super(restClient, deploymentId, verbose, plannedNumberOfInstancesPerService);
         this.serviceName = serviceName;
+        this.applicationName = applicationName != null ? applicationName : CloudifyConstants.DEFAULT_APPLICATION_NAME;
     }
 
     /**
@@ -58,36 +58,44 @@ public class ServiceInstallationProcessInspector extends InstallationProcessInsp
      * Otherwise, only new events (that were not reported earlier) are retrieved. 
      * @throws RestClientException Indicates a failure to get events from the server.
      */
-
     @Override
     public boolean lifeCycleEnded() throws RestClientException {
-        ServiceDescription serviceDescription = restClient
-                .getServiceDescription(CloudifyConstants.DEFAULT_APPLICATION_NAME, serviceName);
-        return serviceDescription.getServiceState().equals(CloudifyConstants.DeploymentState.STARTED);
+    	
+    	boolean serviceIsInstalled = false;
+    	try {
+            ServiceDescription serviceDescription = restClient
+                    .getServiceDescription(applicationName, serviceName);
+            serviceIsInstalled = serviceDescription.getServiceState().equals(CloudifyConstants.DeploymentState.STARTED);
+    	} catch (RestClientResponseException e) {
+    		if (e.getStatusCode() == RESOURCE_NOT_FOUND_EXCEPTION_CODE) {
+        		// the service is not available yet
+    			serviceIsInstalled = false;
+    		} else {
+    			throw e;
+    		}
+    	}
+        
+    	return serviceIsInstalled;
     }
 
-        List<String> eventsStrings = new ArrayList<String>();
 
-        ServiceDeploymentEvents events = restClient.getServiceDeploymentEvents(deploymentId, lastEventIndex, -1);
-        if (events == null || events.getEvents().isEmpty()) {
-            return eventsStrings;
-        }
-        
-        // sort by event index (corresponds to order of events on the server, pretty much)
-        Set<Integer> eventIndices = events.getEvents().keySet();
-        Integer[] integers = eventIndices.toArray(new Integer[eventIndices.size()]);
-        Arrays.sort(integers);
-
-        for (Integer index : integers) {
-            eventsStrings.add(events.getEvents().get(index).getDescription());
-        }
-        lastEventIndex = integers[integers.length - 1] + 1;
-        return eventsStrings;
     @Override
     public int getNumberOfRunningInstances(final String serviceName) throws RestClientException {
-        ServiceDescription serviceDescription = restClient
-                .getServiceDescription(CloudifyConstants.DEFAULT_APPLICATION_NAME, serviceName);
-        return serviceDescription.getInstanceCount();
+    	int instanceCount;
+    	try {
+    		ServiceDescription serviceDescription = restClient
+                .getServiceDescription(applicationName, serviceName);
+    		instanceCount = serviceDescription.getInstanceCount();
+    	} catch (RestClientResponseException e) {
+    		if (e.getStatusCode() == RESOURCE_NOT_FOUND_EXCEPTION_CODE) {
+    			//if we got here - the service is not installed yet
+    			instanceCount = 0;
+        	} else {
+        		throw e;
+        	}
+    	}
+    	
+    	return instanceCount;
     }
 
     /**
@@ -99,6 +107,8 @@ public class ServiceInstallationProcessInspector extends InstallationProcessInsp
     public boolean isServiceInState(final DeploymentState targetState) throws RestClientException {
         ServiceDescription serviceDescription = restClient.getServiceDescription(applicationName, serviceName);
         return serviceDescription.getServiceState().equals(targetState);
+    }
+    
     @Override
     public String getTimeoutErrorMessage() {
         return TIMEOUT_ERROR_MESSAGE;

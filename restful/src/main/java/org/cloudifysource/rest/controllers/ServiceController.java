@@ -111,6 +111,7 @@ import org.cloudifysource.esc.driver.provisioning.CloudifyMachineProvisioningCon
 import org.cloudifysource.rest.ResponseConstants;
 import org.cloudifysource.security.CloudifyAuthorizationDetails;
 import org.cloudifysource.security.CustomPermissionEvaluator;
+import org.cloudifysource.rest.exceptions.ResourceNotFoundException;
 import org.cloudifysource.rest.util.ApplicationDescriptionFactory;
 import org.cloudifysource.rest.util.ApplicationInstallerRunnable;
 import org.cloudifysource.rest.util.IsolationUtils;
@@ -783,6 +784,7 @@ public class ServiceController implements ServiceDetailsProvider {
 	 *
 	 * @return a list of all the deployed applications in the service grid.
 	 * @throws RestErrorException .
+	 * @throws ResourceNotFoundException .
 	 */
 	@JsonResponseExample(status = "success", responseBody = "[\"petclinic\", \"travel\"]",
 			comments = "In the example, the deployed applications in the service grid are petclinic and travel")
@@ -791,7 +793,7 @@ public class ServiceController implements ServiceDetailsProvider {
 	@PreAuthorize("isFullyAuthenticated()")
 	@PostFilter("hasPermission(filterObject, 'view')")
 	@ResponseBody
-	public Map<String, Object> getApplicationDescriptionsList() throws RestErrorException {
+	public Map<String, Object> getApplicationDescriptionsList() throws RestErrorException, ResourceNotFoundException {
 
 		if (logger.isLoggable(Level.FINER)) {
 			logger.finer("received request to list application descriptions");
@@ -821,6 +823,8 @@ public class ServiceController implements ServiceDetailsProvider {
 	 *         application.
 	 * @throws RestErrorException
 	 *             When application is not found.
+	 * @throws ResourceNotFoundException
+	 * 				Thrown is one or more of the required zones is not found.
 	 */
 	@JsonResponseExample(status = "sucess", responseBody = "[\"service1\",\"service2\"]")
 	@PossibleResponseStatuses(responseStatuses = {
@@ -832,7 +836,7 @@ public class ServiceController implements ServiceDetailsProvider {
 	@ResponseBody
 	public Map<String, Object> getServicesDescriptionList(
 			@PathVariable final String applicationName)
-			throws RestErrorException {
+			throws RestErrorException, ResourceNotFoundException {
 		if (logger.isLoggable(Level.FINER)) {
 			logger.finer("received request to list applications");
 		}

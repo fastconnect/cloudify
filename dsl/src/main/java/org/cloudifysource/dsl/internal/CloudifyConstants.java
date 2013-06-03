@@ -48,8 +48,7 @@ public final class CloudifyConstants {
 		INSTALLING,
 		FAILED,
 		STARTED,
-		UNINSTALLING,
-		UNINSTALLED
+		UNINSTALLING
 	}
 
 	/***

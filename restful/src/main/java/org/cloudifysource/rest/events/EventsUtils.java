@@ -140,16 +140,15 @@ public final class EventsUtils {
      * @return The containers.
      */
     public static Set<GridServiceContainer> getContainersForProcessingUnit(final ProcessingUnit pu) {
+    	Set<GridServiceContainer> containers = new HashSet<GridServiceContainer>();
         Zone zone = pu.getAdmin().getZones().getByName(pu.getName());
-        if (zone == null) {
-            return null;
-        } else {
-            Set<GridServiceContainer> containers = new HashSet<GridServiceContainer>();
+        if (zone != null) {
             for (GridServiceContainer container : zone.getGridServiceContainers()) {
                 containers.add(container);
             }
-            return containers;
         }
+        
+        return containers;
     }
 
     /**

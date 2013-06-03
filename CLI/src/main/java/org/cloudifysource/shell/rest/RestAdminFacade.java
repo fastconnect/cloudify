@@ -33,6 +33,7 @@ import org.cloudifysource.dsl.rest.ApplicationDescription;
 import org.cloudifysource.dsl.rest.ServiceDescription;
 import org.cloudifysource.dsl.rest.request.InstallApplicationRequest;
 import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
+import org.cloudifysource.dsl.rest.request.SetServiceInstancesRequest;
 import org.cloudifysource.dsl.rest.response.ControllerDetails;
 import org.cloudifysource.dsl.rest.response.InstallApplicationResponse;
 import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
@@ -55,10 +56,9 @@ import org.codehaus.jackson.map.ObjectMapper;
 import com.j_spaces.kernel.PlatformVersion;
 
 /**
- * This class implements the {@link org.cloudifysource.shell.AdminFacade},
- * relying on the abstract implementation of {@link AbstractAdminFacade}.
- * It discovers and manages applications, services, containers and other components over REST, using the
- * {@link GSRestClient}.
+ * This class implements the {@link org.cloudifysource.shell.AdminFacade}, relying on the abstract implementation of
+ * {@link AbstractAdminFacade}. It discovers and manages applications, services, containers and other components over
+ * REST, using the {@link GSRestClient}.
  *
  * @author rafi, barakm, adaml, noak
  * @since 2.0.0
@@ -72,38 +72,38 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 	private GSRestClient client;
 	private URL urlObj;
 
-    private RestClient newRestClient;
+	private RestClient newRestClient;
 
-    public RestClient getNewRestClient() {
-        return newRestClient;
-    }
+	public RestClient getNewRestClient() {
+		return newRestClient;
+	}
 
 	/**
 	 * {@inheritDoc}
 	 */
 	@Override
 	public void doConnect(final String user, final String password, final String url, final boolean sslUsed)
-            throws CLIException, RestClientException {
+			throws CLIException, RestClientException {
 
 		try {
 
 			this.urlObj = new URL(ShellUtils.getFormattedRestUrl(url, sslUsed));
 
 			client = new GSRestClient(user, password, getUrl(), PlatformVersion.getVersionNumber());
-            newRestClient = new RestClient(urlObj, user, password, PlatformVersion.getVersion());
+			newRestClient = new RestClient(urlObj, user, password, PlatformVersion.getVersion());
 			client.get(SERVICE_CONTROLLER_URL + "testrest");
-            newRestClient.connect();
+			newRestClient.connect();
 			if (user != null || password != null) {
 				reconnect(user, password);
 			}
 		} catch (final MalformedURLException e) {
 			throw new CLIStatusException("could_not_parse_url", url, e);
 		} catch (final ErrorStatusException e) {
-            throw new CLIStatusException(e.getReasonCode(), e.getArgs(), e);
-        } catch (final RestException e) {
-            throw new CLIException(e);
-        }
-    }
+			throw new CLIStatusException(e.getReasonCode(), e.getArgs(), e);
+		} catch (final RestException e) {
+			throw new CLIException(e);
+		}
+	}
 
 	/**
 	 * {@inheritDoc}
@@ -112,15 +112,15 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 	public void reconnect(final String username, final String password) throws CLIException, RestClientException {
 		try {
 			client.setCredentials(username, password);
-            newRestClient.setCredentials(username, password);
+			newRestClient.setCredentials(username, password);
 
 			// test connection
 			client.get(SERVICE_CONTROLLER_URL + "testlogin");
-            newRestClient.connect();
+			newRestClient.connect();
 		} catch (final ErrorStatusException e) {
 			throw new CLIStatusException(e, e.getReasonCode(), e.getArgs());
 		}
-    }
+	}
 
 	/**
 	 * {@inheritDoc}
@@ -140,7 +140,7 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 	@Override
 	public void doDisconnect() {
 		client = null;
-        newRestClient = null;
+		newRestClient = null;
 	}
 
 	/**
@@ -545,7 +545,7 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 		for (final ServiceDescription serviceDescription : servicesList.getServicesDescription()) {
 			final String serviceName = serviceDescription.getServiceName();
 			containerUids.addAll(getGridServiceContainerUidsForService(
-                    applicationName, serviceName));
+					applicationName, serviceName));
 		}
 		return containerUids;
 	}
@@ -646,7 +646,7 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 		}
 	}
 
-    /**
+	/**
 	 * {@inheritDoc}
 	 *
 	 * @param debugAll
@@ -687,24 +687,25 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 	}
 
 	@Override
-	public Map<String, String> setInstances(final String applicationName,
-			final String serviceName, final int count,
-			final boolean locationAware, final int timeout) throws CLIException {
+	public void setInstances(final String applicationName, final String serviceName,
+			final SetServiceInstancesRequest request) throws RestClientException {
 
-		final String url = SERVICE_CONTROLLER_URL + "applications/"
-				+ applicationName + "/services/" + serviceName + "/timeout/"
-				+ timeout + "/set-instances?count=" + count
-				+ "&location-aware=" + locationAware;
-		try {
-			@SuppressWarnings("unchecked")
-			final Map<String, String> response = (Map<String, String>) client
-					.post(url);
-			return response;
-		} catch (final ErrorStatusException e) {
-			throw new CLIStatusException(e, e.getReasonCode(), e.getArgs());
-		} catch (final RestException e) {
-			throw new CLIException(e);
-		}
+		this.newRestClient.setServiceInstances(applicationName, serviceName, request);
+
+		// final String url = SERVICE_CONTROLLER_URL + "applications/"
+		// + applicationName + "/services/" + serviceName + "/timeout/"
+		// + timeout + "/set-instances?count=" + count
+		// + "&location-aware=" + locationAware;
+		// try {
+		// @SuppressWarnings("unchecked")
+		// final Map<String, String> response = (Map<String, String>) client
+		// .post(url);
+		// return response;
+		// } catch (final ErrorStatusException e) {
+		// throw new CLIStatusException(e, e.getReasonCode(), e.getArgs());
+		// } catch (final RestException e) {
+		// throw new CLIException(e);
+		// }
 
 	}
 
@@ -957,33 +958,33 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 		}
 	}
 
-    @Override
-    public InstallServiceResponse installService(
-            final String applicationName,
-            final String serviceName,
-            final InstallServiceRequest request) throws RestClientException {
-        return newRestClient.installService(applicationName, serviceName, request);
-    }
-    
-    @Override
-    public InstallApplicationResponse installApplication(
-            final String applicationName,
-            final InstallApplicationRequest request) throws RestClientException {
-        return newRestClient.installApplication(applicationName, request);
-    }
+	@Override
+	public InstallServiceResponse installService(
+			final String applicationName,
+			final String serviceName,
+			final InstallServiceRequest request) throws RestClientException {
+		return newRestClient.installService(applicationName, serviceName, request);
+	}
 
-    @Override
-    public UninstallServiceResponse uninstallService(
-            final String applicationName,
-            final String serviceName,
-            final int timeoutInMinutes) throws RestClientException {
-        return newRestClient.uninstallService(applicationName, serviceName, timeoutInMinutes);
-    }
+	@Override
+	public InstallApplicationResponse installApplication(
+			final String applicationName,
+			final InstallApplicationRequest request) throws RestClientException {
+		return newRestClient.installApplication(applicationName, request);
+	}
 
-    @Override
-    public UploadResponse upload(
-            final String fileName,
-            final File file) throws RestClientException {
-        return newRestClient.upload(fileName, file);
-    }
+	@Override
+	public UninstallServiceResponse uninstallService(
+			final String applicationName,
+			final String serviceName,
+			final int timeoutInMinutes) throws RestClientException {
+		return newRestClient.uninstallService(applicationName, serviceName, timeoutInMinutes);
+	}
+
+	@Override
+	public UploadResponse upload(
+			final String fileName,
+			final File file) throws RestClientException {
+		return newRestClient.upload(fileName, file);
+	}
 }

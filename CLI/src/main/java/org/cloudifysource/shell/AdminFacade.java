@@ -20,6 +20,7 @@ import java.util.concurrent.TimeoutException;
 
 import org.cloudifysource.dsl.cloud.compute.ComputeTemplate;
 import org.cloudifysource.dsl.rest.ApplicationDescription;
+import org.cloudifysource.dsl.rest.request.SetServiceInstancesRequest;
 import org.cloudifysource.dsl.rest.response.ControllerDetails;
 import org.cloudifysource.restclient.InvocationResult;
 import org.cloudifysource.restclient.exceptions.RestClientException;
@@ -35,7 +36,7 @@ import org.cloudifysource.shell.rest.RestLifecycleEventsLatch;
  *        about the current deployment status.
  */
 public interface AdminFacade {
-	
+
 	/**
 	 * Installs and starts a service on a given application.
 	 *
@@ -376,21 +377,19 @@ public interface AdminFacade {
 	/**
 	 *
 	 * @param applicationName
-	 *            .
+	 *            the application name.
+	 *
 	 * @param serviceName
-	 *            .
-	 * @param count
-	 *            .
-	 * @param locationAware
-	 *            .
-	 * @param timeout
-	 *            .
-	 * @return .
-	 * @throws CLIException .
+	 *            the service name.
+	 *
+	 * @param request
+	 *            the request object.
+	 *
+	 * @throws RestClientException
+	 *             if an error was encountered.
 	 */
-	Map<String, String> setInstances(String applicationName,
-			String serviceName, int count, boolean locationAware, int timeout)
-			throws CLIException;
+	void setInstances(final String applicationName, final String serviceName,
+			final SetServiceInstancesRequest request) throws RestClientException;
 
 	/**
 	 *

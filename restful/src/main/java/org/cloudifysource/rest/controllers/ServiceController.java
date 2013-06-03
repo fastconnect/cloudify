@@ -462,6 +462,7 @@ public class ServiceController implements ServiceDetailsProvider {
 	 * @throws RestErrorException
 	 *             Machine not found, dump file is too large, machine dump generation failed.
 	 */
+	@JsonResponseExample(status = "success", responseBody = "\"dump file content\"")
 	@JsonRequestExample(requestBody = "{\"fileSizeLimit\" : 50000000}")
 	@PossibleResponseStatuses(responseStatuses = {
 			@PossibleResponseStatus(code = HTTP_OK, description = "success"),

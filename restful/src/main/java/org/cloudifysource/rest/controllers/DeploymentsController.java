@@ -84,16 +84,22 @@ import static org.cloudifysource.rest.ResponseConstants.FAILED_TO_LOCATE_LUS;
 
 /**
  * This controller is responsible for retrieving information about deployments. It is also the entry point for deploying
- * services and application. <br>
+ * services and application. 
  * <br>
- * The response body will always return in a JSON representation of the {@link org.cloudifysource.dsl.rest.response.Response} Object. <br>
- * A controller method may return the {@link org.cloudifysource.dsl.rest.response.Response} Object directly. in this case this return value will be used as
- * the response body. Otherwise, an implicit wrapping will occur. the return value will be inserted into
- * {@code Response#setResponse(Object)}. other fields of the {@link org.cloudifysource.dsl.rest.response.Response} object will be filled with default
- * values. <br>
- * <h1>Important</h1> {@code @ResponseBody} annotations are not permitted. <br>
  * <br>
- * <h1>Possible return values</h1>
+ * The response body will always return in a JSON representation of the 
+ * {@link org.cloudifysource.dsl.rest.response.Response} Object. 
+ * <br>
+ * A controller method may return the {@link org.cloudifysource.dsl.rest.response.Response} Object directly. 
+ * in this case this return value will be used as the response body. 
+ * Otherwise, an implicit wrapping will occur. 
+ * the return value will be inserted into {@code Response#setResponse(Object)}. 
+ * other fields of the {@link org.cloudifysource.dsl.rest.response.Response} object will be filled with default
+ * values. 
+ * <br>
+ * <h3>Important</h3> {@code @ResponseBody} annotations are not permitted. <br>
+ * <br>
+ * <h3>Possible return values</h3>
  * 200 - OK<br>
  * 404 - Some resource was not found<br/>
  * 400 - controller throws an exception<br>
@@ -110,7 +116,9 @@ import static org.cloudifysource.rest.ResponseConstants.FAILED_TO_LOCATE_LUS;
 @RequestMapping(value = "/{version}/deployments")
 public class DeploymentsController extends BaseRestController {
 
-    private static final Logger logger = Logger.getLogger(DeploymentsController.class.getName());
+    private static final int WAIT_FOR_MANAGED_TIMEOUT_SECONDS = 10;
+	private static final int DEPLOYMENT_TIMEOUT_SECONDS = 60;
+	private static final Logger logger = Logger.getLogger(DeploymentsController.class.getName());
     private static final int MAX_NUMBER_OF_EVENTS = 100;
 
     private static final int REFRESH_INTERVAL_MILLIS = 500;
@@ -344,8 +352,7 @@ public class DeploymentsController extends BaseRestController {
     /**
      *
      * @param appName .
-     * @param serviceName .
-     * @return .
+     * @return {@link org.cloudifysource.dsl.rest.ApplicationDescription}.
      * @throws ResourceNotFoundException .
      */
     @RequestMapping(value = "/{appName}/description", method = RequestMethod.GET)
@@ -1181,7 +1188,7 @@ public class DeploymentsController extends BaseRestController {
 								- (System.currentTimeMillis() - startTime);
 						try {
 							//TODO: move this to constant
-							if (processingUnit.waitForManaged(10,
+							if (processingUnit.waitForManaged(WAIT_FOR_MANAGED_TIMEOUT_SECONDS,
 									TimeUnit.SECONDS) == null) {
 								logger.log(Level.WARNING,
 										"Failed to locate GSM that is managing Processing Unit "
@@ -1481,11 +1488,13 @@ public class DeploymentsController extends BaseRestController {
         GridServiceManager gsm = getGridServiceManager();
         ProcessingUnit pu = null;
         if (deployment instanceof ElasticStatelessProcessingUnitDeployment) {
-            pu = gsm.deploy((ElasticStatelessProcessingUnitDeployment) deployment, 60, TimeUnit.SECONDS);
+            pu = gsm.deploy((ElasticStatelessProcessingUnitDeployment) deployment, 
+            		DEPLOYMENT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         } else if (deployment instanceof ElasticStatefulProcessingUnitDeployment) {
-            pu = gsm.deploy((ElasticStatefulProcessingUnitDeployment) deployment, 60, TimeUnit.SECONDS);
+            pu = gsm.deploy((ElasticStatefulProcessingUnitDeployment) deployment, 
+            		DEPLOYMENT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         } else if (deployment instanceof ElasticSpaceDeployment) {
-            pu = gsm.deploy((ElasticSpaceDeployment) deployment, 60, TimeUnit.SECONDS);
+            pu = gsm.deploy((ElasticSpaceDeployment) deployment, DEPLOYMENT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         }
         if (pu == null) {
             throw new TimeoutException("Timed out waiting for Service "

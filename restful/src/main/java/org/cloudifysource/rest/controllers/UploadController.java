@@ -78,7 +78,7 @@ public class UploadController extends BaseRestController {
 	 * @param fileName - the name of the file to upload.
 	 * @param file - the file to upload.
 	 * @return {@link UploadResponse} - contains the uploaded file's name.
-	 * @throws RestErrorException 
+	 * @throws RestErrorException .
 	 */
 	@PreAuthorize("isFullyAuthenticated() and hasPermission(#authGroups, 'deploy')")
 	@RequestMapping(value = "/{fileName:.+}", method = RequestMethod.POST)

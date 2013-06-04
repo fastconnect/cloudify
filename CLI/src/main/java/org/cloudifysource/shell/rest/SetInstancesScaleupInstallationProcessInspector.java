@@ -12,12 +12,20 @@
  ******************************************************************************/
 package org.cloudifysource.shell.rest;
 
+
+import org.cloudifysource.dsl.internal.CloudifyConstants;
+import org.cloudifysource.dsl.internal.CloudifyConstants.DeploymentState;
+import org.cloudifysource.dsl.rest.response.ServiceDescription;
 import org.cloudifysource.restclient.RestClient;
+import org.cloudifysource.restclient.exceptions.RestClientException;
+import org.cloudifysource.restclient.exceptions.RestClientResponseException;
 
 /**
  * Created with IntelliJ IDEA. User: elip Date: 6/4/13 Time: 12:33 PM
  */
 public class SetInstancesScaleupInstallationProcessInspector extends ServiceInstallationProcessInspector {
+
+	private final int plannedNumberOfInstances;
 
 	public SetInstancesScaleupInstallationProcessInspector(
             final RestClient restClient,
@@ -36,5 +44,32 @@ public class SetInstancesScaleupInstallationProcessInspector extends ServiceInst
                 currentNumberOfInstances,
 				applicationName);
 		this.setEventIndex(currentEventIndex);
+		this.plannedNumberOfInstances = plannedNumberOfInstances;
 	}
+
+	@Override
+    public boolean lifeCycleEnded() throws RestClientException {
+
+    	boolean serviceIsInstalled = false;
+    	try {
+            ServiceDescription serviceDescription = restClient
+                    .getServiceDescription(applicationName, serviceName);
+            DeploymentState serviceState = serviceDescription.getServiceState();
+
+			serviceIsInstalled = serviceState.equals(CloudifyConstants.DeploymentState.STARTED);
+			final boolean numberOfInstancesMet = (serviceDescription.getInstanceCount() == this.plannedNumberOfInstances);
+			return serviceIsInstalled && numberOfInstancesMet;
+
+    	} catch (final RestClientResponseException e) {
+    		if (e.getStatusCode() == RESOURCE_NOT_FOUND_EXCEPTION_CODE) {
+        		// the service is not available yet
+    			serviceIsInstalled = false;
+    		} else {
+    			throw e;
+    		}
+    	}
+
+    	return serviceIsInstalled;
+    }
+
 }

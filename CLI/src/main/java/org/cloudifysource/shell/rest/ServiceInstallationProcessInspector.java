@@ -38,8 +38,8 @@ public class ServiceInstallationProcessInspector extends InstallationProcessInsp
     private static final String TIMEOUT_ERROR_MESSAGE = "Service installation timed out. "
             + "Configure the timeout using the -timeout flag.";
 
-    private String serviceName;
-    private String applicationName;
+    protected final String serviceName;
+    protected final String applicationName;
 
     public ServiceInstallationProcessInspector(final RestClient restClient,
                                                final String deploymentId,
@@ -75,12 +75,12 @@ public class ServiceInstallationProcessInspector extends InstallationProcessInsp
     /**
      * Gets the latest events of this deployment id. Events are sorted by event index.
      * @return A list of events. If this is the first time events are requested, all events are retrieved.
-     * Otherwise, only new events (that were not reported earlier) are retrieved. 
+     * Otherwise, only new events (that were not reported earlier) are retrieved.
      * @throws RestClientException Indicates a failure to get events from the server.
      */
     @Override
     public boolean lifeCycleEnded() throws RestClientException {
-    	
+
     	boolean serviceIsInstalled = false;
     	try {
             ServiceDescription serviceDescription = restClient
@@ -94,7 +94,7 @@ public class ServiceInstallationProcessInspector extends InstallationProcessInsp
     			throw e;
     		}
     	}
-        
+
     	return serviceIsInstalled;
     }
 
@@ -114,10 +114,10 @@ public class ServiceInstallationProcessInspector extends InstallationProcessInsp
         		throw e;
         	}
     	}
-    	
+
     	return instanceCount;
     }
-    
+
     @Override
     public String getTimeoutErrorMessage() {
         return TIMEOUT_ERROR_MESSAGE;

@@ -12,12 +12,10 @@
  *******************************************************************************/
 package org.cloudifysource.rest.events.cache;
 
-import com.gigaspaces.log.LogEntries;
-import com.gigaspaces.log.LogEntry;
-import com.gigaspaces.log.LogEntryMatcher;
-import com.google.common.cache.CacheLoader;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.logging.Logger;
+
 import org.cloudifysource.dsl.rest.response.DeploymentEvent;
 import org.cloudifysource.dsl.rest.response.DeploymentEvents;
 import org.cloudifysource.rest.events.EventsUtils;
@@ -28,9 +26,12 @@ import org.openspaces.admin.Admin;
 import org.openspaces.admin.gsc.GridServiceContainer;
 import org.openspaces.admin.pu.ProcessingUnit;
 
-import java.util.HashSet;
-import java.util.Set;
-import java.util.logging.Logger;
+import com.gigaspaces.log.LogEntries;
+import com.gigaspaces.log.LogEntry;
+import com.gigaspaces.log.LogEntryMatcher;
+import com.google.common.cache.CacheLoader;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 
 /**
  * Created with IntelliJ IDEA.
@@ -52,7 +53,7 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, EventsCacheVa
     private static final Logger logger = Logger.getLogger(EventsCacheLoader.class.getName());
 
     private final LogEntryMatcherProvider matcherProvider;
-    private Admin admin;
+    private final Admin admin;
 
     public EventsCacheLoader(final Admin admin) {
 
@@ -112,6 +113,11 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, EventsCacheVa
         Set<GridServiceContainer> containersForDeployment = new HashSet<GridServiceContainer>();
         for (ProcessingUnit pu : oldValue.getProcessingUnits()) {
             containersForDeployment.addAll(EventsUtils.getContainersForProcessingUnit(pu));
+        }
+        if (containersForDeployment.isEmpty()) {
+        	// get containers by the deployment id
+        	containersForDeployment = EventsUtils.getContainersForDeployment(
+                    key.getOperationId(), admin);
         }
         if (!containersForDeployment.isEmpty()) {
             int index = oldValue.getLastEventIndex();

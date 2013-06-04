@@ -1155,6 +1155,7 @@ public class DeploymentsController extends BaseRestController {
 
 		// we don't want another request to modify our object during this calculation.
 		synchronized (value.getMutex()) {
+			eventsCache.refresh(key);
 			int lastEventId = value.getLastEventIndex();
 			if (lastEventId > 0) {
 				lastEventId = lastEventId - 1;

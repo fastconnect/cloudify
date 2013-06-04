@@ -96,18 +96,7 @@ public class ServiceResolver implements NameAndPackedFileResolver {
     }
 
     private void init() throws CLIStatusException {
-        if (serviceOverrideName != null) {
-            // use overriden service file if defined.
-            final File fullPathToServiceFile = new File(serviceDirectory.getAbsolutePath(), serviceOverrideName);
-            if (!fullPathToServiceFile.exists()) {
-                throw new CLIStatusException("service_file_doesnt_exist", fullPathToServiceFile.getPath());
-            } else {
-                serviceGroovyFile = fullPathToServiceFile;
-            }
-        } else {
-            // use default
-            serviceGroovyFile = DSLReader.findDefaultDSLFile(DSLUtils.SERVICE_DSL_FILE_NAME_SUFFIX, serviceDirectory);
-        }
+        serviceGroovyFile = DSLReader.findDefaultDSLFile(DSLUtils.SERVICE_DSL_FILE_NAME_SUFFIX, serviceDirectory);
         try {
             this.service = ServiceReader.readService(serviceGroovyFile,
                     serviceDirectory, null, null, null, false, overrides);

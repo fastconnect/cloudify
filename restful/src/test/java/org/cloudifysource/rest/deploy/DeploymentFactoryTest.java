@@ -39,7 +39,7 @@ import org.openspaces.admin.space.ElasticSpaceConfig;
 import org.openspaces.admin.space.ElasticSpaceDeployment;
 
 public class DeploymentFactoryTest {
-	
+
 	private static final String USM_SERVICE_FILE = "src/test/resources/deploy/usm-service.groovy";
 	private static final String STATEFUL_SERVICE_FILE = "src/test/resources/deploy/stateful-service.groovy";
 	private static final String STATELESS_SERVICE_FILE = "src/test/resources/deploy/stateless-service.groovy";
@@ -50,9 +50,9 @@ public class DeploymentFactoryTest {
 	private static Cloud cloud;
 
 	@BeforeClass
-	public static void beforeClass() 
+	public static void beforeClass()
 			throws Exception {
-		deploymentFactory = new ElasticProcessingUnitDeploymentFactoryImpl();
+		deploymentFactory = new ElasticProcessingUnitDeploymentFactoryImpl(null);
 		cloud = ServiceReader.readCloud(new File(CLOUD_FILE));
 	}
 
@@ -68,21 +68,21 @@ public class DeploymentFactoryTest {
         Assert.assertEquals("[]", dependsOn);
 
     }
-	
+
 	@Test
 	public void testElasticUSMDeploymentIntegrity() throws Exception {
-		
+
 		final Service service = ServiceReader.readService(new File(USM_SERVICE_FILE));
 		//cloud deployment assertions
 		DeploymentConfig deploymentConfig = createDeploymentConfig(false, service);
 
-		ElasticStatelessProcessingUnitDeployment deployment = 
+		ElasticStatelessProcessingUnitDeployment deployment =
 				(ElasticStatelessProcessingUnitDeployment) deploymentFactory.create(deploymentConfig);
 		ElasticStatelessProcessingUnitConfig deploymentHolder = deployment.create();
-		
+
 		assertSharedCloudDeploymentPropertiesSet(deploymentHolder);
 		assertStatelessUSMDeploymentIntegrity(deploymentHolder);
-		
+
 		//localcloud deployment assertions
 		deploymentConfig = createDeploymentConfig(true, service);
 		deployment = (ElasticStatelessProcessingUnitDeployment) deploymentFactory.create(deploymentConfig);
@@ -90,91 +90,91 @@ public class DeploymentFactoryTest {
 		assertSharedLocalcloudProperties(deploymentHolder);
 		assertStatelessUSMLocalcloudProperties(deploymentHolder);
 	}
-	
+
 
 	private void assertStatelessUSMLocalcloudProperties(
 			final ElasticStatelessProcessingUnitConfig deploymentHolder) {
 		final Map<String, String> elasticProperties = deploymentHolder.getElasticProperties();
-		Assert.assertTrue("memory capacity should be set to 512", 
+		Assert.assertTrue("memory capacity should be set to 512",
 				deploymentHolder.getScaleStrategy().getProperties().get("memory-capacity-megabytes").equals("512"));
-		Assert.assertTrue("container memory capacity should be set to 512", 
+		Assert.assertTrue("container memory capacity should be set to 512",
 				elasticProperties.get("container.memory-capacity").equals("512"));
 	}
 
 	private void assertSharedLocalcloudProperties(
 			final AbstractElasticProcessingUnitConfig deploymentHolder) {
 
-		
-		Assert.assertTrue("shared isolation should be null", 
+
+		Assert.assertTrue("shared isolation should be null",
 				deploymentHolder.getSharedIsolation() == null);
-		
+
 		//assert context properties
 		final Map<String, String> contextProperties = deploymentHolder.getContextProperties();
-		Assert.assertTrue("deployment ID context property not set", 
+		Assert.assertTrue("deployment ID context property not set",
 				contextProperties.get("com.gs.cloudify.deployment-id").equals("deploymentID"));
-		Assert.assertTrue("authgroups context property not set", 
+		Assert.assertTrue("authgroups context property not set",
 				contextProperties.get("com.gs.deployment.auth.groups").equals("DUMMY_AUTHGROUPS"));
-		Assert.assertTrue("elastic context property not set", 
+		Assert.assertTrue("elastic context property not set",
 				contextProperties.get("com.gs.service.elastic").equals("true"));
-		Assert.assertTrue("application name context property not set", 
+		Assert.assertTrue("application name context property not set",
 				contextProperties.get("com.gs.application").equals("default"));
-		Assert.assertTrue("debug mode context property not set", 
+		Assert.assertTrue("debug mode context property not set",
 				contextProperties.get("com.gs.service.debug.mode").equals("instead"));
-		Assert.assertTrue("debug all context property not set", 
+		Assert.assertTrue("debug all context property not set",
 				contextProperties.get("com.gs.service.debug.all").equals("true"));
-		
+
 		//assert elastic properties
 		final Map<String, String> elasticProperties = deploymentHolder.getElasticProperties();
-		Assert.assertTrue("elastic isolation property should be set to true", 
+		Assert.assertTrue("elastic isolation property should be set to true",
 				elasticProperties.get("elastic-machine-isolation-public-id").equals("true"));
-		
+
 		//assert machine provisioning
 		ElasticMachineProvisioningConfig machineProvisioning = deploymentHolder.getMachineProvisioning();
-		Assert.assertTrue("reserved capacity for machine should be 1024MB", 
+		Assert.assertTrue("reserved capacity for machine should be 1024MB",
 				machineProvisioning.getReservedCapacityPerMachine().toString().equals("256MB RAM"));
-		Assert.assertTrue("min number of CPU cores should be 1", 
+		Assert.assertTrue("min number of CPU cores should be 1",
 				machineProvisioning.getMinimumNumberOfCpuCoresPerMachine() == 0.0);
-		Assert.assertTrue("reserved memory for management should not be set", 
+		Assert.assertTrue("reserved memory for management should not be set",
 				machineProvisioning.getReservedCapacityPerManagementMachine().toString().equals("256MB RAM"));
-		Assert.assertTrue("reserved memory for management should not be set", 
+		Assert.assertTrue("reserved memory for management should not be set",
 				machineProvisioning.getReservedCapacityPerMachine().toString().equals("256MB RAM"));
-		
+
 		//assert machine provisioning props.
 		final Map<String, String> machineProps = machineProvisioning.getProperties();
-		Assert.assertTrue("reserved memory per management machine should not be set", 
+		Assert.assertTrue("reserved memory per management machine should not be set",
 				machineProps.get("reserved-memory-capacity-per-management-machine-megabytes").equals("256"));
-		Assert.assertTrue("reserved memory per machine should be set to 1024", 
+		Assert.assertTrue("reserved memory per machine should be set to 1024",
 				machineProps.get("reserved-memory-capacity-per-machine-megabytes").equals("256"));
 	}
 
 	private void assertStatelessUSMDeploymentIntegrity(final ElasticStatelessProcessingUnitConfig deploymentHolder) {
-		
-		Assert.assertTrue("public isolation should be set to true", 
+
+		Assert.assertTrue("public isolation should be set to true",
 				deploymentHolder.getPublicIsolationConfig());
-		
+
 		//assert context properties
 		final Map<String, String> contextProperties = deploymentHolder.getContextProperties();
-		Assert.assertTrue("asyn install context property not set", 
+		Assert.assertTrue("asyn install context property not set",
 				contextProperties.get("com.gs.cloudify.async-install").equals("true"));
-		Assert.assertTrue("service type context property not set", 
+		Assert.assertTrue("service type context property not set",
 				contextProperties.get("com.gs.service.type").equals("WEB_SERVER"));
-		
+
 		//assert elastic properties
 		final Map<String, String> elasticProperties = deploymentHolder.getElasticProperties();
-		Assert.assertTrue("public isolation should be set to true", 
+		Assert.assertTrue("public isolation should be set to true",
 				elasticProperties.get("elastic-machine-isolation-public-id").equals("true"));
-		Assert.assertTrue("container memory capacity should be set to 128MB", 
+		Assert.assertTrue("container memory capacity should be set to 128MB",
 				elasticProperties.get("container.memory-capacity").equals("128"));
-		
+
 		//assert scale strategy
 		final ScaleStrategyConfig scaleStrategy = deploymentHolder.getScaleStrategy();
-		Assert.assertTrue("scale stategy memory capacity in MB is expected to be 128", 
+		Assert.assertTrue("scale stategy memory capacity in MB is expected to be 128",
 				scaleStrategy.getProperties().get("memory-capacity-megabytes").equals("128"));
 
 		//assert machine provisioning props.
 		final ElasticMachineProvisioningConfig machineProvisioning = deploymentHolder.getMachineProvisioning();
 		final Map<String, String> machineProps = machineProvisioning.getProperties();
-		Assert.assertTrue("dedicated-management-machines should be set to true", 
+		Assert.assertTrue("dedicated-management-machines should be set to true",
 				machineProps.get("dedicated-management-machines").equals("true"));
 	}
 
@@ -201,7 +201,7 @@ public class DeploymentFactoryTest {
 		deploymentConfig.setAuthGroups("DUMMY_AUTHGROUPS");
 		return deploymentConfig;
 	}
-	
+
 	@Test
 	public void testElasticStatfulDeploymentIntegrity() throws Exception {
 		final Service service = ServiceReader.readService(new File(STATEFUL_SERVICE_FILE));
@@ -212,7 +212,7 @@ public class DeploymentFactoryTest {
 		ElasticStatefulProcessingUnitConfig deploymentHolder = deployment.create();
 		assertSharedCloudDeploymentPropertiesSet(deploymentHolder);
 		assertStatefulDeploymentIntegrity(deploymentHolder);
-		
+
 		//localcloud deployment assertions
 		deploymentConfig = createDeploymentConfig(true, service);
 		deployment = (ElasticStatefulProcessingUnitDeployment) deploymentFactory.create(deploymentConfig);
@@ -224,109 +224,109 @@ public class DeploymentFactoryTest {
 	private void assertStatefulLocalcloudProperties(
 			final ElasticStatefulProcessingUnitConfig deploymentHolder) {
 		final Map<String, String> elasticProperties = deploymentHolder.getElasticProperties();
-		Assert.assertTrue("container memory capacity should be set to 128", 
+		Assert.assertTrue("container memory capacity should be set to 128",
 				elasticProperties.get("container.memory-capacity").equals("128"));
-		Assert.assertTrue("schema should be set to partitioned-sync2backup", 
+		Assert.assertTrue("schema should be set to partitioned-sync2backup",
 				elasticProperties.get("schema").equals("partitioned-sync2backup"));
 		final Map<String, String> contextProperties = deploymentHolder.getContextProperties();
-		Assert.assertTrue("mirror-interval context property is ont set", 
+		Assert.assertTrue("mirror-interval context property is ont set",
 				contextProperties.get("cluster-config.mirror-service.interval-opers").equals("1000"));
 		//assert scale strategy
 		final ScaleStrategyConfig scaleStrategy = deploymentHolder.getScaleStrategy();
-		Assert.assertTrue("cpu capacity cores is expected to be equal to 0", 
+		Assert.assertTrue("cpu capacity cores is expected to be equal to 0",
 				scaleStrategy.getProperties().get("memory-capacity-megabytes").equals("128"));
 	}
 
 	private void assertSharedCloudDeploymentPropertiesSet(final AbstractElasticProcessingUnitConfig deploymentHolder) {
 		String commandlineArgs = Arrays.toString(deploymentHolder.getCommandLineArguments());
-		Assert.assertTrue("container LRMI bind port property missing", 
+		Assert.assertTrue("container LRMI bind port property missing",
 				commandlineArgs.contains("-Dcom.gs.transport_protocol.lrmi.bind-port=7010-7110"));
-		Assert.assertTrue("container max memory property missing", 
+		Assert.assertTrue("container max memory property missing",
 				commandlineArgs.contains("-Xmx128m"));
-		Assert.assertTrue("container min memory property missing", 
+		Assert.assertTrue("container min memory property missing",
 				commandlineArgs.contains("-Xms128m"));
-		
-		Assert.assertTrue("shared isolation should be null", 
+
+		Assert.assertTrue("shared isolation should be null",
 				deploymentHolder.getSharedIsolation() == null);
-		
+
 		final Map<String, String> contextProperties = deploymentHolder.getContextProperties();
-		Assert.assertTrue("deployment ID context property not set", 
+		Assert.assertTrue("deployment ID context property not set",
 				contextProperties.get("com.gs.cloudify.deployment-id").equals("deploymentID"));
-		Assert.assertTrue("authgroups context property not set", 
+		Assert.assertTrue("authgroups context property not set",
 				contextProperties.get("com.gs.deployment.auth.groups").equals("DUMMY_AUTHGROUPS"));
-		Assert.assertTrue("elastic context property not set", 
+		Assert.assertTrue("elastic context property not set",
 				contextProperties.get("com.gs.service.elastic").equals("true"));
-		Assert.assertTrue("application name context property not set", 
+		Assert.assertTrue("application name context property not set",
 				contextProperties.get("com.gs.application").equals("default"));
-		Assert.assertTrue("debug mode context property not set", 
+		Assert.assertTrue("debug mode context property not set",
 				contextProperties.get("com.gs.service.debug.mode").equals("instead"));
-		Assert.assertTrue("debug all context property not set", 
+		Assert.assertTrue("debug all context property not set",
 				contextProperties.get("com.gs.service.debug.all").equals("true"));
-		
+
 		final Map<String, String> elasticProperties = deploymentHolder.getElasticProperties();
-		Assert.assertTrue("container command line argument is missing  bind protocol or memory settings", 
+		Assert.assertTrue("container command line argument is missing  bind protocol or memory settings",
 				elasticProperties.get("container.commandline-arguments").
 				equals("-Dcom.gs.transport_protocol.lrmi.bind-port=7010-7110 -Xmx128m -Xms128m"));
-		
+
 		final ScaleStrategyConfig scaleStrategy = deploymentHolder.getScaleStrategy();
-		Assert.assertTrue("cpu capacity cores is expected to be equal to 0", 
+		Assert.assertTrue("cpu capacity cores is expected to be equal to 0",
 				scaleStrategy.getProperties().get("cpu-capacity-cores").equals("0.0"));
 		//zones property is no longer used.
-		Assert.assertTrue("zones usage should be set to false", 
+		Assert.assertTrue("zones usage should be set to false",
 				scaleStrategy.getProperties().get("enable-agent-zones-aware").equals("false"));
-		
+
 		final ElasticMachineProvisioningConfig machineProvisioning = deploymentHolder.getMachineProvisioning();
-		Assert.assertTrue("reserved capacity for machine should be 1024MB", 
+		Assert.assertTrue("reserved capacity for machine should be 1024MB",
 				machineProvisioning.getReservedCapacityPerMachine().toString().equals("1024MB RAM"));
-		Assert.assertTrue("min number of CPU cores should be 1", 
+		Assert.assertTrue("min number of CPU cores should be 1",
 				machineProvisioning.getMinimumNumberOfCpuCoresPerMachine() == 1.0);
-		Assert.assertTrue("reserved memory for management should not be set", 
+		Assert.assertTrue("reserved memory for management should not be set",
 				machineProvisioning.getReservedCapacityPerManagementMachine().toString().equals("0MB RAM"));
-		
+
 		final Map<String, String> machineProps = machineProvisioning.getProperties();
-		Assert.assertTrue("locators value is missing", 
+		Assert.assertTrue("locators value is missing",
 				machineProps.get("locator").equals("locators"));
-		Assert.assertTrue("config directory dows not match template definition", 
+		Assert.assertTrue("config directory dows not match template definition",
 				machineProps.get(CloudifyConstants.ELASTIC_PROPERTIES_CLOUD_CONFIGURATION_DIRECTORY)
 									.equals("/home/ec2-user/gs-files"));
-		Assert.assertTrue("template name missing from machine provisioning props", 
+		Assert.assertTrue("template name missing from machine provisioning props",
 				machineProps.get(CloudifyConstants.ELASTIC_PROPERTIES_CLOUD_TEMPLATE_NAME).equals("SMALL_LINUX"));
-		Assert.assertTrue("reserved memory per management machine should not be set", 
+		Assert.assertTrue("reserved memory per management machine should not be set",
 				machineProps.get("reserved-memory-capacity-per-management-machine-megabytes").equals("0"));
-		Assert.assertTrue("reserved memory per machine should be set to 1024", 
+		Assert.assertTrue("reserved memory per machine should be set to 1024",
 				machineProps.get("reserved-memory-capacity-per-machine-megabytes").equals("1024"));
-		Assert.assertTrue("auth groups not set to in machine provisioning props", 
+		Assert.assertTrue("auth groups not set to in machine provisioning props",
 				machineProps.get("auth-groups.value").equals("DUMMY_AUTHGROUPS"));
-		Assert.assertTrue("cloud overrides does not contain expected value", 
+		Assert.assertTrue("cloud overrides does not contain expected value",
 				machineProps.get("cloud-overrides-per-service").equals("envVariable=DEFAULT_OVERRIDES_ENV_VARIABLE"));
-		Assert.assertTrue("cpu cores per machine should be set to 1.0", 
+		Assert.assertTrue("cpu cores per machine should be set to 1.0",
 				machineProps.get("number-of-cpu-cores-per-machine").equals("1.0"));
-		
+
 	}
-	
+
 	private void assertStatefulDeploymentIntegrity(
 			final ElasticStatefulProcessingUnitConfig deploymentHolder) {
-		
+
 		final Map<String, String> contextProperties = deploymentHolder.getContextProperties();
-		Assert.assertTrue("service type context property not set", 
+		Assert.assertTrue("service type context property not set",
 				contextProperties.get("com.gs.service.type").equals("UNDEFINED"));
-		Assert.assertFalse("public isolation should be set to false", 
+		Assert.assertFalse("public isolation should be set to false",
 				deploymentHolder.getPublicIsolationConfig());
-		Assert.assertTrue("cluster-config.mirror-service.interval-opers", 
+		Assert.assertTrue("cluster-config.mirror-service.interval-opers",
 				contextProperties.get("cluster-config.mirror-service.interval-opers").equals("1000"));
-		
+
 		final Map<String, String> elasticProperties = deploymentHolder.getElasticProperties();
-		Assert.assertTrue("public isolation should be set to false", 
+		Assert.assertTrue("public isolation should be set to false",
 				elasticProperties.get("elastic-machine-isolation-public-id").equals("false"));
-		Assert.assertTrue("container memory capacity should be set to 128MB", 
+		Assert.assertTrue("container memory capacity should be set to 128MB",
 				elasticProperties.get("container.memory-capacity").equals("128"));
-		Assert.assertTrue("schema should be set to partitioned-sync2backup", 
+		Assert.assertTrue("schema should be set to partitioned-sync2backup",
 				elasticProperties.get("schema").equals("partitioned-sync2backup"));
-		
+
 		final ScaleStrategyConfig scaleStrategy = deploymentHolder.getScaleStrategy();
-		Assert.assertTrue("scale stategy memory capacity in MB is expected to be 256MB", 
+		Assert.assertTrue("scale stategy memory capacity in MB is expected to be 256MB",
 				scaleStrategy.getProperties().get("memory-capacity-megabytes").equals("256"));
-		Assert.assertTrue("one container per machine must be set to true", 
+		Assert.assertTrue("one container per machine must be set to true",
 				scaleStrategy.getProperties().get("at-most-one-container-per-machine").equals("true"));
 	}
 
@@ -340,7 +340,7 @@ public class DeploymentFactoryTest {
 		ElasticSpaceConfig deploymentHolder = deployment.create();
 		assertSharedCloudDeploymentPropertiesSet(deploymentHolder);
 		assertSpacePropertiesSet(deploymentHolder);
-		
+
 		//localcloud deployment assertions
 		deploymentConfig = createDeploymentConfig(true, service);
 		deployment = (ElasticSpaceDeployment) deploymentFactory.create(deploymentConfig);
@@ -348,31 +348,31 @@ public class DeploymentFactoryTest {
 		assertSharedLocalcloudProperties(deploymentHolder);
 		assertSpaceLocalcloudProperties(deploymentHolder);
 	}
-	
+
 	private void assertSpaceLocalcloudProperties(
 			final ElasticSpaceConfig deploymentHolder) {
 		final Map<String, String> elasticProperties = deploymentHolder.getElasticProperties();
-		Assert.assertTrue("container memory capacity should be set to 128", 
+		Assert.assertTrue("container memory capacity should be set to 128",
 				elasticProperties.get("container.memory-capacity").equals("128"));
 		final Map<String, String> contextProperties = deploymentHolder.getContextProperties();
-		Assert.assertTrue("mirror-interval context property is ont set", 
+		Assert.assertTrue("mirror-interval context property is ont set",
 				contextProperties.get("cluster-config.mirror-service.interval-opers").equals("1000"));
 		//assert scale strategy
 		final ScaleStrategyConfig scaleStrategy = deploymentHolder.getScaleStrategy();
-		Assert.assertTrue("cpu capacity cores is expected to be equal to 0", 
+		Assert.assertTrue("cpu capacity cores is expected to be equal to 0",
 				scaleStrategy.getProperties().get("memory-capacity-megabytes").equals("128"));
 	}
-	
+
 	private void assertSpacePropertiesSet(final ElasticSpaceConfig deploymentHolder) {
 		final Map<String, String> contextProperties = deploymentHolder.getContextProperties();
-		Assert.assertTrue("mirror-interval context property is ont set", 
+		Assert.assertTrue("mirror-interval context property is ont set",
 				contextProperties.get("cluster-config.mirror-service.interval-opers").equals("1000"));
 		final Map<String, String> elasticProperties = deploymentHolder.getElasticProperties();
-		Assert.assertTrue("schema should be set to partitioned-sync2backup", 
+		Assert.assertTrue("schema should be set to partitioned-sync2backup",
 				elasticProperties.get("schema").equals("partitioned-sync2backup"));
-		
+
 		final ScaleStrategyConfig scaleStrategy = deploymentHolder.getScaleStrategy();
-		Assert.assertTrue("one container per machine must be set to true", 
+		Assert.assertTrue("one container per machine must be set to true",
 				scaleStrategy.getProperties().get("at-most-one-container-per-machine").equals("true"));
 	}
 
@@ -386,7 +386,7 @@ public class DeploymentFactoryTest {
 		ElasticStatelessProcessingUnitConfig deploymentHolder = deployment.create();
 		assertSharedCloudDeploymentPropertiesSet(deploymentHolder);
 		assertStatelessDeploymentIntegrity(deploymentHolder);
-		
+
 		//localcloud deployment assertions
 		deploymentConfig = createDeploymentConfig(true, service);
 		deployment = (ElasticStatelessProcessingUnitDeployment) deploymentFactory.create(deploymentConfig);
@@ -398,37 +398,37 @@ public class DeploymentFactoryTest {
 	private void assertStatelessLocalcloudProperties(
 			final ElasticStatelessProcessingUnitConfig deploymentHolder) {
 		final Map<String, String> elasticProperties = deploymentHolder.getElasticProperties();
-		Assert.assertTrue("container memory capacity should be set to 128", 
+		Assert.assertTrue("container memory capacity should be set to 128",
 				elasticProperties.get("container.memory-capacity").equals("128"));
 		final Map<String, String> contextProperties = deploymentHolder.getContextProperties();
-		Assert.assertTrue("mirror-interval context property is ont set", 
+		Assert.assertTrue("mirror-interval context property is ont set",
 				contextProperties.get("com.gs.dummy").equals("value"));
 		//assert scale strategy
 		final ScaleStrategyConfig scaleStrategy = deploymentHolder.getScaleStrategy();
-		Assert.assertTrue("cpu capacity cores is expected to be equal to 0", 
+		Assert.assertTrue("cpu capacity cores is expected to be equal to 0",
 				scaleStrategy.getProperties().get("memory-capacity-megabytes").equals("128"));
-		
+
 	}
 
 	private void assertStatelessDeploymentIntegrity(
 			final ElasticStatelessProcessingUnitConfig deploymentHolder) {
 		final Map<String, String> elasticProperties = deploymentHolder.getElasticProperties();
 
-		Assert.assertTrue("container memory capacity should be set to 476MB", 
+		Assert.assertTrue("container memory capacity should be set to 476MB",
 				elasticProperties.get("container.memory-capacity").equals("476"));
-		Assert.assertTrue("public isolation should be set to false", 
+		Assert.assertTrue("public isolation should be set to false",
 				elasticProperties.get("elastic-machine-isolation-public-id").equals("false"));
 		final ScaleStrategyConfig scaleStrategy = deploymentHolder.getScaleStrategy();
-		Assert.assertTrue("one container per machine must be set to true", 
+		Assert.assertTrue("one container per machine must be set to true",
 				scaleStrategy.getProperties().get("at-most-one-container-per-machine").equals("true"));
-		
+
 		final Map<String, String> contextProperties = deploymentHolder.getContextProperties();
-		Assert.assertTrue("service type context property not set", 
+		Assert.assertTrue("service type context property not set",
 				contextProperties.get("com.gs.service.type").equals("UNDEFINED"));
-		Assert.assertFalse("public isolation should be set to false", 
+		Assert.assertFalse("public isolation should be set to false",
 				deploymentHolder.getPublicIsolationConfig());
-		
-		Assert.assertTrue("cluster-config.mirror-service.interval-opers", 
+
+		Assert.assertTrue("cluster-config.mirror-service.interval-opers",
 				contextProperties.get("com.gs.dummy").equals("value"));
 	}
 }

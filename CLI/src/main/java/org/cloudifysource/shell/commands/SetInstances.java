@@ -21,9 +21,9 @@ import org.apache.felix.gogo.commands.Argument;
 import org.apache.felix.gogo.commands.Command;
 import org.apache.felix.gogo.commands.Option;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
-import org.cloudifysource.dsl.rest.ServiceDescription;
 import org.cloudifysource.dsl.rest.request.SetServiceInstancesRequest;
 import org.cloudifysource.dsl.rest.response.DeploymentEvents;
+import org.cloudifysource.dsl.rest.response.ServiceDescription;
 import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.cloudifysource.shell.Constants;
@@ -95,7 +95,7 @@ public class SetInstances extends AdminAwareCommand {
 
 		if (count > initialNumberOfInstances) {
 
-			return waitForScaleOut(deploymentId, plannedNumberOfInstancesPerService, nextEventId,
+			return waitForScaleOut(deploymentId, count, nextEventId,
 					currentNumberOfInstancesPerService);
 		} else {
 			waitForScaleIn();
@@ -151,7 +151,7 @@ public class SetInstances extends AdminAwareCommand {
 
 	}
 
-	private String waitForScaleOut(String deploymentID, Map<String, Integer> plannedNumberOfInstancesPerService,
+	private String waitForScaleOut(String deploymentID, final int plannedNumberOfInstances ,
 			int lastEventIndex, Map<String, Integer> currentNumberOfInstancesPerService) throws InterruptedException,
 			CLIException, IOException {
 		SetInstancesScaleupInstallationProcessInspector inspector =
@@ -159,15 +159,15 @@ public class SetInstances extends AdminAwareCommand {
 						((RestAdminFacade) adminFacade).getNewRestClient(),
 						deploymentID,
 						verbose,
-						plannedNumberOfInstancesPerService,
 						serviceName,
+						plannedNumberOfInstances,
 						getCurrentApplicationName(),
 						lastEventIndex,
 						currentNumberOfInstancesPerService);
 
 		int actualTimeout = this.timeout;
 		boolean isDone = false;
-		displayer.printEvent("installing_service", serviceName, plannedNumberOfInstancesPerService.get(serviceName));
+		displayer.printEvent("installing_service", serviceName, plannedNumberOfInstances);
 		displayer.printEvent("waiting_for_lifecycle_of_service", serviceName);
 		while (!isDone) {
 			try {

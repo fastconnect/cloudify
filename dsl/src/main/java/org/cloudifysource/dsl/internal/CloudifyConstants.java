@@ -65,7 +65,6 @@ public final class CloudifyConstants {
 	public static final String CONTEXT_PROPERTY_PROPERTIES_FILE_NAME = "com.gs.cloudify.properties-file-name";
 	public static final String CONTEXT_PROPERTY_ASYNC_INSTALL = "com.gs.cloudify.async-install";
 	public static final String CONTEXT_PROPERTY_DEPLOYMENT_ID = "com.gs.cloudify.deployment-id";
-    public static final String CONTEXT_PROPERTY_UNDEPLOYMENT_ID = "com.gs.cloudify.undeployment-id";
 	public static final String CONTEXT_PROPERTY_DISABLE_SELF_HEALING = "com.gs.cloudify.disable-self-healing";
 	public static final String CONTEXT_PROPERTY_APPLICATION_NAME = "com.gs.application";
 	public static final String CONTEXT_PROPERTY_ELASTIC = "com.gs.service.elastic";

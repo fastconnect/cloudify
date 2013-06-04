@@ -26,6 +26,15 @@ package org.cloudifysource.dsl.rest.response;
 public class DeploymentEvent {
 
     private String description;
+    private int index;
+
+    public int getIndex() {
+        return index;
+    }
+
+    public void setIndex(final int index) {
+        this.index = index;
+    }
 
     public String getDescription() {
         return description;

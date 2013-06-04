@@ -15,7 +15,9 @@
  *******************************************************************************/
 package org.cloudifysource.shell.rest;
 
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.internal.CloudifyConstants.DeploymentState;
@@ -50,6 +52,15 @@ public class ServiceInstallationProcessInspector extends InstallationProcessInsp
         super(restClient, deploymentId, verbose, plannedNumberOfInstancesPerService);
         this.serviceName = serviceName;
         this.applicationName = applicationName != null ? applicationName : CloudifyConstants.DEFAULT_APPLICATION_NAME;
+    }
+
+    @Override
+    public Map<String, Integer> initNumberOfCurrentRunningInstancesPerService(Set<String> serviceNames) {
+        Map<String, Integer> currentRunningInstancesPerService = new HashMap<String, Integer>();
+        for (String service : serviceNames) {
+            currentRunningInstancesPerService.put(service, 0);
+        }
+        return currentRunningInstancesPerService;
     }
 
     /**

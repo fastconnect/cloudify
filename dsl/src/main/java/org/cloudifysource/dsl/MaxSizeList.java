@@ -15,6 +15,7 @@
  *******************************************************************************/
 package org.cloudifysource.dsl;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -24,18 +25,22 @@ import java.util.Map;
  * Date: 5/20/13
  * Time: 2:07 PM
  *
- * Extension of a LinkedHashMap the enforces a size limit.
+ * Extension of an ArrayList that enforces a size limit.
  */
-public class MaxSizeHashMap<K, V> extends LinkedHashMap<K, V> {
+public class MaxSizeList<T> extends ArrayList<T> {
 
     private int maxSize;
 
-    public MaxSizeHashMap(final int maxSize) {
+    public MaxSizeList(final int maxSize) {
+        super();
         this.maxSize = maxSize;
     }
 
     @Override
-    protected boolean removeEldestEntry(final Map.Entry<K, V> eldest) {
-        return size() > maxSize;
+    public boolean add(final T t) {
+        if (size() >= maxSize) {
+            remove(0);
+        }
+        return super.add(t);
     }
 }

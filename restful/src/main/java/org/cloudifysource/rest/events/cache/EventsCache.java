@@ -67,7 +67,7 @@ public class EventsCache {
                         // in that case we don't want to remove the matcher.
                         if (notification.wasEvicted()) {
 
-                            System.out.println("Entry with key " + notification.getKey() + " was removed from cache.");
+                            logger.fine("Entry with key " + notification.getKey() + " was removed from cache.");
                             final EventsCacheKey key = (EventsCacheKey) notification.getKey();
                             matcherProvider.removeAll(key);
                         }
@@ -124,6 +124,7 @@ public class EventsCache {
     public void add(final EventsCacheKey key, final DeploymentEvent event) {
     	EventsCacheValue eventsCacheValue = eventsLoadingCache.asMap().get(key);
 		DeploymentEvents events = eventsCacheValue.getEvents();
-    	events.addEvent(eventsCacheValue.getLastEventIndex() + 1, event);
+        event.setIndex(eventsCacheValue.getLastEventIndex() + 1);
+    	events.addEvent(event);
     }
 }

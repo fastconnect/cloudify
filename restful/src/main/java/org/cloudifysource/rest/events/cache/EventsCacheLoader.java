@@ -68,19 +68,10 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, EventsCacheVa
 
         DeploymentEvents events = new DeploymentEvents();
 
-        boolean isUndeploy = EventsUtils.isUnDeploymentOperation(key.getOperationId(), admin);
-
         // initial load. no events are present in the cache for this deployment.
         // iterate over all container and retrieve logs from logs cache.
-        Set<GridServiceContainer> containersForDeployment;
-        if (isUndeploy) {
-        containersForDeployment = EventsUtils.getContainersForUnDeployment(
+        Set<GridServiceContainer> containersForDeployment = EventsUtils.getContainersForDeployment(
                 key.getOperationId(), admin);
-        } else {
-            containersForDeployment = EventsUtils.getContainersForDeployment(
-                    key.getOperationId(), admin);
-        }
-
 
         if (containersForDeployment == null) {
             throw new ResourceNotFoundException("Deployment with id " + key.getOperationId());
@@ -89,14 +80,15 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, EventsCacheVa
         int index = 0;
         for (GridServiceContainer container : containersForDeployment) {
 
-            LogEntryMatcherProviderKey logEntryMatcherProviderKey = createKey(isUndeploy, container, key);
+            LogEntryMatcherProviderKey logEntryMatcherProviderKey = createKey(container, key);
 
             LogEntries logEntries = container.logEntries(matcherProvider.get(logEntryMatcherProviderKey));
             for (LogEntry logEntry : logEntries) {
                 if (logEntry.isLog()) {
                     DeploymentEvent event = EventsUtils.logToEvent(logEntry,
                             logEntries.getHostName(), logEntries.getHostAddress());
-                    events.getEvents().put(index++, event);
+                    event.setIndex(index++);
+                    events.getEvents().add(event);
                 }
             }
 
@@ -116,22 +108,6 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, EventsCacheVa
 
         logger.fine(EventsUtils.getThreadId() + "Reloading events cache entry for key " + key);
 
-        boolean isUndeploy = EventsUtils.isUnDeploymentOperation(key.getOperationId(), admin);
-
-        boolean isUndeployInProgress = false;
-        for (ProcessingUnit pu : oldValue.getProcessingUnits()) {
-            if (EventsUtils.isUndeploymentInProgress(pu)) {
-                // if one processing unit is undeploying. we assume
-                // the entire applicaion is undeploying.
-                isUndeployInProgress = true;
-                break;
-            }
-        }
-        if (!isUndeploy && isUndeployInProgress) {
-            // prevent client who are requesting installation events from seeing un-installation events
-            Futures.immediateFuture(oldValue);
-        }
-
         // pickup any new containers along with the old ones
         Set<GridServiceContainer> containersForDeployment = new HashSet<GridServiceContainer>();
         for (ProcessingUnit pu : oldValue.getProcessingUnits()) {
@@ -142,7 +118,7 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, EventsCacheVa
             for (GridServiceContainer container : containersForDeployment) {
 
                 // this will give us just the new logs.
-                LogEntryMatcherProviderKey logEntryMatcherProviderKey = createKey(isUndeploy, container, key);
+                LogEntryMatcherProviderKey logEntryMatcherProviderKey = createKey(container, key);
                 LogEntryMatcher matcher = matcherProvider.get(logEntryMatcherProviderKey);
                 LogEntries logEntries = container.logEntries(matcher);
 
@@ -150,7 +126,8 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, EventsCacheVa
                     if (logEntry.isLog()) {
                         DeploymentEvent event = EventsUtils.logToEvent(
                                 logEntry, logEntries.getHostName(), logEntries.getHostAddress());
-                        oldValue.getEvents().getEvents().put(index++, event);
+                        event.setIndex(index++);
+                        oldValue.getEvents().getEvents().add(event);
                     }
                 }
             }
@@ -166,12 +143,10 @@ public class EventsCacheLoader extends CacheLoader<EventsCacheKey, EventsCacheVa
         return matcherProvider;
     }
 
-    private LogEntryMatcherProviderKey createKey(final boolean isUndeploy,
-                                                 final GridServiceContainer container,
+    private LogEntryMatcherProviderKey createKey(final GridServiceContainer container,
                                                  final EventsCacheKey key) {
         LogEntryMatcherProviderKey logEntryMatcherProviderKey = new LogEntryMatcherProviderKey();
-        logEntryMatcherProviderKey.setUndeploy(isUndeploy);
-        logEntryMatcherProviderKey.setOperationId(key.getOperationId());
+        logEntryMatcherProviderKey.setDeploymentId(key.getOperationId());
         logEntryMatcherProviderKey.setContainer(container);
         return logEntryMatcherProviderKey;
     }

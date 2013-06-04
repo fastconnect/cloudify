@@ -709,11 +709,7 @@ public class DeploymentsController extends BaseRestController {
 
         // validations
         validateUninstallService();
-        
-        populateEventsCache(undeploymentId, processingUnit);
-        processingUnit.getBeanLevelProperties().getContextProperties().
-        	setProperty(CloudifyConstants.CONTEXT_PROPERTY_UNDEPLOYMENT_ID, undeploymentId);
-        
+
 		final FutureTask<Boolean> undeployTask = new FutureTask<Boolean>(
 				new Callable<Boolean>() {
 					@Override
@@ -1072,18 +1068,15 @@ public class DeploymentsController extends BaseRestController {
 
 	/**
 	 * 
-	 * @param operationId The operation id of the desired events.
-     *                    This can be either the install operation id
-     *                    or the uninstall operation id. both of which are
-     *                    returned from the rest upon install/uninstall.
+	 * @param deploymentId The deployment id given at install time.
 	 * @param from The starting index.
 	 * @param to The finish index.
 	 * @return {@link org.cloudifysource.dsl.rest.response.DeploymentEvents} - The deployment events.
 	 * @throws Throwable Thrown in case of any error.
 	 */
-    @RequestMapping(value = "{operationId}/events", method = RequestMethod.GET)
+    @RequestMapping(value = "{deploymentId}/events", method = RequestMethod.GET)
     public DeploymentEvents getDeploymentEvents(
-            @PathVariable final String operationId,
+            @PathVariable final String deploymentId,
             @RequestParam(required = false, defaultValue = "0") final int from,
             @RequestParam(required = false, defaultValue = "-1") final int to)
     				throws Throwable {
@@ -1094,7 +1087,7 @@ public class DeploymentsController extends BaseRestController {
             actualTo = from + MAX_NUMBER_OF_EVENTS;
         }
 
-        EventsCacheKey key = new EventsCacheKey(operationId);
+        EventsCacheKey key = new EventsCacheKey(deploymentId);
         logger.fine(EventsUtils.getThreadId() 
         		+ " Received request for events [" + from + "]-[" + to + "] . key : " + key);
         EventsCacheValue value;

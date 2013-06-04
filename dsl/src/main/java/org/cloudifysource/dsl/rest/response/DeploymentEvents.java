@@ -13,8 +13,9 @@
 
 package org.cloudifysource.dsl.rest.response;
 
-import org.cloudifysource.dsl.MaxSizeHashMap;
+import org.cloudifysource.dsl.MaxSizeList;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -28,22 +29,21 @@ import java.util.Map;
  */
 public class DeploymentEvents {
 
-    private Map<Integer, DeploymentEvent> events = new MaxSizeHashMap<Integer, DeploymentEvent>(100);
+    private List<DeploymentEvent> events = new MaxSizeList<DeploymentEvent>(100);
 
-    public Map<Integer, DeploymentEvent> getEvents() {
+    public List<DeploymentEvent> getEvents() {
         return events;
     }
 
-    public void setEvents(final Map<Integer, DeploymentEvent> events) {
+    public void setEvents(final List<DeploymentEvent> events) {
         this.events = events;
     }
     
     /**
-     * Add an event to the map. Might override an existing event if the index is already in use.
-     * @param index The event index. Higher index indicates a recent event. 
+     * Add an event to the List.
      * @param event The event object to add at the given index.
      */
-    public void addEvent(final Integer index, final DeploymentEvent event) {
-    	events.put(index, event);
+    public void addEvent(final DeploymentEvent event) {
+    	events.add(event);
     }
 }

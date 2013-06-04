@@ -1,8 +1,5 @@
 package org.cloudifysource.shell.rest;
 
-import java.util.List;
-import java.util.concurrent.TimeoutException;
-
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.internal.CloudifyConstants.DeploymentState;
 import org.cloudifysource.dsl.rest.ServiceDescription;
@@ -14,6 +11,9 @@ import org.cloudifysource.shell.ShellUtils;
 import org.cloudifysource.shell.exceptions.CLIException;
 import org.cloudifysource.shell.installer.CLIEventsDisplayer;
 
+import java.util.List;
+import java.util.concurrent.TimeoutException;
+
 /**
  * This class inspects the uninstallation process of a service. It retrieves the relevant events from the server,
  * waits for the uninstallation lifecycle to end and prints progress messages.
@@ -21,7 +21,7 @@ import org.cloudifysource.shell.installer.CLIEventsDisplayer;
  * @author noak
  * @since 2.6.0
  */
-public class ServiceUninstallationProcessInspector extends InstallationProcessInspector {
+public class ServiceUninstallationProcessInspector extends UninstallationProcessInspector {
 
     private static final String TIMEOUT_ERROR_MESSAGE = "Service uninstallation timed out. "
             + "Configure the timeout using the -timeout flag.";
@@ -98,6 +98,8 @@ public class ServiceUninstallationProcessInspector extends InstallationProcessIn
                 		}
                 		displayer.printEvents(latestEvents);
                     }
+
+
                 	
                 	// If the service' zone is no longer found - USM lifecycle events are not expected anymore.
                 	// Print that cloud resources are being released.
@@ -176,11 +178,5 @@ public class ServiceUninstallationProcessInspector extends InstallationProcessIn
     public String getTimeoutErrorMessage() {
         return TIMEOUT_ERROR_MESSAGE;
     }
-
-	@Override
-	public boolean lifeCycleEnded() throws RestClientException {
-		// TODO Auto-generated method stub
-		return false;
-	}
 
 }

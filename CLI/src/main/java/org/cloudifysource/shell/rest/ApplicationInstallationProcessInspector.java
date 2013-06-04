@@ -22,7 +22,9 @@ import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.cloudifysource.restclient.exceptions.RestClientResponseException;
 
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Created with IntelliJ IDEA.
@@ -49,6 +51,15 @@ public class ApplicationInstallationProcessInspector extends InstallationProcess
         super(restClient, deploymentId, verbose, plannedNumberOfInstancesPerService);
         this.applicationName = applicationName;
         this.plannedNumberOfInstancesPerService = plannedNumberOfInstancesPerService;
+    }
+
+    @Override
+    public Map<String, Integer> initNumberOfCurrentRunningInstancesPerService(Set<String> serviceNames) {
+        Map<String, Integer> currentRunningInstancesPerService = new HashMap<String, Integer>();
+        for (String service : serviceNames) {
+            currentRunningInstancesPerService.put(service, 0);
+        }
+        return currentRunningInstancesPerService;
     }
 
     @Override

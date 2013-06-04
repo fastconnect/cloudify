@@ -94,7 +94,7 @@ public class UninstallService extends AdminAwareCommand {
         UninstallServiceResponse uninstallServiceResponse = restClient.uninstallService(getCurrentApplicationName(),
         		serviceName, timeoutInMinutes);
         
-        inspector.setDeploymentId(uninstallServiceResponse.getDeploymentID());
+        //inspector.setDeploymentId(uninstallServiceResponse.getDeploymentID());
         
         // start polling for life cycle events
         boolean isDone = false;

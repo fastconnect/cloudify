@@ -15,6 +15,7 @@
  *******************************************************************************/
 package org.cloudifysource.shell.rest;
 
+import org.cloudifysource.dsl.rest.response.DeploymentEvent;
 import org.cloudifysource.dsl.rest.response.DeploymentEvents;
 import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.restclient.exceptions.RestClientException;
@@ -78,7 +79,7 @@ public abstract class InstallationProcessInspector {
         conditionLatch.waitFor(new ConditionLatch.Predicate() {
 
             private Map<String, Integer> currentRunningInstancesPerService =
-                    initWithZeros(plannedNumberOfInstancesPerService.keySet());
+                    initNumberOfCurrentRunningInstancesPerService(plannedNumberOfInstancesPerService.keySet());
 
             @Override
             public boolean isDone() throws CLIException, InterruptedException {
@@ -111,15 +112,11 @@ public abstract class InstallationProcessInspector {
                 }
             }
 
-            private Map<String, Integer> initWithZeros(final Set<String> serviceNames) {
-                Map<String, Integer> currentRunningInstancesPerService = new HashMap<String, Integer>();
-                for (String service : serviceNames) {
-                    currentRunningInstancesPerService.put(service, 0);
-                }
-                return currentRunningInstancesPerService;
-            }
+
         });
     }
+
+    public abstract Map<String, Integer> initNumberOfCurrentRunningInstancesPerService(final Set<String> serviceNames);
 
     /**
      * Determines whether or not the life cycle for this installation has ended.
@@ -157,17 +154,12 @@ public abstract class InstallationProcessInspector {
         if (events == null || events.getEvents().isEmpty()) {
             return eventsStrings;
         }
-        Set<Integer> eventIndices = events.getEvents().keySet();
 
-        Integer[] integers = eventIndices.toArray(new Integer[eventIndices.size()]);
 
-        // sort by event index (corresponds to order of events on the server, pretty much)
-        Arrays.sort(integers);
-
-        for (Integer index : integers) {
-            eventsStrings.add(events.getEvents().get(index).getDescription());
+        for (DeploymentEvent event : events.getEvents()) {
+            eventsStrings.add(event.getDescription());
         }
-        lastEventIndex = integers[integers.length - 1] + 1;
+        lastEventIndex = events.getEvents().get(events.getEvents().size() - 1).getIndex() + 1;
         return eventsStrings;
     }
 

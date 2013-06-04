@@ -23,15 +23,14 @@ import org.openspaces.admin.gsc.GridServiceContainer;
  * Key for log entry matchers. <br></br>
  *
  * container - the GridServiceContainer this matcher will match logs from. <br></br>
- * operationId - the operation if this matcher was deidcated to. <br></br>
+ * deploymentId - the operation if this matcher was deidcated to. <br></br>
  * isUndeploy - whther or not the operation was a deploy or undeploy operation.
  * this is important since we need to create different matchers for different operation types<br></br>
  */
 public class LogEntryMatcherProviderKey {
 
     private GridServiceContainer container;
-    private String operationId;
-    private boolean isUndeploy;
+    private String deploymentId;
 
     public GridServiceContainer getContainer() {
         return container;
@@ -41,20 +40,12 @@ public class LogEntryMatcherProviderKey {
         this.container = container;
     }
 
-    public String getOperationId() {
-        return operationId;
+    public String getDeploymentId() {
+        return deploymentId;
     }
 
-    public void setOperationId(final String operationId) {
-        this.operationId = operationId;
-    }
-
-    public boolean isUndeploy() {
-        return isUndeploy;
-    }
-
-    public void setUndeploy(final boolean undeploy) {
-        isUndeploy = undeploy;
+    public void setDeploymentId(final String deploymentId) {
+        this.deploymentId = deploymentId;
     }
 
     @Override
@@ -68,13 +59,10 @@ public class LogEntryMatcherProviderKey {
 
         LogEntryMatcherProviderKey that = (LogEntryMatcherProviderKey) o;
 
-        if (isUndeploy != that.isUndeploy) {
-            return false;
-        }
         if (!container.getUid().equals(that.container.getUid())) {
             return false;
         }
-        if (!operationId.equals(that.operationId)) {
+        if (!deploymentId.equals(that.deploymentId)) {
             return false;
         }
 
@@ -84,15 +72,13 @@ public class LogEntryMatcherProviderKey {
     @Override
     public int hashCode() {
         int result = container.hashCode();
-        result = 31 * result + operationId.hashCode();
-        result = 31 * result + (isUndeploy ? 1 : 0);
+        result = 31 * result + deploymentId.hashCode();
         return result;
     }
 
     @Override
     public String toString() {
         return "LogEntryMatcherProviderKey{" + "container=" + container
-                + ", operationId='" + operationId + '\''
-                + ", isUndeploy=" + isUndeploy + '}';
+                + ", deploymentId='" + deploymentId + '\'' + '}';
     }
 }

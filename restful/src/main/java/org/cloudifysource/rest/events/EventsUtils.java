@@ -24,6 +24,7 @@ import org.openspaces.admin.zone.Zone;
 
 import java.text.MessageFormat;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import static com.gigaspaces.log.LogEntryMatchers.regex;
@@ -90,27 +91,6 @@ public final class EventsUtils {
     }
 
     /**
-     * Given an operation id, determine whether this operation is an un-deployment operation on some processing unit.
-     * @param operationId The operation id.
-     * @param admin The admin instance to perform lookup with.
-     * @return true if the operation is un-deployment.
-     */
-    public static boolean isUnDeploymentOperation(final String operationId, final Admin admin) {
-        return !isDeploymentOperation(operationId, admin);
-    }
-
-
-    /**
-     * Determines if the current pu is being undeployed.
-     * @param pu The processing unit.
-     * @return true if an uninstall call was executed on this pu.
-     */
-    public static boolean isUndeploymentInProgress(final ProcessingUnit pu) {
-        return pu.getBeanLevelProperties().getContextProperties()
-                .containsKey(CloudifyConstants.CONTEXT_PROPERTY_UNDEPLOYMENT_ID);
-    }
-
-    /**
      * Given a processing unit, determine whether or not it is a management service or not.
      * @param pu The processing unit.
      * @return true if the pu is a management pu, false otherwise.
@@ -174,30 +154,6 @@ public final class EventsUtils {
         return containers;
     }
 
-    /**
-     * Retrieves containers of a processing unit by its undeployment id.
-     * @param unDeploymentId The undeployment id.
-     * @param admin The admin object for admin api access.
-     * @return The containers.
-     */
-    public static Set<GridServiceContainer> getContainersForUnDeployment(final String unDeploymentId,
-                                                                         final Admin admin) {
-
-        Set<ProcessingUnit> processingUnitsForUnDeploymentId = new HashSet<ProcessingUnit>();
-        Set<GridServiceContainer> containers = new HashSet<GridServiceContainer>();
-        for (ProcessingUnit pu : admin.getProcessingUnits()) {
-            String puUnDeploymentId = (String) pu.getBeanLevelProperties().getContextProperties()
-                    .get(CloudifyConstants.CONTEXT_PROPERTY_UNDEPLOYMENT_ID);
-            if (unDeploymentId.equals(puUnDeploymentId)) {
-                processingUnitsForUnDeploymentId.add(pu);
-            }
-        }
-        for (ProcessingUnit pu : processingUnitsForUnDeploymentId) {
-            containers.addAll(getContainersForProcessingUnit(pu));
-        }
-        return containers;
-    }
-
 
     /**
      * Given a set of events and indices, extract only events who's index is in range.
@@ -212,12 +168,22 @@ public final class EventsUtils {
 
         DeploymentEvents desiredEvents = new DeploymentEvents();
         for (int i = from; i <= to; i++) {
-            DeploymentEvent serviceDeploymentEvent = events.getEvents().get(i);
+            List<DeploymentEvent> serviceDeploymentEvents = events.getEvents();
+            DeploymentEvent serviceDeploymentEvent = retrieveEventWithIndex(i, serviceDeploymentEvents);
             if (serviceDeploymentEvent != null) {
-                desiredEvents.getEvents().put(i, serviceDeploymentEvent);
+                desiredEvents.getEvents().add(serviceDeploymentEvent);
             }
         }
         return desiredEvents;
+    }
+
+    public static DeploymentEvent retrieveEventWithIndex(final int i, final List<DeploymentEvent> serviceDeploymentEvents) {
+        for (DeploymentEvent event1 : serviceDeploymentEvents) {
+            if (event1.getIndex() == i) {
+                return event1;
+            }
+        }
+        return null;
     }
 
     /**
@@ -233,7 +199,8 @@ public final class EventsUtils {
                                   final int to) {
 
         for (int i = from; i <= to; i++) {
-            if (events.getEvents().get(i) == null) {
+            DeploymentEvent event = retrieveEventWithIndex(i, events.getEvents());
+            if (event == null) {
                 return false;
             }
         }

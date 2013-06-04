@@ -15,26 +15,28 @@
  *******************************************************************************/
 package org.cloudifysource.shell.commands;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-
 import org.apache.felix.gogo.commands.Argument;
 import org.apache.felix.gogo.commands.Command;
 import org.apache.felix.gogo.commands.CompleterValues;
 import org.apache.felix.gogo.commands.Option;
+import org.cloudifysource.dsl.rest.response.DeploymentEvents;
+import org.cloudifysource.dsl.rest.response.ServiceDescription;
 import org.cloudifysource.dsl.rest.response.UninstallServiceResponse;
 import org.cloudifysource.restclient.RestClient;
+import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.cloudifysource.shell.Constants;
 import org.cloudifysource.shell.ShellUtils;
 import org.cloudifysource.shell.exceptions.CLIException;
 import org.cloudifysource.shell.exceptions.CLIStatusException;
 import org.cloudifysource.shell.installer.CLIEventsDisplayer;
+import org.cloudifysource.shell.rest.NewServiceUninstallationProcessInspector;
 import org.cloudifysource.shell.rest.RestAdminFacade;
-import org.cloudifysource.shell.rest.ServiceUninstallationProcessInspector;
 import org.fusesource.jansi.Ansi.Color;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.concurrent.TimeoutException;
 
 /**
  * @author rafi, adaml, barakm, noak
@@ -89,13 +91,16 @@ public class UninstallService extends AdminAwareCommand {
             return getFormattedMessage("uninstall_aborted");
         }
 
-        ServiceUninstallationProcessInspector inspector = new ServiceUninstallationProcessInspector(
-        		restClient, null /*undeploymentId*/, verbose, serviceName, getCurrentApplicationName());
-
+        ServiceDescription serviceDescription = restClient.getServiceDescription(getCurrentApplicationName(), serviceName);
+        final int nextEventId = getNextEventId(restClient, serviceDescription.getDeploymentId());
+        int currentNumberOfRunningInstances = serviceDescription.getInstanceCount();
         UninstallServiceResponse uninstallServiceResponse = restClient.uninstallService(getCurrentApplicationName(),
         		serviceName, timeoutInMinutes);
 
-        inspector.setDeploymentId(uninstallServiceResponse.getDeploymentID());
+        NewServiceUninstallationProcessInspector inspector =
+                new NewServiceUninstallationProcessInspector(restClient,
+                        uninstallServiceResponse.getDeploymentID(), verbose,
+                        currentNumberOfRunningInstances, serviceName, getCurrentApplicationName(), nextEventId);
 
         // start polling for life cycle events
         boolean isDone = false;
@@ -103,7 +108,7 @@ public class UninstallService extends AdminAwareCommand {
 
         while (!isDone) {
             try {
-                inspector.waitForLifeCycleToEnd(timeoutInMinutes, TimeUnit.MINUTES);
+                inspector.waitForLifeCycleToEnd(timeoutInMinutes);
                 isDone = true;
             } catch (final TimeoutException e) {
                 // if non interactive, throw exception
@@ -143,5 +148,14 @@ public class UninstallService extends AdminAwareCommand {
 
     private boolean promptWouldYouLikeToContinueQuestion() throws IOException {
         return ShellUtils.promptUser(session, "would_you_like_to_continue_service_uninstallation", serviceName);
+    }
+
+    private int getNextEventId(final RestClient client, final String deploymentId) throws RestClientException {
+        int lastEventId = 0;
+        final DeploymentEvents lastDeploymentEvents = client.getLastEvent(deploymentId);
+        if (!lastDeploymentEvents.getEvents().isEmpty()) {
+            lastEventId = lastDeploymentEvents.getEvents().iterator().next().getIndex();
+        }
+        return lastEventId+1;
     }
 }

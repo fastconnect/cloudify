@@ -709,7 +709,8 @@ public class DeploymentsController extends BaseRestController {
     				throws ResourceNotFoundException, RestErrorException {
 
         final ProcessingUnit processingUnit = controllerHelper.getService(appName, serviceName);
-        final String undeploymentId = UUID.randomUUID().toString();
+        final String deploymentId = processingUnit.getBeanLevelProperties()
+                .getContextProperties().getProperty(CloudifyConstants.CONTEXT_PROPERTY_DEPLOYMENT_ID);
 
         if (permissionEvaluator != null) {
             final String puAuthGroups = processingUnit.getBeanLevelProperties().getContextProperties().
@@ -733,14 +734,14 @@ public class DeploymentsController extends BaseRestController {
 						DeploymentEvent undeployFinishedEvent = new DeploymentEvent();
 						undeployFinishedEvent.setDescription(serviceName + ":" 
 								+ CloudifyConstants.SERVICE_UNDEPLOYED_SUCCESSFULLY_EVENT);
-						eventsCache.add(new EventsCacheKey(undeploymentId), undeployFinishedEvent);
+						eventsCache.add(new EventsCacheKey(deploymentId), undeployFinishedEvent);
 						return result;
 					}
 				});
 		serviceUndeployExecutor.execute(undeployTask);
 
         final UninstallServiceResponse uninstallServiceResponse = new UninstallServiceResponse();
-        uninstallServiceResponse.setDeploymentID(undeploymentId);
+        uninstallServiceResponse.setDeploymentID(deploymentId);
         return uninstallServiceResponse;
     }
 

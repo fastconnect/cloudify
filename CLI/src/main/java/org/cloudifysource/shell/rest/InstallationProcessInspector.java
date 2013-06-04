@@ -41,8 +41,8 @@ public abstract class InstallationProcessInspector {
 	protected RestClient restClient;
 	private final boolean verbose;
 	private final String deploymentId;
-	private final Map<String, Integer> plannedNumberOfInstancesPerService;
-	private final Map<String, Integer> currentRunningInstancesPerService;
+	protected final Map<String, Integer> plannedNumberOfInstancesPerService;
+	protected final Map<String, Integer> currentRunningInstancesPerService;
 
 	private int lastEventIndex = 0;
 	private final CLIEventsDisplayer displayer = new CLIEventsDisplayer();

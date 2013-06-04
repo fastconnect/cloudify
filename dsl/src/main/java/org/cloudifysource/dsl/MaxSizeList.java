@@ -16,8 +16,6 @@
 package org.cloudifysource.dsl;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 /**
  * Created with IntelliJ IDEA.

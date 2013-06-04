@@ -1,10 +1,10 @@
 package org.cloudifysource.shell.rest;
 
-import org.cloudifysource.dsl.rest.ServiceDescription;
+import java.util.Map;
+
+import org.cloudifysource.dsl.rest.response.ServiceDescription;
 import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.restclient.exceptions.RestClientException;
-
-import java.util.Map;
 
 /**
  * Created with IntelliJ IDEA.

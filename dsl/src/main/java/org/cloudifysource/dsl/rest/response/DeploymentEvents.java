@@ -13,9 +13,9 @@
 
 package org.cloudifysource.dsl.rest.response;
 
-import org.cloudifysource.dsl.MaxSizeList;
-
 import java.util.List;
+
+import org.cloudifysource.dsl.MaxSizeList;
 
 /**
  * Created with IntelliJ IDEA.

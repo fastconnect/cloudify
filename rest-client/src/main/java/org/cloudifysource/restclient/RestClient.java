@@ -213,6 +213,23 @@ public class RestClient {
                 new TypeReference<Response<DeploymentEvents>>() { });
     }
 
+    /*********
+     * Equivalent to getDeploymentEvents(deploymentId, from, -1).
+     *
+     * @param deploymentId the deployment id.
+     * @param from the start index.
+     * @see org.cloudifysource.restclient.RestClient.getDeploymentEvents(String, int, int)
+     * @return the events.
+     * @throws RestClientException in case of an error from the server.
+     */
+    public DeploymentEvents getDeploymentEvents(
+            final String deploymentId,
+            final int from)
+    				throws RestClientException {
+    	return getDeploymentEvents(deploymentId, from, -1);
+
+    }
+
     /**
      *
      * @param appName .
@@ -334,10 +351,19 @@ public class RestClient {
     }
 
     private static final String SET_INSTANCES_URL_FORMAT = "%s/services/%s/count";
+    private static final String GET_LAST_EVENT_URL_FORMAT = "%s/events/last/";
+
     private String getFormattedUrl(final String format, final String... args) {
     	return versionedDeploymentControllerUrl  + String.format(format, (Object[])args);
     }
 
+    /********
+     * Manuslly Scales a specific service in/out.
+     * @param applicationName the service's application name.
+     * @param serviceName the service name.
+     * @param request the scale request details.
+     * @throws RestClientException in case of an error.
+     */
 	public void setServiceInstances(final String applicationName, final String serviceName,
 			final SetServiceInstancesRequest request) throws RestClientException {
 		if (request == null) {
@@ -352,6 +378,23 @@ public class RestClient {
 				new TypeReference<Response<Void>>() {
 				}
 				);
+
+	}
+
+	/********
+     * Manually Scales a specific service in/out.
+     * @param applicationName the service's application name.
+     * @param serviceName the service name.
+     * @param request the scale request details.
+     * @return the last event. May be an empty list if no events are found.
+     * @throws RestClientException in case of an error.
+     */
+	public DeploymentEvents getLastEvent(final String operationId) throws RestClientException {
+
+		final String setInstancesUrl =
+				getFormattedUrl(GET_LAST_EVENT_URL_FORMAT, operationId);
+		DeploymentEvents response = executor.get(setInstancesUrl, new TypeReference<Response<DeploymentEvents>>(){});
+		return response;
 
 	}
 }

@@ -13,9 +13,6 @@
 package org.cloudifysource.shell.commands;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.TimeoutException;
 
 import org.apache.felix.gogo.commands.Argument;
 import org.apache.felix.gogo.commands.Command;
@@ -23,14 +20,11 @@ import org.apache.felix.gogo.commands.Option;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.rest.ServiceDescription;
 import org.cloudifysource.dsl.rest.request.SetServiceInstancesRequest;
+import org.cloudifysource.dsl.rest.response.DeploymentEvents;
 import org.cloudifysource.restclient.RestClient;
-import org.cloudifysource.shell.Constants;
 import org.cloudifysource.shell.ShellUtils;
-import org.cloudifysource.shell.exceptions.CLIException;
-import org.cloudifysource.shell.exceptions.CLIStatusException;
 import org.cloudifysource.shell.installer.CLIEventsDisplayer;
 import org.cloudifysource.shell.rest.RestAdminFacade;
-import org.cloudifysource.shell.rest.ServiceInstallationProcessInspector;
 import org.fusesource.jansi.Ansi.Color;
 
 /************
@@ -75,57 +69,27 @@ public class SetInstances extends AdminAwareCommand {
 			return getFormattedMessage("num_instances_already_met", count);
 		}
 
+		final DeploymentEvents lastDeploymentEvents = client.getLastEvent(deploymentId);
+		final int lastEventId = lastDeploymentEvents.getEvents().keySet().iterator().next();
+
 
 		SetServiceInstancesRequest request = new SetServiceInstancesRequest();
 		request.setCount(count);
 		request.setLocationAware(false);
 		request.setTimeout(this.timeout);
-
 		// REST API call to server
 		client.setServiceInstances(applicationName, serviceName, request);
 
-		final Map<String, Integer> plannedNumberOfInstancesPerService = new HashMap<String, Integer>();
-		plannedNumberOfInstancesPerService.put(this.serviceName, count);
-		ServiceInstallationProcessInspector inspector = new ServiceInstallationProcessInspector(
-                ((RestAdminFacade) adminFacade).getNewRestClient(),
-                deploymentId,
-                verbose,
-                plannedNumberOfInstancesPerService,
-                serviceName);
+		if(count > initialNumberOfInstances) {
+			waitForScaleOut();
+		} else {
+			waitForScaleIn();
+		}
 
-        int actualTimeout = this.timeout;
-        boolean isDone = false;
-        displayer.printEvent("installing_service", serviceName, plannedNumberOfInstancesPerService.get(serviceName));
-        displayer.printEvent("waiting_for_lifecycle_of_service", serviceName);
-        while (!isDone) {
-            try {
+//		if(this.count < initialNumberOfInstances) {
+//			return waitForInstancesToDecrease();
+//		}
 
-                inspector.waitForLifeCycleToEnd(actualTimeout);
-                isDone = true;
-
-            } catch (final TimeoutException e) {
-
-                // if non interactive, throw exception
-                if (!(Boolean) session.get(Constants.INTERACTIVE_MODE)) {
-                    throw new CLIException(e.getMessage(), e);
-                }
-
-                // ask user if he want to continue viewing the installation.
-                displayer.printEvent("");
-                boolean continueViewing = promptWouldYouLikeToContinueQuestion();
-                if (continueViewing) {
-                    // prolong the polling timeouts
-                    actualTimeout = DEFAULT_TIMEOUT_MINUTES;
-                } else {
-                    throw new CLIStatusException(e,
-                            "service_installation_timed_out_on_client",
-                            serviceName);
-                }
-            }
-        }
-
-        // drop one line before printing the last message
-        displayer.printEvent("");
 //        return getFormattedMessage("service_install_ended", Color.GREEN, serviceName);
 
 
@@ -163,6 +127,16 @@ public class SetInstances extends AdminAwareCommand {
 //		}
 
 		return getFormattedMessage("set_instances_completed_successfully", Color.GREEN, serviceName, count);
+	}
+
+	private void waitForScaleIn() {
+		// TODO Auto-generated method stub
+
+	}
+
+	private void waitForScaleOut() {
+		// TODO Auto-generated method stub
+
 	}
 
 	private String resolveApplicationName() {

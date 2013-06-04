@@ -13,7 +13,6 @@
 package org.cloudifysource.rest.repo;
 
 import java.io.File;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.UUID;
 import java.util.concurrent.Executors;
@@ -58,8 +57,8 @@ public class UploadRepo {
 	}
 
 	private void createScheduledExecutor() {
-		final CleanUploadDirThread cleanupThread =
-				new CleanUploadDirThread(restUploadDir, cleanupTimeoutMillis);
+		final CleanUploadDirRunnable cleanupThread =
+				new CleanUploadDirRunnable(restUploadDir, cleanupTimeoutMillis);
 		executor = Executors.newSingleThreadScheduledExecutor();
 		executor.scheduleAtFixedRate(cleanupThread, 0, cleanupTimeoutMillis, TimeUnit.MILLISECONDS);
 		
@@ -155,18 +154,11 @@ public class UploadRepo {
 					+ ", upload directory [" + restUploadDir.getAbsolutePath() + "] does not exist.");
 			return null;
 		}
+		
 		logger.finer("Trying to get the uploaded file stored in a directory named - " + key 
 				+ " (under " + restUploadDir.getAbsolutePath() + ").");
-
-		final File[] files = restUploadDir.listFiles(new FilenameFilter() {
-
-			@Override
-			public boolean accept(final File dir, final String name) {
-				return name.equals(key);
-			}
-		});
-		if (files != null && files.length > 0) {
-			final File dir = files[0];
+		final File dir = new File(restUploadDir, key);
+		if (dir.exists()) {
 			if (!dir.isDirectory()) {
 				logger.finer("The file found is not a directory [" + dir.getAbsolutePath() + "].");
 				return null;

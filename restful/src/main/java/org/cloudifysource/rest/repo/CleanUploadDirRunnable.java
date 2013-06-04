@@ -22,13 +22,13 @@ import org.apache.commons.io.FileUtils;
  * @author yael
  *
  */
-public class CleanUploadDirThread implements Runnable {
-	private static final Logger logger = Logger.getLogger(CleanUploadDirThread.class.getName());
+public class CleanUploadDirRunnable implements Runnable {
+	private static final Logger logger = Logger.getLogger(CleanUploadDirRunnable.class.getName());
 
 	private File restUploadDir;
 	private long cleanupTimeoutMillis;
 	
-	public CleanUploadDirThread(final File restUploadDir, final long cleanupTimeoutMillis) {
+	public CleanUploadDirRunnable(final File restUploadDir, final long cleanupTimeoutMillis) {
 		this.restUploadDir = restUploadDir;
 		this.cleanupTimeoutMillis = cleanupTimeoutMillis;
 	}

@@ -32,7 +32,7 @@ public class ServiceMetricsResponse {
 	}
 
 	public void setServiceInstaceMetricsData(
-			List<ServiceInstanceMetricsData> serviceInstaceMetricsData) {
+			final List<ServiceInstanceMetricsData> serviceInstaceMetricsData) {
 		this.serviceInstaceMetricsData = serviceInstaceMetricsData;
 	}
 
@@ -40,7 +40,7 @@ public class ServiceMetricsResponse {
 		return serviceName;
 	}
 
-	public void setServiceName(String serviceName) {
+	public void setServiceName(final String serviceName) {
 		this.serviceName = serviceName;
 	}
 
@@ -48,7 +48,7 @@ public class ServiceMetricsResponse {
 		return appName;
 	}
 
-	public void setAppName(String appName) {
+	public void setAppName(final String appName) {
 		this.appName = appName;
 	}
 

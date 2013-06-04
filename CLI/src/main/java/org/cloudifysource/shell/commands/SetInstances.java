@@ -12,11 +12,6 @@
  *******************************************************************************/
 package org.cloudifysource.shell.commands;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.TimeoutException;
-
 import org.apache.felix.gogo.commands.Argument;
 import org.apache.felix.gogo.commands.Command;
 import org.apache.felix.gogo.commands.Option;
@@ -34,6 +29,9 @@ import org.cloudifysource.shell.installer.CLIEventsDisplayer;
 import org.cloudifysource.shell.rest.RestAdminFacade;
 import org.cloudifysource.shell.rest.SetInstancesScaleupInstallationProcessInspector;
 import org.fusesource.jansi.Ansi.Color;
+
+import java.io.IOException;
+import java.util.concurrent.TimeoutException;
 
 /************
  * Manually sets the number of instances for a specific service.
@@ -87,16 +85,11 @@ public class SetInstances extends AdminAwareCommand {
 		request.setTimeout(this.timeout);
 		// REST API call to server
 		client.setServiceInstances(applicationName, serviceName, request);
-		Map<String, Integer> plannedNumberOfInstancesPerService = new HashMap<String, Integer>();
-		plannedNumberOfInstancesPerService.put(serviceName, count);
-
-		Map<String, Integer> currentNumberOfInstancesPerService = new HashMap<String, Integer>();
-		currentNumberOfInstancesPerService.put(serviceName, initialNumberOfInstances);
 
 		if (count > initialNumberOfInstances) {
 
 			return waitForScaleOut(deploymentId, count, nextEventId,
-					currentNumberOfInstancesPerService);
+                    initialNumberOfInstances);
 		} else {
 			waitForScaleIn();
 		}
@@ -151,23 +144,23 @@ public class SetInstances extends AdminAwareCommand {
 
 	}
 
-	private String waitForScaleOut(String deploymentID, final int plannedNumberOfInstances ,
-			int lastEventIndex, Map<String, Integer> currentNumberOfInstancesPerService) throws InterruptedException,
+	private String waitForScaleOut(String deploymentID, final int plannedNumberOfInstnaces,
+			int lastEventIndex, int currentNumberOfInstances) throws InterruptedException,
 			CLIException, IOException {
 		SetInstancesScaleupInstallationProcessInspector inspector =
 				new SetInstancesScaleupInstallationProcessInspector(
 						((RestAdminFacade) adminFacade).getNewRestClient(),
 						deploymentID,
-						verbose,
-						serviceName,
-						plannedNumberOfInstances,
+                        verbose,
+                        serviceName,
+                        plannedNumberOfInstnaces,
 						getCurrentApplicationName(),
 						lastEventIndex,
-						currentNumberOfInstancesPerService);
+                        currentNumberOfInstances);
 
 		int actualTimeout = this.timeout;
 		boolean isDone = false;
-		displayer.printEvent("installing_service", serviceName, plannedNumberOfInstances);
+		displayer.printEvent("installing_service", serviceName, plannedNumberOfInstnaces);
 		displayer.printEvent("waiting_for_lifecycle_of_service", serviceName);
 		while (!isDone) {
 			try {

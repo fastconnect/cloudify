@@ -54,6 +54,19 @@ public class ServiceInstallationProcessInspector extends InstallationProcessInsp
         this.applicationName = applicationName != null ? applicationName : CloudifyConstants.DEFAULT_APPLICATION_NAME;
     }
 
+    public ServiceInstallationProcessInspector(final RestClient restClient,
+                                               final String deploymentId,
+                                               final boolean verbose,
+                                               final String serviceName,
+                                               final int plannedNumberOfInstances,
+                                               final int currentNumberOfInstances,
+                                               final String applicationName) {
+
+        super(restClient, deploymentId, verbose, createOneEntryMap(serviceName, plannedNumberOfInstances) ,createOneEntryMap(serviceName, currentNumberOfInstances));
+        this.serviceName = serviceName;
+        this.applicationName = applicationName != null ? applicationName : CloudifyConstants.DEFAULT_APPLICATION_NAME;
+    }
+
     private static Map<String, Integer> createOneEntryMap(final String serviceName, final int numberOfInstances) {
         Map<String, Integer> map = new HashMap<String, Integer>();
         map.put(serviceName, numberOfInstances);

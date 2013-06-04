@@ -22,29 +22,22 @@ import org.cloudifysource.restclient.RestClient;
  */
 public class SetInstancesScaleupInstallationProcessInspector extends ServiceInstallationProcessInspector {
 
-	private final Map<String, Integer> currentNumberOfInstancesPerService;
-
-	public SetInstancesScaleupInstallationProcessInspector(final RestClient restClient,
+	public SetInstancesScaleupInstallationProcessInspector(
+            final RestClient restClient,
 			final String deploymentId,
 			final boolean verbose,
 			final String serviceName,
 			final int plannedNumberOfInstances,
 			final String applicationName,
 			final int currentEventIndex,
-			final Map<String, Integer> currentNumberOfInstancesPerService) {
+			final int currentNumberOfInstances) {
 		super(restClient,
 				deploymentId,
 				verbose,
 				serviceName,
 				plannedNumberOfInstances,
+                currentNumberOfInstances,
 				applicationName);
 		this.setEventIndex(currentEventIndex);
-		this.currentNumberOfInstancesPerService = currentNumberOfInstancesPerService;
-		this.setEventIndex(currentEventIndex);
-	}
-
-	@Override
-	public Map<String, Integer> initNumberOfCurrentRunningInstancesPerService(final Set<String> serviceNames) {
-		return this.currentNumberOfInstancesPerService;
 	}
 }

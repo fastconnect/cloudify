@@ -1,15 +1,15 @@
 package org.cloudifysource.shell.rest;
 
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeoutException;
+
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.cloudifysource.shell.ConditionLatch;
 import org.cloudifysource.shell.exceptions.CLIException;
 import org.cloudifysource.shell.installer.CLIEventsDisplayer;
-
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeoutException;
 
 /**
  * Created with IntelliJ IDEA.
@@ -44,6 +44,7 @@ public abstract class NewUninstallationProcessInspector extends InstallationProc
         conditionLatch.waitFor(new ConditionLatch.Predicate() {
 
             boolean lifeCycleEnded = false;
+            boolean undeployEnded = false;
 
             @Override
             public boolean isDone() throws CLIException, InterruptedException {
@@ -54,6 +55,9 @@ public abstract class NewUninstallationProcessInspector extends InstallationProc
                     if (!lifeCycleEnded) {
                         lifeCycleEnded = lifeCycleEnded();
                         latestEvents = getLatestEvents();
+                        if (latestEvents.contains(CloudifyConstants.UNDEPLOYED_SUCCESSFULLY_EVENT)) {
+                            undeployEnded = true;
+                        }
                         if (!latestEvents.isEmpty()) {
                             displayer.printEvents(latestEvents);
                         } else {
@@ -71,7 +75,7 @@ public abstract class NewUninstallationProcessInspector extends InstallationProc
 	                        // wait for cloud resources
 	                        latestEvents = getLatestEvents();
 
-                            boolean undeployEnded = false;
+                            undeployEnded = false;
                             if (latestEvents.contains(CloudifyConstants.UNDEPLOYED_SUCCESSFULLY_EVENT)) {
                                 undeployEnded = true;
                             }

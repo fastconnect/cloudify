@@ -53,8 +53,6 @@ import org.cloudifysource.dsl.internal.DSLApplicationCompilatioResult;
 import org.cloudifysource.dsl.internal.DSLServiceCompilationResult;
 import org.cloudifysource.dsl.internal.DSLUtils;
 import org.cloudifysource.dsl.internal.ServiceReader;
-import org.cloudifysource.dsl.rest.ApplicationDescription;
-import org.cloudifysource.dsl.rest.ServiceDescription;
 import org.cloudifysource.dsl.rest.request.InstallApplicationRequest;
 import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
 import org.cloudifysource.dsl.rest.request.SetApplicationAttributesRequest;
@@ -63,6 +61,7 @@ import org.cloudifysource.dsl.rest.request.SetServiceInstanceAttributesRequest;
 import org.cloudifysource.dsl.rest.request.SetServiceInstancesRequest;
 import org.cloudifysource.dsl.rest.request.UninstallApplicationRequest;
 import org.cloudifysource.dsl.rest.request.UpdateApplicationAttributeRequest;
+import org.cloudifysource.dsl.rest.response.ApplicationDescription;
 import org.cloudifysource.dsl.rest.response.DeleteApplicationAttributeResponse;
 import org.cloudifysource.dsl.rest.response.DeleteServiceAttributeResponse;
 import org.cloudifysource.dsl.rest.response.DeleteServiceInstanceAttributeResponse;
@@ -73,6 +72,7 @@ import org.cloudifysource.dsl.rest.response.GetServiceAttributesResponse;
 import org.cloudifysource.dsl.rest.response.GetServiceInstanceAttributesResponse;
 import org.cloudifysource.dsl.rest.response.InstallApplicationResponse;
 import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
+import org.cloudifysource.dsl.rest.response.ServiceDescription;
 import org.cloudifysource.dsl.rest.response.ServiceDetails;
 import org.cloudifysource.dsl.rest.response.ServiceInstanceDetails;
 import org.cloudifysource.dsl.rest.response.ServiceInstanceMetricsData;
@@ -416,7 +416,7 @@ public class DeploymentsController extends BaseRestController {
     /**
      *
      * @param appName .
-     * @return {@link org.cloudifysource.dsl.rest.ApplicationDescription}.
+     * @return {@link org.cloudifysource.dsl.rest.response.ApplicationDescription}.
      * @throws ResourceNotFoundException .
      */
     @RequestMapping(value = "/{appName}/description", method = RequestMethod.GET)

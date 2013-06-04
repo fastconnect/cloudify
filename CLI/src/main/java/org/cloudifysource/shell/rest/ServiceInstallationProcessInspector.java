@@ -15,13 +15,15 @@
  *******************************************************************************/
 package org.cloudifysource.shell.rest;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+
 import org.cloudifysource.dsl.internal.CloudifyConstants;
-import org.cloudifysource.dsl.rest.ServiceDescription;
+import org.cloudifysource.dsl.rest.response.ServiceDescription;
 import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.cloudifysource.restclient.exceptions.RestClientResponseException;
-
-import java.util.*;
 
 /**
  * Created with IntelliJ IDEA.

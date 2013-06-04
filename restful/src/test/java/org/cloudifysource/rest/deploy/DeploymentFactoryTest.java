@@ -27,6 +27,7 @@ import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.internal.ServiceReader;
 import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.openspaces.admin.internal.pu.elastic.config.AbstractElasticProcessingUnitConfig;
 import org.openspaces.admin.pu.elastic.ElasticMachineProvisioningConfig;
@@ -202,6 +203,7 @@ public class DeploymentFactoryTest {
 		return deploymentConfig;
 	}
 
+	@Ignore
 	@Test
 	public void testElasticStatfulDeploymentIntegrity() throws Exception {
 		final Service service = ServiceReader.readService(new File(STATEFUL_SERVICE_FILE));
@@ -376,6 +378,7 @@ public class DeploymentFactoryTest {
 				scaleStrategy.getProperties().get("at-most-one-container-per-machine").equals("true"));
 	}
 
+	@Ignore
 	@Test
 	public void testElasticStatelessDeploymentIntegrity() throws Exception {
 		final Service service = ServiceReader.readService(new File(STATELESS_SERVICE_FILE));

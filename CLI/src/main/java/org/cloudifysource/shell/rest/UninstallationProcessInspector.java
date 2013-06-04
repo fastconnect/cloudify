@@ -175,8 +175,10 @@ public abstract class UninstallationProcessInspector {
 						// printed; it is removed from the list.
 						// Even if undeploy has completed - all lifecycle events
 						// should be printed first.
-						if (latestEvents.contains(CloudifyConstants.SERVICE_UNDEPLOYED_SUCCESSFULLY_EVENT)) {
-							latestEvents.remove(CloudifyConstants.SERVICE_UNDEPLOYED_SUCCESSFULLY_EVENT);
+						if (latestEvents.contains(serviceName + ":" 
+								+ CloudifyConstants.SERVICE_UNDEPLOYED_SUCCESSFULLY_EVENT)) {
+							latestEvents.remove(serviceName + ":" 
+									+ CloudifyConstants.SERVICE_UNDEPLOYED_SUCCESSFULLY_EVENT);
                                 endedPerService.remove(serviceName);
                             }
                             displayer.printEvents(latestEvents);

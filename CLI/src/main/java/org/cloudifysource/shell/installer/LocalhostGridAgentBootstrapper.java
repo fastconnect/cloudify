@@ -40,13 +40,17 @@ import org.cloudifysource.dsl.internal.DSLException;
 import org.cloudifysource.dsl.internal.ServiceReader;
 import org.cloudifysource.dsl.internal.context.IsLocalCloudUtils;
 import org.cloudifysource.dsl.internal.packaging.CloudConfigurationHolder;
+import org.cloudifysource.dsl.rest.response.UninstallApplicationResponse;
 import org.cloudifysource.dsl.utils.ServiceUtils;
+import org.cloudifysource.restclient.RestClient;
+import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.cloudifysource.shell.AdminFacade;
 import org.cloudifysource.shell.ConditionLatch;
 import org.cloudifysource.shell.EnvironmentUtils;
 import org.cloudifysource.shell.ShellUtils;
 import org.cloudifysource.shell.exceptions.CLIException;
 import org.cloudifysource.shell.exceptions.CLIStatusException;
+import org.cloudifysource.shell.rest.RestAdminFacade;
 import org.openspaces.admin.Admin;
 import org.openspaces.admin.AdminException;
 import org.openspaces.admin.AdminFactory;
@@ -528,15 +532,23 @@ public class LocalhostGridAgentBootstrapper {
 			try {
 				if (!appName.equals(MANAGEMENT_APPLICATION)) {
 					logger.fine("Uninstalling application " + appName);
-					final Map<String, String> uninstallApplicationResponse = adminFacade.uninstallApplication(appName,
-							(int) timeout);
-					if (uninstallApplicationResponse.containsKey(CloudifyConstants.LIFECYCLE_EVENT_CONTAINER_ID)) {
+					
+					try {
+						final RestClient restClient = ((RestAdminFacade) adminFacade).getNewRestClient();
+						UninstallApplicationResponse uninstallApplicationResponse = 
+								restClient.uninstallApplication(appName, (int) timeout);
+					
+					// TODO noak handle this:
+					/*if (uninstallApplicationResponse.containsKey(CloudifyConstants.LIFECYCLE_EVENT_CONTAINER_ID)) {
 						final String pollingID = uninstallApplicationResponse
 								.get(CloudifyConstants.LIFECYCLE_EVENT_CONTAINER_ID);
 						this.adminFacade.waitForLifecycleEvents(pollingID, (int) timeout,
 								CloudifyConstants.TIMEOUT_ERROR_MESSAGE);
 					} else {
 						publishEvent("Failed to retrieve lifecycle logs from rest. " + "Check logs for more details.");
+					}*/
+					} catch (RestClientException e) {
+						throw new CLIException(e.getMessage(), e);
 					}
 				}
 			} catch (final CLIException e) {

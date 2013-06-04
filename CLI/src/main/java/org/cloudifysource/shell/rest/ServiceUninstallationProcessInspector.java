@@ -3,7 +3,7 @@ package org.cloudifysource.shell.rest;
 import java.util.Arrays;
 import java.util.HashSet;
 
-import org.cloudifysource.dsl.rest.ServiceDescription;
+import org.cloudifysource.dsl.rest.response.ServiceDescription;
 import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.cloudifysource.shell.ShellUtils;

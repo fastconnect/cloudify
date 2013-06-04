@@ -48,6 +48,7 @@ import org.cloudifysource.dsl.cloud.compute.ComputeTemplate;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.internal.CloudifyErrorMessages;
 import org.cloudifysource.dsl.rest.response.ControllerDetails;
+import org.cloudifysource.dsl.rest.response.UninstallApplicationResponse;
 import org.cloudifysource.esc.driver.provisioning.CloudProvisioningException;
 import org.cloudifysource.esc.driver.provisioning.MachineDetails;
 import org.cloudifysource.esc.driver.provisioning.ManagementLocator;
@@ -67,11 +68,14 @@ import org.cloudifysource.esc.shell.listener.CliAgentlessInstallerListener;
 import org.cloudifysource.esc.shell.listener.CliProvisioningDriverListener;
 import org.cloudifysource.esc.util.CalcUtils;
 import org.cloudifysource.esc.util.Utils;
+import org.cloudifysource.restclient.RestClient;
+import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.cloudifysource.shell.AdminFacade;
 import org.cloudifysource.shell.ConditionLatch;
 import org.cloudifysource.shell.ShellUtils;
 import org.cloudifysource.shell.exceptions.CLIException;
 import org.cloudifysource.shell.exceptions.CLIStatusException;
+import org.cloudifysource.shell.rest.RestAdminFacade;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.type.TypeFactory;
 import org.openspaces.admin.gsa.GSAReservationId;
@@ -619,11 +623,18 @@ public class CloudGridAgentBootstrapper {
 			logger.info("Uninstalling the currently deployed applications");
 			for (final String application : applicationsList) {
 				if (!application.equals(MANAGEMENT_APPLICATION)) {
-					final Map<String, String> uninstallApplicationResponse =
-							adminFacade.uninstallApplication(application, minutesToEnd);
-					lifeCycleEventContainersIdsByApplicationName.put(
-							uninstallApplicationResponse.get(CloudifyConstants.LIFECYCLE_EVENT_CONTAINER_ID),
-							application);
+					try {
+						
+						final RestClient restClient = ((RestAdminFacade) adminFacade).getNewRestClient();
+						UninstallApplicationResponse uninstallApplicationResponse = 
+								restClient.uninstallApplication(application, minutesToEnd);
+						// TODO noak handle this:
+						/*lifeCycleEventContainersIdsByApplicationName.put(
+								uninstallApplicationResponse.get(CloudifyConstants.LIFECYCLE_EVENT_CONTAINER_ID),
+								application);*/
+					} catch (RestClientException e) {
+						throw new CLIException(e.getMessage(), e);
+					}
 				}
 			}
 		}

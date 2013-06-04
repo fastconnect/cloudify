@@ -98,7 +98,7 @@ public abstract class InstallationProcessInspector {
 					}
 					return ended;
 				} catch (final RestClientException e) {
-					throw new CLIException(e.getMessage(), e);
+					throw new CLIException(e.getMessage(), e, e.getVerbose());
 				}
 			}
 

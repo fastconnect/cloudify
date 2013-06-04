@@ -47,7 +47,11 @@ public class CLIExceptionHandler extends AbstractClientSideExceptionHandler {
 
     @Override
     public String getVerbose() {
-        return ExceptionUtils.getFullStackTrace(e);
+        if (e.getVerbose() == null) {
+            return ExceptionUtils.getFullStackTrace(e);
+        } else {
+            return e.getVerbose();
+        }
     }
 
     @Override

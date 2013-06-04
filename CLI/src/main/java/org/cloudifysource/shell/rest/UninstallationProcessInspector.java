@@ -125,9 +125,9 @@ public abstract class UninstallationProcessInspector {
 	 * @throws TimeoutException
 	 *             Indicates timeout was reached
 	 */
-    public void waitForLifeCycleToEnd(final long timeout) throws InterruptedException, CLIException, TimeoutException {
+    public void waitForLifeCycleToEnd(final long timeout, TimeUnit timeUnit) throws InterruptedException, CLIException, TimeoutException {
 
-		final ConditionLatch conditionLatch = createConditionLatch(timeout);
+		final ConditionLatch conditionLatch = createConditionLatch(timeout, timeUnit);
 
         conditionLatch.waitFor(new ConditionLatch.Predicate() {
 
@@ -271,10 +271,10 @@ public abstract class UninstallationProcessInspector {
 	 * @return a configured {@link org.cloudifysource.shell.ConditionLatch}
 	 *         object
      */
-    public ConditionLatch createConditionLatch(final long timeout) {
+    public ConditionLatch createConditionLatch(final long timeout, TimeUnit timeUnit) {
 		return new ConditionLatch().verbose(verbose)
                 .pollingInterval(POLLING_INTERVAL_MILLI_SECONDS, TimeUnit.MILLISECONDS)
-				.timeout(timeout, TimeUnit.MINUTES).timeoutErrorMessage(getTimeoutErrorMessage());
+				.timeout(timeout, timeUnit).timeoutErrorMessage(getTimeoutErrorMessage());
     }
 
 	/**

@@ -12,31 +12,6 @@
  *******************************************************************************/
 package org.cloudifysource.esc.shell.installer;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.ClientProtocolException;
@@ -49,11 +24,7 @@ import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.internal.CloudifyErrorMessages;
 import org.cloudifysource.dsl.rest.response.ControllerDetails;
 import org.cloudifysource.dsl.rest.response.UninstallApplicationResponse;
-import org.cloudifysource.esc.driver.provisioning.CloudProvisioningException;
-import org.cloudifysource.esc.driver.provisioning.MachineDetails;
-import org.cloudifysource.esc.driver.provisioning.ManagementLocator;
-import org.cloudifysource.esc.driver.provisioning.ProvisioningDriver;
-import org.cloudifysource.esc.driver.provisioning.ProvisioningDriverBootstrapValidation;
+import org.cloudifysource.esc.driver.provisioning.*;
 import org.cloudifysource.esc.driver.provisioning.context.DefaultProvisioningDriverClassContext;
 import org.cloudifysource.esc.driver.provisioning.context.ProvisioningDriverClassContextAware;
 import org.cloudifysource.esc.driver.provisioning.context.ValidationContext;
@@ -75,12 +46,26 @@ import org.cloudifysource.shell.ConditionLatch;
 import org.cloudifysource.shell.ShellUtils;
 import org.cloudifysource.shell.exceptions.CLIException;
 import org.cloudifysource.shell.exceptions.CLIStatusException;
+import org.cloudifysource.shell.rest.ApplicationUninstallationProcessInspector;
 import org.cloudifysource.shell.rest.RestAdminFacade;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.type.TypeFactory;
 import org.openspaces.admin.gsa.GSAReservationId;
 import org.openspaces.admin.zone.config.ExactZonesConfig;
 import org.openspaces.admin.zone.config.ExactZonesConfigurer;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * This class handles the bootstrapping of machines, activation of management processes and cloud tear-down.
@@ -91,7 +76,7 @@ import org.openspaces.admin.zone.config.ExactZonesConfigurer;
  */
 public class CloudGridAgentBootstrapper {
 
-	private static final String MANAGEMENT_APPLICATION = ManagementWebServiceInstaller.MANAGEMENT_APPLICATION_NAME;
+    private static final String MANAGEMENT_APPLICATION = ManagementWebServiceInstaller.MANAGEMENT_APPLICATION_NAME;
 	private static final String MANAGEMENT_GSA_ZONE = "management";
 
 	private static final String OPERATION_TIMED_OUT = "The operation timed out. "
@@ -99,8 +84,9 @@ public class CloudGridAgentBootstrapper {
 
 	private static final Logger logger = Logger
 			.getLogger(CloudGridAgentBootstrapper.class.getName());
+    public static final int POLLING_INTERVAL = 2000;
 
-	private File providerDirectory;
+    private File providerDirectory;
 
 	private AdminFacade adminFacade;
 
@@ -614,36 +600,60 @@ public class CloudGridAgentBootstrapper {
 
 		final long startTime = System.currentTimeMillis();
 		final long millisToEnd = end - startTime;
-		final int minutesToEnd = (int) TimeUnit.MILLISECONDS
-				.toMinutes(millisToEnd);
+		final int minutesToEnd = (int) TimeUnit.MILLISECONDS.toMinutes(millisToEnd);
 
-		final Map<String, String> lifeCycleEventContainersIdsByApplicationName = new HashMap<String, String>();
+        // first lets execute a request to uninstall all running applications
 
-		if (applicationsList.size() > 0) {
-			logger.info("Uninstalling the currently deployed applications");
-			for (final String application : applicationsList) {
-				if (!application.equals(MANAGEMENT_APPLICATION)) {
-					try {
-						
-						final RestClient restClient = ((RestAdminFacade) adminFacade).getNewRestClient();
-						UninstallApplicationResponse uninstallApplicationResponse = 
-								restClient.uninstallApplication(application, minutesToEnd);
-						// TODO noak handle this:
-						/*lifeCycleEventContainersIdsByApplicationName.put(
-								uninstallApplicationResponse.get(CloudifyConstants.LIFECYCLE_EVENT_CONTAINER_ID),
-								application);*/
-					} catch (RestClientException e) {
-						throw new CLIException(e.getMessage(), e);
-					}
-				}
-			}
-		}
+        List<ApplicationUninstallationProcessInspector> inspectors = new ArrayList<ApplicationUninstallationProcessInspector>();
 
-		// now we need to wait for all the application to be uninstalled
-		for (final Map.Entry<String, String> entry : lifeCycleEventContainersIdsByApplicationName.entrySet()) {
-			logger.info("Waiting for application " + entry.getValue() + " to uninstall.");
-			adminFacade.waitForLifecycleEvents(entry.getKey(), minutesToEnd, CloudifyConstants.TIMEOUT_ERROR_MESSAGE);
-		}
+        for (final String application : applicationsList) {
+            if (!application.equals(MANAGEMENT_APPLICATION)) {
+                try {
+
+                    final RestClient restClient = ((RestAdminFacade) adminFacade).getNewRestClient();
+                    UninstallApplicationResponse uninstallApplicationResponse =
+                            restClient.uninstallApplication(application, minutesToEnd);
+                    ApplicationUninstallationProcessInspector inspector =
+                            new ApplicationUninstallationProcessInspector(restClient, uninstallApplicationResponse.getDeploymentID(),
+                                    verbose, application);
+                    inspectors.add(inspector);
+                } catch (final RestClientException e) {
+                    throw new CLIException(e.getMessage(), e, e.getVerbose());
+                }
+            }
+        }
+
+        // now lets wait for the requests to finish
+
+        while (true) {
+
+            if (System.currentTimeMillis() > end) {
+                throw new TimeoutException("Timeout waiting for application to uninstall before teardown");
+            }
+
+            for (ApplicationUninstallationProcessInspector inspector : new ArrayList<ApplicationUninstallationProcessInspector>(inspectors)) {
+                try {
+                    inspector.waitForLifeCycleToEnd(5, TimeUnit.MILLISECONDS);
+                    inspectors.remove(inspector);
+                } catch (final TimeoutException e) {
+                    // did not finish yet.
+                } catch (final CLIException e) {
+                    // some other error happened.
+                    if (!force) {
+                        throw e;
+                    } else {
+                        logger.warning("Failed uninstalling application " + inspector.getApplicationName() + " : "
+                                + e.getMessage() + ". Teardown will continue");
+                    }
+                }
+            }
+            if (inspectors.isEmpty()) {
+                // all inspectors are done.
+                return;
+            }
+            Thread.sleep(POLLING_INTERVAL);
+        }
+
 	}
 
 	private MachineDetails[] startManagememntProcesses(final MachineDetails[] machines, final String securityProfile,

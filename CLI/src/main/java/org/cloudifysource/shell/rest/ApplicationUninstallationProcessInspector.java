@@ -22,7 +22,11 @@ public class ApplicationUninstallationProcessInspector extends UninstallationPro
 		this.applicationName = applicationName;
 	}
 
-	@Override
+    public String getApplicationName() {
+        return applicationName;
+    }
+
+    @Override
 	protected String getTimeoutErrorMessage() {
 		return ShellUtils.getFormattedMessage("application_uninstallation_timed_out");
 	}
@@ -34,7 +38,7 @@ public class ApplicationUninstallationProcessInspector extends UninstallationPro
 		try {
 			serviceDescription = restClient.getServiceDescription(applicationName, serviceName);	
 		} catch (RestClientException e) {
-			throw new CLIException(e.getMessage(), e);
+			throw new CLIException(e.getMessage(), e, e.getVerbose());
 		}
 		
 		return serviceDescription;

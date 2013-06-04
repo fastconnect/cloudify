@@ -18,6 +18,7 @@ package org.cloudifysource.shell.commands;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import org.apache.felix.gogo.commands.Argument;
@@ -102,7 +103,7 @@ public class UninstallService extends AdminAwareCommand {
 
         while (!isDone) {
             try {
-                inspector.waitForLifeCycleToEnd(timeoutInMinutes);
+                inspector.waitForLifeCycleToEnd(timeoutInMinutes, TimeUnit.MINUTES);
                 isDone = true;
             } catch (final TimeoutException e) {
                 // if non interactive, throw exception

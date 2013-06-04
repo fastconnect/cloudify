@@ -36,7 +36,7 @@ public class ServiceUninstallationProcessInspector extends UninstallationProcess
 		try {
 			serviceDescription = restClient.getServiceDescription(applicationName, serviceName);
 		} catch (RestClientException e) {
-			throw new CLIException(e.getMessage(), e);
+			throw new CLIException(e.getMessage(), e, e.getVerbose());
     }
 		
 		return serviceDescription;

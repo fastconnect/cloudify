@@ -51,9 +51,9 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
 
 /**
- * 
+ *
  * @author yael
- * 
+ *
  */
 public class RestClientExecutor {
 	private static final Logger logger = Logger.getLogger(RestClient.class.getName());
@@ -83,7 +83,7 @@ public class RestClientExecutor {
 
 	/**
 	 * Executes HTTP post over REST on the given (relative) URL with the given postBody.
-	 * 
+	 *
 	 * @param url
 	 *            The URL to post to.
 	 * @param postBody
@@ -98,7 +98,7 @@ public class RestClientExecutor {
 	public <T> T postObject(
 			final String url,
 			final Object postBody,
-			final TypeReference<Response<T>> responseTypeReference) 
+			final TypeReference<Response<T>> responseTypeReference)
 					throws RestClientException {
 		final HttpEntity stringEntity;
 		try {
@@ -114,7 +114,7 @@ public class RestClientExecutor {
 	}
 
 	/**
-	 * 
+	 *
 	 * @param relativeUrl
 	 *          The URL to post to.
 	 * @param fileToPost
@@ -132,7 +132,7 @@ public class RestClientExecutor {
 			final String relativeUrl,
 			final File fileToPost,
 			final String partName,
-			final TypeReference<Response<T>> responseTypeReference) 
+			final TypeReference<Response<T>> responseTypeReference)
 					throws RestClientException {
 		final MultipartEntity multipartEntity = new MultipartEntity();
 		final FileBody fileBody = new FileBody(fileToPost);
@@ -153,7 +153,7 @@ public class RestClientExecutor {
      */
     public <T> T get(
     		final String relativeUrl,
-    		final TypeReference<Response<T>> responseTypeReference) 
+    		final TypeReference<Response<T>> responseTypeReference)
     				throws RestClientException {
         String fullUrl = getFullUrl(relativeUrl);
 		final HttpGet getRequest = new HttpGet(fullUrl);
@@ -174,9 +174,9 @@ public class RestClientExecutor {
      */
     public <T> T delete(final String relativeUrl, final Map<String, String> params,
             final TypeReference<Response<T>> responseTypeReference) throws RestClientException {
-    	
+
     	URIBuilder builder;
-    	
+
     	try {
 			builder = new URIBuilder(getFullUrl(relativeUrl));
 		} catch (URISyntaxException e) {
@@ -189,12 +189,12 @@ public class RestClientExecutor {
     			builder.addParameter(entry.getKey(), entry.getValue());
     		}
     	}
-    	
+
     	final HttpDelete deleteRequest = new HttpDelete(builder.toString());
-    	    	
+
     	return executeRequest(deleteRequest, responseTypeReference);
     }
-    
+
     /**
     *
     * @param relativeUrl
@@ -205,9 +205,9 @@ public class RestClientExecutor {
     * @return The response object from the REST server.
     * @throws RestClientException .
     */
-   public <T> T delete(final String relativeUrl, final TypeReference<Response<T>> responseTypeReference) 
+   public <T> T delete(final String relativeUrl, final TypeReference<Response<T>> responseTypeReference)
 		   throws RestClientException {
-   	
+
    	final HttpDelete deleteRequest = new HttpDelete(getFullUrl(relativeUrl));
    	return executeRequest(deleteRequest, responseTypeReference);
    }
@@ -224,7 +224,7 @@ public class RestClientExecutor {
 	*/
 	private <T> T post(final String relativeUrl,
                        final TypeReference<Response<T>> responseTypeReference,
-			           final HttpEntity entity) 
+			           final HttpEntity entity)
 			        		   throws RestClientException {
 		final HttpPost postRequest = new HttpPost(getFullUrl(relativeUrl));
         if (entity instanceof StringEntity) {
@@ -235,7 +235,7 @@ public class RestClientExecutor {
 	}
 
     private static String getResponseBody(
-    		final HttpResponse response) 
+    		final HttpResponse response)
     				throws RestClientIOException {
 
     	InputStream instream = null;
@@ -249,7 +249,7 @@ public class RestClientExecutor {
     	} catch (IOException e) {
     		// this means we couldn't transform the response into string, very unlikely
     		throw MessagesUtils.createRestClientIOException(
-    				RestClientMessageKeys.READ_RESPONSE_BODY_FAILURE.getName(), 
+    				RestClientMessageKeys.READ_RESPONSE_BODY_FAILURE.getName(),
     				e);
     	} finally {
     		if (instream != null) {
@@ -263,8 +263,8 @@ public class RestClientExecutor {
     }
 
     private <T> T executeRequest(
-    		final HttpRequestBase request, 
-    		final TypeReference<Response<T>> responseTypeReference) 
+    		final HttpRequestBase request,
+    		final TypeReference<Response<T>> responseTypeReference)
     				throws RestClientException {
     	HttpResponse httpResponse = null;
     	try {
@@ -279,12 +279,12 @@ public class RestClientExecutor {
     				lastException = null;
     				break;
     			} catch (IOException e) {
-    				logger.finer("Execute get request to " + request.getURI() 
-    						+ ". try number " + (i + 1) + " out of " + GET_TRIALS_NUM 
+    				logger.finer("Execute get request to " + request.getURI()
+    						+ ". try number " + (i + 1) + " out of " + GET_TRIALS_NUM
     						+ ", error is " + e.getMessage());
     				lastException = e;
     			}
-    		} 
+    		}
     		if (lastException != null) {
     			throw MessagesUtils.createRestClientIOException(
     					RestClientMessageKeys.EXECUTION_FAILURE.getName(),
@@ -299,7 +299,7 @@ public class RestClientExecutor {
     }
 
 	private void checkForError(
-			final HttpResponse response) 
+			final HttpResponse response)
 					throws RestClientException {
 		StatusLine statusLine = response.getStatusLine();
 		final int statusCode = statusLine.getStatusCode();
@@ -309,7 +309,7 @@ public class RestClientExecutor {
 			responseBody = getResponseBody(response);
             try {
                 // this means we managed to read the response
-            	final Response<Void> entity = 
+            	final Response<Void> entity =
             			new ObjectMapper().readValue(responseBody, new TypeReference<Response<Void>>() { });
                 // we also have the response in the proper format.
                 // remember, we only got here because some sort of error happened on the server.
@@ -317,16 +317,16 @@ public class RestClientExecutor {
                                                       entity.getMessage(),
                                                       statusCode,
                                                       reasonPhrase,
-                                                      responseBody);
+                                                      entity.getVerbose());
 
             } catch (final IOException e) {
                 // this means we got the response, but it is not in the correct format.
                 // so some kind of error happened on the spring side.
                 throw MessagesUtils.createRestClientHttpException(
-                		e, 
-                		statusCode, 
-                		reasonPhrase, 
-                		responseBody, 
+                		e,
+                		statusCode,
+                		reasonPhrase,
+                		responseBody,
                 		RestClientMessageKeys.HTTP_FAILURE.getName());
             }
         }
@@ -334,7 +334,7 @@ public class RestClientExecutor {
 
 	private <T> T getResponseObject(
 			final TypeReference<Response<T>> typeReference,
-			final HttpResponse httpResponse) 
+			final HttpResponse httpResponse)
 					throws RestClientIOException, RestClientHttpException {
 		final String responseBody = getResponseBody(httpResponse);
 		Response<T> response;
@@ -346,10 +346,10 @@ public class RestClientExecutor {
             // so some kind of error happened on the spring side.
 			StatusLine statusLine = httpResponse.getStatusLine();
 			throw MessagesUtils.createRestClientHttpException(
-            		e, 
-            		statusLine.getStatusCode(), 
-            		statusLine.getReasonPhrase(), 
-            		responseBody, 
+            		e,
+            		statusLine.getStatusCode(),
+            		statusLine.getReasonPhrase(),
+            		responseBody,
             		RestClientMessageKeys.HTTP_FAILURE.getName());
 		}
 	}

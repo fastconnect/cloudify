@@ -144,17 +144,21 @@ public class ApplicationDescriptionFactory {
 		ProcessingUnit processingUnit = null;
 
 		zone = getZone(absolutePuName);
-		GridServiceContainers gridServiceContainers = zone.getGridServiceContainers();
-		if (gridServiceContainers != null && !gridServiceContainers.isEmpty()) {
-			GridServiceContainer gsc = gridServiceContainers.getContainers()[0];
-			ProcessingUnitInstance[] puInstances = gsc.getProcessingUnitInstances();
-			if (puInstances != null && puInstances.length > 0) {
-				processingUnit = puInstances[0].getProcessingUnit();
+		if (zone != null) {
+			// for undeply - zone exists, PU does not.
+			GridServiceContainers gridServiceContainers = zone.getGridServiceContainers();
+			if (gridServiceContainers != null && !gridServiceContainers.isEmpty()) {
+				GridServiceContainer gsc = gridServiceContainers.getContainers()[0];
+				ProcessingUnitInstance[] puInstances = gsc.getProcessingUnitInstances();
+				if (puInstances != null && puInstances.length > 0) {
+					processingUnit = puInstances[0].getProcessingUnit();
+				}
 			}
 		}
 
 		// if PU not found in zone, perhaps GSCs are not started yet, so look for PU in Admin.
 		if (processingUnit == null) {
+			// for deploy - zone does not exist, PU does.
 			processingUnit = admin.getProcessingUnits().getProcessingUnit(absolutePuName);
 		}
 
@@ -302,10 +306,6 @@ public class ApplicationDescriptionFactory {
 		Zones zones = admin.getZones();
 		if (zones != null) {
 			zone = zones.getByName(zoneName);
-		}
-
-		if (zone == null) {
-			throw new ResourceNotFoundException(zoneName);
 		}
 
 		return zone;

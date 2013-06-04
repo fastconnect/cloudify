@@ -17,7 +17,6 @@ package org.cloudifysource.shell.rest;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.rest.response.ServiceDescription;

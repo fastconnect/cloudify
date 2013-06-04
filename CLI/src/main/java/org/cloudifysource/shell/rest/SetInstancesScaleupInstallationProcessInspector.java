@@ -12,9 +12,6 @@
  ******************************************************************************/
 package org.cloudifysource.shell.rest;
 
-import java.util.Map;
-import java.util.Set;
-
 import org.cloudifysource.restclient.RestClient;
 
 /**

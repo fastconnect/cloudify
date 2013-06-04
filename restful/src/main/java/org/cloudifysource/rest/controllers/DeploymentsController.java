@@ -658,7 +658,7 @@ public class DeploymentsController extends BaseRestController {
 
 		//create elastic deployment object.
 		final ElasticProcessingUnitDeploymentFactory fac =
-						new ElasticProcessingUnitDeploymentFactoryImpl();
+						new ElasticProcessingUnitDeploymentFactoryImpl(this.restConfig);
 		final ElasticDeploymentTopology deployment;
 		try {
 			deployment = fac.create(deployConfig);
@@ -729,6 +729,7 @@ public class DeploymentsController extends BaseRestController {
 						//write to events cache
 						DeploymentEvent undeployFinishedEvent = new DeploymentEvent();
 						undeployFinishedEvent.setDescription(CloudifyConstants.UNDEPLOYED_SUCCESSFULLY_EVENT);
+
 						eventsCache.add(new EventsCacheKey(deploymentId), undeployFinishedEvent);
 						return result;
 					}

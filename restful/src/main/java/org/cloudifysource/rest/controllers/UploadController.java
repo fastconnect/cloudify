@@ -37,7 +37,7 @@ import org.springframework.web.multipart.MultipartFile;
 /**
  * A controller for uploading files for future deployments.
  * Each uploaded file will be available for {@link CloudifyConstants#DEFAULT_UPLOAD_TIMEOUT_MILLIS} seconds.
- * The timeout can be edited via {@link UploadRepo#setCleanupTimeoutMillis(int)}. 
+ * The timeout can be edited via {@link UploadRepo#setCleanupTimeoutMillis(int)}.
  * @author yael
  * @since 2.6.0
  *
@@ -47,10 +47,10 @@ import org.springframework.web.multipart.MultipartFile;
 public class UploadController extends BaseRestController {
 
 	private static final Logger logger = Logger.getLogger(UploadController.class.getName());
-	
+
 	@Autowired
 	private UploadRepo uploadRepo;
-	
+
 	/**
 	 * Uploading a file to be used in future deployments.
 	 * The file will be kept at least {@link UploadRepo#TIMEOUT_SECOND} seconds.
@@ -63,7 +63,7 @@ public class UploadController extends BaseRestController {
 	@RequestMapping(value = "/{fileName:.+}", method = RequestMethod.POST)
 	public UploadResponse upload(
 			@PathVariable() final String fileName,
-			@RequestParam(value = CloudifyConstants.UPLOAD_FILE_PARAM_NAME, required = true) final MultipartFile file) 
+			@RequestParam(value = CloudifyConstants.UPLOAD_FILE_PARAM_NAME, required = true) final MultipartFile file)
 			throws RestErrorException {
 		// determine file's name
 		String name = fileName;
@@ -81,7 +81,7 @@ public class UploadController extends BaseRestController {
 			logger.warning("could not upload file " + name + " error was - " + e.getMessage());
 			throw new RestErrorException(
 					CloudifyMessageKeys.UPLOAD_FAILED.getName(), name, e.getMessage());
-		} 
+		}
 		// create and return UploadResponse
 		UploadResponse response = new UploadResponse();
 		response.setUploadKey(uploadedFileDirName);

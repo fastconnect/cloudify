@@ -19,18 +19,18 @@ package org.cloudifysource.rest.validators;
 import org.cloudifysource.rest.controllers.RestErrorException;
 
 /**
- * uninstall-application validator interface.
+ * set-instances validator interface.
  *
- * @author adaml
+ * @author barakm
  * @since 2.6.0
  *
  */
-public interface UninstallApplicationValidator {
+public interface SetServiceInstancesValidator {
 
 	/**
 	 *
 	 * @param validationContext .
 	 * @throws RestErrorException .
 	 */
-	void validate(final UninstallApplicationValidationContext validationContext) throws RestErrorException;
+	void validate(final SetServiceInstancesValidationContext validationContext) throws RestErrorException;
 }

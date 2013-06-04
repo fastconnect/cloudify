@@ -3,16 +3,16 @@ package org.cloudifysource.rest.validators;
 import org.cloudifysource.dsl.cloud.Cloud;
 
 /**
- * An un-install application validation context containing all necessary 
+ * An un-install application validation context containing all necessary
  * validation parameters required for validation.
- * 
+ *
  * @author adaml
  *
  */
 public class UninstallApplicationValidationContext {
 
 	private Cloud cloud;
-	
+
 	private String applicationName;
 
 	public Cloud getCloud() {

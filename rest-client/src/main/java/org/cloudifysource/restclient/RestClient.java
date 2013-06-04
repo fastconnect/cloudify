@@ -16,6 +16,13 @@
 package org.cloudifysource.restclient;
 
 
+import java.io.File;
+import java.net.URL;
+import java.security.KeyStore;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.logging.Logger;
+
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.http.HttpVersion;
 import org.apache.http.conn.ClientConnectionManager;
@@ -34,32 +41,33 @@ import org.cloudifysource.dsl.rest.ApplicationDescription;
 import org.cloudifysource.dsl.rest.ServiceDescription;
 import org.cloudifysource.dsl.rest.request.InstallApplicationRequest;
 import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
-import org.cloudifysource.dsl.rest.response.*;
+import org.cloudifysource.dsl.rest.request.SetServiceInstancesRequest;
+import org.cloudifysource.dsl.rest.response.DeploymentEvents;
+import org.cloudifysource.dsl.rest.response.InstallApplicationResponse;
+import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
+import org.cloudifysource.dsl.rest.response.Response;
+import org.cloudifysource.dsl.rest.response.UninstallApplicationResponse;
+import org.cloudifysource.dsl.rest.response.UninstallServiceResponse;
+import org.cloudifysource.dsl.rest.response.UploadResponse;
 import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.cloudifysource.restclient.messages.MessagesUtils;
 import org.cloudifysource.restclient.messages.RestClientMessageKeys;
 import org.codehaus.jackson.type.TypeReference;
 
-import java.io.File;
-import java.net.URL;
-import java.security.KeyStore;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.logging.Logger;
-
 /**
- * 
+ *
  * @author yael
  *
  */
+@SuppressWarnings("deprecation")
 public class RestClient {
 
 	private static final Logger logger = Logger.getLogger(RestClient.class.getName());
 
     private static final String FAILED_CREATING_CLIENT = "failed_creating_client";
 
-	private RestClientExecutor executor;
-	
+	private final RestClientExecutor executor;
+
 	private static final String UPLOAD_CONTROLLER_URL = "/upload/";
 	private static final String DEPLOYMENT_CONTROLLER_URL = "/deployments/";
 	private String versionedDeploymentControllerUrl;
@@ -98,20 +106,20 @@ public class RestClient {
 	public InstallServiceResponse installService(
 			final String applicationName,
 			final String serviceName,
-			final InstallServiceRequest request) 
+			final InstallServiceRequest request)
 					throws RestClientException {
-		final String installServiceUrl = 
+		final String installServiceUrl =
 				versionedDeploymentControllerUrl + applicationName + "/services/" + serviceName;
 		return executor.postObject(
 				installServiceUrl,
-				request, 
+				request,
 				new TypeReference<Response<InstallServiceResponse>>() { }
 				);
 	}
-	
+
 	/**
 	 * Executes a rest api call to install an application.
-	 * 
+	 *
 	 * @param applicationName The name of the application.
 	 * @param request The install service request.
 	 * @return The install service response.
@@ -119,42 +127,42 @@ public class RestClient {
 	 */
 	public InstallApplicationResponse installApplication(
 			final String applicationName,
-			final InstallApplicationRequest request) 
+			final InstallApplicationRequest request)
 					throws RestClientException {
-		final String installApplicationUrl = 
+		final String installApplicationUrl =
 				versionedDeploymentControllerUrl + applicationName;
 		return executor.postObject(
 				installApplicationUrl,
-				request, 
+				request,
 				new TypeReference<Response<InstallApplicationResponse>>() { }
 				);
 	}
 
 	/**
-	 * 
+	 *
 	 * @param applicationName .
 	 * @param serviceName .
 	 * @param timeoutInMinutes .
 	 * @return .
 	 * @throws RestClientException .
 	 */
-    public UninstallServiceResponse uninstallService(final String applicationName, final String serviceName, 
+    public UninstallServiceResponse uninstallService(final String applicationName, final String serviceName,
     		final int timeoutInMinutes) throws RestClientException {
-    	
+
         final String url = versionedDeploymentControllerUrl + applicationName + "/services/" + serviceName;
         Map<String, String> requestParams = new HashMap<String, String>();
         requestParams.put(CloudifyConstants.REQ_PARAM_TIMEOUT_IN_MINUTES, String.valueOf(timeoutInMinutes));
-        
+
         return executor.delete(url, requestParams, new TypeReference<Response<UninstallServiceResponse>>() { });
     }
-    
+
 	/**
-	 * 
-	 * @param applicationName 
+	 *
+	 * @param applicationName
 	 * 			The application name.
-	 * @return 
+	 * @return
 	 * 		an uninstall application response.
-	 * 
+	 *
 	 * @throws RestClientException .
 	 */
     public UninstallApplicationResponse uninstallApplication(final String applicationName) throws RestClientException {
@@ -171,17 +179,17 @@ public class RestClient {
 	 * @throws RestClientException .
 	 */
 	public UploadResponse upload(
-			final String fileName, 
-			final File file) 
+			final String fileName,
+			final File file)
 					throws RestClientException {
 		validateFile(file);
 		String finalFileName = fileName == null ? file.getName() : fileName;
-		logger.fine("uploading file " + file.getAbsolutePath() + " with name " + finalFileName);		
+		logger.fine("uploading file " + file.getAbsolutePath() + " with name " + finalFileName);
 		final String uploadUrl = versionedUploadControllerUrl + finalFileName;
 		UploadResponse response = executor.postFile(
-				uploadUrl, 
-				file, 
-				CloudifyConstants.UPLOAD_FILE_PARAM_NAME, 
+				uploadUrl,
+				file,
+				CloudifyConstants.UPLOAD_FILE_PARAM_NAME,
 				new TypeReference<Response<UploadResponse>>() {
 		});
 		return response;
@@ -206,7 +214,7 @@ public class RestClient {
     }
 
     /**
-     * 
+     *
      * @param appName .
      * @param serviceName .
      * @return ServiceDescription.
@@ -214,9 +222,9 @@ public class RestClient {
      */
     public ServiceDescription getServiceDescription(
     		final String appName,
-    		final String serviceName) 
+    		final String serviceName)
     				throws RestClientException {
-        return executor.get(versionedDeploymentControllerUrl + "/" + appName 
+        return executor.get(versionedDeploymentControllerUrl + "/" + appName
         		+ "/service/" + serviceName + "/description",
                 new TypeReference<Response<ServiceDescription>>() { });
     }
@@ -235,39 +243,39 @@ public class RestClient {
     }
 
     /**
-     * 
+     *
      * @throws RestClientException .
      */
-    public void connect() 
+    public void connect()
     		throws RestClientException {
         executor.get(versionedDeploymentControllerUrl + "testrest", new TypeReference<Response<Void>>() { });
     }
-        
-        
+
+
         private void validateFile(
-    		final File file) 
+    		final File file)
     				throws RestClientException {
 		if (file == null) {
 			throw MessagesUtils.createRestClientException(
 					RestClientMessageKeys.UPLOAD_FILE_MISSING.getName());
-		}		
+		}
 		String absolutePath = file.getAbsolutePath();
 		if (!file.exists()) {
 			throw MessagesUtils.createRestClientException(
-					RestClientMessageKeys.UPLOAD_FILE_DOESNT_EXIST.getName(), 
+					RestClientMessageKeys.UPLOAD_FILE_DOESNT_EXIST.getName(),
 					absolutePath);
 		}
 		if (!file.isFile()) {
 			throw MessagesUtils.createRestClientException(
-					RestClientMessageKeys.UPLOAD_FILE_NOT_FILE.getName(), 
+					RestClientMessageKeys.UPLOAD_FILE_NOT_FILE.getName(),
 					absolutePath);
 		}
 		long length = file.length();
 		if (length > CloudifyConstants.DEFAULT_UPLOAD_SIZE_LIMIT_BYTES) {
 			throw MessagesUtils.createRestClientException(
-					RestClientMessageKeys.UPLOAD_FILE_SIZE_LIMIT_EXCEEDED.getName(), 
-					absolutePath, 
-					length, 
+					RestClientMessageKeys.UPLOAD_FILE_SIZE_LIMIT_EXCEEDED.getName(),
+					absolutePath,
+					length,
 					CloudifyConstants.DEFAULT_UPLOAD_SIZE_LIMIT_BYTES);
 		}
     }
@@ -298,7 +306,7 @@ public class RestClient {
      * @throws org.cloudifysource.restclient.exceptions.RestClientException
      *             Reporting different failures while creating the HTTP client
      */
-    private DefaultHttpClient getSSLHttpClient(final URL url) throws RestClientException {
+	private DefaultHttpClient getSSLHttpClient(final URL url) throws RestClientException {
         try {
             final KeyStore trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
             // TODO : support self-signed certs if configured by user upon
@@ -324,4 +332,26 @@ public class RestClient {
                     ExceptionUtils.getFullStackTrace(e));
         }
     }
+
+    private static final String SET_INSTANCES_URL_FORMAT = "%s/services/%s/count";
+    private String getFormattedUrl(final String format, final String... args) {
+    	return versionedDeploymentControllerUrl  + String.format(format, (Object[])args);
+    }
+
+	public void setServiceInstances(final String applicationName, final String serviceName,
+			final SetServiceInstancesRequest request) throws RestClientException {
+		if (request == null) {
+			throw new IllegalArgumentException("request may not be null");
+		}
+
+		final String setInstancesUrl =
+				getFormattedUrl(SET_INSTANCES_URL_FORMAT, applicationName, serviceName);
+		executor.postObject(
+				setInstancesUrl,
+				request,
+				new TypeReference<Response<Void>>() {
+				}
+				);
+
+	}
 }

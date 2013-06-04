@@ -19,12 +19,12 @@
 			<version>${springVersion}</version>
 			<scope>test</scope>
 		</dependency>
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>14.0</version>
-        </dependency>
-        <dependency>
+		<dependency>
+			<groupId>com.google.guava</groupId>
+			<artifactId>guava</artifactId>
+			<version>14.0</version>
+		</dependency>
+		<dependency>
 			<groupId>org.cloudifysource</groupId>
 			<artifactId>dsl</artifactId>
 			<version>${cloudifyVersion}</version>
@@ -426,7 +426,14 @@
 			<version>${groovyVersion}</version>
 			<scope>compile</scope>
 		</dependency>
-		
+		<dependency>
+			<groupId>org.mockito</groupId>
+			<artifactId>mockito-all</artifactId>
+			<version>1.9.5</version>
+			<scope></scope>
+		</dependency>
+
+
 	</dependencies>
 	<build>
 		<defaultGoal>install</defaultGoal>
@@ -504,7 +511,7 @@
 					<archive>
 						<manifestEntries>
 							<!-- The class-path entries MUST be in the same line! -->
-							<Class-Path>lib/platform/cloudify/dsl.jar lib/platform/cloudify/security-2.6.0-SNAPSHOT.jar lib/platform/cloudify/security-ldap-2.6.0-SNAPSHOT.jar tools/groovy/embeddable/groovy-all-1.8.6.jar tools/groovy/lib/ivy-2.2.0.jar</Class-Path>
+							<Class-Path><![CDATA[lib/platform/cloudify/dsl.jar lib/platform/cloudify/security-2.6.0-SNAPSHOT.jar lib/platform/cloudify/security-ldap-2.6.0-SNAPSHOT.jar tools/groovy/embeddable/groovy-all-1.8.6.jar tools/groovy/lib/ivy-2.2.0.jar]]></Class-Path>
 						</manifestEntries>
 					</archive>
 					<webResources>

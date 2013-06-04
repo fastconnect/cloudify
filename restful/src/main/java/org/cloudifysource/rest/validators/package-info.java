@@ -1,5 +1,3 @@
-package org.cloudifysource.rest.validators;
-
 /*******************************************************************************
  * Copyright (c) 2013 GigaSpaces Technologies Ltd. All rights reserved
  *
@@ -16,21 +14,9 @@ package org.cloudifysource.rest.validators;
  * limitations under the License.
  ******************************************************************************/
 
-import org.cloudifysource.rest.controllers.RestErrorException;
+/**************************
+ * Spring based validators for various REST APIs.
+ *****************************/
 
-/**
- * uninstall-application validator interface.
- *
- * @author adaml
- * @since 2.6.0
- *
- */
-public interface UninstallApplicationValidator {
+package org.cloudifysource.rest.validators;
 
-	/**
-	 *
-	 * @param validationContext .
-	 * @throws RestErrorException .
-	 */
-	void validate(final UninstallApplicationValidationContext validationContext) throws RestErrorException;
-}

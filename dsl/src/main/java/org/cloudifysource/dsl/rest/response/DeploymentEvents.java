@@ -13,9 +13,9 @@
 
 package org.cloudifysource.dsl.rest.response;
 
-import org.cloudifysource.dsl.MaxSizeList;
-
 import java.util.List;
+
+import org.cloudifysource.dsl.MaxSizeList;
 
 /**
  * Created with IntelliJ IDEA.
@@ -37,7 +37,7 @@ public class DeploymentEvents {
     public void setEvents(final List<DeploymentEvent> events) {
         this.events = events;
     }
-    
+
     /**
      * Add an event to the List.
      * @param event The event object to add at the given index.

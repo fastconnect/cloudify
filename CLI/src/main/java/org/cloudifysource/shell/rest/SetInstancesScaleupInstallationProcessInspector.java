@@ -1,34 +1,50 @@
+/*******************************************************************************
+ * Copyright (c) 2013 GigaSpaces Technologies Ltd. All rights reserved
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ ******************************************************************************/
 package org.cloudifysource.shell.rest;
-
-import org.cloudifysource.restclient.RestClient;
 
 import java.util.Map;
 import java.util.Set;
 
+import org.cloudifysource.restclient.RestClient;
+
 /**
- * Created with IntelliJ IDEA.
- * User: elip
- * Date: 6/4/13
- * Time: 12:33 PM
+ * Created with IntelliJ IDEA. User: elip Date: 6/4/13 Time: 12:33 PM
  */
 public class SetInstancesScaleupInstallationProcessInspector extends ServiceInstallationProcessInspector {
 
-    public SetInstancesScaleupInstallationProcessInspector(final RestClient restClient,
-                                                           final String deploymentId,
-                                                           final boolean verbose,
-                                                           final String serviceName,
-                                                           final int plannedNumberOfInstances,
-                                                           final String applicationName) {
-        super(restClient,
-              deploymentId,
-              verbose,
-              serviceName,
-              plannedNumberOfInstances,
-              applicationName);
-    }
+	private final Map<String, Integer> currentNumberOfInstancesPerService;
 
-    @Override
-    public Map<String, Integer> initNumberOfCurrentRunningInstancesPerService(final Set<String> serviceNames) {
-        return super.initNumberOfCurrentRunningInstancesPerService(serviceNames);    //To change body of overridden methods use File | Settings | File Templates.
-    }
+	public SetInstancesScaleupInstallationProcessInspector(final RestClient restClient,
+			final String deploymentId,
+			final boolean verbose,
+			final String serviceName,
+			final int plannedNumberOfInstances,
+			final String applicationName,
+			final int currentEventIndex,
+			final Map<String, Integer> currentNumberOfInstancesPerService) {
+		super(restClient,
+				deploymentId,
+				verbose,
+				serviceName,
+				plannedNumberOfInstances,
+				applicationName);
+		this.setEventIndex(currentEventIndex);
+		this.currentNumberOfInstancesPerService = currentNumberOfInstancesPerService;
+		this.setEventIndex(currentEventIndex);
+	}
+
+	@Override
+	public Map<String, Integer> initNumberOfCurrentRunningInstancesPerService(final Set<String> serviceNames) {
+		return this.currentNumberOfInstancesPerService;
+	}
 }

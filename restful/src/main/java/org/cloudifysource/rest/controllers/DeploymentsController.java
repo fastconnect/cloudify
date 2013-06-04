@@ -1583,12 +1583,13 @@ public class DeploymentsController extends BaseRestController {
             locators.append(locator.getHost()).append(':').append(locator.getPort()).append(',');
         }
 
+
         if (locators.length() > 0) {
             locators.setLength(locators.length() - 1);
         }
-
         return locators.toString();
     }
+
 
     private ProcessingUnit deployAndWait(
     		final String serviceName,

@@ -1,11 +1,11 @@
 /*******************************************************************************
  * Copyright (c) 2011 GigaSpaces Technologies Ltd. All rights reserved
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
@@ -42,36 +42,36 @@ import org.fusesource.jansi.Ansi.Color;
 /**
  * @author rafi, adaml, barakm
  * @since 2.0.0
- * 
+ *
  *        Installs a service by deploying the service files as one packed file (zip, war or jar). Service files can also
  *        be supplied as a folder containing multiple files.
- * 
+ *
  *        Required arguments: service-file - Path to the service's packed file or folder
- * 
+ *
  *        Optional arguments: zone - The machines zone in which to install the service name - The name of the service
  *        timeout - The number of minutes to wait until the operation is completed (default: 5 minutes)
- * 
+ *
  *        Command syntax: install-service [-zone zone] [-name name] [-timeout timeout] service-file
  */
 @Command(scope = "cloudify", name = "install-service", description = "Installs a service. If you specify a folder"
 		+ " path it will be packed and deployed. If you specify a service archive, the shell will deploy that file.")
 public class InstallService extends AdminAwareCommand {
 
-    private static final long MILLIS_IN_MINUTES = 60 * 1000;
+	private static final long MILLIS_IN_MINUTES = 60 * 1000;
 
 	private static final int DEFAULT_TIMEOUT_MINUTES = 5;
 	private static final String TIMEOUT_ERROR_MESSAGE = "Service installation timed out."
 			+ " Configure the timeout using the -timeout flag.";
 	private static final long TEN_K = 10 * FileUtils.ONE_KB;
 
-    private static final int POLLING_INTERVAL_MILLI_SECONDS = 500;
+	private static final int POLLING_INTERVAL_MILLI_SECONDS = 500;
 
-    @Argument(required = true, name = "recipe", description = "The service recipe folder or archive")
-	private File recipe = null;
+	@Argument(required = true, name = "recipe", description = "The service recipe folder or archive")
+	private final File recipe = null;
 
 	@Option(required = false, name = "-authGroups", description = "The groups authorized to access this application "
 			+ "(multiple values can be comma-separated)")
-	private String authGroups = null;
+	private final String authGroups = null;
 
 	@Option(required = false, name = "-name", description = "The name of the service")
 	private String serviceName = null;
@@ -95,12 +95,12 @@ public class InstallService extends AdminAwareCommand {
 
 	@Option(required = false, name = "-overrides", description =
 			"File containing properties to be used to overrides the current service's properties.")
-	private File overrides = null;
+	private final File overrides = null;
 
 	@Option(required = false, name = "-cloud-overrides",
 			description = "File containing properties to be used to override the current cloud "
 					+ "configuration for this service.")
-	private File cloudOverrides = null;
+	private final File cloudOverrides = null;
 
 	@Option(required = false, name = "-debug-all",
 			description = "Debug all supported lifecycle events")
@@ -114,64 +114,63 @@ public class InstallService extends AdminAwareCommand {
 			description = "Debug mode. One of: instead, after or onError")
 	private String debugModeString = DebugModes.INSTEAD.getName();
 
-    private CLIEventsDisplayer displayer = new CLIEventsDisplayer();
+	private final CLIEventsDisplayer displayer = new CLIEventsDisplayer();
 
+	public File getCloudConfiguration() {
+		return cloudConfiguration;
+	}
 
-    public File getCloudConfiguration() {
-        return cloudConfiguration;
-    }
+	public void setCloudConfiguration(final File cloudConfiguration) {
+		this.cloudConfiguration = cloudConfiguration;
+	}
 
-    public void setCloudConfiguration(final File cloudConfiguration) {
-        this.cloudConfiguration = cloudConfiguration;
-    }
+	public int getTimeoutInMinutes() {
+		return timeoutInMinutes;
+	}
 
-    public int getTimeoutInMinutes() {
-        return timeoutInMinutes;
-    }
+	public void setTimeoutInMinutes(final int timeoutInMinutes) {
+		this.timeoutInMinutes = timeoutInMinutes;
+	}
 
-    public void setTimeoutInMinutes(final int timeoutInMinutes) {
-        this.timeoutInMinutes = timeoutInMinutes;
-    }
+	public boolean isDisableSelfHealing() {
+		return disableSelfHealing;
+	}
 
-    public boolean isDisableSelfHealing() {
-        return disableSelfHealing;
-    }
+	public void setDisableSelfHealing(final boolean disableSelfHealing) {
+		this.disableSelfHealing = disableSelfHealing;
+	}
 
-    public void setDisableSelfHealing(final boolean disableSelfHealing) {
-        this.disableSelfHealing = disableSelfHealing;
-    }
+	public boolean isDebugAll() {
+		return debugAll;
+	}
 
-    public boolean isDebugAll() {
-        return debugAll;
-    }
+	public void setDebugAll(final boolean debugAll) {
+		this.debugAll = debugAll;
+	}
 
-    public void setDebugAll(final boolean debugAll) {
-        this.debugAll = debugAll;
-    }
+	public String getDebugEvents() {
+		return debugEvents;
+	}
 
-    public String getDebugEvents() {
-        return debugEvents;
-    }
+	public void setDebugEvents(final String debugEvents) {
+		this.debugEvents = debugEvents;
+	}
 
-    public void setDebugEvents(final String debugEvents) {
-        this.debugEvents = debugEvents;
-    }
+	public String getDebugModeString() {
+		return debugModeString;
+	}
 
-    public String getDebugModeString() {
-        return debugModeString;
-    }
+	public void setDebugModeString(final String debugModeString) {
+		this.debugModeString = debugModeString;
+	}
 
-    public void setDebugModeString(final String debugModeString) {
-        this.debugModeString = debugModeString;
-    }
+	public String getServiceFileName() {
+		return serviceFileName;
+	}
 
-    public String getServiceFileName() {
-        return serviceFileName;
-    }
-
-    public void setServiceFileName(final String serviceFileName) {
-        this.serviceFileName = serviceFileName;
-    }
+	public void setServiceFileName(final String serviceFileName) {
+		this.serviceFileName = serviceFileName;
+	}
 
 	/**
 	 * {@inheritDoc}

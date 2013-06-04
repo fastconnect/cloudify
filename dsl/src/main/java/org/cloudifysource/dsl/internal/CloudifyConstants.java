@@ -45,10 +45,10 @@ public final class CloudifyConstants {
 	}
 
 	public static enum DeploymentState {
-		INSTALLING,
+		IN_PROGRESS,
 		FAILED,
-		STARTED,
-		UNINSTALLING
+		STARTED
+
 	}
 
 	/***
@@ -352,8 +352,8 @@ public final class CloudifyConstants {
 	 */
 	public static final int DEFAULT_HTTP_CONNECTION_TIMEOUT = 60 * 1000; // one minute
 	public static final int DEFAULT_HTTP_READ_TIMEOUT = 60 * 1000 * 2; // two minutes per request
-	
-	
+
+
 	/**
 	 * Rest response formatting keywords
 	 */
@@ -362,7 +362,7 @@ public final class CloudifyConstants {
 	public static final String ERROR_ARGS_KEY = "error_args";
 	public static final String ERROR_STATUS = "error";
 	public static final String SUCCESS_STATUS = "success";
-	
+
 	/*
 	 * Request and response keywords
 	 */
@@ -396,7 +396,7 @@ public final class CloudifyConstants {
 	public static final String UPLOADS_FOLDER_NAME = "restUploads";
 	public static final int DEFAULT_UPLOAD_TIMEOUT_MILLIS = 5 * 60 * 1000;
 	public static final int DEFAULT_UPLOAD_SIZE_LIMIT_BYTES = 100 * 1000 * 1000;
-	
+
 	// install-service validators
 	public static final long SERVICE_OVERRIDES_FILE_LENGTH_LIMIT_BYTES = 20 * FileUtils.ONE_KB;
 	public static final long CLOUD_OVERRIDES_FILE_LENGTH_LIMIT_BYTES = 10 * FileUtils.ONE_KB;
@@ -405,9 +405,9 @@ public final class CloudifyConstants {
 	// install-service constants
 
 	public static final String INSTALL_SERVICE_REQUEST_PARAM_NAME = "install-service-request";
-	public static final String EXTRACTED_FILES_FOLDER_NAME = "extracted";	
+	public static final String EXTRACTED_FILES_FOLDER_NAME = "extracted";
 	public static final int LIFECYCLE_EVENT_POLLING_INTERVAL_SEC = 4;
-	
+
 	// uninstall-service constants
 	public static final String SERVICE_UNDEPLOYED_SUCCESSFULLY = "Service undeployed successfully";
 

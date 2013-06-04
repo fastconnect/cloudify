@@ -16,8 +16,7 @@
 package org.cloudifysource.dsl;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.Map;
+
 
 /**
  * Created with IntelliJ IDEA.
@@ -29,7 +28,7 @@ import java.util.Map;
  */
 public class MaxSizeList<T> extends ArrayList<T> {
 
-    private int maxSize;
+    private final int maxSize;
 
     public MaxSizeList(final int maxSize) {
         super();

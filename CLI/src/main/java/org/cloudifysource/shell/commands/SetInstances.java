@@ -13,6 +13,9 @@
 package org.cloudifysource.shell.commands;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.TimeoutException;
 
 import org.apache.felix.gogo.commands.Argument;
 import org.apache.felix.gogo.commands.Command;
@@ -22,9 +25,14 @@ import org.cloudifysource.dsl.rest.ServiceDescription;
 import org.cloudifysource.dsl.rest.request.SetServiceInstancesRequest;
 import org.cloudifysource.dsl.rest.response.DeploymentEvents;
 import org.cloudifysource.restclient.RestClient;
+import org.cloudifysource.restclient.exceptions.RestClientException;
+import org.cloudifysource.shell.Constants;
 import org.cloudifysource.shell.ShellUtils;
+import org.cloudifysource.shell.exceptions.CLIException;
+import org.cloudifysource.shell.exceptions.CLIStatusException;
 import org.cloudifysource.shell.installer.CLIEventsDisplayer;
 import org.cloudifysource.shell.rest.RestAdminFacade;
+import org.cloudifysource.shell.rest.SetInstancesScaleupInstallationProcessInspector;
 import org.fusesource.jansi.Ansi.Color;
 
 /************
@@ -69,8 +77,8 @@ public class SetInstances extends AdminAwareCommand {
 			return getFormattedMessage("num_instances_already_met", count);
 		}
 
-		final DeploymentEvents lastDeploymentEvents = client.getLastEvent(deploymentId);
-		final int lastEventId = lastDeploymentEvents.getEvents().keySet().iterator().next();
+		final int nextEventId = getNextEventId(client, deploymentId);
+
 
 
 		SetServiceInstancesRequest request = new SetServiceInstancesRequest();
@@ -79,54 +87,63 @@ public class SetInstances extends AdminAwareCommand {
 		request.setTimeout(this.timeout);
 		// REST API call to server
 		client.setServiceInstances(applicationName, serviceName, request);
+		Map<String, Integer> plannedNumberOfInstancesPerService = new HashMap<String, Integer>();
+		plannedNumberOfInstancesPerService.put(serviceName, count);
 
-		if(count > initialNumberOfInstances) {
-			waitForScaleOut();
+		Map<String, Integer> currentNumberOfInstancesPerService = new HashMap<String, Integer>();
+		currentNumberOfInstancesPerService.put(serviceName, initialNumberOfInstances);
+
+		if (count > initialNumberOfInstances) {
+
+			return waitForScaleOut(deploymentId, plannedNumberOfInstancesPerService, nextEventId,
+					currentNumberOfInstancesPerService);
 		} else {
 			waitForScaleIn();
 		}
 
-//		if(this.count < initialNumberOfInstances) {
-//			return waitForInstancesToDecrease();
-//		}
+		// if(this.count < initialNumberOfInstances) {
+		// return waitForInstancesToDecrease();
+		// }
 
-//        return getFormattedMessage("service_install_ended", Color.GREEN, serviceName);
+		// return getFormattedMessage("service_install_ended", Color.GREEN, serviceName);
 
-
-
-
-
-
-
-
-//		String pollingID = response.get(CloudifyConstants.LIFECYCLE_EVENT_CONTAINER_ID);
-//		RestLifecycleEventsLatch lifecycleEventsPollingLatch =
-//				this.adminFacade.getLifecycleEventsPollingLatch(pollingID, TIMEOUT_ERROR_MESSAGE);
-//		boolean isDone = false;
-//		boolean continuous = false;
-//		while (!isDone) {
-//			try {
-//				if (!continuous) {
-//					lifecycleEventsPollingLatch.waitForLifecycleEvents(timeout, TimeUnit.MINUTES);
-//				} else {
-//					lifecycleEventsPollingLatch.continueWaitForLifecycleEvents(timeout, TimeUnit.MINUTES);
-//				}
-//				isDone = true;
-//			} catch (TimeoutException e) {
-//				if (!(Boolean) session.get(Constants.INTERACTIVE_MODE)) {
-//					throw e;
-//				}
-//				boolean continueInstallation = promptWouldYouLikeToContinueQuestion();
-//				if (!continueInstallation) {
-//					throw new CLIStatusException(e, "application_installation_timed_out_on_client",
-//							applicationName);
-//				} else {
-//					continuous = continueInstallation;
-//				}
-//			}
-//		}
+		// String pollingID = response.get(CloudifyConstants.LIFECYCLE_EVENT_CONTAINER_ID);
+		// RestLifecycleEventsLatch lifecycleEventsPollingLatch =
+		// this.adminFacade.getLifecycleEventsPollingLatch(pollingID, TIMEOUT_ERROR_MESSAGE);
+		// boolean isDone = false;
+		// boolean continuous = false;
+		// while (!isDone) {
+		// try {
+		// if (!continuous) {
+		// lifecycleEventsPollingLatch.waitForLifecycleEvents(timeout, TimeUnit.MINUTES);
+		// } else {
+		// lifecycleEventsPollingLatch.continueWaitForLifecycleEvents(timeout, TimeUnit.MINUTES);
+		// }
+		// isDone = true;
+		// } catch (TimeoutException e) {
+		// if (!(Boolean) session.get(Constants.INTERACTIVE_MODE)) {
+		// throw e;
+		// }
+		// boolean continueInstallation = promptWouldYouLikeToContinueQuestion();
+		// if (!continueInstallation) {
+		// throw new CLIStatusException(e, "application_installation_timed_out_on_client",
+		// applicationName);
+		// } else {
+		// continuous = continueInstallation;
+		// }
+		// }
+		// }
 
 		return getFormattedMessage("set_instances_completed_successfully", Color.GREEN, serviceName, count);
+	}
+
+	private int getNextEventId(final RestClient client, final String deploymentId) throws RestClientException {
+		int lastEventId = 0;
+		final DeploymentEvents lastDeploymentEvents = client.getLastEvent(deploymentId);
+		if (!lastDeploymentEvents.getEvents().isEmpty()) {
+			lastEventId = lastDeploymentEvents.getEvents().iterator().next().getIndex();
+		}
+		return lastEventId+1;
 	}
 
 	private void waitForScaleIn() {
@@ -134,8 +151,54 @@ public class SetInstances extends AdminAwareCommand {
 
 	}
 
-	private void waitForScaleOut() {
-		// TODO Auto-generated method stub
+	private String waitForScaleOut(String deploymentID, Map<String, Integer> plannedNumberOfInstancesPerService,
+			int lastEventIndex, Map<String, Integer> currentNumberOfInstancesPerService) throws InterruptedException,
+			CLIException, IOException {
+		SetInstancesScaleupInstallationProcessInspector inspector =
+				new SetInstancesScaleupInstallationProcessInspector(
+						((RestAdminFacade) adminFacade).getNewRestClient(),
+						deploymentID,
+						verbose,
+						plannedNumberOfInstancesPerService,
+						serviceName,
+						getCurrentApplicationName(),
+						lastEventIndex,
+						currentNumberOfInstancesPerService);
+
+		int actualTimeout = this.timeout;
+		boolean isDone = false;
+		displayer.printEvent("installing_service", serviceName, plannedNumberOfInstancesPerService.get(serviceName));
+		displayer.printEvent("waiting_for_lifecycle_of_service", serviceName);
+		while (!isDone) {
+			try {
+
+				inspector.waitForLifeCycleToEnd(actualTimeout);
+				isDone = true;
+
+			} catch (final TimeoutException e) {
+
+				// if non interactive, throw exception
+				if (!(Boolean) session.get(Constants.INTERACTIVE_MODE)) {
+					throw new CLIException(e.getMessage(), e);
+				}
+
+				// ask the user whether to continue viewing the installation or to stop
+				displayer.printEvent("");
+				boolean continueViewing = promptWouldYouLikeToContinueQuestion();
+				if (continueViewing) {
+					// prolong the polling timeouts
+					actualTimeout = DEFAULT_TIMEOUT_MINUTES;
+				} else {
+					throw new CLIStatusException(e,
+							"service_installation_timed_out_on_client",
+							serviceName);
+				}
+			}
+		}
+
+		// drop one line before printing the last message
+		displayer.printEvent("");
+		return getFormattedMessage("service_install_ended", Color.GREEN, serviceName);
 
 	}
 

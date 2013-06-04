@@ -153,6 +153,16 @@ public class ApplicationDescriptionFactory {
 			}
 		}
 
+		// if PU not found in zone, perhaps GSCs are not started yet, so look for PU in Admin.
+		if (processingUnit == null) {
+			processingUnit = admin.getProcessingUnits().getProcessingUnit(absolutePuName);
+		}
+
+		if (processingUnit == null) {
+			throw new ResourceNotFoundException(absolutePuName);
+		}
+
+
 		plannedNumberOfInstances = getPlannedNumberOfInstances(processingUnit);
 		numberOfServiceInstances = getNumberOfServiceInstances(processingUnit);
 		List<InstanceDescription> serviceInstancesDescription = getServiceInstacesDescription(processingUnit);
@@ -168,10 +178,14 @@ public class ApplicationDescriptionFactory {
 		serviceDescription.setInstancesDescription(serviceInstancesDescription);
 		serviceDescription.setServiceState(serviceState);
 
-		final String deploymentId =
-				processingUnit.getBeanLevelProperties()
-						.getContextProperties().getProperty(CloudifyConstants.CONTEXT_PROPERTY_DEPLOYMENT_ID);
-		serviceDescription.setDeploymentId(deploymentId);
+		if (processingUnit == null) {
+			serviceDescription.setDeploymentId(null);
+		} else {
+			final String deploymentId =
+					processingUnit.getBeanLevelProperties()
+							.getContextProperties().getProperty(CloudifyConstants.CONTEXT_PROPERTY_DEPLOYMENT_ID);
+			serviceDescription.setDeploymentId(deploymentId);
+		}
 
 		return serviceDescription;
 	}
@@ -256,7 +270,7 @@ public class ApplicationDescriptionFactory {
 		boolean atLeastOneServiceFailed = false;
 		for (final ServiceDescription serviceDescription : serviceDescriptionList) {
 			logger.log(Level.FINE, "checking status for service " + serviceDescription.getServiceName());
-			if (serviceDescription.getServiceState() == DeploymentState.INSTALLING
+			if (serviceDescription.getServiceState() == DeploymentState.IN_PROGRESS
 					|| serviceDescriptionList.isEmpty()) {
 				servicesStillInstalling = true;
 			}
@@ -266,7 +280,7 @@ public class ApplicationDescriptionFactory {
 
 		}
 		if (servicesStillInstalling) {
-			return DeploymentState.INSTALLING;
+			return DeploymentState.IN_PROGRESS;
 		}
 		if (atLeastOneServiceFailed) {
 			return DeploymentState.FAILED;
@@ -317,7 +331,7 @@ public class ApplicationDescriptionFactory {
 		// if the zone is found but doesn't contain an active PU, or the number of running instances is larger than
 		// the planned number of resources - the service is currently being uninstalled.
 		if (processingUnit == null || numberOfServiceInstances > plannedNumberOfInstances) {
-			return DeploymentState.UNINSTALLING;
+			return DeploymentState.IN_PROGRESS;
 		}
 
 		// PU instances found - the service is either running, installing, or in error
@@ -329,13 +343,13 @@ public class ApplicationDescriptionFactory {
 				}
 			}
 			if (numberOfServiceInstances < plannedNumberOfInstances) {
-				return DeploymentState.INSTALLING;
+				return DeploymentState.IN_PROGRESS;
 			}
 			return DeploymentState.STARTED;
 
 		} else { // The service is not a USM service.
 			if (processingUnit.getStatus() != DeploymentStatus.INTACT) {
-				return DeploymentState.INSTALLING;
+				return DeploymentState.IN_PROGRESS;
 			} else {
 				return DeploymentState.STARTED;
 			}

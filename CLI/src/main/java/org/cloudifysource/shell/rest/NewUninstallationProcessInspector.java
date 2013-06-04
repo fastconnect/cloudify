@@ -1,15 +1,15 @@
 package org.cloudifysource.shell.rest;
 
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeoutException;
+
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.cloudifysource.shell.ConditionLatch;
 import org.cloudifysource.shell.exceptions.CLIException;
 import org.cloudifysource.shell.installer.CLIEventsDisplayer;
-
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeoutException;
 
 /**
  * Created with IntelliJ IDEA.
@@ -20,6 +20,8 @@ import java.util.concurrent.TimeoutException;
 public abstract class NewUninstallationProcessInspector extends InstallationProcessInspector {
 
     private final CLIEventsDisplayer displayer = new CLIEventsDisplayer();
+
+    private boolean waitForCloudResourcesRelease = true;
 
     public NewUninstallationProcessInspector(final RestClient restClient,
                                              final String deploymentId,
@@ -59,24 +61,29 @@ public abstract class NewUninstallationProcessInspector extends InstallationProc
                                 displayer.printNoChange();
                             }
                         }
-                        if (lifeCycleEnded) {
+                        if (lifeCycleEnded && waitForCloudResourcesRelease) {
                             displayer.printEvent("releasing cloud resources...");
                         }
                     }
 
                     if (lifeCycleEnded) {
 
-                        // wait for cloud resources
-                        latestEvents = getLatestEvents();
+                    	if (waitForCloudResourcesRelease) {
+	                        // wait for cloud resources
+	                        latestEvents = getLatestEvents();
 
-                        int servicesUndeployed = 0;
-                        for (String serviceName : plannedNumberOfInstancesPerService.keySet()) {
-                            if (latestEvents.contains(serviceName + ":"
-                                    + CloudifyConstants.SERVICE_UNDEPLOYED_SUCCESSFULLY_EVENT)) {
-                                servicesUndeployed++;
-                            }
-                        }
-                        ended = lifeCycleEnded && (servicesUndeployed == plannedNumberOfInstancesPerService.keySet().size());
+	                        int servicesUndeployed = 0;
+	                        for (String serviceName : plannedNumberOfInstancesPerService.keySet()) {
+	                            if (latestEvents.contains(serviceName + ":"
+	                                    + CloudifyConstants.SERVICE_UNDEPLOYED_SUCCESSFULLY_EVENT)) {
+	                                servicesUndeployed++;
+	                            }
+	                        }
+	                        ended = lifeCycleEnded
+	                        		&& (servicesUndeployed == plannedNumberOfInstancesPerService.keySet().size());
+                    	} else {
+                    		ended = true;
+                    	}
                     }
 
                     return ended;
@@ -99,4 +106,12 @@ public abstract class NewUninstallationProcessInspector extends InstallationProc
 
 
     }
+
+	public boolean isWaitForCloudResourcesRelease() {
+		return waitForCloudResourcesRelease;
+	}
+
+	public void setWaitForCloudResourcesRelease(boolean waitForCloudResourcesRelease) {
+		this.waitForCloudResourcesRelease = waitForCloudResourcesRelease;
+	}
 }

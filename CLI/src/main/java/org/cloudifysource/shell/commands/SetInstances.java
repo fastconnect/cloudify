@@ -12,6 +12,9 @@
  *******************************************************************************/
 package org.cloudifysource.shell.commands;
 
+import java.io.IOException;
+import java.util.concurrent.TimeoutException;
+
 import org.apache.felix.gogo.commands.Argument;
 import org.apache.felix.gogo.commands.Command;
 import org.apache.felix.gogo.commands.Option;
@@ -27,11 +30,9 @@ import org.cloudifysource.shell.exceptions.CLIException;
 import org.cloudifysource.shell.exceptions.CLIStatusException;
 import org.cloudifysource.shell.installer.CLIEventsDisplayer;
 import org.cloudifysource.shell.rest.RestAdminFacade;
+import org.cloudifysource.shell.rest.SetInstancesScaledownInstallationProcessInspector;
 import org.cloudifysource.shell.rest.SetInstancesScaleupInstallationProcessInspector;
 import org.fusesource.jansi.Ansi.Color;
-
-import java.io.IOException;
-import java.util.concurrent.TimeoutException;
 
 /************
  * Manually sets the number of instances for a specific service.
@@ -91,7 +92,7 @@ public class SetInstances extends AdminAwareCommand {
 			return waitForScaleOut(deploymentId, count, nextEventId,
                     initialNumberOfInstances);
 		} else {
-			waitForScaleIn();
+			return waitForScaleIn(deploymentId, count, nextEventId, initialNumberOfInstances);
 		}
 
 		// if(this.count < initialNumberOfInstances) {
@@ -127,7 +128,7 @@ public class SetInstances extends AdminAwareCommand {
 		// }
 		// }
 
-		return getFormattedMessage("set_instances_completed_successfully", Color.GREEN, serviceName, count);
+		// return getFormattedMessage("set_instances_completed_successfully", Color.GREEN, serviceName, count);
 	}
 
 	private int getNextEventId(final RestClient client, final String deploymentId) throws RestClientException {
@@ -136,11 +137,55 @@ public class SetInstances extends AdminAwareCommand {
 		if (!lastDeploymentEvents.getEvents().isEmpty()) {
 			lastEventId = lastDeploymentEvents.getEvents().iterator().next().getIndex();
 		}
-		return lastEventId+1;
+		return lastEventId + 1;
 	}
 
-	private void waitForScaleIn() {
-		// TODO Auto-generated method stub
+	private String waitForScaleIn(String deploymentID, int plannedNumberOfInstnaces, int lastEventIndex, int currentNumberOfInstances) throws InterruptedException, CLIException, IOException {
+		SetInstancesScaledownInstallationProcessInspector inspector =
+				new SetInstancesScaledownInstallationProcessInspector(
+						((RestAdminFacade) adminFacade).getNewRestClient(),
+						deploymentID,
+                        verbose,
+                        serviceName,
+                        plannedNumberOfInstnaces,
+						getCurrentApplicationName(),
+						lastEventIndex,
+                        currentNumberOfInstances);
+
+		int actualTimeout = this.timeout;
+		boolean isDone = false;
+		displayer.printEvent("installing_service", serviceName, plannedNumberOfInstnaces);
+		displayer.printEvent("waiting_for_lifecycle_of_service", serviceName);
+		while (!isDone) {
+			try {
+
+				inspector.waitForLifeCycleToEnd(actualTimeout);
+				isDone = true;
+
+			} catch (final TimeoutException e) {
+
+				// if non interactive, throw exception
+				if (!(Boolean) session.get(Constants.INTERACTIVE_MODE)) {
+					throw new CLIException(e.getMessage(), e);
+				}
+
+				// ask the user whether to continue viewing the installation or to stop
+				displayer.printEvent("");
+				boolean continueViewing = promptWouldYouLikeToContinueQuestion();
+				if (continueViewing) {
+					// prolong the polling timeouts
+					actualTimeout = DEFAULT_TIMEOUT_MINUTES;
+				} else {
+					throw new CLIStatusException(e,
+							"service_installation_timed_out_on_client",
+							serviceName);
+				}
+			}
+		}
+
+		// drop one line before printing the last message
+		displayer.printEvent("");
+		return getFormattedMessage("service_install_ended", Color.GREEN, serviceName);
 
 	}
 

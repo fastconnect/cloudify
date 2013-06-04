@@ -43,7 +43,7 @@ public class ServiceResolver implements NameAndPackedFileResolver {
 
     private File serviceDirectory;
     private File overrides;
-    private String serviceFileName;
+    private String serviceOverrideName;
 
     private Service service;
     private File serviceGroovyFile;
@@ -52,16 +52,19 @@ public class ServiceResolver implements NameAndPackedFileResolver {
 
     public ServiceResolver(final File serviceDirectory,
                            final File overrides,
-                           final String serviceFileName) {
+                           final String serviceOverrideName) {
         this.serviceDirectory = serviceDirectory;
         this.overrides = overrides;
-        this.serviceFileName = serviceFileName;
+        this.serviceOverrideName = serviceOverrideName;
     }
 
     @Override
     public String getName() throws CLIStatusException {
         if (!initialized) {
             init();
+        }
+        if (serviceOverrideName != null) {
+            return serviceOverrideName;
         }
         return service.getName();
     }
@@ -93,9 +96,9 @@ public class ServiceResolver implements NameAndPackedFileResolver {
     }
 
     private void init() throws CLIStatusException {
-        if (serviceFileName != null) {
+        if (serviceOverrideName != null) {
             // use overriden service file if defined.
-            final File fullPathToServiceFile = new File(serviceDirectory.getAbsolutePath(), serviceFileName);
+            final File fullPathToServiceFile = new File(serviceDirectory.getAbsolutePath(), serviceOverrideName);
             if (!fullPathToServiceFile.exists()) {
                 throw new CLIStatusException("service_file_doesnt_exist", fullPathToServiceFile.getPath());
             } else {

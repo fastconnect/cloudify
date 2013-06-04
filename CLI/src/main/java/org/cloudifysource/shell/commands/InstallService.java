@@ -80,10 +80,6 @@ public class InstallService extends AdminAwareCommand {
 			+ "done. Defaults to 5 minutes.")
 	private int timeoutInMinutes = DEFAULT_TIMEOUT_MINUTES;
 
-	@Option(required = false, name = "-service-file-name", description = "Name of the service file in the "
-			+ "recipe folder. If not specified, uses the default file name")
-	private String serviceFileName = null;
-
 	@Option(required = false, name = "-cloudConfiguration", description =
 			"File of directory containing configuration information to be used by the cloud driver "
 					+ "for this application")
@@ -164,14 +160,6 @@ public class InstallService extends AdminAwareCommand {
 		this.debugModeString = debugModeString;
 	}
 
-	public String getServiceFileName() {
-		return serviceFileName;
-	}
-
-	public void setServiceFileName(final String serviceFileName) {
-		this.serviceFileName = serviceFileName;
-	}
-
 	/**
 	 * {@inheritDoc}
 	 */
@@ -179,10 +167,7 @@ public class InstallService extends AdminAwareCommand {
 	protected Object doExecute() throws Exception {
 
         NameAndPackedFileResolver nameAndPackedFileResolver = getResolver(recipe);
-        if (serviceName == null) {
-            // no override name was defined. use the default.
-            serviceName = nameAndPackedFileResolver.getName();
-        }
+        serviceName = nameAndPackedFileResolver.getName();
         File packedFile = nameAndPackedFileResolver.getPackedFile();
 
         // upload the files if necessary
@@ -200,7 +185,6 @@ public class InstallService extends AdminAwareCommand {
         request.setDebugEvents(debugEvents);
         request.setServiceOverridesUploadKey(overridesFileKey);
         request.setServiceFolderUploadKey(recipeFileKey);
-        request.setServiceFileName(serviceFileName);
         request.setSelfHealing(disableSelfHealing);
         request.setTimeoutInMillis(timeoutInMinutes * MILLIS_IN_MINUTES);
 
@@ -266,7 +250,7 @@ public class InstallService extends AdminAwareCommand {
             return new PreparedPackageResolver(recipe);
         } else {
             // this is an actual service directory
-            return new ServiceResolver(resolve(recipe), overrides, serviceFileName);
+            return new ServiceResolver(resolve(recipe), overrides, serviceName);
         }
     }
 

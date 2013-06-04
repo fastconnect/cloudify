@@ -21,6 +21,9 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+
 import org.apache.commons.io.FileUtils;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.internal.CloudifyMessageKeys;
@@ -48,6 +51,7 @@ public class UploadRepo {
 	 * 
 	 * @throws IOException .
 	 */
+	@PostConstruct
 	public void init() throws IOException {
 		createUploadDir();
 		createScheduledExecutor();
@@ -65,6 +69,7 @@ public class UploadRepo {
 	 * 
 	 * @throws IOException .
 	 */
+	@PreDestroy
 	public void destroy() throws IOException {
 		executor.shutdown();
 		FileUtils.deleteDirectory(restUploadDir);

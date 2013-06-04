@@ -55,24 +55,6 @@ public class UploadController extends BaseRestController {
 	private UploadRepo uploadRepo;
 	
 	/**
-	 * Initializing the uploadRepo which responsible for uploading and retrieving the files.
-	 * @throws IOException .
-	 */
-	@PostConstruct
-	public void init() throws IOException {
-		uploadRepo.init();
-	}
-	
-	/**
-	 * terminating the uploadRepo.
-	 * @throws IOException .
-	 */
-	@PreDestroy
-	public void destroy() throws IOException {
-		uploadRepo.destroy();
-	}
-	
-	/**
 	 * Uploading a file to be used in future deployments.
 	 * The file will be kept at least {@link UploadRepo#TIMEOUT_SECOND} seconds.
 	 * @param fileName - the name of the file to upload.

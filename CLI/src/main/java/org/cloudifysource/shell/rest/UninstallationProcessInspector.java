@@ -6,7 +6,9 @@ import org.cloudifysource.dsl.rest.response.DeploymentEvent;
 import org.cloudifysource.dsl.rest.response.DeploymentEvents;
 import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.restclient.exceptions.RestClientException;
+import org.cloudifysource.restclient.exceptions.RestClientResponseException;
 import org.cloudifysource.shell.ConditionLatch;
+import org.cloudifysource.shell.ShellUtils;
 import org.cloudifysource.shell.exceptions.CLIException;
 import org.cloudifysource.shell.installer.CLIEventsDisplayer;
 
@@ -25,13 +27,12 @@ public abstract class UninstallationProcessInspector {
     private static final int POLLING_INTERVAL_MILLI_SECONDS = 500;
     protected static final int RESOURCE_NOT_FOUND_EXCEPTION_CODE = 404;
 
-    private static final String TIMEOUT_ERROR_MESSAGE = "Service uninstallation timed out. "
-            + "Configure the timeout using the -timeout flag.";
 
-    private RestClient restClient;
+    protected RestClient restClient;
     private String deploymentId;
     private boolean verbose;
-    private Map<String, Integer> currentNumberOfInstancesPerService;
+    private Map<String, Integer> initialNumberOfInstancesPerService;
+    private Map<String, Integer> baseLineNumberOfRunningInstancesPerService;
 
     private CLIEventsDisplayer displayer = new CLIEventsDisplayer();
     private int lastEventIndex = 0;
@@ -43,12 +44,13 @@ public abstract class UninstallationProcessInspector {
     public UninstallationProcessInspector(final RestClient restClient,
                                           final String deploymentId,
                                           final boolean verbose,
-                                          final Map<String, Integer> currentNumberOfInstancesPerService) {
+                                          final Map<String, Integer> initialNumberOfInstancesPerService) {
         //To change body of created methods use File | Settings | File Templates.
         this.restClient = restClient;
         this.deploymentId = deploymentId;
         this.verbose = verbose;
-        this.currentNumberOfInstancesPerService = currentNumberOfInstancesPerService;
+        this.initialNumberOfInstancesPerService = initialNumberOfInstancesPerService;
+        this.baseLineNumberOfRunningInstancesPerService = initialNumberOfInstancesPerService;
     }
 
     /**
@@ -82,7 +84,9 @@ public abstract class UninstallationProcessInspector {
 
         conditionLatch.waitFor(new ConditionLatch.Predicate() {
 
-            private Map<String, Boolean> resourcesMsgPrintedPerService = initWithFalse(currentNumberOfInstancesPerService.keySet());
+            private Map<String, Boolean> endedPerService = initWithFalse(initialNumberOfInstancesPerService.keySet());
+
+            private Map<String, Boolean> resourcesMsgPrintedPerService = initWithFalse(initialNumberOfInstancesPerService.keySet());
 
             private Map<String, Boolean> initWithFalse(final Set<String> serviceNames) {
                 Map<String, Boolean> resourcesMsgPrintedPerService = new HashMap<String, Boolean>();
@@ -92,77 +96,75 @@ public abstract class UninstallationProcessInspector {
                 return resourcesMsgPrintedPerService;
             }
 
-            private ServiceDescription serviceDescription = null;
-
             @Override
             public boolean isDone() throws CLIException, InterruptedException {
 
-                for (String serviceName : currentNumberOfInstancesPerService.keySet()) {
+                for (String serviceName : endedPerService.keySet()) {
 
-                    //restClient.getServiceDescription()
-                }
-                try {
-                    boolean ended = false;
-                    List<String> latestEvents;
-
-//                    try {
-//                        serviceDescription = restClient.getServiceDescription(applicationName, serviceName);
-//                    } catch (RestClientResponseException e) {
-//                        if (e.getStatusCode() == RESOURCE_NOT_FOUND_EXCEPTION_CODE) {
-//                            //if we got here - the service is not installed anymore
-//                            serviceDescription = null;
-//                        } else {
-//                            throw e;
-//                        }
-//                    }
-
-                    printUninstalledInstances(serviceDescription);
-                    latestEvents = getLatestEvents();
-                    if (latestEvents == null || latestEvents.isEmpty()) {
-                        displayer.printNoChange();
-                    } else {
-                        // If the event "Service undeployed successfully" is found - the server undeploy-thread ended.
-                        // This is an "internal" event and should not be printed; it is removed from the list.
-                        // Even if undeploy has completed - all lifecycle events should be printed first.
-                        if (latestEvents.contains(CloudifyConstants.SERVICE_UNDEPLOYED_SUCCESSFULLY)) {
-                            latestEvents.remove(CloudifyConstants.SERVICE_UNDEPLOYED_SUCCESSFULLY);
-                            ended = true;
+                    ServiceDescription description;
+                    try {
+                        description = getServiceDescription(serviceName);
+                    } catch (RestClientException e) {
+                        if (e instanceof RestClientResponseException
+                                && ((RestClientResponseException)e).getStatusCode() == RESOURCE_NOT_FOUND_EXCEPTION_CODE) {
+                            //if we got here - the service is not installed anymore
+                            description = null;
+                        } else {
+                            throw new CLIException(e.getMessage(), e);
                         }
-                        displayer.printEvents(latestEvents);
                     }
+
+                    try {
+                        List<String> latestEvents;
+
+                        printUninstalledInstances(description);
+                        latestEvents = getLatestEvents();
+                        if (latestEvents == null || latestEvents.isEmpty()) {
+                            displayer.printNoChange();
+                        } else {
+                            // If the event "Service undeployed successfully" is found - the server undeploy-thread ended.
+                            // This is an "internal" event and should not be printed; it is removed from the list.
+                            // Even if undeploy has completed - all lifecycle events should be printed first.
+                            if (latestEvents.contains(CloudifyConstants.SERVICE_UNDEPLOYED_SUCCESSFULLY)) {
+                                latestEvents.remove(CloudifyConstants.SERVICE_UNDEPLOYED_SUCCESSFULLY);
+                                endedPerService.remove(serviceName);
+                            }
+                            displayer.printEvents(latestEvents);
+                        }
 
                     // If the service' zone is no longer found - USM lifecycle events are not expected anymore.
                     // Print that cloud resources are being released.
-//                    if (serviceDescription == null && !resourcesMsgPrinted) {
-//                        displayer.printEvent(ShellUtils.getFormattedMessage("releasing_cloud_resources"));
-//                        resourcesMsgPrinted = true;
-//                    }
+                    if (description == null && !resourcesMsgPrintedPerService.get(serviceName)) {
+                        displayer.printEvent(ShellUtils.getFormattedMessage("releasing_cloud_resources"));
+                        resourcesMsgPrintedPerService.put(serviceName, true);
+                    }
 
-                    return ended;
-                } catch (final RestClientException e) {
-                    throw new CLIException(e.getMessage(), e);
+                    } catch (final RestClientException e) {
+                        throw new CLIException(e.getMessage(), e);
+                    }
                 }
+                return endedPerService.isEmpty();
             }
 
 
             private void printUninstalledInstances(final ServiceDescription serviceDescription)
                     throws RestClientException {
 
-//                int updatedNumberOfRunningInstances;
-//                if (serviceDescription != null) {
-//                    updatedNumberOfRunningInstances = serviceDescription.getInstanceCount();
-//
-//                    //displayer.printEvent("num_of_running_instances", baseLineNumberOfRunningInstances);
-//                    //displayer.printEvent("updated_num_of_running_instances", updatedNumberOfRunningInstances);
-//
-//                    if (baseLineNumberOfRunningInstances > updatedNumberOfRunningInstances) {
-//                        int numberOfRemovedInstance = initialNumberOfInstances - updatedNumberOfRunningInstances;
-//                        // another instance was uninstalled
-//                        displayer.printEvent("succesfully_uninstalled_instances", numberOfRemovedInstance,
-//                                initialNumberOfInstances, serviceName);
-//                        baseLineNumberOfRunningInstances = updatedNumberOfRunningInstances;
-//                    }
-//                }
+                int updatedNumberOfRunningInstances;
+                if (serviceDescription != null) {
+                    updatedNumberOfRunningInstances = serviceDescription.getInstanceCount();
+
+                    if (baseLineNumberOfRunningInstancesPerService.get(serviceDescription.getServiceName()) > updatedNumberOfRunningInstances) {
+                        int numberOfRemovedInstance = initialNumberOfInstancesPerService.get(serviceDescription.getServiceName()) - updatedNumberOfRunningInstances;
+                        // another instance was uninstalled
+                        displayer.printEvent(
+                                "succesfully_uninstalled_instances",
+                                numberOfRemovedInstance,
+                                initialNumberOfInstancesPerService.get(serviceDescription.getServiceName()),
+                                serviceDescription.getServiceName());
+                        baseLineNumberOfRunningInstancesPerService.put(serviceDescription.getServiceName(), updatedNumberOfRunningInstances);
+                    }
+                }
             }
 
         });
@@ -170,6 +172,8 @@ public abstract class UninstallationProcessInspector {
 
 
     }
+
+    protected abstract ServiceDescription getServiceDescription(String serviceName) throws RestClientException;
 
     /**
      * Creates a {@link org.cloudifysource.shell.ConditionLatch} object with the given timeout (in minutes),

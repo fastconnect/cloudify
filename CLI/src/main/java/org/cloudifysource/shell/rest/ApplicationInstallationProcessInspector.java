@@ -41,16 +41,14 @@ public class ApplicationInstallationProcessInspector extends InstallationProcess
             + "Configure the timeout using the -timeout flag.";
 
     private String applicationName;
-    private Map<String, Integer> plannedNumberOfInstancesPerService;
 
     public ApplicationInstallationProcessInspector(final RestClient restClient,
                                                    final String deploymentId,
                                                    final String applicationName,
                                                    final boolean verbose,
-                                                   final Map<String, Integer> plannedNumberOfInstancesPerService) {
-        super(restClient, deploymentId, verbose, plannedNumberOfInstancesPerService);
+                                                   final Set<String> serviceNames) {
+        super(restClient, deploymentId, verbose, serviceNames);
         this.applicationName = applicationName;
-        this.plannedNumberOfInstancesPerService = plannedNumberOfInstancesPerService;
     }
 
     @Override

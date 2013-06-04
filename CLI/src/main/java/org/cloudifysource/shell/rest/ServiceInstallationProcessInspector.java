@@ -15,16 +15,13 @@
  *******************************************************************************/
 package org.cloudifysource.shell.rest;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-
 import org.cloudifysource.dsl.internal.CloudifyConstants;
-import org.cloudifysource.dsl.internal.CloudifyConstants.DeploymentState;
 import org.cloudifysource.dsl.rest.ServiceDescription;
 import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.cloudifysource.restclient.exceptions.RestClientResponseException;
+
+import java.util.*;
 
 /**
  * Created with IntelliJ IDEA.
@@ -46,10 +43,9 @@ public class ServiceInstallationProcessInspector extends InstallationProcessInsp
     public ServiceInstallationProcessInspector(final RestClient restClient,
                                                final String deploymentId,
                                                final boolean verbose,
-                                               final Map<String, Integer> plannedNumberOfInstancesPerService,
                                                final String serviceName,
                                                final String applicationName) {
-        super(restClient, deploymentId, verbose, plannedNumberOfInstancesPerService);
+        super(restClient, deploymentId, verbose, new HashSet<String>(Arrays.asList(serviceName)));
         this.serviceName = serviceName;
         this.applicationName = applicationName != null ? applicationName : CloudifyConstants.DEFAULT_APPLICATION_NAME;
     }
@@ -77,7 +73,7 @@ public class ServiceInstallationProcessInspector extends InstallationProcessInsp
             ServiceDescription serviceDescription = restClient
                     .getServiceDescription(applicationName, serviceName);
             serviceIsInstalled = serviceDescription.getServiceState().equals(CloudifyConstants.DeploymentState.STARTED);
-    	} catch (RestClientResponseException e) {
+    	} catch (final RestClientResponseException e) {
     		if (e.getStatusCode() == RESOURCE_NOT_FOUND_EXCEPTION_CODE) {
         		// the service is not available yet
     			serviceIsInstalled = false;
@@ -97,7 +93,7 @@ public class ServiceInstallationProcessInspector extends InstallationProcessInsp
     		ServiceDescription serviceDescription = restClient
                 .getServiceDescription(applicationName, serviceName);
     		instanceCount = serviceDescription.getInstanceCount();
-    	} catch (RestClientResponseException e) {
+    	} catch (final RestClientResponseException e) {
     		if (e.getStatusCode() == RESOURCE_NOT_FOUND_EXCEPTION_CODE) {
     			//if we got here - the service is not installed yet
     			instanceCount = 0;
@@ -107,17 +103,6 @@ public class ServiceInstallationProcessInspector extends InstallationProcessInsp
     	}
     	
     	return instanceCount;
-    }
-
-    /**
-     * Checks if the specified service is in the target state.
-     * @param targetState The desired deployment state
-     * @return True - if the service is in the specified state, False otherwise
-     * @throws RestClientException Indicates a failure to retrieve the service state
-     */
-    public boolean isServiceInState(final DeploymentState targetState) throws RestClientException {
-        ServiceDescription serviceDescription = restClient.getServiceDescription(applicationName, serviceName);
-        return serviceDescription.getServiceState().equals(targetState);
     }
     
     @Override

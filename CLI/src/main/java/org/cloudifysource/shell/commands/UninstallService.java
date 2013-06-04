@@ -15,25 +15,19 @@
  *******************************************************************************/
 package org.cloudifysource.shell.commands;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.concurrent.TimeoutException;
-
 import org.apache.felix.gogo.commands.Argument;
 import org.apache.felix.gogo.commands.Command;
 import org.apache.felix.gogo.commands.CompleterValues;
 import org.apache.felix.gogo.commands.Option;
-import org.cloudifysource.dsl.rest.response.UninstallServiceResponse;
 import org.cloudifysource.restclient.RestClient;
-import org.cloudifysource.shell.Constants;
 import org.cloudifysource.shell.ShellUtils;
-import org.cloudifysource.shell.exceptions.CLIException;
-import org.cloudifysource.shell.exceptions.CLIStatusException;
 import org.cloudifysource.shell.installer.CLIEventsDisplayer;
 import org.cloudifysource.shell.rest.RestAdminFacade;
-import org.cloudifysource.shell.rest.ServiceUninstallationProcessInspector;
 import org.fusesource.jansi.Ansi.Color;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
 
 /**
  * @author rafi, adaml, barakm, noak
@@ -88,39 +82,39 @@ public class UninstallService extends AdminAwareCommand {
             return getFormattedMessage("uninstall_aborted");
         }
 
-        ServiceUninstallationProcessInspector inspector = new ServiceUninstallationProcessInspector(
-        		restClient, null /*undeploymentId*/, verbose, serviceName, getCurrentApplicationName());
-        
-        UninstallServiceResponse uninstallServiceResponse = restClient.uninstallService(getCurrentApplicationName(),
-        		serviceName, timeoutInMinutes);
-        
-        //inspector.setDeploymentId(uninstallServiceResponse.getDeploymentID());
-        
-        // start polling for life cycle events
-        boolean isDone = false;
-        displayer.printEvent("Waiting for life cycle events for service " + serviceName);
-        
-        while (!isDone) {
-            try {
-                inspector.waitForLifeCycleToEnd(timeoutInMinutes);
-                isDone = true;
-            } catch (final TimeoutException e) {
-                // if non interactive, throw exception
-                if (!(Boolean) session.get(Constants.INTERACTIVE_MODE)) {
-                    throw new CLIException(e.getMessage(), e);
-                }
-
-                // ask the user whether to continue viewing the installation or to stop
-                displayer.printEvent("");
-                boolean continueViewing = promptWouldYouLikeToContinueQuestion();
-                if (continueViewing) {
-                    // prolong the polling timeouts
-                	timeoutInMinutes = DEFAULT_TIMEOUT_MINUTES;
-                } else {
-                    throw new CLIStatusException(e, "service_uninstallation_timed_out_on_client", serviceName);
-                }
-            }
-        }
+//        ServiceUninstallationProcessInspector inspector = new ServiceUninstallationProcessInspector(
+//        		restClient, null /*undeploymentId*/, verbose, serviceName, getCurrentApplicationName());
+//
+//        UninstallServiceResponse uninstallServiceResponse = restClient.uninstallService(getCurrentApplicationName(),
+//        		serviceName, timeoutInMinutes);
+//
+//        //inspector.setDeploymentId(uninstallServiceResponse.getDeploymentID());
+//
+//        // start polling for life cycle events
+//        boolean isDone = false;
+//        displayer.printEvent("Waiting for life cycle events for service " + serviceName);
+//
+//        while (!isDone) {
+//            try {
+//                inspector.waitForLifeCycleToEnd(timeoutInMinutes);
+//                isDone = true;
+//            } catch (final TimeoutException e) {
+//                // if non interactive, throw exception
+//                if (!(Boolean) session.get(Constants.INTERACTIVE_MODE)) {
+//                    throw new CLIException(e.getMessage(), e);
+//                }
+//
+//                // ask the user whether to continue viewing the installation or to stop
+//                displayer.printEvent("");
+//                boolean continueViewing = promptWouldYouLikeToContinueQuestion();
+//                if (continueViewing) {
+//                    // prolong the polling timeouts
+//                	timeoutInMinutes = DEFAULT_TIMEOUT_MINUTES;
+//                } else {
+//                    throw new CLIStatusException(e, "service_uninstallation_timed_out_on_client", serviceName);
+//                }
+//            }
+//        }
 
         // drop one line before printing the last message
         displayer.printEvent("");

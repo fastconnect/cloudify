@@ -23,7 +23,10 @@ import org.cloudifysource.shell.ConditionLatch;
 import org.cloudifysource.shell.exceptions.CLIException;
 import org.cloudifysource.shell.installer.CLIEventsDisplayer;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -45,7 +48,8 @@ public abstract class InstallationProcessInspector {
     protected RestClient restClient;
     private boolean verbose;
     private String deploymentId;
-    private Map<String, Integer> plannedNumberOfInstancesPerService;
+    private Map<String, Integer> currentRunningInstancesPerService;
+
 
     private int lastEventIndex = 0;
 
@@ -54,16 +58,13 @@ public abstract class InstallationProcessInspector {
     public InstallationProcessInspector(final RestClient restClient,
                                         final String deploymentId,
                                         final boolean verbose,
-                                        final Map<String, Integer> plannedNumberOfInstancesPerService) {
+                                        final Set<String> serviceNames) {
         this.restClient = restClient;
         this.deploymentId = deploymentId;
         this.verbose = verbose;
-        this.plannedNumberOfInstancesPerService = plannedNumberOfInstancesPerService;
+        this.currentRunningInstancesPerService =
+                initNumberOfCurrentRunningInstancesPerService(serviceNames);
     }
-    
-	public void setDeploymentId(final String deploymentId) {
-		this.deploymentId = deploymentId;
-	}
 
     /**
      * Waits until the application/service lifecycle ends.
@@ -78,9 +79,6 @@ public abstract class InstallationProcessInspector {
 
         conditionLatch.waitFor(new ConditionLatch.Predicate() {
 
-            private Map<String, Integer> currentRunningInstancesPerService =
-                    initNumberOfCurrentRunningInstancesPerService(plannedNumberOfInstancesPerService.keySet());
-
             @Override
             public boolean isDone() throws CLIException, InterruptedException {
                 try {
@@ -88,7 +86,7 @@ public abstract class InstallationProcessInspector {
                     boolean ended = lifeCycleEnded();
                     if (!ended) {
                         List<String> latestEvents = getLatestEvents();
-                        if (latestEvents != null) {
+                        if (!latestEvents.isEmpty()) {
                             displayer.printEvents(latestEvents);
                         } else {
                             displayer.printNoChange();
@@ -101,7 +99,7 @@ public abstract class InstallationProcessInspector {
             }
 
             private void printInstalledInstances() throws RestClientException {
-        		for (Map.Entry<String, Integer> entry : plannedNumberOfInstancesPerService.entrySet()) {
+        		for (Map.Entry<String, Integer> entry : currentRunningInstancesPerService.entrySet()) {
                     int runningInstances = getNumberOfRunningInstances(entry.getKey());
                     if (runningInstances > currentRunningInstancesPerService.get(entry.getKey())) {
                         // a new instance is now running
@@ -111,8 +109,6 @@ public abstract class InstallationProcessInspector {
                     }
                 }
             }
-
-
         });
     }
 

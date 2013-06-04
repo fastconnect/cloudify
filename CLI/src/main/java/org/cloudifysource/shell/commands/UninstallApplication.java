@@ -15,28 +15,32 @@
  *******************************************************************************/
 package org.cloudifysource.shell.commands;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-
 import org.apache.felix.gogo.commands.Argument;
 import org.apache.felix.gogo.commands.Command;
 import org.apache.felix.gogo.commands.CompleterValues;
 import org.apache.felix.gogo.commands.Option;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
-import org.cloudifysource.dsl.rest.response.UninstallApplicationResponse;
+import org.cloudifysource.dsl.rest.response.ApplicationDescription;
+import org.cloudifysource.dsl.rest.response.DeploymentEvents;
+import org.cloudifysource.dsl.rest.response.ServiceDescription;
 import org.cloudifysource.restclient.RestClient;
+import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.cloudifysource.shell.Constants;
 import org.cloudifysource.shell.GigaShellMain;
 import org.cloudifysource.shell.ShellUtils;
 import org.cloudifysource.shell.exceptions.CLIException;
 import org.cloudifysource.shell.exceptions.CLIStatusException;
 import org.cloudifysource.shell.installer.CLIEventsDisplayer;
-import org.cloudifysource.shell.rest.ApplicationUninstallationProcessInspector;
+import org.cloudifysource.shell.rest.NewApplicationUninstallationProcessInspector;
 import org.cloudifysource.shell.rest.RestAdminFacade;
 import org.fusesource.jansi.Ansi.Color;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.TimeoutException;
 
 /**
  * @author rafi, adaml, barakm, noak
@@ -96,13 +100,26 @@ public class UninstallApplication extends AdminAwareCommand {
 			throw new CLIStatusException("cannot_uninstall_management_application");
 		}
 
-		ApplicationUninstallationProcessInspector inspector = new ApplicationUninstallationProcessInspector(
-        		restClient, null /*undeploymentId*/, verbose, getCurrentApplicationName());
+        ApplicationDescription applicationDescription = restClient.getApplicationDescription(applicationName);
+        Map<String, Integer> currentNumberOfRunningInstancesPerService = new HashMap<String, Integer>();
+        for (ServiceDescription serviceDescription : applicationDescription.getServicesDescription()) {
+            currentNumberOfRunningInstancesPerService.put(serviceDescription.getServiceName(), serviceDescription.getInstanceCount());
+        }
+
+        final String deploymentId = applicationDescription.getServicesDescription().get(0).getDeploymentId();
+
+        final int nextEventId = getNextEventId(restClient, deploymentId);
+
+        NewApplicationUninstallationProcessInspector inspector =
+                new NewApplicationUninstallationProcessInspector(
+                        restClient, deploymentId, verbose, currentNumberOfRunningInstancesPerService, applicationName,
+                        nextEventId);
+        inspector.setServiceDescriptionList(applicationDescription.getServicesDescription());
+
 		
-		final UninstallApplicationResponse uninstallApplicationResponse = restClient.uninstallApplication(
+		restClient.uninstallApplication(
 				applicationName, timeoutInMinutes);
-		
-		inspector.setDeploymentId(uninstallApplicationResponse.getDeploymentID());
+
 		
 		// start polling for life cycle events
         boolean isDone = false;
@@ -110,7 +127,7 @@ public class UninstallApplication extends AdminAwareCommand {
 
         while (!isDone) {
             try {
-                inspector.waitForLifeCycleToEnd(timeoutInMinutes, TimeUnit.MINUTES);
+                inspector.waitForLifeCycleToEnd(timeoutInMinutes);
                 isDone = true;
             } catch (final TimeoutException e) {
                 // if non interactive, throw exception
@@ -150,4 +167,14 @@ public class UninstallApplication extends AdminAwareCommand {
     private boolean promptWouldYouLikeToContinueQuestion() throws IOException {
         return ShellUtils.promptUser(session, "would_you_like_to_continue_application_uninstallation", applicationName);
     }
+
+    private int getNextEventId(final RestClient client, final String deploymentId) throws RestClientException {
+        int lastEventId = 0;
+        final DeploymentEvents lastDeploymentEvents = client.getLastEvent(deploymentId);
+        if (!lastDeploymentEvents.getEvents().isEmpty()) {
+            lastEventId = lastDeploymentEvents.getEvents().iterator().next().getIndex();
+        }
+        return lastEventId+1;
+    }
+
 }

@@ -59,7 +59,6 @@ import org.cloudifysource.dsl.rest.request.SetApplicationAttributesRequest;
 import org.cloudifysource.dsl.rest.request.SetServiceAttributesRequest;
 import org.cloudifysource.dsl.rest.request.SetServiceInstanceAttributesRequest;
 import org.cloudifysource.dsl.rest.request.SetServiceInstancesRequest;
-import org.cloudifysource.dsl.rest.request.UninstallApplicationRequest;
 import org.cloudifysource.dsl.rest.request.UpdateApplicationAttributeRequest;
 import org.cloudifysource.dsl.rest.response.ApplicationDescription;
 import org.cloudifysource.dsl.rest.response.DeleteApplicationAttributeResponse;
@@ -424,9 +423,6 @@ public class DeploymentsController extends BaseRestController {
             @PathVariable final String appName)
             throws ResourceNotFoundException {
 
-        // validate service exists
-        controllerHelper.getApplication(appName);
-
         final ApplicationDescriptionFactory appDescriptionFactory =
                 new ApplicationDescriptionFactory(restConfig.getAdmin());
         return appDescriptionFactory.getApplicationDescription(appName);
@@ -732,8 +728,7 @@ public class DeploymentsController extends BaseRestController {
 						deleteServiceAttributes(appName, serviceName);
 						//write to events cache
 						DeploymentEvent undeployFinishedEvent = new DeploymentEvent();
-						undeployFinishedEvent.setDescription(serviceName + ":" 
-								+ CloudifyConstants.SERVICE_UNDEPLOYED_SUCCESSFULLY_EVENT);
+						undeployFinishedEvent.setDescription(CloudifyConstants.UNDEPLOYED_SUCCESSFULLY_EVENT);
 						eventsCache.add(new EventsCacheKey(deploymentId), undeployFinishedEvent);
 						return result;
 					}
@@ -1250,7 +1245,7 @@ public class DeploymentsController extends BaseRestController {
     @PreAuthorize("isFullyAuthenticated()")
     public UninstallApplicationResponse uninstallApplication(
     		@PathVariable final String appName,
-    		@RequestBody final UninstallApplicationRequest request)
+            @RequestParam(required = false, defaultValue = "15") final Integer timeoutInMinutes)
     				throws RestErrorException {
 
     	validateUninstallApplication(appName);
@@ -1286,6 +1281,10 @@ public class DeploymentsController extends BaseRestController {
 
 				@Override
 				public void run() {
+
+                    final String deploymentId = uninstallOrder.get(0).getBeanLevelProperties()
+                            .getContextProperties().getProperty(CloudifyConstants.CONTEXT_PROPERTY_DEPLOYMENT_ID);
+
 					for (final ProcessingUnit processingUnit : uninstallOrder) {
 						if (permissionEvaluator != null) {
 							final CloudifyAuthorizationDetails authDetails =
@@ -1295,7 +1294,7 @@ public class DeploymentsController extends BaseRestController {
 							permissionEvaluator.verifyPermission(authDetails, puAuthGroups, "deploy");
 						}
 
-						final long undeployTimeout = TimeUnit.MINUTES.toMillis(request.getTimeoutInMinutes())
+						final long undeployTimeout = TimeUnit.MINUTES.toMillis(timeoutInMinutes)
 								- (System.currentTimeMillis() - startTime);
 						try {
 							//TODO: move this to constant
@@ -1315,8 +1314,6 @@ public class DeploymentsController extends BaseRestController {
 								logger.info("Removing application service scope attributes for service " + serviceName);
 								deleteServiceAttributes(appName,
 										serviceName);
-
-
 							}
 						} catch (final Exception e) {
 							final String msg = "Failed to undeploy processing unit: "
@@ -1330,6 +1327,9 @@ public class DeploymentsController extends BaseRestController {
 							logger.log(Level.SEVERE, msg, e);
 						}
 					}
+                    DeploymentEvent undeployFinishedEvent = new DeploymentEvent();
+                    undeployFinishedEvent.setDescription(CloudifyConstants.UNDEPLOYED_SUCCESSFULLY_EVENT);
+                    eventsCache.add(new EventsCacheKey(deploymentId), undeployFinishedEvent);
 					logger.log(Level.INFO, "Application " + appName
 							+ " undeployment complete");
 				}

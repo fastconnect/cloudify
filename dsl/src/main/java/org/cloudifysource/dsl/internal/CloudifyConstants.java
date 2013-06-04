@@ -409,7 +409,7 @@ public final class CloudifyConstants {
 	public static final int LIFECYCLE_EVENT_POLLING_INTERVAL_SEC = 4;
 
 	// uninstall-service constants
-	public static final String SERVICE_UNDEPLOYED_SUCCESSFULLY_EVENT = "Internal event - Service undeployed successfully";
+	public static final String UNDEPLOYED_SUCCESSFULLY_EVENT = "Internal event - undeployed successfully";
 
 	// CHECKSTYLE:ON
 }

@@ -1,15 +1,15 @@
 package org.cloudifysource.shell.rest;
 
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeoutException;
-
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.cloudifysource.shell.ConditionLatch;
 import org.cloudifysource.shell.exceptions.CLIException;
 import org.cloudifysource.shell.installer.CLIEventsDisplayer;
+
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Created with IntelliJ IDEA.
@@ -67,20 +67,15 @@ public abstract class NewUninstallationProcessInspector extends InstallationProc
                     }
 
                     if (lifeCycleEnded) {
-
                     	if (waitForCloudResourcesRelease) {
 	                        // wait for cloud resources
 	                        latestEvents = getLatestEvents();
 
-	                        int servicesUndeployed = 0;
-	                        for (String serviceName : plannedNumberOfInstancesPerService.keySet()) {
-	                            if (latestEvents.contains(serviceName + ":"
-	                                    + CloudifyConstants.SERVICE_UNDEPLOYED_SUCCESSFULLY_EVENT)) {
-	                                servicesUndeployed++;
-	                            }
-	                        }
-	                        ended = lifeCycleEnded
-	                        		&& (servicesUndeployed == plannedNumberOfInstancesPerService.keySet().size());
+                            boolean undeployEnded = false;
+                            if (latestEvents.contains(CloudifyConstants.UNDEPLOYED_SUCCESSFULLY_EVENT)) {
+                                undeployEnded = true;
+                            }
+                            ended = lifeCycleEnded && undeployEnded;
                     	} else {
                     		ended = true;
                     	}

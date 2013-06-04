@@ -72,6 +72,7 @@ public class ApplicationDescriptionFactory {
 			throws ResourceNotFoundException {
 
 		final Application application = admin.getApplications().getApplication(applicationName);
+
 		return getApplicationDescription(application);
 	}
 

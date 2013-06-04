@@ -47,17 +47,16 @@ public class ApplicationInstallationProcessInspector extends InstallationProcess
                                                    final String applicationName,
                                                    final boolean verbose,
                                                    final Map<String, Integer> plannedNumberOfInstancesPerService) {
-        super(restClient, deploymentId, verbose, plannedNumberOfInstancesPerService);
+        super(restClient, deploymentId, verbose, plannedNumberOfInstancesPerService, initWithZeros(plannedNumberOfInstancesPerService.keySet()));
         this.applicationName = applicationName;
     }
 
-    @Override
-    public Map<String, Integer> initNumberOfCurrentRunningInstancesPerService(Set<String> serviceNames) {
-        Map<String, Integer> currentRunningInstancesPerService = new HashMap<String, Integer>();
-        for (String service : serviceNames) {
-            currentRunningInstancesPerService.put(service, 0);
+    private static Map<String, Integer> initWithZeros(Set<String> serviceNames) {
+        Map<String, Integer> map = new HashMap<String, Integer>();
+        for (String serviceName : serviceNames) {
+            map.put(serviceName, 0);
         }
-        return currentRunningInstancesPerService;
+        return map;
     }
 
     @Override

@@ -49,7 +49,7 @@ public class ServiceInstallationProcessInspector extends InstallationProcessInsp
                                                final int plannedNumberOfInstances,
                                                final String applicationName) {
 
-        super(restClient, deploymentId, verbose, createOneEntryMap(serviceName, plannedNumberOfInstances));
+        super(restClient, deploymentId, verbose, createOneEntryMap(serviceName, plannedNumberOfInstances) ,createOneEntryMap(serviceName, 0));
         this.serviceName = serviceName;
         this.applicationName = applicationName != null ? applicationName : CloudifyConstants.DEFAULT_APPLICATION_NAME;
     }
@@ -58,15 +58,6 @@ public class ServiceInstallationProcessInspector extends InstallationProcessInsp
         Map<String, Integer> map = new HashMap<String, Integer>();
         map.put(serviceName, numberOfInstances);
         return map;
-    }
-
-    @Override
-    public Map<String, Integer> initNumberOfCurrentRunningInstancesPerService(Set<String> serviceNames) {
-        Map<String, Integer> currentRunningInstancesPerService = new HashMap<String, Integer>();
-        for (String service : serviceNames) {
-            currentRunningInstancesPerService.put(service, 0);
-        }
-        return currentRunningInstancesPerService;
     }
 
     /**

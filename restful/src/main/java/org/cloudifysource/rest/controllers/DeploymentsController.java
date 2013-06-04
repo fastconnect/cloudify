@@ -731,7 +731,7 @@ public class DeploymentsController extends BaseRestController {
 						deleteServiceAttributes(appName, serviceName);
 						//write to events cache
 						DeploymentEvent undeployFinishedEvent = new DeploymentEvent();
-						undeployFinishedEvent.setDescription(CloudifyConstants.SERVICE_UNDEPLOYED_SUCCESSFULLY);
+						undeployFinishedEvent.setDescription(CloudifyConstants.SERVICE_UNDEPLOYED_SUCCESSFULLY_EVENT);
 						eventsCache.add(new EventsCacheKey(undeploymentId), undeployFinishedEvent);
 						return result;
 					}

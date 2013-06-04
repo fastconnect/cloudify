@@ -36,7 +36,7 @@ import org.cloudifysource.dsl.rest.response.ApplicationDescription;
 import org.cloudifysource.dsl.rest.response.ControllerDetails;
 import org.cloudifysource.dsl.rest.response.InstallApplicationResponse;
 import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
-import org.cloudifysource.dsl.rest.response.ServiceDescription;
+import org.cloudifysource.dsl.rest.response.UninstallApplicationResponse;
 import org.cloudifysource.dsl.rest.response.UninstallServiceResponse;
 import org.cloudifysource.dsl.rest.response.UploadResponse;
 import org.cloudifysource.dsl.utils.ServiceUtils;
@@ -56,10 +56,11 @@ import org.codehaus.jackson.map.ObjectMapper;
 import com.j_spaces.kernel.PlatformVersion;
 
 /**
- * This class implements the {@link org.cloudifysource.shell.AdminFacade}, relying on the abstract implementation of
- * {@link AbstractAdminFacade}. It discovers and manages applications, services, containers and other components over
- * REST, using the {@link GSRestClient}.
- *
+ * This class implements the {@link org.cloudifysource.shell.AdminFacade},
+ * relying on the abstract implementation of {@link AbstractAdminFacade}. It
+ * discovers and manages applications, services, containers and other components
+ * over REST, using the {@link GSRestClient}.
+ * 
  * @author rafi, barakm, adaml, noak
  * @since 2.0.0
  */
@@ -147,12 +148,11 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 	 * {@inheritDoc}
 	 */
 	@Override
-	public void removeInstance(final String applicationName,
-			final String serviceName, final int instanceId) throws CLIException {
+	public void removeInstance(final String applicationName, final String serviceName, final int instanceId)
+			throws CLIException {
 
-		final String relativeUrl = SERVICE_CONTROLLER_URL + "applications/"
-				+ applicationName + "/services/" + serviceName + "/instances/"
-				+ instanceId + "/remove";
+		final String relativeUrl = SERVICE_CONTROLLER_URL + "applications/" + applicationName + "/services/"
+				+ serviceName + "/instances/" + instanceId + "/remove";
 		try {
 			client.delete(relativeUrl);
 		} catch (final ErrorStatusException e) {
@@ -173,8 +173,8 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 			final List<Object> objectsList = (List<Object>) client.get("/service/applications/description");
 			final ObjectMapper map = new ObjectMapper();
 			for (final Object object : objectsList) {
-				final ApplicationDescription applicationDescription =
-						map.convertValue(object, ApplicationDescription.class);
+				final ApplicationDescription applicationDescription = map.convertValue(object,
+						ApplicationDescription.class);
 				applicationDescriptionList.add(applicationDescription);
 			}
 		} catch (final ErrorStatusException e) {
@@ -202,25 +202,22 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 	 * {@inheritDoc}
 	 */
 	@Override
-	public ApplicationDescription getServicesDescriptionList(final String applicationName)
-			throws CLIException {
+	public ApplicationDescription getServicesDescriptionList(final String applicationName) throws CLIException {
 		try {
 			@SuppressWarnings("unchecked")
-			final List<Object> applicationDescriptionList = (List<Object>) client
-					.get("/service/applications/" + applicationName
-							+ "/services/description");
+			final List<Object> applicationDescriptionList = (List<Object>) client.get("/service/applications/"
+					+ applicationName + "/services/description");
 			if (applicationDescriptionList == null || applicationDescriptionList.isEmpty()) {
 				return null;
 			}
 			final ObjectMapper map = new ObjectMapper();
 			final Object descriptionObject = applicationDescriptionList.get(0);
-			final ApplicationDescription applicationDescription =
-					map.convertValue(descriptionObject, ApplicationDescription.class);
+			final ApplicationDescription applicationDescription = map.convertValue(descriptionObject,
+					ApplicationDescription.class);
 			return applicationDescription;
 			// http://stackoverflow.com/questions/5219073/json-deserialization-problem
 		} catch (final ErrorStatusException ese) {
-			throw new CLIStatusException(ese, ese.getReasonCode(),
-					ese.getArgs());
+			throw new CLIStatusException(ese, ese.getReasonCode(), ese.getArgs());
 		}
 	}
 
@@ -228,17 +225,14 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 	 * {@inheritDoc}
 	 */
 	@Override
-	public List<String> getServicesList(final String applicationName)
-			throws CLIException {
+	public List<String> getServicesList(final String applicationName) throws CLIException {
 		try {
 			@SuppressWarnings("unchecked")
-			final List<String> services = (List<String>) client
-					.get("/service/applications/" + applicationName
+			final List<String> services = (List<String>) client.get("/service/applications/" + applicationName
 							+ "/services");
 			return services;
 		} catch (final ErrorStatusException ese) {
-			throw new CLIStatusException(ese, ese.getReasonCode(),
-					ese.getArgs());
+			throw new CLIStatusException(ese, ese.getReasonCode(), ese.getArgs());
 		}
 	}
 
@@ -246,10 +240,8 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 	 * {@inheritDoc}
 	 */
 	@Override
-	protected String doDeploy(final String applicationName,
-			final File packedFile) throws CLIException {
-		final String url = SERVICE_CONTROLLER_URL + CLOUD_CONTROLLER_URL
-				+ "deploy?applicationName=" + applicationName;
+	protected String doDeploy(final String applicationName, final File packedFile) throws CLIException {
+		final String url = SERVICE_CONTROLLER_URL + CLOUD_CONTROLLER_URL + "deploy?applicationName=" + applicationName;
 		try {
 			return (String) client.postFile(url, packedFile);
 		} catch (final ErrorStatusException e) {
@@ -263,8 +255,7 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 	 * {@inheritDoc}
 	 */
 	@Override
-	public String startService(final String applicationName,
-			final File serviceFile) throws CLIException {
+	public String startService(final String applicationName, final File serviceFile) throws CLIException {
 		return doDeploy(applicationName, serviceFile);
 	}
 
@@ -272,17 +263,14 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Map<String, String> undeploy(final String applicationName,
-			final String serviceName, final int timeoutInMinutes)
-			throws CLIException {
+	public Map<String, String> undeploy(final String applicationName, final String serviceName,
+			final int timeoutInMinutes) throws CLIException {
 
-		final String url = SERVICE_CONTROLLER_URL + "applications/"
-				+ applicationName + "/services/" + serviceName + "/timeout/"
-				+ timeoutInMinutes + "/undeploy";
+		final String url = SERVICE_CONTROLLER_URL + "applications/" + applicationName + "/services/" + serviceName
+				+ "/timeout/" + timeoutInMinutes + "/undeploy";
 		try {
 			@SuppressWarnings("unchecked")
-			final Map<String, String> response = (Map<String, String>) client
-					.delete(url);
+			final Map<String, String> response = (Map<String, String>) client.delete(url);
 			return response;
 		} catch (final ErrorStatusException e) {
 			throw new CLIStatusException(e, e.getReasonCode(), e.getArgs());
@@ -313,15 +301,14 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Map<String, Object> getInstanceList(final String applicationName,
-			final String serviceName) throws CLIException {
+	public Map<String, Object> getInstanceList(final String applicationName, final String serviceName)
+			throws CLIException {
 
-		final String url = SERVICE_CONTROLLER_URL + "applications/"
-				+ applicationName + "/services/" + serviceName + "/instances";
+		final String url = SERVICE_CONTROLLER_URL + "applications/" + applicationName + "/services/" + serviceName
+				+ "/instances";
 		try {
 			@SuppressWarnings("unchecked")
-			final Map<String, Object> instances = (Map<String, Object>) client
-					.get(url);
+			final Map<String, Object> instances = (Map<String, Object>) client.get(url);
 			return instances;
 		} catch (final ErrorStatusException e) {
 			throw new CLIStatusException(e, e.getReasonCode(), e.getArgs());
@@ -332,18 +319,15 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 	 * {@inheritDoc}
 	 */
 	@Override
-	public String installElastic(final File packedFile,
-			final String applicationName, final String serviceName,
-			final String zone, final Properties contextProperties,
-			final String templateName, final String authGroups,
-			final int timeout, final boolean selfHealing,
-			final File cloudOverrides, final File serviceOverrides) throws CLIException {
+	public String installElastic(final File packedFile, final String applicationName, final String serviceName,
+			final String zone, final Properties contextProperties, final String templateName, final String authGroups,
+			final int timeout, final boolean selfHealing, final File cloudOverrides, final File serviceOverrides)
+			throws CLIException {
 
 		String response;
-		final String url = SERVICE_CONTROLLER_URL + "applications/"
-				+ applicationName + "/services/" + serviceName + "/timeout/"
-				+ timeout + "?zone=" + zone + "&template=" + templateName
-				+ "&selfHealing=" + Boolean.toString(selfHealing);
+		final String url = SERVICE_CONTROLLER_URL + "applications/" + applicationName + "/services/" + serviceName
+				+ "/timeout/" + timeout + "?zone=" + zone + "&template=" + templateName + "&selfHealing="
+				+ Boolean.toString(selfHealing);
 		try {
 			final Map<String, File> additionalFiles = new HashMap<String, File>();
 			additionalFiles.put("file", packedFile);
@@ -369,20 +353,17 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 	 * {@inheritDoc}
 	 */
 	@Override
-	public void waitForLifecycleEvents(final String pollingID,
-			final int timeout, final String timeoutMessage)
+	public void waitForLifecycleEvents(final String pollingID, final int timeout, final String timeoutMessage)
 			throws CLIException, InterruptedException, TimeoutException {
 		final RestLifecycleEventsLatch restLifecycleEventsLatch = new RestLifecycleEventsLatch();
 		restLifecycleEventsLatch.setPollingId(pollingID);
 		restLifecycleEventsLatch.setRestClient(client);
 		restLifecycleEventsLatch.setTimeoutMessage(timeoutMessage);
-		restLifecycleEventsLatch.waitForLifecycleEvents(timeout,
-				TimeUnit.MINUTES);
+		restLifecycleEventsLatch.waitForLifecycleEvents(timeout, TimeUnit.MINUTES);
 	}
 
 	@Override
-	public RestLifecycleEventsLatch getLifecycleEventsPollingLatch(
-			final String pollingID, final String timeoutMessage) {
+	public RestLifecycleEventsLatch getLifecycleEventsPollingLatch(final String pollingID, final String timeoutMessage) {
 		final RestLifecycleEventsLatch restLifecycleEventsLatch = new RestLifecycleEventsLatch();
 		restLifecycleEventsLatch.setPollingId(pollingID);
 		restLifecycleEventsLatch.setRestClient(client);
@@ -394,18 +375,14 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Map<String, InvocationResult> invokeServiceCommand(
-			final String applicationName, final String serviceName,
-			final String beanName, final String commandName,
-			final Map<String, String> params) throws CLIException {
-		final String url = SERVICE_CONTROLLER_URL + "applications/"
-				+ applicationName + "/services/" + serviceName + "/beans/"
-				+ beanName + "/invoke";
+	public Map<String, InvocationResult> invokeServiceCommand(final String applicationName, final String serviceName,
+			final String beanName, final String commandName, final Map<String, String> params) throws CLIException {
+		final String url = SERVICE_CONTROLLER_URL + "applications/" + applicationName + "/services/" + serviceName
+				+ "/beans/" + beanName + "/invoke";
 
 		Object result;
 		try {
-			result = client.post(url,
-					buildCustomCommandParams(commandName, params));
+			result = client.post(url, buildCustomCommandParams(commandName, params));
 		} catch (final ErrorStatusException e) {
 			throw new CLIStatusException(e, e.getReasonCode(), e.getArgs());
 		} catch (final RestException e) {
@@ -420,13 +397,12 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 			final Object value = entry.getValue();
 
 			if (!(value instanceof Map<?, ?>)) {
-				logger.severe("Received an unexpected return value to the invoke command. Key: "
-						+ entry.getKey() + ", value: " + value);
+				logger.severe("Received an unexpected return value to the invoke command. Key: " + entry.getKey()
+						+ ", value: " + value);
 			} else {
 				@SuppressWarnings("unchecked")
 				final Map<String, String> curr = (Map<String, String>) value;
-				final InvocationResult invocationResult = InvocationResult
-						.createInvocationResult(curr);
+				final InvocationResult invocationResult = InvocationResult.createInvocationResult(curr);
 				invocationResultMap.put(entry.getKey(), invocationResult);
 			}
 
@@ -438,19 +414,17 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 	 * {@inheritDoc}
 	 */
 	@Override
-	public InvocationResult invokeInstanceCommand(final String applicationName,
-			final String serviceName, final String beanName,
-			final int instanceId, final String commandName,
-			final Map<String, String> paramsMap) throws CLIException {
-		final String url = SERVICE_CONTROLLER_URL + "applications/"
-				+ applicationName + "/services/" + serviceName + "/instances/"
-				+ instanceId + "/beans/" + beanName + "/invoke";
+	public InvocationResult invokeInstanceCommand(final String applicationName, final String serviceName,
+			final String beanName, final int instanceId, final String commandName, final Map<String, String> paramsMap)
+			throws CLIException {
+		final String url = SERVICE_CONTROLLER_URL + "applications/" + applicationName + "/services/" + serviceName
+				+ "/instances/" + instanceId + "/beans/" + beanName + "/invoke";
 
 		Map<String, String> resultMap;
 		try {
 			@SuppressWarnings("unchecked")
-			final Map<String, String> response = (Map<String, String>) client
-					.post(url, buildCustomCommandParams(commandName, paramsMap));
+			final Map<String, String> response = (Map<String, String>) client.post(url,
+					buildCustomCommandParams(commandName, paramsMap));
 			resultMap = response;
 		} catch (final ErrorStatusException e) {
 			throw new CLIStatusException(e, e.getReasonCode(), e.getArgs());
@@ -471,8 +445,8 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 
 	}
 
-	private Map<String, String> buildCustomCommandParams(
-			final String commandName, final Map<String, String> parametersMap) {
+	private Map<String, String> buildCustomCommandParams(final String commandName,
+			final Map<String, String> parametersMap) {
 		final Map<String, String> params = new HashMap<String, String>();
 		params.put(GS_USM_COMMAND_NAME, commandName);
 		// add all of the predefined parameters into the params map.
@@ -497,8 +471,7 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 			throw new CLIException(e);
 		}
 		@SuppressWarnings("unchecked")
-		final List<String> list = (List<String>) map
-				.get("HostsByAddress-Elements");
+		final List<String> list = (List<String>) map.get("HostsByAddress-Elements");
 		final List<String> result = new ArrayList<String>(list.size());
 		for (final String host : list) {
 			final String[] parts = host.split("/");
@@ -511,92 +484,81 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 	/**
 	 * {@inheritDoc}
 	 */
-	@Override
-	public Map<String, String> uninstallApplication(
-			final String applicationName, final int timeoutInMinutes)
-			throws CLIException {
-
-		final String url = SERVICE_CONTROLLER_URL + "applications/"
-				+ applicationName + "/timeout/" + timeoutInMinutes;
-		try {
-			@SuppressWarnings("unchecked")
-			final Map<String, String> response = (Map<String, String>) client
-					.delete(url);
-			return response;
-		} catch (final ErrorStatusException e) {
-			throw new CLIStatusException(e, e.getReasonCode(), e.getArgs());
-		}
-	}
+	/*
+	 * @Override public Map<String, String> uninstallApplication( final String
+	 * applicationName, final int timeoutInMinutes) throws CLIException {
+	 * 
+	 * final String url = SERVICE_CONTROLLER_URL + "applications/" +
+	 * applicationName + "/timeout/" + timeoutInMinutes; try {
+	 * 
+	 * @SuppressWarnings("unchecked") final Map<String, String> response =
+	 * (Map<String, String>) client .delete(url); return response; } catch
+	 * (final ErrorStatusException e) { throw new CLIStatusException(e,
+	 * e.getReasonCode(), e.getArgs()); } }
+	 */
 
 	/**
 	 * Gets all the UIDs of the services of the given application.
-	 *
+	 * 
 	 * @param applicationName
 	 *            The name of the application to query for its services
 	 * @return A set of UIDs of all the services of the given application.
 	 * @throws CLIException
-	 *             Reporting a failure to the application's services or a service's UID
+	 *             Reporting a failure to the application's services or a
+	 *             service's UID
 	 */
-	public Set<String> getGridServiceContainerUidsForApplication(
-			final String applicationName) throws CLIException {
+	public Set<String> getGridServiceContainerUidsForApplication(final String applicationName) throws CLIException {
 		final Set<String> containerUids = new HashSet<String>();
 
 		final ApplicationDescription servicesList = getServicesDescriptionList(applicationName);
 		for (final ServiceDescription serviceDescription : servicesList.getServicesDescription()) {
 			final String serviceName = serviceDescription.getServiceName();
-			containerUids.addAll(getGridServiceContainerUidsForService(
-					applicationName, serviceName));
+			containerUids.addAll(getGridServiceContainerUidsForService(applicationName, serviceName));
 		}
 		return containerUids;
 	}
 
 	/**
-	 * Returns all the UIDs of the GSCs that run the given service, in the context of the given application.
-	 *
+	 * Returns all the UIDs of the GSCs that run the given service, in the
+	 * context of the given application.
+	 * 
 	 * @param applicationName
 	 *            The name of the application deployed in the requested GSCs
 	 * @param serviceName
 	 *            The name of the service deployed in the requested GSCs
-	 * @return a set of UIDs of the GSCs that run the given service in the context of the given application
+	 * @return a set of UIDs of the GSCs that run the given service in the
+	 *         context of the given application
 	 * @throws CLIException
-	 *             Reporting a failure to locate the requested GSCs or get the UIDs.
+	 *             Reporting a failure to locate the requested GSCs or get the
+	 *             UIDs.
 	 */
-	public Set<String> getGridServiceContainerUidsForService(
-			final String applicationName, final String serviceName)
+	public Set<String> getGridServiceContainerUidsForService(final String applicationName, final String serviceName)
 			throws CLIException {
 
 		final Set<String> containerUids = new HashSet<String>();
 
-		final int numberOfInstances = this.getInstanceList(applicationName,
-				serviceName).size();
+		final int numberOfInstances = this.getInstanceList(applicationName, serviceName).size();
 
-		final String absolutePUName = ServiceUtils.getAbsolutePUName(
-				applicationName, serviceName);
+		final String absolutePUName = ServiceUtils.getAbsolutePUName(applicationName, serviceName);
 		for (int i = 0; i < numberOfInstances; i++) {
 
-			final String containerUrl = "applications/Names/" + applicationName
-					+ "/ProcessingUnits/Names/" + absolutePUName
-					+ "/Instances/" + i + "/GridServiceContainer/Uid";
+			final String containerUrl = "applications/Names/" + applicationName + "/ProcessingUnits/Names/"
+					+ absolutePUName + "/Instances/" + i + "/GridServiceContainer/Uid";
 			try {
-				final Map<String, Object> container = client
-						.getAdmin(containerUrl);
+				final Map<String, Object> container = client.getAdmin(containerUrl);
 
 				if (container == null) {
-					throw new IllegalStateException("Could not find container "
-							+ containerUrl);
+					throw new IllegalStateException("Could not find container " + containerUrl);
 				}
 				if (!container.containsKey("Uid")) {
-					throw new IllegalStateException(
-							"Could not find AgentUid of container "
-									+ containerUrl);
+					throw new IllegalStateException("Could not find AgentUid of container " + containerUrl);
 				}
 
 				containerUids.add((String) container.get("Uid"));
 			} catch (final ErrorStatusException e) {
 				throw new CLIStatusException(e, e.getReasonCode(), e.getArgs());
 			} catch (final RestException e) {
-				throw new CLIStatusException(e, "cant_find_service_for_app",
-						serviceName, applicationName);
+				throw new CLIStatusException(e, "cant_find_service_for_app", serviceName, applicationName);
 			}
 		}
 		return containerUids;
@@ -604,10 +566,11 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 
 	/**
 	 * Gets the UIDs of all GSCs.
-	 *
+	 * 
 	 * @return a set of UIDs
 	 * @throws CLIException
-	 *             Reporting a failure to locate the requested GSCs or get the UIDs.
+	 *             Reporting a failure to locate the requested GSCs or get the
+	 *             UIDs.
 	 */
 	public Set<String> getGridServiceContainerUids() throws CLIException {
 		Map<String, Object> container;
@@ -619,12 +582,10 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 			throw new CLIException(e);
 		}
 		@SuppressWarnings("unchecked")
-		final List<String> containerUris = (List<String>) container
-				.get("Uids-Elements");
+		final List<String> containerUris = (List<String>) container.get("Uids-Elements");
 		final Set<String> containerUids = new HashSet<String>();
 		for (final String containerUri : containerUris) {
-			final String uid = containerUri.substring(containerUri
-					.lastIndexOf('/') + 1);
+			final String uid = containerUri.substring(containerUri.lastIndexOf('/') + 1);
 			containerUids.add(uid);
 		}
 		return containerUids;
@@ -638,8 +599,7 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 		final String url = SERVICE_CONTROLLER_URL + "dump/" + ip;
 		try {
 			@SuppressWarnings("unchecked")
-			final Map<String, String> response = (Map<String, String>) client
-					.get(url);
+			final Map<String, String> response = (Map<String, String>) client.get(url);
 			return response;
 		} catch (final ErrorStatusException e) {
 			throw new CLIStatusException(e, e.getReasonCode(), e.getArgs());
@@ -648,22 +608,21 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 
 	/**
 	 * {@inheritDoc}
-	 *
+	 * 
 	 * @param debugAll
 	 * @param debugEvents
 	 * @param debugMode
 	 */
 	@Override
 	@SuppressWarnings("unchecked")
-	public Map<String, String> installApplication(final File applicationFile,
-			final String applicationName, final String authGroups, final int timeout,
-			final boolean selfHealing, final File applicationOverrides,
-			final File cloudOverrides,
-			final boolean debugAll, final String debugEvents, final String debugMode) throws CLIException {
+	public Map<String, String> installApplication(final File applicationFile, final String applicationName,
+			final String authGroups, final int timeout, final boolean selfHealing, final File applicationOverrides,
+			final File cloudOverrides, final boolean debugAll, final String debugEvents, final String debugMode)
+			throws CLIException {
 
 		final String url = SERVICE_CONTROLLER_URL + "applications/" + applicationName + "/timeout/" + timeout
-				+ "?selfHealing=" + Boolean.toString(selfHealing)
-				+ "&debugAll=" + Boolean.toString(debugAll) + "&debugEvents=" + debugEvents + "&debugMode=" + debugMode;
+				+ "?selfHealing=" + Boolean.toString(selfHealing) + "&debugAll=" + Boolean.toString(debugAll)
+				+ "&debugEvents=" + debugEvents + "&debugMode=" + debugMode;
 
 		final Map<String, File> filesToPost = new HashMap<String, File>();
 		filesToPost.put("file", applicationFile);
@@ -710,8 +669,7 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 	}
 
 	@Override
-	public void updateAttributes(final String scope,
-			final String appplicationName, final Map<String, String> attributes)
+	public void updateAttributes(final String scope, final String appplicationName, final Map<String, String> attributes)
 			throws CLIException {
 		final String url = getRelativeUrlForAttributes(scope, appplicationName);
 		try {
@@ -725,13 +683,11 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 	}
 
 	@Override
-	public Map<String, String> listAttributes(final String scope,
-			final String applicationName) throws CLIException {
+	public Map<String, String> listAttributes(final String scope, final String applicationName) throws CLIException {
 		final String url = getRelativeUrlForAttributes(scope, applicationName);
 		try {
 			@SuppressWarnings("unchecked")
-			final Map<String, String> response = (Map<String, String>) client
-					.get(url, null);
+			final Map<String, String> response = (Map<String, String>) client.get(url, null);
 			return response;
 		} catch (final ErrorStatusException e) {
 			throw new CLIStatusException(e, e.getReasonCode(), e.getArgs());
@@ -739,8 +695,7 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 	}
 
 	@Override
-	public void deleteAttributes(final String scope,
-			final String applicationName, final String... attributeNames)
+	public void deleteAttributes(final String scope, final String applicationName, final String... attributeNames)
 			throws CLIException {
 		final String url = getRelativeUrlForAttributes(scope, applicationName);
 		for (final String attributeName : attributeNames) {
@@ -753,8 +708,7 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 
 	}
 
-	private String getRelativeUrlForAttributes(final String scope,
-			final String applicationName) throws CLIException {
+	private String getRelativeUrlForAttributes(final String scope, final String applicationName) throws CLIException {
 		if ("global".equals(scope)) {
 			return "/attributes/globals";
 		}
@@ -766,13 +720,11 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 		}
 		final String[] serviceScope = scope.split(":");
 		if (serviceScope.length < 2) {
-			throw new CLIStatusException(
-					"service_scope_must_contain_service_name");
+			throw new CLIStatusException("service_scope_must_contain_service_name");
 		}
 		final String serviceName = serviceScope[1];
 		if (serviceScope.length == 2) {
-			return "/attributes/services/" + applicationName + "/"
-					+ serviceName;
+			return "/attributes/services/" + applicationName + "/" + serviceName;
 		}
 		final String instanceIdentifier = serviceScope[2];
 		if ("all-instances".equalsIgnoreCase(instanceIdentifier)) {
@@ -780,34 +732,27 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 		}
 		final Integer instanceId = StringUtils.safeParseInt(instanceIdentifier);
 		if (instanceIdentifier == null) {
-			throw new CLIStatusException("illegal_instance_identifier",
-					instanceIdentifier);
+			throw new CLIStatusException("illegal_instance_identifier", instanceIdentifier);
 		}
 		validateInstanceId(instanceId, applicationName, serviceName);
-		return "/attributes/instances/" + applicationName + "/" + serviceName
-				+ "/" + instanceIdentifier;
+		return "/attributes/instances/" + applicationName + "/" + serviceName + "/" + instanceIdentifier;
 	}
 
-	private void validateInstanceId(final Integer instanceId,
-			final String applicationName, final String serviceName)
+	private void validateInstanceId(final Integer instanceId, final String applicationName, final String serviceName)
 			throws CLIException {
 		if (instanceId != null) {
-			final Map<String, Object> instanceList = getInstanceList(
-					applicationName, serviceName);
+			final Map<String, Object> instanceList = getInstanceList(applicationName, serviceName);
 			if (instanceList == null || instanceList.isEmpty()) {
-				throw new CLIStatusException("service_has_no_instances",
-						serviceName);
+				throw new CLIStatusException("service_has_no_instances", serviceName);
 			}
 		}
 	}
 
 	@Override
-	public String getTailByInstanceId(final String serviceName,
-			final String applicationName, final int instanceId,
+	public String getTailByInstanceId(final String serviceName, final String applicationName, final int instanceId,
 			final int numLines) throws CLIException {
-		final String url = SERVICE_CONTROLLER_URL + "applications/"
-				+ applicationName + "/services/" + serviceName + "/instances/"
-				+ instanceId + "/tail/" + "?numLines=" + numLines;
+		final String url = SERVICE_CONTROLLER_URL + "applications/" + applicationName + "/services/" + serviceName
+				+ "/instances/" + instanceId + "/tail/" + "?numLines=" + numLines;
 		try {
 			final String response = (String) client.get(url);
 			return response;
@@ -817,12 +762,10 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 	}
 
 	@Override
-	public String getTailByHostAddress(final String serviceName,
-			final String applicationName, final String hostAddress,
-			final int numLines) throws CLIException {
-		final String url = SERVICE_CONTROLLER_URL + "applications/"
-				+ applicationName + "/services/" + serviceName + "/address/"
-				+ hostAddress + "/tail/" + "?numLines=" + numLines;
+	public String getTailByHostAddress(final String serviceName, final String applicationName,
+			final String hostAddress, final int numLines) throws CLIException {
+		final String url = SERVICE_CONTROLLER_URL + "applications/" + applicationName + "/services/" + serviceName
+				+ "/address/" + hostAddress + "/tail/" + "?numLines=" + numLines;
 		try {
 			final String response = (String) client.get(url);
 			return response;
@@ -832,12 +775,10 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 	}
 
 	@Override
-	public String getTailByServiceName(final String serviceName,
-			final String applicationName, final int numLines)
+	public String getTailByServiceName(final String serviceName, final String applicationName, final int numLines)
 			throws CLIException {
-		final String url = SERVICE_CONTROLLER_URL + "applications/"
-				+ applicationName + "/services/" + serviceName + "/tail/"
-				+ "?numLines=" + numLines;
+		final String url = SERVICE_CONTROLLER_URL + "applications/" + applicationName + "/services/" + serviceName
+				+ "/tail/" + "?numLines=" + numLines;
 		try {
 			final String response = (String) client.get(url);
 			return response;
@@ -851,8 +792,7 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 	 */
 	@SuppressWarnings("unchecked")
 	@Override
-	public List<String> addTemplates(final File templatesFile)
-			throws CLIException {
+	public List<String> addTemplates(final File templatesFile) throws CLIException {
 		final String url = SERVICE_CONTROLLER_URL + "templates";
 		List<String> response;
 		try {
@@ -872,8 +812,7 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 	 */
 	@SuppressWarnings("unchecked")
 	@Override
-	public Map<String, ComputeTemplate> listTemplates()
-			throws CLIStatusException {
+	public Map<String, ComputeTemplate> listTemplates() throws CLIStatusException {
 		final String url = SERVICE_CONTROLLER_URL + "templates";
 		final Map<String, ComputeTemplate> response = new HashMap<String, ComputeTemplate>();
 		try {
@@ -893,8 +832,7 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 	 * {@inheritDoc}
 	 */
 	@Override
-	public ComputeTemplate getTemplate(final String templateName)
-			throws CLIStatusException {
+	public ComputeTemplate getTemplate(final String templateName) throws CLIStatusException {
 		final String url = SERVICE_CONTROLLER_URL + "templates/" + templateName;
 		ComputeTemplate response;
 		try {
@@ -913,8 +851,7 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 	 * {@inheritDoc}
 	 */
 	@Override
-	public void removeTemplate(final String templateName)
-			throws CLIStatusException {
+	public void removeTemplate(final String templateName) throws CLIStatusException {
 		final String url = SERVICE_CONTROLLER_URL + "templates/" + templateName;
 		try {
 			client.delete(url);
@@ -959,32 +896,31 @@ public class RestAdminFacade extends AbstractAdminFacade implements Installer, U
 	}
 
 	@Override
-	public InstallServiceResponse installService(
-			final String applicationName,
-			final String serviceName,
+	public InstallServiceResponse installService(final String applicationName, final String serviceName,
 			final InstallServiceRequest request) throws RestClientException {
 		return newRestClient.installService(applicationName, serviceName, request);
 	}
 
 	@Override
-	public InstallApplicationResponse installApplication(
-			final String applicationName,
+	public InstallApplicationResponse installApplication(final String applicationName,
 			final InstallApplicationRequest request) throws RestClientException {
 		return newRestClient.installApplication(applicationName, request);
 	}
 
 	@Override
-	public UninstallServiceResponse uninstallService(
-			final String applicationName,
-			final String serviceName,
+	public UninstallServiceResponse uninstallService(final String applicationName, final String serviceName,
 			final int timeoutInMinutes) throws RestClientException {
 		return newRestClient.uninstallService(applicationName, serviceName, timeoutInMinutes);
 	}
 
 	@Override
-	public UploadResponse upload(
-			final String fileName,
-			final File file) throws RestClientException {
+	public UninstallApplicationResponse uninstallApplication(final String applicationName, final int timeoutInMinutes)
+			throws RestClientException {
+		return newRestClient.uninstallApplication(applicationName, timeoutInMinutes);
+	}
+
+	@Override
+	public UploadResponse upload(final String fileName, final File file) throws RestClientException {
 		return newRestClient.upload(fileName, file);
 	}
 }

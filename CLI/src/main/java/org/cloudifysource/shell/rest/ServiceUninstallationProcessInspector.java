@@ -1,41 +1,45 @@
 package org.cloudifysource.shell.rest;
 
-import java.util.Map;
+import java.util.Arrays;
+import java.util.HashSet;
 
-import org.cloudifysource.dsl.rest.response.ServiceDescription;
+import org.cloudifysource.dsl.rest.ServiceDescription;
 import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.restclient.exceptions.RestClientException;
+import org.cloudifysource.shell.ShellUtils;
+import org.cloudifysource.shell.exceptions.CLIException;
 
 /**
- * Created with IntelliJ IDEA.
- * User: elip
- * Date: 6/4/13
- * Time: 1:19 PM
+ * Inspects the uninstallation process of a service.
+ * @author noak, elip
+ * @since 2.6.0
  */
 public class ServiceUninstallationProcessInspector extends UninstallationProcessInspector {
 
-    private static final String TIMEOUT_ERROR_MESSAGE = "Service uninstallation timed out. "
-            + "Configure the timeout using the -timeout flag.";
+	private final String applicationName;
 
-    private String applicationName;
-
-    public ServiceUninstallationProcessInspector(final RestClient restClient,
-                                                 final String deploymentId,
-                                                 final boolean verbose,
-                                                 final Map<String, Integer> initialNumberOfInstancesPerService,
-                                                 final String applicationName) {
-        super(restClient, deploymentId, verbose, initialNumberOfInstancesPerService);
+	public ServiceUninstallationProcessInspector(final RestClient restClient, final String deploymentId,
+			final boolean verbose, final String serviceName, final String applicationName) throws CLIException {
+		super(restClient, deploymentId, verbose, new HashSet(Arrays.asList(serviceName)));
         this.applicationName = applicationName;
     }
 
-
     @Override
     protected String getTimeoutErrorMessage() {
-        return TIMEOUT_ERROR_MESSAGE;
+		return ShellUtils.getFormattedMessage("service_uninstallation_timed_out");
     }
 
     @Override
-    protected ServiceDescription getServiceDescription(final String serviceName) throws RestClientException {
-        return restClient.getServiceDescription(applicationName, serviceName);
+	protected ServiceDescription getServiceDescription(final String serviceName) throws CLIException {
+		
+		ServiceDescription serviceDescription = null;
+		try {
+			serviceDescription = restClient.getServiceDescription(applicationName, serviceName);
+		} catch (RestClientException e) {
+			throw new CLIException(e.getMessage(), e);
     }
+		
+		return serviceDescription;
+	}
+
 }

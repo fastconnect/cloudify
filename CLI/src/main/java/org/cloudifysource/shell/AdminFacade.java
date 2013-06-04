@@ -340,19 +340,6 @@ public interface AdminFacade {
 	 */
 	List<String> getMachines() throws CLIException;
 
-	/**
-	 * Uninstalls the specified application.
-	 *
-	 * @param applicationName
-	 *            The name of the application to uninstall
-	 * @param timeoutInMinutes
-	 *            .
-	 * @return The uninstall response, as a key-value map
-	 * @throws CLIException
-	 *             Reporting a failure to uninstall the application
-	 */
-	Map<String, String> uninstallApplication(String applicationName,
-			int timeoutInMinutes) throws CLIException;
 
 	/**
 	 * Wait for service installation events for a specified time period.

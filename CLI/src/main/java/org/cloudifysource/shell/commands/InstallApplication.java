@@ -203,7 +203,7 @@ public class InstallApplication extends AdminAwareCommand {
         		installApplicationResponse.getDeploymentID(), 
         		applicationName,
         		verbose,
-        		plannedNumberOfInstancesPerService);	
+        		plannedNumberOfInstancesPerService);
         		
         Application application = ((Application) nameAndPackedFileResolver.getDSLObject());
 		//print application info.

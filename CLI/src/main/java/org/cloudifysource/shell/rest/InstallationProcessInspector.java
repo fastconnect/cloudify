@@ -48,22 +48,22 @@ public abstract class InstallationProcessInspector {
     protected RestClient restClient;
     private boolean verbose;
     private String deploymentId;
+    private final Map<String, Integer> plannedNumberOfInstancesPerService;
     private Map<String, Integer> currentRunningInstancesPerService;
 
-
     private int lastEventIndex = 0;
-
     private CLIEventsDisplayer displayer = new CLIEventsDisplayer();
 
     public InstallationProcessInspector(final RestClient restClient,
                                         final String deploymentId,
                                         final boolean verbose,
-                                        final Set<String> serviceNames) {
+                                        final Map<String, Integer> plannedNumberOfInstancesPerService) {
         this.restClient = restClient;
         this.deploymentId = deploymentId;
         this.verbose = verbose;
+        this.plannedNumberOfInstancesPerService = plannedNumberOfInstancesPerService;
         this.currentRunningInstancesPerService =
-                initNumberOfCurrentRunningInstancesPerService(serviceNames);
+                initNumberOfCurrentRunningInstancesPerService(plannedNumberOfInstancesPerService.keySet());
     }
 
     /**
@@ -99,7 +99,7 @@ public abstract class InstallationProcessInspector {
             }
 
             private void printInstalledInstances() throws RestClientException {
-        		for (Map.Entry<String, Integer> entry : currentRunningInstancesPerService.entrySet()) {
+        		for (Map.Entry<String, Integer> entry : plannedNumberOfInstancesPerService.entrySet()) {
                     int runningInstances = getNumberOfRunningInstances(entry.getKey());
                     if (runningInstances > currentRunningInstancesPerService.get(entry.getKey())) {
                         // a new instance is now running

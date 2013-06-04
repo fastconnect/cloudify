@@ -424,7 +424,7 @@
 			<groupId>org.codehaus.groovy</groupId>
 			<artifactId>groovy</artifactId>
 			<version>${groovyVersion}</version>
-			<scope>test</scope>
+			<scope>compile</scope>
 		</dependency>
 		
 	</dependencies>

@@ -46,8 +46,8 @@ public class ApplicationInstallationProcessInspector extends InstallationProcess
                                                    final String deploymentId,
                                                    final String applicationName,
                                                    final boolean verbose,
-                                                   final Set<String> serviceNames) {
-        super(restClient, deploymentId, verbose, serviceNames);
+                                                   final Map<String, Integer> plannedNumberOfInstancesPerService) {
+        super(restClient, deploymentId, verbose, plannedNumberOfInstancesPerService);
         this.applicationName = applicationName;
     }
 

@@ -215,8 +215,8 @@ public class InstallService extends AdminAwareCommand {
                 ((RestAdminFacade) adminFacade).getNewRestClient(),
                 installServiceResponse.getDeploymentID(),
                 verbose,
-                plannedNumberOfInstancesPerService,
                 serviceName,
+                nameAndPackedFileResolver.getPlannedNumberOfInstancesPerService().get(serviceName),
                 getCurrentApplicationName());
 
         int actualTimeout = timeoutInMinutes;

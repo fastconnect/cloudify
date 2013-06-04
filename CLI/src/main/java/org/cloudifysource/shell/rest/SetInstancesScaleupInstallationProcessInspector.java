@@ -16,14 +16,14 @@ public class SetInstancesScaleupInstallationProcessInspector extends ServiceInst
     public SetInstancesScaleupInstallationProcessInspector(final RestClient restClient,
                                                            final String deploymentId,
                                                            final boolean verbose,
-                                                           final Map<String, Integer> plannedNumberOfInstancesPerService,
                                                            final String serviceName,
+                                                           final int plannedNumberOfInstances,
                                                            final String applicationName) {
         super(restClient,
               deploymentId,
               verbose,
-              plannedNumberOfInstancesPerService,
               serviceName,
+              plannedNumberOfInstances,
               applicationName);
     }
 

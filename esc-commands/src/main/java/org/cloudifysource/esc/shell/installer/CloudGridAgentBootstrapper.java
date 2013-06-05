@@ -23,7 +23,6 @@ import org.cloudifysource.dsl.cloud.compute.ComputeTemplate;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.internal.CloudifyErrorMessages;
 import org.cloudifysource.dsl.rest.response.ControllerDetails;
-import org.cloudifysource.dsl.rest.response.UninstallApplicationResponse;
 import org.cloudifysource.esc.driver.provisioning.*;
 import org.cloudifysource.esc.driver.provisioning.context.DefaultProvisioningDriverClassContext;
 import org.cloudifysource.esc.driver.provisioning.context.ProvisioningDriverClassContextAware;
@@ -39,15 +38,13 @@ import org.cloudifysource.esc.shell.listener.CliAgentlessInstallerListener;
 import org.cloudifysource.esc.shell.listener.CliProvisioningDriverListener;
 import org.cloudifysource.esc.util.CalcUtils;
 import org.cloudifysource.esc.util.Utils;
-import org.cloudifysource.restclient.RestClient;
-import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.cloudifysource.shell.AdminFacade;
 import org.cloudifysource.shell.ConditionLatch;
 import org.cloudifysource.shell.ShellUtils;
 import org.cloudifysource.shell.exceptions.CLIException;
 import org.cloudifysource.shell.exceptions.CLIStatusException;
-import org.cloudifysource.shell.rest.ApplicationUninstallationProcessInspector;
 import org.cloudifysource.shell.rest.RestAdminFacade;
+import org.cloudifysource.shell.rest.inspect.CLIApplicationUninstaller;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.type.TypeFactory;
 import org.openspaces.admin.gsa.GSAReservationId;
@@ -600,60 +597,26 @@ public class CloudGridAgentBootstrapper {
 
 		final long startTime = System.currentTimeMillis();
 		final long millisToEnd = end - startTime;
-		final int minutesToEnd = (int) TimeUnit.MILLISECONDS.toMinutes(millisToEnd);
-
-        // first lets execute a request to uninstall all running applications
-
-        List<ApplicationUninstallationProcessInspector> inspectors = new ArrayList<ApplicationUninstallationProcessInspector>();
 
         for (final String application : applicationsList) {
             if (!application.equals(MANAGEMENT_APPLICATION)) {
+                CLIApplicationUninstaller uninstaller = new CLIApplicationUninstaller();
+                uninstaller.setRestAdminFacade((RestAdminFacade) adminFacade);
+                uninstaller.setApplicationName(application);
+                uninstaller.setAskOnTimeout(false);
+                uninstaller.setInitialTimeout((int) millisToEnd);
                 try {
-
-                    final RestClient restClient = ((RestAdminFacade) adminFacade).getNewRestClient();
-                    UninstallApplicationResponse uninstallApplicationResponse =
-                            restClient.uninstallApplication(application, minutesToEnd);
-                    ApplicationUninstallationProcessInspector inspector =
-                            new ApplicationUninstallationProcessInspector(restClient, uninstallApplicationResponse.getDeploymentID(),
-                                    verbose, application);
-                    inspectors.add(inspector);
-                } catch (final RestClientException e) {
-                    throw new CLIException(e.getMessage(), e, e.getVerbose());
-                }
-            }
-        }
-
-        // now lets wait for the requests to finish
-
-        while (true) {
-
-            if (System.currentTimeMillis() > end) {
-                throw new TimeoutException("Timeout waiting for application to uninstall before teardown");
-            }
-
-            for (ApplicationUninstallationProcessInspector inspector : new ArrayList<ApplicationUninstallationProcessInspector>(inspectors)) {
-                try {
-                    inspector.waitForLifeCycleToEnd(5, TimeUnit.MILLISECONDS);
-                    inspectors.remove(inspector);
-                } catch (final TimeoutException e) {
-                    // did not finish yet.
-                } catch (final CLIException e) {
-                    // some other error happened.
-                    if (!force) {
-                        throw e;
+                    uninstaller.uninstall();
+                } catch (final Exception e) {
+                    if (force) {
+                        logger.warning("Failed uninstalling application " + application
+                                + ". Teardown will continue");
                     } else {
-                        logger.warning("Failed uninstalling application " + inspector.getApplicationName() + " : "
-                                + e.getMessage() + ". Teardown will continue");
+                        throw new CLIException(e.getMessage(), e);
                     }
                 }
             }
-            if (inspectors.isEmpty()) {
-                // all inspectors are done.
-                return;
-            }
-            Thread.sleep(POLLING_INTERVAL);
         }
-
 	}
 
 	private MachineDetails[] startManagememntProcesses(final MachineDetails[] machines, final String securityProfile,

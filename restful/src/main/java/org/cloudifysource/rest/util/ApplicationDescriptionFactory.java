@@ -12,12 +12,6 @@
  *******************************************************************************/
 package org.cloudifysource.rest.util;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.internal.CloudifyConstants.DeploymentState;
 import org.cloudifysource.dsl.internal.CloudifyConstants.USMState;
@@ -28,18 +22,17 @@ import org.cloudifysource.dsl.utils.ServiceUtils;
 import org.cloudifysource.rest.exceptions.ResourceNotFoundException;
 import org.openspaces.admin.Admin;
 import org.openspaces.admin.application.Application;
-import org.openspaces.admin.gsc.GridServiceContainer;
-import org.openspaces.admin.gsc.GridServiceContainers;
 import org.openspaces.admin.internal.pu.DefaultProcessingUnit;
-import org.openspaces.admin.pu.DeploymentStatus;
-import org.openspaces.admin.pu.ProcessingUnit;
-import org.openspaces.admin.pu.ProcessingUnitInstance;
-import org.openspaces.admin.pu.ProcessingUnitInstanceStatistics;
-import org.openspaces.admin.pu.ProcessingUnitType;
-import org.openspaces.admin.pu.ProcessingUnits;
+import org.openspaces.admin.pu.*;
 import org.openspaces.admin.zone.Zone;
 import org.openspaces.admin.zone.Zones;
 import org.openspaces.pu.service.ServiceMonitors;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * This factory class is responsible for manufacturing an application description POJO. The application description will
@@ -125,6 +118,36 @@ public class ApplicationDescriptionFactory {
 		return serviceDescriptionList;
 	}
 
+    public ServiceDescription getServiceDescription(final ProcessingUnit processingUnit) {
+        int plannedNumberOfInstances, numberOfServiceInstances;
+        DeploymentState serviceState;
+        plannedNumberOfInstances = getPlannedNumberOfInstances(processingUnit);
+        numberOfServiceInstances = getNumberOfServiceInstances(processingUnit);
+        List<InstanceDescription> serviceInstancesDescription = getServiceInstacesDescription(processingUnit);
+        serviceState = getServiceState(processingUnit, serviceInstancesDescription, numberOfServiceInstances,
+                plannedNumberOfInstances);
+        String absolutePuName = processingUnit.getName();
+        logger.log(Level.FINE, "Service \"" + absolutePuName + "\" is in state: " + serviceState);
+
+        ServiceDescription serviceDescription = new ServiceDescription();
+        serviceDescription.setPlannedInstances(plannedNumberOfInstances);
+        serviceDescription.setInstanceCount(numberOfServiceInstances);
+        String applicationName = processingUnit.getName().split("\\.")[1];
+        serviceDescription.setApplicationName(applicationName);
+        serviceDescription.setServiceName(ServiceUtils.getApplicationServiceName(absolutePuName, applicationName));
+        serviceDescription.setInstancesDescription(serviceInstancesDescription);
+        serviceDescription.setServiceState(serviceState);
+
+        final String deploymentId =
+                processingUnit.getBeanLevelProperties()
+                        .getContextProperties().getProperty(CloudifyConstants.CONTEXT_PROPERTY_DEPLOYMENT_ID);
+        serviceDescription.setDeploymentId(deploymentId);
+
+        return serviceDescription;
+
+
+    }
+
 	/**
 	 * Gets a populated service description object for the specified service.
 	 *
@@ -139,22 +162,17 @@ public class ApplicationDescriptionFactory {
 	public ServiceDescription getServiceDescription(final String absolutePuName, final String applicationName)
 			throws ResourceNotFoundException {
 
-		int plannedNumberOfInstances, numberOfServiceInstances;
-		DeploymentState serviceState;
-		Zone zone = null;
+		Zone zone;
 		ProcessingUnit processingUnit = null;
 
 		zone = getZone(absolutePuName);
 		if (zone != null) {
 			// for undeply - zone exists, PU does not.
-			GridServiceContainers gridServiceContainers = zone.getGridServiceContainers();
-			if (gridServiceContainers != null && !gridServiceContainers.isEmpty()) {
-				GridServiceContainer gsc = gridServiceContainers.getContainers()[0];
-				ProcessingUnitInstance[] puInstances = gsc.getProcessingUnitInstances();
-				if (puInstances != null && puInstances.length > 0) {
-					processingUnit = puInstances[0].getProcessingUnit();
-				}
-			}
+            ProcessingUnitInstance[] processingUnitInstances = zone.getProcessingUnitInstances();
+            zone.getGridServiceContainers().getContainers()[0].getProcessingUnitInstances();
+            if (processingUnitInstances.length > 0) {
+                processingUnit = processingUnitInstances[0].getProcessingUnit();
+            }
 		}
 
 		// if PU not found in zone, perhaps GSCs are not started yet, so look for PU in Admin.
@@ -167,32 +185,7 @@ public class ApplicationDescriptionFactory {
 			throw new ResourceNotFoundException(absolutePuName);
 		}
 
-
-		plannedNumberOfInstances = getPlannedNumberOfInstances(processingUnit);
-		numberOfServiceInstances = getNumberOfServiceInstances(processingUnit);
-		List<InstanceDescription> serviceInstancesDescription = getServiceInstacesDescription(processingUnit);
-		serviceState = getServiceState(processingUnit, serviceInstancesDescription, numberOfServiceInstances,
-				plannedNumberOfInstances);
-		logger.log(Level.FINE, "Service \"" + absolutePuName + "\" is in state: " + serviceState);
-
-		ServiceDescription serviceDescription = new ServiceDescription();
-		serviceDescription.setPlannedInstances(plannedNumberOfInstances);
-		serviceDescription.setInstanceCount(numberOfServiceInstances);
-		serviceDescription.setApplicationName(applicationName);
-		serviceDescription.setServiceName(ServiceUtils.getApplicationServiceName(absolutePuName, applicationName));
-		serviceDescription.setInstancesDescription(serviceInstancesDescription);
-		serviceDescription.setServiceState(serviceState);
-
-		if (processingUnit == null) {
-			serviceDescription.setDeploymentId(null);
-		} else {
-			final String deploymentId =
-					processingUnit.getBeanLevelProperties()
-							.getContextProperties().getProperty(CloudifyConstants.CONTEXT_PROPERTY_DEPLOYMENT_ID);
-			serviceDescription.setDeploymentId(deploymentId);
-		}
-
-		return serviceDescription;
+        return getServiceDescription(processingUnit);
 	}
 
 	/**

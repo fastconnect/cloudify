@@ -30,8 +30,8 @@ import org.cloudifysource.shell.exceptions.CLIException;
 import org.cloudifysource.shell.exceptions.CLIStatusException;
 import org.cloudifysource.shell.installer.CLIEventsDisplayer;
 import org.cloudifysource.shell.rest.RestAdminFacade;
-import org.cloudifysource.shell.rest.SetInstancesScaledownInstallationProcessInspector;
-import org.cloudifysource.shell.rest.SetInstancesScaleupInstallationProcessInspector;
+import org.cloudifysource.shell.rest.inspect.service.SetInstancesScaledownInstallationProcessInspector;
+import org.cloudifysource.shell.rest.inspect.service.SetInstancesScaleupInstallationProcessInspector;
 import org.fusesource.jansi.Ansi.Color;
 
 /************

@@ -49,7 +49,12 @@ public class CLIEventsDisplayer {
 	
 	public void printEvents(final List<String> events){
 		for (final String eventString : events) {
-			printEvent(eventString);
+            if (!eventString.equals(CloudifyConstants.UNDEPLOYED_SUCCESSFULLY_EVENT)) {
+			    printEvent(eventString);
+            } else {
+                // this is an internal event.
+                // dont print it.
+            }
 		}
 	}
 

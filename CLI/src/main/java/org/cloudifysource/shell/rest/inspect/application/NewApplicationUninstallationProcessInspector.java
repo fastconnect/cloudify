@@ -1,9 +1,9 @@
-package org.cloudifysource.shell.rest;
+package org.cloudifysource.shell.rest.inspect.application;
 
 import org.cloudifysource.dsl.rest.response.ServiceDescription;
 import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.restclient.exceptions.RestClientException;
-import org.cloudifysource.restclient.exceptions.RestClientResponseException;
+import org.cloudifysource.shell.rest.inspect.NewUninstallationProcessInspector;
 
 import java.util.HashMap;
 import java.util.List;
@@ -17,6 +17,10 @@ import java.util.Set;
  * Time: 9:08 PM
  */
 public class NewApplicationUninstallationProcessInspector extends NewUninstallationProcessInspector {
+
+    private static final String TIMEOUT_ERROR_MESSAGE = "Application un-installation timed out. "
+            + "Configure the timeout using the -timeout flag.";
+
 
     private String applicationName;
     private List<ServiceDescription> serviceDescriptionList;
@@ -47,39 +51,24 @@ public class NewApplicationUninstallationProcessInspector extends NewUninstallat
 
     @Override
     public boolean lifeCycleEnded() throws RestClientException {
-        for (ServiceDescription serviceDescription : serviceDescriptionList) {
-            try {
-                restClient.getServiceDescription(applicationName, serviceDescription.getServiceName());
-                return false;
-            } catch (final RestClientResponseException e) {
-                // this means the service is gone.
-            }
-        }
-        return true;
+        // all services before undeploy are still present
+        return restClient.getServicesDescription(deploymentId).isEmpty();
     }
 
     @Override
     public int getNumberOfRunningInstances(final String serviceName) throws RestClientException {
-        int instanceCount;
-        try {
-            ServiceDescription serviceDescription = restClient
-                    .getServiceDescription(applicationName, serviceName);
-            instanceCount = serviceDescription.getInstanceCount();
-        } catch (final RestClientResponseException e) {
-            if (e.getStatusCode() == RESOURCE_NOT_FOUND_EXCEPTION_CODE) {
-                //if we got here - the service is not installed yet
-                instanceCount = 0;
-            } else {
-                throw e;
+        List<ServiceDescription> servicesDescription = restClient.getServicesDescription(deploymentId);
+        for (ServiceDescription serviceDescription : servicesDescription) {
+            if (serviceDescription.getServiceName().contains(serviceName)) {
+                return serviceDescription.getInstanceCount();
             }
         }
-
-        return instanceCount;
+        return 0;
     }
 
     @Override
     public String getTimeoutErrorMessage() {
-        return "error";
+        return TIMEOUT_ERROR_MESSAGE;
     }
 
     public String getApplicationName() {

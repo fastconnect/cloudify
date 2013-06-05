@@ -29,7 +29,8 @@ import org.cloudifysource.shell.ShellUtils;
 import org.cloudifysource.shell.exceptions.CLIException;
 import org.cloudifysource.shell.exceptions.CLIStatusException;
 import org.cloudifysource.shell.installer.CLIEventsDisplayer;
-import org.cloudifysource.shell.rest.NewServiceUninstallationProcessInspector;
+import org.cloudifysource.shell.rest.inspect.CLIServiceUninstaller;
+import org.cloudifysource.shell.rest.inspect.service.NewServiceUninstallationProcessInspector;
 import org.cloudifysource.shell.rest.RestAdminFacade;
 import org.fusesource.jansi.Ansi.Color;
 
@@ -84,52 +85,19 @@ public class UninstallService extends AdminAwareCommand {
     @Override
     protected Object doExecute()
             throws Exception {
-    	
-    	RestClient restClient = ((RestAdminFacade) adminFacade).getNewRestClient();
 
         if (!askUninstallConfirmationQuestion()) {
             return getFormattedMessage("uninstall_aborted");
         }
 
-        ServiceDescription serviceDescription = restClient.getServiceDescription(getCurrentApplicationName(), serviceName);
-        final int nextEventId = getNextEventId(restClient, serviceDescription.getDeploymentId());
-        int currentNumberOfRunningInstances = serviceDescription.getInstanceCount();
-        UninstallServiceResponse uninstallServiceResponse = restClient.uninstallService(getCurrentApplicationName(),
-        		serviceName, timeoutInMinutes);
-
-        NewServiceUninstallationProcessInspector inspector =
-                new NewServiceUninstallationProcessInspector(restClient,
-                        uninstallServiceResponse.getDeploymentID(), verbose,
-                        currentNumberOfRunningInstances, serviceName, getCurrentApplicationName(), nextEventId);
-
-        // start polling for life cycle events
-        boolean isDone = false;
-        displayer.printEvent("Waiting for life cycle events for service " + serviceName);
-
-        while (!isDone) {
-            try {
-                inspector.waitForLifeCycleToEnd(timeoutInMinutes);
-                isDone = true;
-            } catch (final TimeoutException e) {
-                // if non interactive, throw exception
-                if (!(Boolean) session.get(Constants.INTERACTIVE_MODE)) {
-                    throw new CLIException(e.getMessage(), e);
-                }
-
-                // ask the user whether to continue viewing the installation or to stop
-                displayer.printEvent("");
-                boolean continueViewing = promptWouldYouLikeToContinueQuestion();
-                if (continueViewing) {
-                    // prolong the polling timeouts
-                	timeoutInMinutes = DEFAULT_TIMEOUT_MINUTES;
-                } else {
-                    throw new CLIStatusException(e, "service_uninstallation_timed_out_on_client", serviceName);
-                }
-            }
-        }
-
-        // drop one line before printing the last message
-        displayer.printEvent("");
+        CLIServiceUninstaller uninstaller = new CLIServiceUninstaller();
+        uninstaller.setApplicationName(getCurrentApplicationName());
+        uninstaller.setAskOnTimeout(true);
+        uninstaller.setInitialTimeout(timeoutInMinutes);
+        uninstaller.setRestAdminFacade((RestAdminFacade) getRestAdminFacade());
+        uninstaller.setServiceName(serviceName);
+        uninstaller.setSession(session);
+        uninstaller.uninstall();
 
         return getFormattedMessage("undeployed_successfully", Color.GREEN, serviceName);
     }
@@ -142,20 +110,6 @@ public class UninstallService extends AdminAwareCommand {
      */
     private boolean askUninstallConfirmationQuestion()
             throws IOException {
-       //return ShellUtils.promptUser(session, "service_uninstall_confirmation", serviceName);
-    	return true;
-    }
-
-    private boolean promptWouldYouLikeToContinueQuestion() throws IOException {
-        return ShellUtils.promptUser(session, "would_you_like_to_continue_service_uninstallation", serviceName);
-    }
-
-    private int getNextEventId(final RestClient client, final String deploymentId) throws RestClientException {
-        int lastEventId = 0;
-        final DeploymentEvents lastDeploymentEvents = client.getLastEvent(deploymentId);
-        if (!lastDeploymentEvents.getEvents().isEmpty()) {
-            lastEventId = lastDeploymentEvents.getEvents().iterator().next().getIndex();
-        }
-        return lastEventId+1;
+        return ShellUtils.promptUser(session, "service_uninstall_confirmation", serviceName);
     }
 }

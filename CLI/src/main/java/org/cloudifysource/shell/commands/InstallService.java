@@ -33,7 +33,8 @@ import org.cloudifysource.shell.exceptions.CLIException;
 import org.cloudifysource.shell.exceptions.CLIStatusException;
 import org.cloudifysource.shell.installer.CLIEventsDisplayer;
 import org.cloudifysource.shell.rest.RestAdminFacade;
-import org.cloudifysource.shell.rest.ServiceInstallationProcessInspector;
+import org.cloudifysource.shell.rest.inspect.CLIServiceInstaller;
+import org.cloudifysource.shell.rest.inspect.service.ServiceInstallationProcessInspector;
 import org.cloudifysource.shell.util.NameAndPackedFileResolver;
 import org.cloudifysource.shell.util.PreparedPackageResolver;
 import org.cloudifysource.shell.util.ServiceResolver;
@@ -192,57 +193,19 @@ public class InstallService extends AdminAwareCommand {
         InstallServiceResponse installServiceResponse = ((RestAdminFacade) adminFacade)
                 .installService(getCurrentApplicationName(), serviceName, request);
 
-        Map<String, Integer> plannedNumberOfInstancesPerService = nameAndPackedFileResolver
-                .getPlannedNumberOfInstancesPerService();
-        ServiceInstallationProcessInspector inspector = new ServiceInstallationProcessInspector(
-                ((RestAdminFacade) adminFacade).getNewRestClient(),
-                installServiceResponse.getDeploymentID(),
-                verbose,
-                serviceName,
-                nameAndPackedFileResolver.getPlannedNumberOfInstancesPerService().get(serviceName),
-                getCurrentApplicationName());
+        CLIServiceInstaller installer = new CLIServiceInstaller();
+        installer.setApplicationName(getCurrentApplicationName());
+        installer.setAskOnTimeout(true);
+        installer.setDeploymentId(installServiceResponse.getDeploymentID());
+        installer.setInitialTimeout(timeoutInMinutes);
+        installer.setRestAdminFacade((RestAdminFacade) getRestAdminFacade());
+        installer.setServiceName(serviceName);
+        installer.setSession(session);
+        installer.setPlannedNumberOfInstances(nameAndPackedFileResolver.getPlannedNumberOfInstancesPerService().get(serviceName));
+        installer.install();
 
-        int actualTimeout = timeoutInMinutes;
-        boolean isDone = false;
-        displayer.printEvent("installing_service", serviceName, plannedNumberOfInstancesPerService.get(serviceName));
-        displayer.printEvent("waiting_for_lifecycle_of_service", serviceName);
-        while (!isDone) {
-            try {
-
-                inspector.waitForLifeCycleToEnd(actualTimeout);
-                isDone = true;
-
-            } catch (final TimeoutException e) {
-
-                // if non interactive, throw exception
-                if (!(Boolean) session.get(Constants.INTERACTIVE_MODE)) {
-                    throw new CLIException(e.getMessage(), e);
-                }
-
-                // ask the user whether to continue viewing the installation or to stop
-                displayer.printEvent("");
-                boolean continueViewing = promptWouldYouLikeToContinueQuestion();
-                if (continueViewing) {
-                    // prolong the polling timeouts
-                    actualTimeout = DEFAULT_TIMEOUT_MINUTES;
-                } else {
-                    throw new CLIStatusException(e,
-                            "service_installation_timed_out_on_client",
-                            serviceName);
-                }
-            }
-        }
-
-        // drop one line before printing the last message
-        displayer.printEvent("");
         return getFormattedMessage("service_install_ended", Color.GREEN, serviceName);
     }
-
-    private boolean promptWouldYouLikeToContinueQuestion() throws IOException {
-        return ShellUtils.promptUser(session,
-                "would_you_like_to_continue_service_installation", serviceName);
-    }
-
 
     private NameAndPackedFileResolver getResolver(final File recipe) throws CLIStatusException {
         if (recipe.isFile()) {

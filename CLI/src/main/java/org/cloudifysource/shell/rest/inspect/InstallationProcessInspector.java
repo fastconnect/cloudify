@@ -10,7 +10,7 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  *******************************************************************************/
-package org.cloudifysource.shell.rest;
+package org.cloudifysource.shell.rest.inspect;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +40,7 @@ public abstract class InstallationProcessInspector {
 
 	protected RestClient restClient;
 	private final boolean verbose;
-	private final String deploymentId;
+	protected final String deploymentId;
 	protected final Map<String, Integer> plannedNumberOfInstancesPerService;
 	protected final Map<String, Integer> currentRunningInstancesPerService;
 

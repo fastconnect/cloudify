@@ -408,24 +408,35 @@ public class DeploymentsController extends BaseRestController {
 
         final ApplicationDescriptionFactory appDescriptionFactory =
         		new ApplicationDescriptionFactory(restConfig.getAdmin());
+
         return appDescriptionFactory.
         		getServiceDescription(ServiceUtils.getAbsolutePUName(appName, serviceName), appName);
     }
 
     /**
-     *
-     * @param appName .
-     * @return {@link org.cloudifysource.dsl.rest.response.ApplicationDescription}.
+     * Retrieves a list of service descriptions belonging to a specific deployment.
+     * @param deploymentId The deployment id.
+     * @return The services description.
      * @throws ResourceNotFoundException .
      */
-    @RequestMapping(value = "/{appName}/description", method = RequestMethod.GET)
-    public ApplicationDescription getApplicationDescription(
-            @PathVariable final String appName)
+    @RequestMapping(value = "/{deploymentId}/description", method = RequestMethod.GET)
+    public List<ServiceDescription> getServiceDescriptionListByDeploymentId(
+            @PathVariable final String deploymentId)
             throws ResourceNotFoundException {
 
         final ApplicationDescriptionFactory appDescriptionFactory =
                 new ApplicationDescriptionFactory(restConfig.getAdmin());
-        return appDescriptionFactory.getApplicationDescription(appName);
+        List<ServiceDescription> descriptions = new ArrayList<ServiceDescription>();
+        EventsCacheValue value = eventsCache.getIfExists(new EventsCacheKey(deploymentId));
+        for (ProcessingUnit pu : value.getProcessingUnits()) {
+            ServiceDescription serviceDescription = appDescriptionFactory.getServiceDescription(pu);
+            if (!serviceDescription.getInstancesDescription().isEmpty()) {
+                descriptions.add(serviceDescription);
+            } else {
+                // pu is stale. no instances
+            }
+        }
+        return descriptions;
     }
 
 	/**
@@ -671,7 +682,7 @@ public class DeploymentsController extends BaseRestController {
 
             // save a reference to the processing unit in the events cache.
             // this is for easy container discovery during events polling from clients.
-            populateEventsCache(deploymentID.toString(), processingUnit);
+            populateEventsCache(deploymentID, processingUnit);
         } catch (final TimeoutException e) {
 			throw new RestErrorException("Timed out waiting for deployment.", e);
 		}
@@ -718,6 +729,8 @@ public class DeploymentsController extends BaseRestController {
 
         // validations
         validateUninstallService();
+
+        populateEventsCache(deploymentId, processingUnit);
 
 		final FutureTask<Boolean> undeployTask = new FutureTask<Boolean>(
 				new Callable<Boolean>() {
@@ -1235,6 +1248,22 @@ public class DeploymentsController extends BaseRestController {
 
     /**
      *
+     * @param appName .
+     * @return {@link org.cloudifysource.dsl.rest.response.ApplicationDescription}.
+     * @throws ResourceNotFoundException .
+     */
+    @RequestMapping(value = "/applications/{appName}/description", method = RequestMethod.GET)
+    public ApplicationDescription getApplicationDescription(
+            @PathVariable final String appName)
+            throws ResourceNotFoundException {
+
+        final ApplicationDescriptionFactory appDescriptionFactory =
+                new ApplicationDescriptionFactory(restConfig.getAdmin());
+        return appDescriptionFactory.getApplicationDescription(appName);
+    }
+
+    /**
+     *
      * @param appName
      * 		The application name.
      * @param request
@@ -1308,6 +1337,7 @@ public class DeploymentsController extends BaseRestController {
 								logger.log(Level.INFO,
 										"Undeploying Processing Unit "
 												+ processingUnit.getName());
+                                populateEventsCache(deploymentId, processingUnit);
 								processingUnit.undeployAndWait(undeployTimeout,
 										TimeUnit.MILLISECONDS);
 								final String serviceName = ServiceUtils.getApplicationServiceName(

@@ -1,4 +1,4 @@
-package org.cloudifysource.shell.rest;
+package org.cloudifysource.shell.rest.inspect;
 
 import java.util.List;
 import java.util.Map;
@@ -50,7 +50,6 @@ public abstract class NewUninstallationProcessInspector extends InstallationProc
             public boolean isDone() throws CLIException, InterruptedException {
                 try {
                     List<String> latestEvents;
-                    printUnInstalledInstances();
                     boolean ended = false;
                     if (!lifeCycleEnded) {
                         lifeCycleEnded = lifeCycleEnded();
@@ -59,14 +58,19 @@ public abstract class NewUninstallationProcessInspector extends InstallationProc
                             undeployEnded = true;
                         }
                         if (!latestEvents.isEmpty()) {
+                            if (latestEvents.contains(CloudifyConstants.UNDEPLOYED_SUCCESSFULLY_EVENT)) {
+                                ended = true;
+                            }
                             displayer.printEvents(latestEvents);
                         } else {
                             if (!lifeCycleEnded) {
                                 displayer.printNoChange();
                             }
                         }
+                        printUnInstalledInstances();
                         if (lifeCycleEnded && waitForCloudResourcesRelease) {
                             displayer.printEvent("releasing cloud resources...");
+                            return ended;
                         }
                     }
 
@@ -78,13 +82,14 @@ public abstract class NewUninstallationProcessInspector extends InstallationProc
                             undeployEnded = false;
                             if (latestEvents.contains(CloudifyConstants.UNDEPLOYED_SUCCESSFULLY_EVENT)) {
                                 undeployEnded = true;
+                            } else {
+                                displayer.printNoChange();
                             }
                             ended = lifeCycleEnded && undeployEnded;
                     	} else {
                     		ended = true;
                     	}
                     }
-
                     return ended;
                 } catch (final RestClientException e) {
                     throw new CLIException(e.getMessage(), e, e.getVerbose());
@@ -94,9 +99,10 @@ public abstract class NewUninstallationProcessInspector extends InstallationProc
             private void printUnInstalledInstances() throws RestClientException {
                 for (Map.Entry<String, Integer> entry : plannedNumberOfInstancesPerService.entrySet()) {
                     int runningInstances = getNumberOfRunningInstances(entry.getKey());
-                    if (runningInstances < currentRunningInstancesPerService.get(entry.getKey())) {
+                    Integer current = currentRunningInstancesPerService.get(entry.getKey());
+                    if (runningInstances < current) {
                         // a new instance is now running
-                        displayer.printEvent("succesfully uninstalled 1 instance for service " + entry.getKey());
+                        displayer.printEvent("Installed " + runningInstances + " planned " + entry.getValue());
                         currentRunningInstancesPerService.put(entry.getKey(), runningInstances);
                     }
                 }
@@ -105,10 +111,6 @@ public abstract class NewUninstallationProcessInspector extends InstallationProc
 
 
     }
-
-	public boolean isWaitForCloudResourcesRelease() {
-		return waitForCloudResourcesRelease;
-	}
 
 	public void setWaitForCloudResourcesRelease(boolean waitForCloudResourcesRelease) {
 		this.waitForCloudResourcesRelease = waitForCloudResourcesRelease;

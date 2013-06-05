@@ -39,7 +39,8 @@ import org.cloudifysource.shell.ShellUtils;
 import org.cloudifysource.shell.exceptions.CLIException;
 import org.cloudifysource.shell.exceptions.CLIStatusException;
 import org.cloudifysource.shell.installer.CLIEventsDisplayer;
-import org.cloudifysource.shell.rest.ApplicationInstallationProcessInspector;
+import org.cloudifysource.shell.rest.inspect.CLIApplicationInstaller;
+import org.cloudifysource.shell.rest.inspect.application.ApplicationInstallationProcessInspector;
 import org.cloudifysource.shell.rest.RestAdminFacade;
 import org.cloudifysource.shell.util.ApplicationResolver;
 import org.cloudifysource.shell.util.NameAndPackedFileResolver;
@@ -171,12 +172,11 @@ public class InstallApplication extends AdminAwareCommand {
 		}
 		
 		final File packedFile = nameAndPackedFileResolver.getPackedFile();
-		final File cloudConfigurationFile = createCloudConfigurationZipFile();
 		//upload relevant application deployment files 
 		final String packedFileKey = uploadToRepo(packedFile);
-		final String overridesFileKey = uploadToRepo(this.overrides);
-		final String cloudOverridesFileKey = uploadToRepo(this.cloudOverrides);
-		final String cloudConfigurationFileKey = uploadToRepo(cloudConfigurationFile);
+		final String overridesFileKey = uploadToRepo(overrides);
+		final String cloudOverridesFileKey = uploadToRepo(cloudOverrides);
+		final String cloudConfigurationFileKey = uploadToRepo(cloudConfiguration);
 		
 		//create the install request
 		InstallApplicationRequest request = new InstallApplicationRequest();
@@ -185,58 +185,33 @@ public class InstallApplication extends AdminAwareCommand {
 		request.setCloudOverridesUploadKey(cloudOverridesFileKey);
 		request.setCloudConfigurationUploadKey(cloudConfigurationFileKey);
 		request.setApplicationName(applicationName);
-		request.setAuthGroups(this.authGroups);
-		request.setDebugAll(this.debugAll);
-		request.setDebugEvents(this.debugEvents);
-		request.setDebugMode(this.debugModeString);
-		request.setSelfHealing(this.disableSelfHealing);
+		request.setAuthGroups(authGroups);
+		request.setDebugAll(debugAll);
+		request.setDebugEvents(debugEvents);
+		request.setDebugMode(debugModeString);
+		request.setSelfHealing(disableSelfHealing);
 		request.setTimeoutInMillis(TimeUnit.MINUTES.toMillis(timeoutInMinutes));
-		
-		//install application
-		final InstallApplicationResponse installApplicationResponse = 
+
+
+        //install application
+        final InstallApplicationResponse installApplicationResponse =
 				((RestAdminFacade) adminFacade).installApplication(applicationName, request);
-		
+
+        Application application = ((Application) nameAndPackedFileResolver.getDSLObject());
+        //print application info.
+        printApplicationInfo(application);
+
         Map<String, Integer> plannedNumberOfInstancesPerService = nameAndPackedFileResolver
                 .getPlannedNumberOfInstancesPerService();
-        ApplicationInstallationProcessInspector inspector = new ApplicationInstallationProcessInspector(
-        		((RestAdminFacade) adminFacade).getNewRestClient(), 
-        		installApplicationResponse.getDeploymentID(), 
-        		applicationName,
-        		verbose,
-        		plannedNumberOfInstancesPerService);
-        		
-        Application application = ((Application) nameAndPackedFileResolver.getDSLObject());
-		//print application info.
-		printApplicationInfo(application);
-        int actualTimeout = timeoutInMinutes;
-        boolean isDone = false;
-        displayer.printEvent("installing_application", applicationName);
-        displayer.printEvent("waiting_for_lifecycle_of_application", applicationName);
-        while (!isDone) {
-            try {
 
-                inspector.waitForLifeCycleToEnd(actualTimeout);
-                isDone = true;
-
-            } catch (final TimeoutException e) {
-
-                // if non interactive, throw exception
-                if (!(Boolean) session.get(Constants.INTERACTIVE_MODE)) {
-                    throw new CLIException(e.getMessage(), e);
-                }
-
-                // ask user if he want to continue viewing the installation.
-                displayer.printEvent("");
-                boolean continueViewing = promptWouldYouLikeToContinueQuestion();
-                if (continueViewing) {
-                    // prolong the polling timeouts
-                    actualTimeout = DEFAULT_TIMEOUT_MINUTES;
-                } else {
-                	throw new CLIStatusException(e, "application_installation_timed_out_on_client",
-							applicationName);
-                }
-            }
-        }
+        CLIApplicationInstaller installer = new CLIApplicationInstaller();
+        installer.setApplicationName(applicationName);
+        installer.setAskOnTimeout(true);
+        installer.setDeploymentId(installApplicationResponse.getDeploymentID());
+        installer.setPlannedNumberOfInstancesPerService(plannedNumberOfInstancesPerService);
+        installer.setInitialTimeout(timeoutInMinutes);
+        installer.setRestAdminFacade((RestAdminFacade) getRestAdminFacade());
+        installer.setSession(session);
 
 		if (!applicationFile.isFile()) {
 			final boolean delete = packedFile.delete();
@@ -279,12 +254,6 @@ public class InstallApplication extends AdminAwareCommand {
         return null;
     }
 
-	private boolean promptWouldYouLikeToContinueQuestion()
-			throws IOException {
-		return ShellUtils.promptUser(session, "would_you_like_to_continue_application_installation",
-				this.applicationName);
-	}
-
 	/**
 	 * Prints Application data - the application name and it's services name, dependencies and number of instances.
 	 *
@@ -302,42 +271,5 @@ public class InstallApplication extends AdminAwareCommand {
 						+ " " + service.getNumInstances() + " planned instances");
 			}
 		}
-	}
-	
-	private File createCloudConfigurationZipFile()
-			throws CLIStatusException, IOException {
-		if (this.cloudConfiguration == null) {
-			return null;
-		}
-
-		if (!this.cloudConfiguration.exists()) {
-			throw new CLIStatusException("cloud_configuration_file_not_found",
-					this.cloudConfiguration.getAbsolutePath());
-		}
-
-		// create a temp file in a temp directory
-		final File tempDir = File.createTempFile("__Cloudify_Cloud_configuration", ".tmp");
-		FileUtils.forceDelete(tempDir);
-		final boolean mkdirs = tempDir.mkdirs();
-		if (!mkdirs) {
-			logger.info("Field to create temporary directory " + tempDir.getAbsolutePath());
-		}
-		final File tempFile = new File(tempDir, CloudifyConstants.SERVICE_CLOUD_CONFIGURATION_FILE_NAME);
-		logger.info("Created temporary file " + tempFile.getAbsolutePath()
-				+ " in temporary directory" + tempDir.getAbsolutePath());
-
-		// mark files for deletion on JVM exit
-		tempFile.deleteOnExit();
-		tempDir.deleteOnExit();
-
-		if (this.cloudConfiguration.isDirectory()) {
-			ZipUtils.zip(this.cloudConfiguration, tempFile);
-		} else if (this.cloudConfiguration.isFile()) {
-			ZipUtils.zipSingleFile(this.cloudConfiguration, tempFile);
-		} else {
-			throw new IOException(this.cloudConfiguration + " is neither a file nor a directory");
-		}
-
-		return tempFile;
 	}
 }

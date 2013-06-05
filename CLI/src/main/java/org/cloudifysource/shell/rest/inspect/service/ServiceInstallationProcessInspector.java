@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *******************************************************************************/
-package org.cloudifysource.shell.rest;
+package org.cloudifysource.shell.rest.inspect.service;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -23,6 +23,7 @@ import org.cloudifysource.dsl.rest.response.ServiceDescription;
 import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.cloudifysource.restclient.exceptions.RestClientResponseException;
+import org.cloudifysource.shell.rest.inspect.InstallationProcessInspector;
 
 /**
  * Created with IntelliJ IDEA.

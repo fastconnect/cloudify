@@ -10,7 +10,7 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  ******************************************************************************/
-package org.cloudifysource.shell.rest;
+package org.cloudifysource.shell.rest.inspect.service;
 
 
 import org.cloudifysource.dsl.internal.CloudifyConstants;
@@ -19,6 +19,7 @@ import org.cloudifysource.dsl.rest.response.ServiceDescription;
 import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.cloudifysource.restclient.exceptions.RestClientResponseException;
+import org.cloudifysource.shell.rest.inspect.service.ServiceInstallationProcessInspector;
 
 /**
  * Created with IntelliJ IDEA. User: elip Date: 6/4/13 Time: 12:33 PM

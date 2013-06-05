@@ -12,13 +12,6 @@
  ******************************************************************************/
 package org.cloudifysource.restclient;
 
-import java.io.File;
-import java.net.URL;
-import java.security.KeyStore;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.logging.Logger;
-
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.http.HttpVersion;
 import org.apache.http.conn.ClientConnectionManager;
@@ -36,19 +29,19 @@ import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.rest.request.InstallApplicationRequest;
 import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
 import org.cloudifysource.dsl.rest.request.SetServiceInstancesRequest;
-import org.cloudifysource.dsl.rest.response.ApplicationDescription;
-import org.cloudifysource.dsl.rest.response.DeploymentEvents;
-import org.cloudifysource.dsl.rest.response.InstallApplicationResponse;
-import org.cloudifysource.dsl.rest.response.InstallServiceResponse;
-import org.cloudifysource.dsl.rest.response.Response;
-import org.cloudifysource.dsl.rest.response.ServiceDescription;
-import org.cloudifysource.dsl.rest.response.UninstallApplicationResponse;
-import org.cloudifysource.dsl.rest.response.UninstallServiceResponse;
-import org.cloudifysource.dsl.rest.response.UploadResponse;
+import org.cloudifysource.dsl.rest.response.*;
 import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.cloudifysource.restclient.messages.MessagesUtils;
 import org.cloudifysource.restclient.messages.RestClientMessageKeys;
 import org.codehaus.jackson.type.TypeReference;
+
+import java.io.File;
+import java.net.URL;
+import java.security.KeyStore;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Logger;
 
 /**
  *
@@ -234,7 +227,20 @@ public class RestClient {
 		});
 	}
 
-	/**
+    /**
+     * Retrieves a list of services description by deployment id.
+     * @param deploymentId The deployment id.
+     * @return
+     * @throws RestClientException
+     */
+    public List<ServiceDescription> getServicesDescription(final String deploymentId)
+            throws RestClientException {
+        return executor.get(versionedDeploymentControllerUrl + "/" + deploymentId + "/description", new TypeReference<Response<List<ServiceDescription>>>() {
+        });
+    }
+
+
+    /**
 	 * 
 	 * @param appName
 	 *            .
@@ -242,7 +248,7 @@ public class RestClient {
 	 * @throws RestClientException .
 	 */
 	public ApplicationDescription getApplicationDescription(final String appName) throws RestClientException {
-		return executor.get(versionedDeploymentControllerUrl + "/" + appName + "/description",
+		return executor.get(versionedDeploymentControllerUrl + "/applications/" + appName + "/description",
 				new TypeReference<Response<ApplicationDescription>>() {
 				});
 	}

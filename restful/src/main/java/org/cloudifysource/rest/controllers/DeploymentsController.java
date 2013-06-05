@@ -1266,8 +1266,8 @@ public class DeploymentsController extends BaseRestController {
      *
      * @param appName
      * 		The application name.
-     * @param request
-     * 		The uninstall-application request.
+     * @param timeoutInMinutes
+     * 		The timeout in minutes.
      * @return uninstall response.
      * @throws RestErrorException .
      */

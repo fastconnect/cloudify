@@ -11,7 +11,7 @@ import org.cloudifysource.shell.exceptions.CLIException;
 import org.cloudifysource.shell.exceptions.CLIStatusException;
 import org.cloudifysource.shell.installer.CLIEventsDisplayer;
 import org.cloudifysource.shell.rest.RestAdminFacade;
-import org.cloudifysource.shell.rest.inspect.service.NewServiceUninstallationProcessInspector;
+import org.cloudifysource.shell.rest.inspect.service.ServiceUninstallationProcessInspector;
 
 import java.io.IOException;
 import java.util.concurrent.TimeoutException;
@@ -68,8 +68,8 @@ public class CLIServiceUninstaller {
         restAdminFacade.getNewRestClient().uninstallService(applicationName, serviceName, initialTimeout);
 
 
-        NewServiceUninstallationProcessInspector inspector =
-                new NewServiceUninstallationProcessInspector(
+        ServiceUninstallationProcessInspector inspector =
+                new ServiceUninstallationProcessInspector(
                         restAdminFacade.getNewRestClient(),
                         serviceDescription.getDeploymentId(),
                         false,

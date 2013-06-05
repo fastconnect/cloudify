@@ -3,7 +3,7 @@ package org.cloudifysource.shell.rest.inspect.application;
 import org.cloudifysource.dsl.rest.response.ServiceDescription;
 import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.restclient.exceptions.RestClientException;
-import org.cloudifysource.shell.rest.inspect.NewUninstallationProcessInspector;
+import org.cloudifysource.shell.rest.inspect.UninstallationProcessInspector;
 
 import java.util.HashMap;
 import java.util.List;
@@ -16,7 +16,7 @@ import java.util.Set;
  * Date: 6/4/13
  * Time: 9:08 PM
  */
-public class NewApplicationUninstallationProcessInspector extends NewUninstallationProcessInspector {
+public class ApplicationUninstallationProcessInspector extends UninstallationProcessInspector {
 
     private static final String TIMEOUT_ERROR_MESSAGE = "Application un-installation timed out. "
             + "Configure the timeout using the -timeout flag.";
@@ -25,7 +25,7 @@ public class NewApplicationUninstallationProcessInspector extends NewUninstallat
     private String applicationName;
     private List<ServiceDescription> serviceDescriptionList;
 
-    public NewApplicationUninstallationProcessInspector(
+    public ApplicationUninstallationProcessInspector(
             final RestClient restClient,
             final String deploymentId,
             final boolean verbose,

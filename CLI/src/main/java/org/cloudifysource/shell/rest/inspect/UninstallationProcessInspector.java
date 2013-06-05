@@ -17,17 +17,17 @@ import org.cloudifysource.shell.installer.CLIEventsDisplayer;
  * Date: 6/4/13
  * Time: 7:51 PM
  */
-public abstract class NewUninstallationProcessInspector extends InstallationProcessInspector {
+public abstract class UninstallationProcessInspector extends InstallationProcessInspector {
 
     private final CLIEventsDisplayer displayer = new CLIEventsDisplayer();
 
     private boolean waitForCloudResourcesRelease = true;
 
-    public NewUninstallationProcessInspector(final RestClient restClient,
-                                             final String deploymentId,
-                                             final boolean verbose,
-                                             final Map<String, Integer> plannedNumberOfInstancesPerService,
-                                             final Map<String, Integer> currentRunningInstancesPerService) {
+    public UninstallationProcessInspector(final RestClient restClient,
+                                          final String deploymentId,
+                                          final boolean verbose,
+                                          final Map<String, Integer> plannedNumberOfInstancesPerService,
+                                          final Map<String, Integer> currentRunningInstancesPerService) {
         super(restClient,
               deploymentId,
               verbose,

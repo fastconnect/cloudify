@@ -3,7 +3,7 @@ package org.cloudifysource.shell.rest.inspect.service;
 import org.cloudifysource.dsl.rest.response.ServiceDescription;
 import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.restclient.exceptions.RestClientException;
-import org.cloudifysource.shell.rest.inspect.NewUninstallationProcessInspector;
+import org.cloudifysource.shell.rest.inspect.UninstallationProcessInspector;
 
 import java.util.HashMap;
 import java.util.List;
@@ -12,7 +12,7 @@ import java.util.Map;
 /**
  * Created with IntelliJ IDEA. User: elip Date: 6/4/13 Time: 8:03 PM
  */
-public class NewServiceUninstallationProcessInspector extends NewUninstallationProcessInspector {
+public class ServiceUninstallationProcessInspector extends UninstallationProcessInspector {
 
     private static final String TIMEOUT_ERROR_MESSAGE = "Service un-installation timed out. "
             + "Configure the timeout using the -timeout flag.";
@@ -21,14 +21,14 @@ public class NewServiceUninstallationProcessInspector extends NewUninstallationP
     protected final String serviceName;
 	protected final String applicationName;
 
-	public NewServiceUninstallationProcessInspector(
+	public ServiceUninstallationProcessInspector(
             final RestClient restClient,
-			final String deploymentId,
-			final boolean verbose,
-			final int currentNumberOfRunningInstance,
-			final String serviceName,
-			final String applicationName,
-			final int nextEventIndex) {
+            final String deploymentId,
+            final boolean verbose,
+            final int currentNumberOfRunningInstance,
+            final String serviceName,
+            final String applicationName,
+            final int nextEventIndex) {
 		super(restClient, deploymentId, verbose, createOneEntryMap(serviceName, 0), createOneEntryMap(serviceName,
 				currentNumberOfRunningInstance));
 		this.applicationName = applicationName;
@@ -36,14 +36,14 @@ public class NewServiceUninstallationProcessInspector extends NewUninstallationP
 		setEventIndex(nextEventIndex);
 	}
 
-	public NewServiceUninstallationProcessInspector(final RestClient restClient,
-			final String deploymentId,
-			final boolean verbose,
-			final int currentNumberOfRunningInstance,
-			final String serviceName,
-			final String applicationName,
-			final int nextEventIndex,
-			final int plannedNumberOfRunningInstance) {
+	public ServiceUninstallationProcessInspector(final RestClient restClient,
+                                                 final String deploymentId,
+                                                 final boolean verbose,
+                                                 final int currentNumberOfRunningInstance,
+                                                 final String serviceName,
+                                                 final String applicationName,
+                                                 final int nextEventIndex,
+                                                 final int plannedNumberOfRunningInstance) {
 		super(restClient, deploymentId, verbose,
 				createOneEntryMap(serviceName, plannedNumberOfRunningInstance),
 				createOneEntryMap(serviceName, currentNumberOfRunningInstance));

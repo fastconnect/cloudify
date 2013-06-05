@@ -19,25 +19,15 @@ import org.apache.felix.gogo.commands.Argument;
 import org.apache.felix.gogo.commands.Command;
 import org.apache.felix.gogo.commands.CompleterValues;
 import org.apache.felix.gogo.commands.Option;
-import org.cloudifysource.dsl.rest.response.DeploymentEvents;
-import org.cloudifysource.dsl.rest.response.ServiceDescription;
-import org.cloudifysource.dsl.rest.response.UninstallServiceResponse;
-import org.cloudifysource.restclient.RestClient;
-import org.cloudifysource.restclient.exceptions.RestClientException;
-import org.cloudifysource.shell.Constants;
 import org.cloudifysource.shell.ShellUtils;
-import org.cloudifysource.shell.exceptions.CLIException;
-import org.cloudifysource.shell.exceptions.CLIStatusException;
 import org.cloudifysource.shell.installer.CLIEventsDisplayer;
 import org.cloudifysource.shell.rest.inspect.CLIServiceUninstaller;
-import org.cloudifysource.shell.rest.inspect.service.NewServiceUninstallationProcessInspector;
 import org.cloudifysource.shell.rest.RestAdminFacade;
 import org.fusesource.jansi.Ansi.Color;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.concurrent.TimeoutException;
 
 /**
  * @author rafi, adaml, barakm, noak

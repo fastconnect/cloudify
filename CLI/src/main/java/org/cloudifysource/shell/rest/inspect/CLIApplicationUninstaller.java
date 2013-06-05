@@ -12,7 +12,7 @@ import org.cloudifysource.shell.exceptions.CLIException;
 import org.cloudifysource.shell.exceptions.CLIStatusException;
 import org.cloudifysource.shell.installer.CLIEventsDisplayer;
 import org.cloudifysource.shell.rest.RestAdminFacade;
-import org.cloudifysource.shell.rest.inspect.application.NewApplicationUninstallationProcessInspector;
+import org.cloudifysource.shell.rest.inspect.application.ApplicationUninstallationProcessInspector;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -69,8 +69,8 @@ public class CLIApplicationUninstaller {
 
         final int nextEventId = getNextEventId(restAdminFacade.getNewRestClient(), deploymentId);
 
-        NewApplicationUninstallationProcessInspector inspector =
-                new NewApplicationUninstallationProcessInspector(
+        ApplicationUninstallationProcessInspector inspector =
+                new ApplicationUninstallationProcessInspector(
                         restAdminFacade.getNewRestClient(),
                         deploymentId,
                         false,

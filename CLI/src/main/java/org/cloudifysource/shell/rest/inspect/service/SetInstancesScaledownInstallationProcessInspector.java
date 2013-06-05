@@ -16,12 +16,11 @@ import org.cloudifysource.dsl.rest.response.ServiceDescription;
 import org.cloudifysource.restclient.RestClient;
 import org.cloudifysource.restclient.exceptions.RestClientException;
 import org.cloudifysource.shell.exceptions.CLIException;
-import org.cloudifysource.shell.rest.inspect.service.NewServiceUninstallationProcessInspector;
 
 /**
  * Created with IntelliJ IDEA. User: elip Date: 6/4/13 Time: 12:33 PM
  */
-public class SetInstancesScaledownInstallationProcessInspector extends NewServiceUninstallationProcessInspector {
+public class SetInstancesScaledownInstallationProcessInspector extends ServiceUninstallationProcessInspector {
 
 	private final int plannedNumberOfInstances;
 

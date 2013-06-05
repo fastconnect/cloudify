@@ -13,9 +13,7 @@
 package org.cloudifysource.rest.validators;
 
 import org.cloudifysource.dsl.internal.CloudifyErrorMessages;
-import org.cloudifysource.dsl.internal.CloudifyMessageKeys;
 import org.cloudifysource.dsl.rest.request.InstallServiceRequest;
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class ValidateInstallServiceRequestTest extends InstallServiceValidatorTest {
@@ -26,14 +24,6 @@ public class ValidateInstallServiceRequestTest extends InstallServiceValidatorTe
 	private static final String DEBUG_EVENTS = "init,install";
 	private static final String DUPLICATE_DEBUG_EVENTS = DEBUG_EVENTS + ",init";
 	private static final String WRONG_DEBUG_EVENTS = DEBUG_EVENTS + ", EVENT_NOT_EXIST";
-
-
-	@Ignore
-	@Test
-	public void testMissingUploadKey() {
-		final InstallServiceRequest request = new InstallServiceRequest();
-		testValidator(request, CloudifyMessageKeys.UPLOAD_KEY_PARAMETER_MISSING.getName());
-	}
 
 
 	@Test

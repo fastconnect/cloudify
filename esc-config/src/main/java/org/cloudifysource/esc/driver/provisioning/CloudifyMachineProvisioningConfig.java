@@ -89,7 +89,7 @@ public class CloudifyMachineProvisioningConfig implements ElasticMachineProvisio
 	private static final String STORAGE_TEMPLATE_NAME = "storage-template-name";
 
 	private static final String SERVICE_NETWORK_STRING_KEY = "SERVICE_NETWORK_STRING_KEY";
-	
+
 	private StringProperties properties = new StringProperties(new HashMap<String, String>());
 
 	/**
@@ -108,6 +108,7 @@ public class CloudifyMachineProvisioningConfig implements ElasticMachineProvisio
 	public CloudifyMachineProvisioningConfig(final Cloud cloud, final ComputeTemplate template,
 			final String cloudTemplateName, final String managementTemplateRemoteDirectory,
 			final String storageTemplateName) {
+		logger.info("Entering CloudifyMachineProvisioningConfig...");
 
 		if (!StringUtils.isEmpty(storageTemplateName)) {
 			setStorageTemplateName(storageTemplateName);
@@ -117,10 +118,12 @@ public class CloudifyMachineProvisioningConfig implements ElasticMachineProvisio
 		setReservedMemoryCapacityPerMachineInMB(cloud.getProvider().getReservedMemoryCapacityPerMachineInMB());
 		setReservedMemoryCapacityPerManagementMachineInMB(cloud.getProvider()
 				.getReservedMemoryCapacityPerManagementMachineInMB());
-
 		String remoteDir = managementTemplateRemoteDirectory;
 		logger.log(Level.FINE, "Original remote directory is: " + remoteDir);
-		if (template.getFileTransfer() == FileTransferModes.CIFS) {
+		final ComputeTemplate managementTemplate =
+				cloud.getCloudCompute().getTemplates().get(cloud.getConfiguration().getManagementMachineTemplate());
+		logger.log(Level.FINE, "Management File Transfer is: " + managementTemplate.getFileTransfer());
+		if (managementTemplate.getFileTransfer() == FileTransferModes.CIFS) {
 			logger.log(Level.FINE, "Running on windows, modifying remote directory config. Original was: " + remoteDir);
 			remoteDir = getWindowsRemoteDirPath(managementTemplateRemoteDirectory);
 		}
@@ -247,8 +250,7 @@ public class CloudifyMachineProvisioningConfig implements ElasticMachineProvisio
 	 *            .
 	 */
 	public final void setCloudConfigurationDirectory(final String cloudConfigurationDirectory) {
-		properties.put(
-				CloudifyConstants.ELASTIC_PROPERTIES_CLOUD_CONFIGURATION_DIRECTORY, cloudConfigurationDirectory);
+		properties.put(CloudifyConstants.ELASTIC_PROPERTIES_CLOUD_CONFIGURATION_DIRECTORY, cloudConfigurationDirectory);
 	}
 
 	@Override
@@ -458,8 +460,10 @@ public class CloudifyMachineProvisioningConfig implements ElasticMachineProvisio
 	}
 
 	/********
-	 * Sets the serialized service network description. 
-	 * @param networkAsString the serialized network description.
+	 * Sets the serialized service network description.
+	 * 
+	 * @param networkAsString
+	 *            the serialized network description.
 	 */
 	public void setNetworkAsString(final String networkAsString) {
 		properties.put(SERVICE_NETWORK_STRING_KEY, networkAsString);

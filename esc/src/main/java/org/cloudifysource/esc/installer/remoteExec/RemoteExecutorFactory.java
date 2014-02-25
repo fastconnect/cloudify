@@ -1,17 +1,14 @@
 /*******************************************************************************
  * Copyright (c) 2012 GigaSpaces Technologies Ltd. All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *       http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ * 
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  *******************************************************************************/
 
 package org.cloudifysource.esc.installer.remoteExec;
@@ -34,7 +31,8 @@ public final class RemoteExecutorFactory {
 	/************
 	 * Factory method for remote execution implementation.
 	 * 
-	 * @param mode the remote exec mode.
+	 * @param mode
+	 *            the remote exec mode.
 	 * @return the implementing class.
 	 */
 	public static RemoteExecutor createRemoteExecutorProvider(final RemoteExecutionModes mode) {
@@ -44,6 +42,9 @@ public final class RemoteExecutorFactory {
 
 		case WINRM:
 			return new WinrmExecutor();
+
+		case WINEXE:
+			return new WinexeExecutor();
 
 		default:
 			throw new UnsupportedOperationException("Unsupported remote execution mode: " + mode);

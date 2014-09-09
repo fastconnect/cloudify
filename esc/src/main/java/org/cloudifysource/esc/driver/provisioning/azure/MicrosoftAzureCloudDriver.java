@@ -14,6 +14,7 @@ package org.cloudifysource.esc.driver.provisioning.azure;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -76,6 +77,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String AZURE_PFX_PASSWORD = "azure.pfx.password";
 	private static final String AZURE_ENDPOINTS = "azure.endpoints";
 	private static final String AZURE_FIREWALL_PORTS = "azure.firewall.ports";
+	private static final String VM_IP_ADDRESSES = "ipAddresses";
 
 	// Custom cloud DSL properties
 	private static final String AZURE_WIRE_LOG = "azure.wireLog";
@@ -116,6 +118,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private FileTransferModes fileTransferMode;
 	private RemoteExecutionModes remoteExecutionMode;
 	private ScriptLanguages scriptLanguage;
+	private Map<String, Object> templateOptions;
 
 	private List<Map<String, String>> endpoints;
 	private List<Map<String, String>> firewallPorts;
@@ -188,6 +191,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		this.fileTransferMode = this.template.getFileTransfer();
 		this.remoteExecutionMode = this.template.getRemoteExecution();
 		this.scriptLanguage = this.template.getScriptLanguage();
+		this.templateOptions = this.template.getOptions();
 
 		boolean isWindowsVM = isWindowsVM();
 		if (isWindowsVM) {
@@ -352,6 +356,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			desc.setSize(size);
 			desc.setStorageAccountName(storageAccountName);
 			desc.setUserName(userName);
+
+			desc.setIpAddresses(this.getIpAddressesList(this.templateOptions.get(VM_IP_ADDRESSES)));
 
 			logger.info("Launching a new virtual machine");
 			boolean isWindows = isWindowsVM();
@@ -834,5 +840,18 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	@Override
 	public void onServiceUninstalled(long duration, TimeUnit unit) {
 		// TODO Auto-generated method stub
+	}
+
+	private List<String> getIpAddressesList(Object ipAddressesObject) {
+
+		List<String> ipAddressesList = null;
+		if (ipAddressesObject != null) {
+			String ipAddressesString = (String) ipAddressesObject;
+			if (!ipAddressesString.isEmpty()) {
+				String[] split = ipAddressesString.split(",");
+				ipAddressesList = Arrays.asList(split);
+			}
+		}
+		return ipAddressesList;
 	}
 }

@@ -1,17 +1,10 @@
 /******************************************************************************
- * Copyright (c) 2012 GigaSpaces Technologies Ltd. All rights reserved		  *
- * 																			  *
- * Licensed under the Apache License, Version 2.0 (the "License");            *
- * you may not use this file except in compliance with the License.           *
- * You may obtain a copy of the License at									  *
- *																			  *
- *       http://www.apache.org/licenses/LICENSE-2.0							  *
- *																			  *
- * Unless required by applicable law or agreed to in writing, software		  *
- * distributed under the License is distributed on an "AS IS" BASIS,          *
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.   *
- * See the License for the specific language governing permissions and        *
- * limitations under the License.											  *
+ * Copyright (c) 2012 GigaSpaces Technologies Ltd. All rights reserved * * Licensed under the Apache License, Version
+ * 2.0 (the "License"); * you may not use this file except in compliance with the License. * You may obtain a copy of
+ * the License at * * http://www.apache.org/licenses/LICENSE-2.0 * * Unless required by applicable law or agreed to in
+ * writing, software * distributed under the License is distributed on an "AS IS" BASIS, * WITHOUT WARRANTIES OR
+ * CONDITIONS OF ANY KIND, either express or implied. * See the License for the specific language governing permissions
+ * and * limitations under the License. *
  ******************************************************************************/
 
 package org.cloudifysource.esc.driver.provisioning.azure.client;
@@ -44,15 +37,16 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.WindowsProvisionin
 import com.sun.jersey.core.util.Base64;
 
 /*****************************************************************************************
- * this class is used for creating object instances representing the azure domain model. 
- * @author elip																			 
- * 																						 
+ * this class is used for creating object instances representing the azure domain model.
+ * 
+ * @author elip
+ * 
  ******************************************************************************************/
 
 public class MicrosoftAzureRequestBodyBuilder {
 
 	private static final String UTF_8 = "UTF-8";
-	
+
 	private String affinityPrefix;
 	private String cloudServicePrefix;
 	private String storagePrefix;
@@ -73,9 +67,8 @@ public class MicrosoftAzureRequestBodyBuilder {
 	 * @param location
 	 *            - the affinity group location.
 	 * @return - an object representing a body of the create affinity request. <br>
-	 *         see <a href=
-	 *         "http://msdn.microsoft.com/en-us/library/windowsazure/gg715317.aspx"
-	 *         >Create Affinity Group</a>
+	 *         see <a href= "http://msdn.microsoft.com/en-us/library/windowsazure/gg715317.aspx" >Create Affinity
+	 *         Group</a>
 	 */
 	public CreateAffinityGroup buildCreateAffinity(final String name,
 			final String location) {
@@ -98,11 +91,9 @@ public class MicrosoftAzureRequestBodyBuilder {
 	 * 
 	 * @param affinityGroup
 	 *            - the affinity group to be associated with the cloud service
-	 * @return - an object representing a body of the create cloud service
-	 *         request. <br>
-	 *         see <a href=
-	 *         "http://msdn.microsoft.com/en-us/library/windowsazure/gg441304.aspx"
-	 *         >Create Hosted Service</a>
+	 * @return - an object representing a body of the create cloud service request. <br>
+	 *         see <a href= "http://msdn.microsoft.com/en-us/library/windowsazure/gg441304.aspx" >Create Hosted
+	 *         Service</a>
 	 */
 	public CreateHostedService buildCreateCloudService(
 			final String affinityGroup) {
@@ -111,7 +102,7 @@ public class MicrosoftAzureRequestBodyBuilder {
 		hostedService.setAffinityGroup(affinityGroup);
 
 		String randomUID = generateRandomUUID(UUID_LENGTH);
-		
+
 		try {
 			hostedService.setLabel(new String(Base64
 					.encode(cloudServicePrefix
@@ -133,11 +124,9 @@ public class MicrosoftAzureRequestBodyBuilder {
 	 *            - the affinity group associated with the network
 	 * @param networkName
 	 *            - the name of the network to create.
-	 * @return - an object representing a body of the set network configuration
-	 *         request. <br>
-	 *         see <a href=
-	 *         "http://msdn.microsoft.com/en-us/library/windowsazure/jj157181.aspx"
-	 *         >Set Network Configuration</a>
+	 * @return - an object representing a body of the set network configuration request. <br>
+	 *         see <a href= "http://msdn.microsoft.com/en-us/library/windowsazure/jj157181.aspx" >Set Network
+	 *         Configuration</a>
 	 */
 	public GlobalNetworkConfiguration buildGlobalNetworkConfiguration(
 			final String addressPrefix, final String affinityGroupName,
@@ -152,7 +141,7 @@ public class MicrosoftAzureRequestBodyBuilder {
 		VirtualNetworkSite virtualNetworkSite = new VirtualNetworkSite();
 
 		AddressSpace addressSpace = new AddressSpace();
-		addressSpace.setAddressPrefix(addressPrefix);
+		addressSpace.getAddressPrefix().add(addressPrefix);
 
 		virtualNetworkSite.setAddressSpace(addressSpace);
 		virtualNetworkSite.setAffinityGroup(affinityGroupName);
@@ -165,15 +154,14 @@ public class MicrosoftAzureRequestBodyBuilder {
 
 		return networkConfiguration;
 	}
-	
+
 	/**
 	 * 
-	 * @param sites - virtual network sites to deploy.
-	 * @return - an object representing a body of the set network configuration
-	 *         request. <br>
-	 *         see <a href=
-	 *         "http://msdn.microsoft.com/en-us/library/windowsazure/jj157181.aspx"
-	 *         >Set Network Configuration</a>
+	 * @param sites
+	 *            - virtual network sites to deploy.
+	 * @return - an object representing a body of the set network configuration request. <br>
+	 *         see <a href= "http://msdn.microsoft.com/en-us/library/windowsazure/jj157181.aspx" >Set Network
+	 *         Configuration</a>
 	 */
 	public GlobalNetworkConfiguration buildGlobalNetworkConfiguration(
 			final List<VirtualNetworkSite> sites) {
@@ -193,16 +181,15 @@ public class MicrosoftAzureRequestBodyBuilder {
 	}
 
 	/**
-	 *
-	 * @param desc .
-	 * @return  - an object representing a body of the create virtual machine deployment
-	 *         request. <br>
-	 *         see <a href=
-	 *         "http://msdn.microsoft.com/en-us/library/windowsazure/jj157194.aspx"
-	 *         >Create Virtual Machine Deployment</a>
+	 * 
+	 * @param desc
+	 *            .
+	 * @return - an object representing a body of the create virtual machine deployment request. <br>
+	 *         see <a href= "http://msdn.microsoft.com/en-us/library/windowsazure/jj157194.aspx" >Create Virtual Machine
+	 *         Deployment</a>
 	 */
-	public Deployment buildDeployment(final CreatePersistentVMRoleDeploymentDescriptor desc, 
-									final boolean isWindows) {
+	public Deployment buildDeployment(final CreatePersistentVMRoleDeploymentDescriptor desc,
+			final boolean isWindows) {
 
 		String deploymentSlot = desc.getDeploymentSlot();
 		String imageName = desc.getImageName();
@@ -240,43 +227,42 @@ public class MicrosoftAzureRequestBodyBuilder {
 
 		ConfigurationSets configurationSets = new ConfigurationSets();
 
-		if ( isWindows ) {
-			
+		if (isWindows) {
+
 			// Windows Specific : roleName de la forme cloudify_manager_roled57f => ROLED57F (15 car limit size limit)
 			String[] computerNameArray = roleName.split("_");
 			String computerName = (computerNameArray[2]).toUpperCase();
-			
-			WindowsProvisioningConfigurationSet windowsProvisioningSet = new WindowsProvisioningConfigurationSet();	
-//			windowsProvisioningSet.setDisableSshPasswordAuthentication(true);
-//			windowsProvisioningSet.setHostName(roleName);
-//			windowsProvisioningSet.setUserName(userName);
-//			windowsProvisioningSet.setUserPassword(password);
-            windowsProvisioningSet.setAdminUsername(userName);
+
+			WindowsProvisioningConfigurationSet windowsProvisioningSet = new WindowsProvisioningConfigurationSet();
+			// windowsProvisioningSet.setDisableSshPasswordAuthentication(true);
+			// windowsProvisioningSet.setHostName(roleName);
+			// windowsProvisioningSet.setUserName(userName);
+			// windowsProvisioningSet.setUserPassword(password);
+			windowsProvisioningSet.setAdminUsername(userName);
 			windowsProvisioningSet.setAdminPassword(password);
 			windowsProvisioningSet.setComputerName(computerName); // (not optional) Windows ComputerName
 			configurationSets.getConfigurationSets().add(windowsProvisioningSet);
-			
+
 			// Set WinRM : HTTP without Certificate
 			WinRM winRM = new WinRM();
 			Listeners listeners = new Listeners();
 
-            Listener listener = new Listener();
-            listener.setCertificateThumbprint(null); // Configure for Secure Winrm command (?)
-            listener.setProtocol("Https");
-            listeners.getListeners().add(listener);
+			Listener listener = new Listener();
+			listener.setCertificateThumbprint(null); // Configure for Secure Winrm command (?)
+			listener.setProtocol("Https");
+			listeners.getListeners().add(listener);
 
-            winRM.setListeners(listeners);
-            windowsProvisioningSet.setWinRM(winRM);
+			winRM.setListeners(listeners);
+			windowsProvisioningSet.setWinRM(winRM);
 		}
 		else {
 			LinuxProvisioningConfigurationSet linuxProvisioningSet = new LinuxProvisioningConfigurationSet();
-//			linuxProvisioningSet.setDisableSshPasswordAuthentication(true);
+			// linuxProvisioningSet.setDisableSshPasswordAuthentication(true);
 			linuxProvisioningSet.setHostName(roleName);
 			linuxProvisioningSet.setUserName(userName);
 			linuxProvisioningSet.setUserPassword(password);
 			configurationSets.getConfigurationSets().add(linuxProvisioningSet);
 		}
-
 
 		// NetworkConfiguration
 		NetworkConfigurationSet networkConfiguration = new NetworkConfigurationSet();
@@ -296,16 +282,14 @@ public class MicrosoftAzureRequestBodyBuilder {
 
 	/**
 	 * 
-	 * @param affinityGroupName -
-	 * 								the affinity group associated with this storage account.
-	 * @param storageAccountName - 
-	 * 								the storage account name.
-	 *            
-	 * @return - an object representing a body of the create storage service input
-	 *         request. <br>
-	 *         see <a href=
-	 *         "http://msdn.microsoft.com/en-us/library/windowsazure/hh264518.aspx"
-	 *         >Create Storage Service</a>
+	 * @param affinityGroupName
+	 *            - the affinity group associated with this storage account.
+	 * @param storageAccountName
+	 *            - the storage account name.
+	 * 
+	 * @return - an object representing a body of the create storage service input request. <br>
+	 *         see <a href= "http://msdn.microsoft.com/en-us/library/windowsazure/hh264518.aspx" >Create Storage
+	 *         Service</a>
 	 */
 	public CreateStorageServiceInput buildCreateStorageAccount(
 			final String affinityGroupName, final String storageAccountName) {
@@ -322,14 +306,11 @@ public class MicrosoftAzureRequestBodyBuilder {
 
 		return storageAccount;
 	}
-	
+
 	/**
 	 * 
-	 * @return  - an object representing a body of the restart role
-	 *         request. <br>
-	 *         see <a href=
-	 *         "http://msdn.microsoft.com/en-us/library/windowsazure/jj157197"
-	 *         >Restart Role</a>
+	 * @return - an object representing a body of the restart role request. <br>
+	 *         see <a href= "http://msdn.microsoft.com/en-us/library/windowsazure/jj157197" >Restart Role</a>
 	 */
 	public RestartRoleOperation buildRestartRoleOperation() {
 		return new RestartRoleOperation();

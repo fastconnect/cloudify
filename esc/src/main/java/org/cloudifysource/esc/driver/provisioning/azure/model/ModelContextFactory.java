@@ -6,22 +6,21 @@ import java.util.List;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 
-
 /**
  * 
  * @author elip
- *
+ * 
  */
 public final class ModelContextFactory {
-	
+
 	private ModelContextFactory() {
-		
+
 	}
-	
+
 	private static final List<Class<?>> CLASSES = new ArrayList<Class<?>>();
-	
+
 	static {
-		
+
 		CLASSES.add(ConfigurationSet.class);
 		CLASSES.add(ConfigurationSets.class);
 		CLASSES.add(CreateAffinityGroup.class);
@@ -50,6 +49,8 @@ public final class ModelContextFactory {
 		CLASSES.add(StorageServices.class);
 		CLASSES.add(Error.class);
 		CLASSES.add(Operation.class);
+		CLASSES.add(Subnet.class);
+		CLASSES.add(Subnets.class);
 		CLASSES.add(AddressSpace.class);
 		CLASSES.add(GlobalNetworkConfiguration.class);
 		CLASSES.add(VirtualNetworkConfiguration.class);
@@ -59,14 +60,13 @@ public final class ModelContextFactory {
 		CLASSES.add(Disk.class);
 		CLASSES.add(Disks.class);
 	}
-	
-	
+
 	private static Class<?>[] getClasses() {
 		Class<?>[] result = new Class<?>[CLASSES.size()];
 		CLASSES.toArray(result);
 		return result;
 	}
-	
+
 	/**
 	 * 
 	 * @return - a {@link JAXBContext} to be used for marshaling and unmarshalling objects
@@ -74,7 +74,7 @@ public final class ModelContextFactory {
 	public static synchronized JAXBContext createInstance() {
 		JAXBContext context = null;
 		try {
-			context = JAXBContext.newInstance(getClasses());				
+			context = JAXBContext.newInstance(getClasses());
 		} catch (JAXBException e) {
 			e.printStackTrace();
 			throw new RuntimeException("Could not create JAXBContext : " + e.getMessage());

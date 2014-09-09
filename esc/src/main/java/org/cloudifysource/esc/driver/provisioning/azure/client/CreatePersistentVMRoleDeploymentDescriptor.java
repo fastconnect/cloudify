@@ -29,7 +29,7 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 	private String roleName;
 	private String affinityGroup;
 	private String hostedServiceName;
-	private List<String> ipAdresses;
+	private List<String> ipAddresses;
 
 	public String getHostedServiceName() {
 		return hostedServiceName;
@@ -137,14 +137,6 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 		this.inputEndpoints = inputEndpoints;
 	}
 
-	public List<String> getIpAdresses() {
-		return ipAdresses;
-	}
-
-	public void setIpAdresses(List<String> ipAdresses) {
-		this.ipAdresses = ipAdresses;
-	}
-
 	@Override
 	public String toString() {
 		return "CreatePersistentVMRoleDeploymentDescriptor [deploymentName="
@@ -155,6 +147,14 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 				+ ", roleName=" + roleName + ", affinityGroup=" + affinityGroup
 				+ ", hostedServiceName=" + hostedServiceName
 				+ ", inputEndpoints=" + inputEndpoints + "]";
+	}
+
+	public List<String> getIpAddresses() {
+		return ipAddresses;
+	}
+
+	public void setIpAddresses(List<String> ipAddresses) {
+		this.ipAddresses = ipAddresses;
 	}
 
 }

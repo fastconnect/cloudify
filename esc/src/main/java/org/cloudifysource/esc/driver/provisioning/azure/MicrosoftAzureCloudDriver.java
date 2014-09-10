@@ -77,6 +77,10 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String AZURE_PFX_PASSWORD = "azure.pfx.password";
 	private static final String AZURE_ENDPOINTS = "azure.endpoints";
 	private static final String AZURE_FIREWALL_PORTS = "azure.firewall.ports";
+
+	/**
+	 * static ips for the Vm ( separated with ',' ex : 192.168.0.5, 192.168.0.6 )
+	 */
 	private static final String VM_IP_ADDRESSES = "ipAddresses";
 
 	// Custom cloud DSL properties
@@ -118,7 +122,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private FileTransferModes fileTransferMode;
 	private RemoteExecutionModes remoteExecutionMode;
 	private ScriptLanguages scriptLanguage;
-	private Map<String, Object> templateOptions;
+	// private Map<String, Object> templateOptions;
 
 	private List<Map<String, String>> endpoints;
 	private List<Map<String, String>> firewallPorts;
@@ -191,7 +195,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		this.fileTransferMode = this.template.getFileTransfer();
 		this.remoteExecutionMode = this.template.getRemoteExecution();
 		this.scriptLanguage = this.template.getScriptLanguage();
-		this.templateOptions = this.template.getOptions();
 
 		boolean isWindowsVM = isWindowsVM();
 		if (isWindowsVM) {
@@ -356,8 +359,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			desc.setSize(size);
 			desc.setStorageAccountName(storageAccountName);
 			desc.setUserName(userName);
-
-			desc.setIpAddresses(this.getIpAddressesList(this.templateOptions.get(VM_IP_ADDRESSES)));
+			desc.setIpAddresses(this.getIpAddressesList(this.template.getOptions()));
 
 			logger.info("Launching a new virtual machine");
 			boolean isWindows = isWindowsVM();
@@ -842,16 +844,17 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		// TODO Auto-generated method stub
 	}
 
-	private List<String> getIpAddressesList(Object ipAddressesObject) {
-
+	private List<String> getIpAddressesList(Map<String, Object> templateOptions) {
 		List<String> ipAddressesList = null;
-		if (ipAddressesObject != null) {
-			String ipAddressesString = (String) ipAddressesObject;
-			if (!ipAddressesString.isEmpty()) {
+
+		if (templateOptions != null && !templateOptions.isEmpty()) {
+			String ipAddressesString = (String) templateOptions.get(VM_IP_ADDRESSES);
+			if (ipAddressesString != null && !ipAddressesString.isEmpty()) {
 				String[] split = ipAddressesString.split(",");
 				ipAddressesList = Arrays.asList(split);
 			}
 		}
+
 		return ipAddressesList;
 	}
 }

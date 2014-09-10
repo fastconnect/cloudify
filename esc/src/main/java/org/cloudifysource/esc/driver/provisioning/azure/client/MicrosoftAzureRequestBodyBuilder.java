@@ -272,11 +272,12 @@ public class MicrosoftAzureRequestBodyBuilder {
 		// static ip configuration
 		Subnets subnetNames = new Subnets();
 		Subnet subnet = new Subnet();
-		subnet.setName("testsubnet");
+		subnet.setName(desc.getSubnetName());
 		networkConfiguration.setSubnetNames(subnetNames);
 
 		// TODO verify static ip address availability
-		networkConfiguration.setStaticVirtualNetworkIPAddress(desc.getIpAddresses().get(0));
+		String ip = desc.getIpAddresses().get(0).trim();
+		networkConfiguration.setStaticVirtualNetworkIPAddress(ip);
 
 		networkConfiguration.setInputEndpoints(endPoints);
 		configurationSets.getConfigurationSets().add(networkConfiguration);

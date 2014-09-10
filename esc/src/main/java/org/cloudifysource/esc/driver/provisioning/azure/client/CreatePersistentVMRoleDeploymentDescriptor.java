@@ -30,6 +30,7 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 	private String affinityGroup;
 	private String hostedServiceName;
 	private List<String> ipAddresses;
+	private String subnetName;
 
 	public String getHostedServiceName() {
 		return hostedServiceName;
@@ -155,6 +156,14 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 
 	public void setIpAddresses(List<String> ipAddresses) {
 		this.ipAddresses = ipAddresses;
+	}
+
+	public String getSubnetName() {
+		return subnetName;
+	}
+
+	public void setSubnetName(String subnetName) {
+		this.subnetName = subnetName;
 	}
 
 }

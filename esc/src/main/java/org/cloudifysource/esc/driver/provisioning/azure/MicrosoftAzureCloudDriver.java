@@ -83,6 +83,11 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	 */
 	private static final String VM_IP_ADDRESSES = "ipAddresses";
 
+	/**
+	 * subnet name
+	 */
+	private static final String VM_SUBNET = "subnet";
+
 	// Custom cloud DSL properties
 	private static final String AZURE_WIRE_LOG = "azure.wireLog";
 	private static final String AZURE_DEPLOYMENT_SLOT = "azure.deployment.slot";
@@ -122,7 +127,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private FileTransferModes fileTransferMode;
 	private RemoteExecutionModes remoteExecutionMode;
 	private ScriptLanguages scriptLanguage;
-	// private Map<String, Object> templateOptions;
 
 	private List<Map<String, String>> endpoints;
 	private List<Map<String, String>> firewallPorts;
@@ -360,6 +364,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			desc.setStorageAccountName(storageAccountName);
 			desc.setUserName(userName);
 			desc.setIpAddresses(this.getIpAddressesList(this.template.getOptions()));
+			desc.setSubnetName(this.getSubnetName(this.template.getOptions()));
 
 			logger.info("Launching a new virtual machine");
 			boolean isWindows = isWindowsVM();
@@ -848,13 +853,30 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		List<String> ipAddressesList = null;
 
 		if (templateOptions != null && !templateOptions.isEmpty()) {
-			String ipAddressesString = (String) templateOptions.get(VM_IP_ADDRESSES);
-			if (ipAddressesString != null && !ipAddressesString.isEmpty()) {
-				String[] split = ipAddressesString.split(",");
-				ipAddressesList = Arrays.asList(split);
+			if (templateOptions.get(VM_IP_ADDRESSES) != null) {
+				String ipAddressesString = (String) templateOptions.get(VM_IP_ADDRESSES);
+				if (ipAddressesString != null && !ipAddressesString.trim().isEmpty()) {
+					String[] split = ipAddressesString.split(",");
+					ipAddressesList = Arrays.asList(split);
+				}
+			}
+
+		}
+		return ipAddressesList;
+	}
+
+	private String getSubnetName(Map<String, Object> templateOptions) {
+
+		String subnetName = null;
+
+		if (templateOptions != null && !templateOptions.isEmpty()) {
+			if (templateOptions.get(VM_SUBNET) != null) {
+				String subnetString = (String) templateOptions.get(VM_SUBNET);
+				if (subnetString != null && !subnetString.trim().isEmpty()) {
+					subnetName = subnetString;
+				}
 			}
 		}
-
-		return ipAddressesList;
+		return subnetName;
 	}
 }

@@ -28,6 +28,8 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.OSVirtualHardDisk;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RestartRoleOperation;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Role;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleList;
+import org.cloudifysource.esc.driver.provisioning.azure.model.Subnet;
+import org.cloudifysource.esc.driver.provisioning.azure.model.Subnets;
 import org.cloudifysource.esc.driver.provisioning.azure.model.VirtualNetworkConfiguration;
 import org.cloudifysource.esc.driver.provisioning.azure.model.VirtualNetworkSite;
 import org.cloudifysource.esc.driver.provisioning.azure.model.VirtualNetworkSites;
@@ -267,14 +269,19 @@ public class MicrosoftAzureRequestBodyBuilder {
 		// NetworkConfiguration
 		NetworkConfigurationSet networkConfiguration = new NetworkConfigurationSet();
 
+		// static ip configuration
+		Subnets subnetNames = new Subnets();
+		Subnet subnet = new Subnet();
+		subnet.setName("testsubnet");
+		networkConfiguration.setSubnetNames(subnetNames);
+
+		// TODO verify static ip address availability
+		networkConfiguration.setStaticVirtualNetworkIPAddress(desc.getIpAddresses().get(0));
+
 		networkConfiguration.setInputEndpoints(endPoints);
-
 		configurationSets.getConfigurationSets().add(networkConfiguration);
-
 		role.setConfigurationSets(configurationSets);
-
 		roleList.getRoles().add(role);
-
 		deployment.setRoleList(roleList);
 
 		return deployment;

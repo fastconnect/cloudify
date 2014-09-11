@@ -330,7 +330,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	public MachineDetails startMachine(ProvisioningContext context, long duration, TimeUnit unit)
 			throws TimeoutException, CloudProvisioningException {
 		long endTime = System.currentTimeMillis() + unit.toMillis(duration);
-		String serverName = serverNamePrefix + "_role";
+		// underscore character in hostname might cause deployment to fail
+		String serverName = serverNamePrefix + "-role";
 		final ComputeTemplate computeTemplate = this.cloud.getCloudCompute().getTemplates().get(this.cloudTemplateName);
 		return createServer(serverName, endTime, computeTemplate);
 	}

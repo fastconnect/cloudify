@@ -51,8 +51,10 @@ public class BaseDriverTestIT {
 		configuration.setManagement(isManagement);
 
 		CloudProvider provider = cloud.getProvider();
-		provider.setManagementGroup(provider.getManagementGroup() + computeTemplate + "-");
-		provider.setMachineNamePrefix(provider.getMachineNamePrefix() + computeTemplate + "-");
+
+		provider.setManagementGroup("management");
+		provider.setMachineNamePrefix("agent");
+
 		if (!isManagement) {
 			configuration.setServiceName("default.service");
 		}

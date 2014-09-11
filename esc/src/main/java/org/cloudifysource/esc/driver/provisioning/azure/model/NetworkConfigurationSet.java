@@ -8,11 +8,12 @@ import javax.xml.bind.annotation.XmlType;
  * @author elip
  *
  */
-@XmlType(propOrder = { "configurationSetType", "inputEndpoints" })
+@XmlType(propOrder = { "configurationSetType", "inputEndpoints", "subnetNames", "staticVirtualNetworkIPAddress" })
 public class NetworkConfigurationSet extends ConfigurationSet {
 
 	private String configurationSetType = ConfigurationSet.NETWORK_PROVISIONING_CONFIGURATION;
 	private InputEndpoints inputEndpoints;
+
 	private Subnets subnetNames;
 	private String staticVirtualNetworkIPAddress;
 

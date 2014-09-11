@@ -12,22 +12,22 @@ import javax.xml.bind.annotation.XmlType;
  * @author elip
  * 
  */
-@XmlType(name = "Subnets")
-public class Subnets implements Iterable<Subnet> {
+@XmlType(name = "SubnetsNames")
+public class Subnets implements Iterable<String> {
 
-	private List<Subnet> subnets = new ArrayList<Subnet>();
+	private List<String> subnets = new ArrayList<String>();
 
 	@Override
-	public Iterator<Subnet> iterator() {
+	public Iterator<String> iterator() {
 		return subnets.iterator();
 	}
 
-	@XmlElement(name = "Subnet")
-	public List<Subnet> getSubnets() {
+	@XmlElement(name = "SubnetName")
+	public List<String> getSubnets() {
 		return subnets;
 	}
 
-	public void setSubnets(List<Subnet> subnets) {
+	public void setSubnets(List<String> subnets) {
 		this.subnets = subnets;
 	}
 }

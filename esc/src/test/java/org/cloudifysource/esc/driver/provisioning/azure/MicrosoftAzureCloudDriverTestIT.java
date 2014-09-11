@@ -68,4 +68,9 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 		this.doTestStartMachine("LINUX", null);
 	}
 
+	@Test
+	public void testStartMachineWithStaticIp() throws Exception {
+		this.doTestStartMachine("UBUNTU1404", null);
+	}
+
 }

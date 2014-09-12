@@ -28,7 +28,7 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.OSVirtualHardDisk;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RestartRoleOperation;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Role;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleList;
-import org.cloudifysource.esc.driver.provisioning.azure.model.Subnets;
+import org.cloudifysource.esc.driver.provisioning.azure.model.SubnetNames;
 import org.cloudifysource.esc.driver.provisioning.azure.model.VirtualNetworkConfiguration;
 import org.cloudifysource.esc.driver.provisioning.azure.model.VirtualNetworkSite;
 import org.cloudifysource.esc.driver.provisioning.azure.model.VirtualNetworkSites;
@@ -270,7 +270,7 @@ public class MicrosoftAzureRequestBodyBuilder {
 
 		// static ip configuration
 		// TODO verify subnet availability
-		Subnets subnetNames = new Subnets();
+		SubnetNames subnetNames = new SubnetNames();
 		subnetNames.getSubnets().add(desc.getSubnetName());
 		networkConfiguration.setSubnetNames(subnetNames);
 

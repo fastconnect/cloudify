@@ -166,7 +166,7 @@ public class ConfigurationSetAdapter
 		private InputEndpoints inputEndpoints;
 
 		@XmlElement(name = "SubnetNames")
-		private Subnets subnetNames;
+		private SubnetNames subnetNames;
 
 		@XmlElement(name = "StaticVirtualNetworkIPAddress")
 		private String staticVirtualNetworkIPAddress;

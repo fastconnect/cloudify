@@ -14,7 +14,7 @@ public class NetworkConfigurationSet extends ConfigurationSet {
 	private String configurationSetType = ConfigurationSet.NETWORK_PROVISIONING_CONFIGURATION;
 	private InputEndpoints inputEndpoints;
 
-	private Subnets subnetNames;
+	private SubnetNames subnetNames;
 	private String staticVirtualNetworkIPAddress;
 
 	@XmlElement(name = "InputEndpoints")
@@ -36,11 +36,11 @@ public class NetworkConfigurationSet extends ConfigurationSet {
 	}
 
 	@XmlElement(name = "SubnetNames")
-	public Subnets getSubnetNames() {
+	public SubnetNames getSubnetNames() {
 		return subnetNames;
 	}
 
-	public void setSubnetNames(Subnets subnetNames) {
+	public void setSubnetNames(SubnetNames subnetNames) {
 		this.subnetNames = subnetNames;
 	}
 

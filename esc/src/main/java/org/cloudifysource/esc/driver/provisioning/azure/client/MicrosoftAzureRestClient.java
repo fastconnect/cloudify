@@ -580,7 +580,7 @@ public class MicrosoftAzureRestClient {
 				sb.append("?op=checkavailability");
 				sb.append("&address=");
 				sb.append(ip);
-				response = doGetVersion(sb.toString(), X_MS_NEW_VERSION_2013_11_01);
+				response = doGet(sb.toString(), X_MS_NEW_VERSION_2013_11_01);
 				checkForError(response);
 				String requestId = extractRequestId(response);
 				waitForRequestToFinish(requestId, endTime);
@@ -1226,7 +1226,7 @@ public class MicrosoftAzureRestClient {
 		return response;
 	}
 
-	private ClientResponse doGetVersion(final String url, final String versionHeader)
+	private ClientResponse doGet(final String url, final String versionHeader)
 			throws MicrosoftAzureException, TimeoutException {
 
 		ClientResponse response = null;

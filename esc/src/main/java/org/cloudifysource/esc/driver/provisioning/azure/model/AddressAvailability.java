@@ -23,16 +23,6 @@ public class AddressAvailability {
 		this.available = available;
 	}
 
-	//
-	// @XmlElement(name = "IsAvailable")
-	// public boolean isIsAvailable() {
-	// return available;
-	// }
-	//
-	// public void setAvailable(boolean isAvailable) {
-	// this.available = isAvailable;
-	// }
-
 	@XmlElement(name = "AvailableAddresses")
 	public AvailableAddresses getAvailableAddresses() {
 		return availableAddresses;

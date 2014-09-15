@@ -177,5 +177,8 @@ public class ConfigurationSetAdapter
 		@XmlElement(name = "AvailableAddresses")
 		private AvailableAddresses availableAddresses;
 
+		@XmlElement(name = "NetworkConfiguration")
+		private GlobalNetworkConfiguration globalNetworkConfiguration;
+
 	}
 }

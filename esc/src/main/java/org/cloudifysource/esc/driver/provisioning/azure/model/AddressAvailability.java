@@ -8,20 +8,30 @@ import javax.xml.bind.annotation.XmlType;
  * Represents response of testing an (private) IP availability
  */
 @XmlRootElement(name = "AddressAvailabilityResponse")
-@XmlType(propOrder = { "isAvailable", "availableAddresses" })
+@XmlType(propOrder = { "available", "availableAddresses" })
 public class AddressAvailability {
 
-	private boolean isAvailable;
+	private boolean available;
 	private AvailableAddresses availableAddresses;
 
 	@XmlElement(name = "IsAvailable")
-	public boolean isIsAvailable() {
-		return isAvailable;
+	public boolean isAvailable() {
+		return available;
 	}
 
-	public void setAvailable(boolean isAvailable) {
-		this.isAvailable = isAvailable;
+	public void setAvailable(boolean available) {
+		this.available = available;
 	}
+
+	//
+	// @XmlElement(name = "IsAvailable")
+	// public boolean isIsAvailable() {
+	// return available;
+	// }
+	//
+	// public void setAvailable(boolean isAvailable) {
+	// this.available = isAvailable;
+	// }
 
 	@XmlElement(name = "AvailableAddresses")
 	public AvailableAddresses getAvailableAddresses() {
@@ -31,5 +41,4 @@ public class AddressAvailability {
 	public void setAvailableAddresses(AvailableAddresses availableAddresses) {
 		this.availableAddresses = availableAddresses;
 	}
-
 }

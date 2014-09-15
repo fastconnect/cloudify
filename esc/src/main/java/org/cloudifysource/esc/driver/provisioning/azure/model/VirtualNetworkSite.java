@@ -53,4 +53,20 @@ public class VirtualNetworkSite {
 		this.subnets = subnets;
 	}
 
+	/**
+	 * Tests whether a subnet exist in a virtual network site
+	 * 
+	 * @param subnetName
+	 *            .
+	 * @return True if the subnet exists, false otherwise
+	 */
+	public boolean isSubnetExist(final String subnetName) {
+		for (Subnet sub : this.getSubnets()) {
+			if (sub.getName().equals(subnetName)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 }

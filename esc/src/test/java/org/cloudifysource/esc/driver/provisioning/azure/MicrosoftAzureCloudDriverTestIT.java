@@ -73,4 +73,9 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 		this.doTestStartMachine("UBUNTU1404", null);
 	}
 
+	@Test(expected = Exception.class)
+	public void testStartMachineWithNotExistingSubnet() throws Exception {
+		this.doTestStartMachine("UBUNTUnoSubnet", null);
+	}
+
 }

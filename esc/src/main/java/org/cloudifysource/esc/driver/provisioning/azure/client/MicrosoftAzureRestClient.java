@@ -416,19 +416,29 @@ public class MicrosoftAzureRestClient {
 				deplyomentDesc.setHostedServiceName(serviceName);
 				deplyomentDesc.setDeploymentName(serviceName);
 
-				// check IP availability
+				// check subnet availability
+				boolean subnetExist = isSubnetExist(deplyomentDesc.getSubnetName(), deplyomentDesc.getNetworkName(),
+						endTime);
+				if (!subnetExist) {
+					String subnetNotExistString =
+							String.format("The specified subnet '%s' doesn't exist in network '%s' ",
+									deplyomentDesc.getSubnetName(), deplyomentDesc.getNetworkName());
+
+					logger.severe(subnetNotExistString);
+					throw new MicrosoftAzureException("Can't provision VM :" + subnetNotExistString);
+				}
+
+				// check static IP(s) availability
 				String availableIp = getAvailableIp(deplyomentDesc.getIpAddresses(),
 						deplyomentDesc.getNetworkName(), endTime);
 
 				if (availableIp == null) {
-					String noIpAvailableString = String.format("The specified Ip addresses %s are not available",
+					String noIpAvailableString = String.format("The specified Ip addresses '%s' are not available",
 							deplyomentDesc.getIpAddresses().toString());
 
 					logger.severe(noIpAvailableString);
-					throw new MicrosoftAzureException("Cant provision VM :" + noIpAvailableString);
+					throw new MicrosoftAzureException("Can't provision VM :" + noIpAvailableString);
 				}
-
-				// TODO : check subnet availability
 
 				deplyomentDesc.setAvailableIp(availableIp);
 				deployment = requestBodyBuilder.buildDeployment(deplyomentDesc, isWindows);
@@ -518,6 +528,43 @@ public class MicrosoftAzureRestClient {
 		return roleAddressDetails;
 	}
 
+	// Exist
+	private boolean isSubnetExist(String subnetName, String virtualNetwork, long endTime)
+			throws MicrosoftAzureException,
+			TimeoutException, InterruptedException {
+		boolean exist = false;
+
+		ClientResponse response;
+
+		if (subnetName != null && !subnetName.trim().isEmpty()) {
+			response = doGet("/services/networking/media");
+			checkForError(response);
+			String requestId = extractRequestId(response);
+			waitForRequestToFinish(requestId, endTime);
+
+			String responseXmlBodyString = response.getEntity(String.class);
+
+			// Response body is a file format (contains \n \r) and starts with prolog <?xml version="1.0"...
+			// Clear the XML declaration from the string
+			// TODO find a better way (jaxb properties, libs...)
+			int i = responseXmlBodyString.indexOf("?>") + 2;
+			String xmlstring = responseXmlBodyString.substring(i);
+			xmlstring = xmlstring.replaceAll(System.getProperty("line.separator"), "");
+
+			GlobalNetworkConfiguration globalNetworkConfiguration =
+					(GlobalNetworkConfiguration) MicrosoftAzureModelUtils.unmarshall(xmlstring);
+
+			VirtualNetworkSite virtualNetworkSite = globalNetworkConfiguration.getVirtualNetworkConfiguration()
+					.getVirtualNetworkSiteConfigurationByName(virtualNetwork);
+
+			if (virtualNetworkSite != null) {
+				exist = virtualNetworkSite.isSubnetExist(subnetName);
+			}
+		}
+
+		return exist;
+	}
+
 	private String getAvailableIp(List<String> ips, String virtualNetwork, long endTime)
 			throws MicrosoftAzureException,
 			TimeoutException, InterruptedException {
@@ -538,10 +585,10 @@ public class MicrosoftAzureRestClient {
 				String requestId = extractRequestId(response);
 				waitForRequestToFinish(requestId, endTime);
 
-				AddressAvailability u =
+				AddressAvailability aa =
 						(AddressAvailability) MicrosoftAzureModelUtils.unmarshall(response.getEntity(String.class));
 
-				if (u.isIsAvailable()) {
+				if (aa.isAvailable()) {
 					return ip;
 				}
 			}

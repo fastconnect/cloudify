@@ -139,7 +139,7 @@ cloud {
 					// Password that was used to create the certificate
 					"azure.pfx.password" : pfxPassword
 				])
-				options ([ "ipAddresses" : "10.0.0.11" ,
+				options ([ "ipAddresses" : "10.0.0.4" ,
 							"subnet" : "Subnet-1"])
 				
 

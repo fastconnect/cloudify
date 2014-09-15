@@ -10,6 +10,7 @@
 
 package org.cloudifysource.esc.driver.provisioning.azure.client;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
@@ -21,6 +22,7 @@ import javax.net.ssl.SSLContext;
 
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
+import org.cloudifysource.esc.driver.provisioning.azure.model.AddressAvailability;
 import org.cloudifysource.esc.driver.provisioning.azure.model.AddressSpace;
 import org.cloudifysource.esc.driver.provisioning.azure.model.AffinityGroups;
 import org.cloudifysource.esc.driver.provisioning.azure.model.AttachedTo;
@@ -84,6 +86,9 @@ public class MicrosoftAzureRestClient {
 	// Header names and values
 	private static final String X_MS_VERSION_HEADER_NAME = "x-ms-version";
 	private static final String X_MS_VERSION_HEADER_VALUE = "2013-03-01";
+
+	private static final String X_MS_NEW_VERSION_2013_11_01 = "2013-11-01";
+
 	private static final String CONTENT_TYPE_HEADER_NAME = "Content-Type";
 	private static final String CONTENT_TYPE_HEADER_VALUE = "application/xml";
 
@@ -406,16 +411,29 @@ public class MicrosoftAzureRestClient {
 
 			try {
 
-				serviceName = createCloudService(
-						deplyomentDesc.getAffinityGroup(), endTime);
+				serviceName = createCloudService(deplyomentDesc.getAffinityGroup(), endTime);
 
 				deplyomentDesc.setHostedServiceName(serviceName);
 				deplyomentDesc.setDeploymentName(serviceName);
 
+				// check IP availability
+				String availableIp = getAvailableIp(deplyomentDesc.getIpAddresses(),
+						deplyomentDesc.getNetworkName(), endTime);
+
+				if (availableIp == null) {
+					String noIpAvailableString = String.format("The specified Ip addresses %s are not available",
+							deplyomentDesc.getIpAddresses().toString());
+
+					logger.severe(noIpAvailableString);
+					throw new MicrosoftAzureException("Cant provision VM :" + noIpAvailableString);
+				}
+
+				// TODO : check subnet availability
+
+				deplyomentDesc.setAvailableIp(availableIp);
 				deployment = requestBodyBuilder.buildDeployment(deplyomentDesc, isWindows);
 
-				String xmlRequest = MicrosoftAzureModelUtils.marshall(
-						deployment, false);
+				String xmlRequest = MicrosoftAzureModelUtils.marshall(deployment, false);
 
 				logger.fine(getThreadIdentity() + "Launching virtual machine : "
 						+ deplyomentDesc.getRoleName());
@@ -498,6 +516,38 @@ public class MicrosoftAzureRestClient {
 		roleAddressDetails.setPublicIp(publicIp);
 
 		return roleAddressDetails;
+	}
+
+	private String getAvailableIp(List<String> ips, String virtualNetwork, long endTime)
+			throws MicrosoftAzureException,
+			TimeoutException, InterruptedException {
+
+		if (ips != null && !ips.isEmpty()) {
+			StringBuilder sb = new StringBuilder();
+			ClientResponse response;
+
+			for (String ip : ips) {
+
+				sb.append("/services/networking/");
+				sb.append(virtualNetwork);
+				sb.append("?op=checkavailability");
+				sb.append("&address=");
+				sb.append(ip);
+				response = doGetVersion(sb.toString(), X_MS_NEW_VERSION_2013_11_01);
+				checkForError(response);
+				String requestId = extractRequestId(response);
+				waitForRequestToFinish(requestId, endTime);
+
+				AddressAvailability u =
+						(AddressAvailability) MicrosoftAzureModelUtils.unmarshall(response.getEntity(String.class));
+
+				if (u.isIsAvailable()) {
+					return ip;
+				}
+			}
+		}
+
+		return null;
 	}
 
 	/**
@@ -1110,6 +1160,35 @@ public class MicrosoftAzureRestClient {
 						.path(subscriptionId + url)
 						.header(X_MS_VERSION_HEADER_NAME,
 								X_MS_VERSION_HEADER_VALUE)
+						.header(CONTENT_TYPE_HEADER_NAME,
+								CONTENT_TYPE_HEADER_VALUE)
+						.get(ClientResponse.class);
+				break;
+			} catch (ClientHandlerException e) {
+				logger.warning("Caught an exception while executing GET with url "
+						+ url + ". Message :" + e.getMessage());
+				logger.warning("Retrying request");
+				continue;
+			}
+		}
+		if (response == null) {
+			throw new TimeoutException("Timed out while executing GET after "
+					+ MAX_RETRIES);
+		}
+
+		return response;
+	}
+
+	private ClientResponse doGetVersion(final String url, final String versionHeader)
+			throws MicrosoftAzureException, TimeoutException {
+
+		ClientResponse response = null;
+		for (int i = 0; i < MAX_RETRIES; i++) {
+			try {
+				response = resource
+						.path(subscriptionId + url)
+						.header(X_MS_VERSION_HEADER_NAME,
+								versionHeader)
 						.header(CONTENT_TYPE_HEADER_NAME,
 								CONTENT_TYPE_HEADER_VALUE)
 						.get(ClientResponse.class);

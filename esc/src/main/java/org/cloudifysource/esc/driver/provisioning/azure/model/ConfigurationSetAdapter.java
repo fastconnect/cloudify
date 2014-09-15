@@ -171,5 +171,11 @@ public class ConfigurationSetAdapter
 		@XmlElement(name = "StaticVirtualNetworkIPAddress")
 		private String staticVirtualNetworkIPAddress;
 
+		@XmlElement(name = "AddressAvailabilityResponse")
+		private AddressAvailability addressAvailability;
+
+		@XmlElement(name = "AvailableAddresses")
+		private AvailableAddresses availableAddresses;
+
 	}
 }

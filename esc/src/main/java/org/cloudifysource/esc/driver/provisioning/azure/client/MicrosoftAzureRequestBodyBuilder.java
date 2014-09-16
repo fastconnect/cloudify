@@ -274,7 +274,6 @@ public class MicrosoftAzureRequestBodyBuilder {
 		subnetNames.getSubnets().add(desc.getSubnetName());
 		networkConfiguration.setSubnetNames(subnetNames);
 
-		// TODO verify static ip address availability
 		String ip = desc.getAvailableIp();
 		networkConfiguration.setStaticVirtualNetworkIPAddress(ip);
 

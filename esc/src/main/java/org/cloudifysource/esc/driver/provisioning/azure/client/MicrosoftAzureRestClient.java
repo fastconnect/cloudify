@@ -416,31 +416,23 @@ public class MicrosoftAzureRestClient {
 				deplyomentDesc.setHostedServiceName(serviceName);
 				deplyomentDesc.setDeploymentName(serviceName);
 
-				// check subnet availability
-				boolean subnetExist = isSubnetExist(deplyomentDesc.getSubnetName(), deplyomentDesc.getNetworkName(),
-						endTime);
-				if (!subnetExist) {
-					String subnetNotExistString =
-							String.format("The specified subnet '%s' doesn't exist in network '%s' ",
-									deplyomentDesc.getSubnetName(), deplyomentDesc.getNetworkName());
-
-					logger.severe(subnetNotExistString);
-					throw new MicrosoftAzureException("Can't provision VM :" + subnetNotExistString);
-				}
-
 				// check static IP(s) availability
-				String availableIp = getAvailableIp(deplyomentDesc.getIpAddresses(),
-						deplyomentDesc.getNetworkName(), endTime);
+				// this will be skipped if no private ip was defined in the current compute template
+				if (deplyomentDesc.getIpAddresses() != null) {
+					String availableIp = setAvailableIpIfExist(deplyomentDesc.getIpAddresses(),
+							deplyomentDesc.getNetworkName(), deplyomentDesc.getSubnetName(), endTime);
 
-				if (availableIp == null) {
-					String noIpAvailableString = String.format("The specified Ip addresses '%s' are not available",
-							deplyomentDesc.getIpAddresses().toString());
+					if (availableIp == null) {
+						String noIpAvailableString = String.format("The specified Ip addresses '%s' are not available",
+								deplyomentDesc.getIpAddresses().toString());
 
-					logger.severe(noIpAvailableString);
-					throw new MicrosoftAzureException("Can't provision VM :" + noIpAvailableString);
+						logger.severe(noIpAvailableString);
+						throw new MicrosoftAzureException("Can't provision VM :" + noIpAvailableString);
+
+					}
+					deplyomentDesc.setAvailableIp(availableIp);
 				}
 
-				deplyomentDesc.setAvailableIp(availableIp);
 				deployment = requestBodyBuilder.buildDeployment(deplyomentDesc, isWindows);
 
 				String xmlRequest = MicrosoftAzureModelUtils.marshall(deployment, false);
@@ -565,7 +557,7 @@ public class MicrosoftAzureRestClient {
 		return exist;
 	}
 
-	private String getAvailableIp(List<String> ips, String virtualNetwork, long endTime)
+	private String setAvailableIpIfExist(List<String> ips, String virtualNetwork, String subnetName, long endTime)
 			throws MicrosoftAzureException,
 			TimeoutException, InterruptedException {
 
@@ -585,11 +577,21 @@ public class MicrosoftAzureRestClient {
 				String requestId = extractRequestId(response);
 				waitForRequestToFinish(requestId, endTime);
 
-				AddressAvailability aa =
-						(AddressAvailability) MicrosoftAzureModelUtils.unmarshall(response.getEntity(String.class));
+				AddressAvailability aa = (AddressAvailability) MicrosoftAzureModelUtils.
+						unmarshall(response.getEntity(String.class));
 
 				if (aa.isAvailable()) {
-					return ip;
+					// check subnet availability
+					if (isSubnetExist(subnetName, virtualNetwork, endTime)) {
+						return ip;
+					} else {
+						String subnetNotExistString =
+								String.format("The specified subnet '%s' doesn't exist in network '%s' ",
+										subnetName, virtualNetwork);
+
+						logger.severe(subnetNotExistString);
+						throw new MicrosoftAzureException("Can't provision VM :" + subnetNotExistString);
+					}
 				}
 			}
 		}
@@ -1234,10 +1236,8 @@ public class MicrosoftAzureRestClient {
 			try {
 				response = resource
 						.path(subscriptionId + url)
-						.header(X_MS_VERSION_HEADER_NAME,
-								versionHeader)
-						.header(CONTENT_TYPE_HEADER_NAME,
-								CONTENT_TYPE_HEADER_VALUE)
+						.header(X_MS_VERSION_HEADER_NAME, versionHeader)
+						.header(CONTENT_TYPE_HEADER_NAME, CONTENT_TYPE_HEADER_VALUE)
 						.get(ClientResponse.class);
 				break;
 			} catch (ClientHandlerException e) {

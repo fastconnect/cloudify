@@ -43,6 +43,8 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.NetworkConfigurati
 import org.cloudifysource.esc.driver.provisioning.azure.model.Operation;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RestartRoleOperation;
 import org.cloudifysource.esc.driver.provisioning.azure.model.StorageServices;
+import org.cloudifysource.esc.driver.provisioning.azure.model.Subnet;
+import org.cloudifysource.esc.driver.provisioning.azure.model.Subnets;
 import org.cloudifysource.esc.driver.provisioning.azure.model.VirtualNetworkConfiguration;
 import org.cloudifysource.esc.driver.provisioning.azure.model.VirtualNetworkSite;
 import org.cloudifysource.esc.driver.provisioning.azure.model.VirtualNetworkSites;
@@ -325,6 +327,12 @@ public class MicrosoftAzureRestClient {
 		newSite.setAddressSpace(address);
 		newSite.setAffinityGroup(affinityGroup);
 		newSite.setName(networkSiteName);
+		Subnet subnet = new Subnet();
+		subnet.setName("subnet-" + networkSiteName);
+		subnet.getAddressPrefix().add(addressSpace);
+		Subnets subnets = new Subnets();
+		subnets.getSubnets().add(subnet);
+		newSite.setSubnets(subnets);
 
 		virtualNetworkSites.getVirtualNetworkSites().add(newSite);
 

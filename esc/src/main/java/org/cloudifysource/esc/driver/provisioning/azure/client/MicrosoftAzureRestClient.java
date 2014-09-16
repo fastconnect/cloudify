@@ -41,7 +41,9 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.HostedService;
 import org.cloudifysource.esc.driver.provisioning.azure.model.HostedServices;
 import org.cloudifysource.esc.driver.provisioning.azure.model.NetworkConfigurationSet;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Operation;
+import org.cloudifysource.esc.driver.provisioning.azure.model.RestartRoleOperation;
 import org.cloudifysource.esc.driver.provisioning.azure.model.StorageServices;
+import org.cloudifysource.esc.driver.provisioning.azure.model.VirtualNetworkConfiguration;
 import org.cloudifysource.esc.driver.provisioning.azure.model.VirtualNetworkSite;
 import org.cloudifysource.esc.driver.provisioning.azure.model.VirtualNetworkSites;
 
@@ -302,7 +304,8 @@ public class MicrosoftAzureRestClient {
 			final long endTime) throws MicrosoftAzureException,
 			TimeoutException, InterruptedException {
 
-		VirtualNetworkSites virtualNetworkSites = listVirtualNetworkSites();
+		VirtualNetworkConfiguration virtualNetworkConfiguration = getVirtualNetworkConfiguration();
+		VirtualNetworkSites virtualNetworkSites = virtualNetworkConfiguration.getVirtualNetworkSites();
 		if (virtualNetworkSites != null
 				&& virtualNetworkSites.contains(networkSiteName)) {
 			logger.info("Using an already existing virtual netowrk site : "
@@ -325,7 +328,7 @@ public class MicrosoftAzureRestClient {
 
 		virtualNetworkSites.getVirtualNetworkSites().add(newSite);
 
-		setNetworkConfiguration(endTime, virtualNetworkSites);
+		setNetworkConfiguration(endTime, virtualNetworkConfiguration);
 		logger.fine("Created virtual network site : " + networkSiteName);
 	}
 
@@ -969,8 +972,7 @@ public class MicrosoftAzureRestClient {
 		checkForError(response);
 		String responseBody = response.getEntity(String.class);
 		checkForError(response);
-		return (AffinityGroups) MicrosoftAzureModelUtils
-				.unmarshall(responseBody);
+		return (AffinityGroups) MicrosoftAzureModelUtils.unmarshall(responseBody);
 	}
 
 	/**
@@ -993,8 +995,19 @@ public class MicrosoftAzureRestClient {
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
 	 */
-	public VirtualNetworkSites listVirtualNetworkSites()
-			throws MicrosoftAzureException, TimeoutException {
+	/*
+	 * public VirtualNetworkSites listVirtualNetworkSites() throws MicrosoftAzureException, TimeoutException {
+	 * ClientResponse response = doGet("/services/networking/media"); if (response.getStatus() == HTTP_NOT_FOUND) {
+	 * return null; } String responseBody = response.getEntity(String.class); if (responseBody.charAt(0) == BAD_CHAR) {
+	 * responseBody = responseBody.substring(1); }
+	 * 
+	 * GlobalNetworkConfiguration globalNetowrkConfiguration = (GlobalNetworkConfiguration) MicrosoftAzureModelUtils
+	 * .unmarshall(responseBody); return globalNetowrkConfiguration.getVirtualNetworkConfiguration()
+	 * .getVirtualNetworkSites(); }
+	 */
+
+	public VirtualNetworkConfiguration getVirtualNetworkConfiguration() throws MicrosoftAzureException,
+			TimeoutException {
 		ClientResponse response = doGet("/services/networking/media");
 		if (response.getStatus() == HTTP_NOT_FOUND) {
 			return null;
@@ -1006,8 +1019,7 @@ public class MicrosoftAzureRestClient {
 
 		GlobalNetworkConfiguration globalNetowrkConfiguration = (GlobalNetworkConfiguration) MicrosoftAzureModelUtils
 				.unmarshall(responseBody);
-		return globalNetowrkConfiguration.getVirtualNetworkConfiguration()
-				.getVirtualNetworkSites();
+		return globalNetowrkConfiguration.getVirtualNetworkConfiguration();
 
 	}
 
@@ -1154,11 +1166,11 @@ public class MicrosoftAzureRestClient {
 		if (!virtualNetworkExists(virtualNetworkSite)) {
 			return true;
 		}
-		VirtualNetworkSites virtualNetworkSites = listVirtualNetworkSites();
+		VirtualNetworkConfiguration virtualNetworkConfiguration = getVirtualNetworkConfiguration();
+		VirtualNetworkSites virtualNetworkSites = virtualNetworkConfiguration.getVirtualNetworkSites();
 		int index = 0;
 		for (int i = 0; i < virtualNetworkSites.getVirtualNetworkSites().size(); i++) {
-			VirtualNetworkSite site = virtualNetworkSites
-					.getVirtualNetworkSites().get(i);
+			VirtualNetworkSite site = virtualNetworkSites.getVirtualNetworkSites().get(i);
 			if (site.getName().equals(virtualNetworkSite)) {
 				index = i;
 				break;
@@ -1166,7 +1178,7 @@ public class MicrosoftAzureRestClient {
 		}
 		virtualNetworkSites.getVirtualNetworkSites().remove(index);
 		logger.info("Deleting virtual network site : " + virtualNetworkSite);
-		setNetworkConfiguration(endTime, virtualNetworkSites);
+		setNetworkConfiguration(endTime, virtualNetworkConfiguration);
 		logger.fine("Deleted virtual network site : " + virtualNetworkSite);
 		return true;
 
@@ -1302,7 +1314,7 @@ public class MicrosoftAzureRestClient {
 
 	private boolean virtualNetworkExists(final String virtualNetworkName)
 			throws MicrosoftAzureException, TimeoutException {
-		VirtualNetworkSites sites = listVirtualNetworkSites();
+		VirtualNetworkSites sites = getVirtualNetworkConfiguration().getVirtualNetworkSites();
 		return (sites.contains(virtualNetworkName));
 	}
 
@@ -1379,18 +1391,15 @@ public class MicrosoftAzureRestClient {
 	}
 
 	private void setNetworkConfiguration(final long endTime,
-			final VirtualNetworkSites virtualNetworkSites)
+			final VirtualNetworkConfiguration virtualNetworkConfiguration)
 			throws MicrosoftAzureException, TimeoutException,
 			InterruptedException {
-		GlobalNetworkConfiguration networkConfiguration = requestBodyBuilder
-				.buildGlobalNetworkConfiguration(virtualNetworkSites
-						.getVirtualNetworkSites());
+		GlobalNetworkConfiguration networkConfiguration =
+				requestBodyBuilder.buildGlobalNetworkConfiguration(virtualNetworkConfiguration);
 
-		String xmlRequest = MicrosoftAzureModelUtils.marshall(
-				networkConfiguration, true);
+		String xmlRequest = MicrosoftAzureModelUtils.marshall(networkConfiguration, true);
 
-		ClientResponse response = doPut("/services/networking/media",
-				xmlRequest, "text/plain");
+		ClientResponse response = doPut("/services/networking/media", xmlRequest, "text/plain");
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
 	}
@@ -1461,4 +1470,45 @@ public class MicrosoftAzureRestClient {
 		long threadId = Thread.currentThread().getId();
 		return "[" + threadName + "]" + "[" + threadId + "] - ";
 	}
+
+	public void rebootVirtualMachine(long endTime) throws MicrosoftAzureException, TimeoutException,
+			InterruptedException {
+
+		// https://management.core.windows.net/<subscription-id>/services/hostedservices/<cloudservice-name>/deploymentslots/<deployment-slot>/roleinstances/<role-instance-name>
+
+		// https://management.core.windows.net/828d8ef4-292e-45b0-b029-50b9442e105a/services/hostedservices/fastubuntu1404/deployments/ubuntu/roleinstances/ubuntu-test/Operations
+
+		String cloudServiceName = "fastubuntu1404";
+		String deploymentSlot = "Production";
+		String deploymentName = "ubuntu";
+		String roleInstanceName = "ubuntu-test";
+		String url = String.format("/services/hostedservices/%s/deployments/%s/roleinstances/%s/Operations",
+				cloudServiceName, deploymentName, roleInstanceName);
+
+		RestartRoleOperation restartRoleOperation = requestBodyBuilder.buildRestartRoleOperation();
+		String xmlRequest = MicrosoftAzureModelUtils.marshall(restartRoleOperation, false);
+		ClientResponse response = doPost(url, xmlRequest);
+		String requestId = extractRequestId(response);
+		this.waitForRequestToFinish(requestId, endTime);
+
+		try {
+			this.waitForDeploymentStatus("Running", cloudServiceName, deploymentSlot, endTime);
+			this.waitForRoleInstanceStatus("ReadyRole", cloudServiceName, deploymentSlot, endTime);
+		} catch (final Exception e) {
+			logger.fine("Error while waiting for VM status : " + e.getMessage());
+			// the VM was created but with a bad status
+			deleteVirtualMachineByDeploymentName(cloudServiceName, roleInstanceName, endTime);
+			if (e instanceof MicrosoftAzureException) {
+				throw (MicrosoftAzureException) e;
+			}
+			if (e instanceof TimeoutException) {
+				throw (TimeoutException) e;
+			}
+			if (e instanceof InterruptedException) {
+				throw (InterruptedException) e;
+			}
+			throw new MicrosoftAzureException(e);
+		}
+	}
+
 }

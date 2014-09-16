@@ -150,8 +150,7 @@ public class MicrosoftAzureRequestBodyBuilder {
 
 		virtualNetworkSites.getVirtualNetworkSites().add(virtualNetworkSite);
 		virtualNetworkConfiguration.setVirtualNetworkSites(virtualNetworkSites);
-		networkConfiguration
-				.setVirtualNetworkConfiguration(virtualNetworkConfiguration);
+		networkConfiguration.setVirtualNetworkConfiguration(virtualNetworkConfiguration);
 
 		return networkConfiguration;
 	}
@@ -175,9 +174,14 @@ public class MicrosoftAzureRequestBodyBuilder {
 
 		virtualNetworkSites.setVirtualNetworkSites(sites);
 		virtualNetworkConfiguration.setVirtualNetworkSites(virtualNetworkSites);
-		networkConfiguration
-				.setVirtualNetworkConfiguration(virtualNetworkConfiguration);
+		networkConfiguration.setVirtualNetworkConfiguration(virtualNetworkConfiguration);
 
+		return networkConfiguration;
+	}
+
+	public GlobalNetworkConfiguration buildGlobalNetworkConfiguration(VirtualNetworkConfiguration vnetConfiguration) {
+		GlobalNetworkConfiguration networkConfiguration = new GlobalNetworkConfiguration();
+		networkConfiguration.setVirtualNetworkConfiguration(vnetConfiguration);
 		return networkConfiguration;
 	}
 

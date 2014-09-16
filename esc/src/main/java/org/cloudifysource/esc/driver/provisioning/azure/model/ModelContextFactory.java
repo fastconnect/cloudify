@@ -51,6 +51,11 @@ public final class ModelContextFactory {
 		CLASSES.add(Operation.class);
 		CLASSES.add(Subnet.class);
 		CLASSES.add(Subnets.class);
+		CLASSES.add(DnsServerRef.class);
+		CLASSES.add(DnsServersRef.class);
+		CLASSES.add(DnsServer.class);
+		CLASSES.add(DnsServers.class);
+		CLASSES.add(Dns.class);
 		CLASSES.add(AddressSpace.class);
 		CLASSES.add(GlobalNetworkConfiguration.class);
 		CLASSES.add(VirtualNetworkConfiguration.class);

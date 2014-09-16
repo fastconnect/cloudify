@@ -1,10 +1,11 @@
 package org.cloudifysource.esc.driver.provisioning.azure.client;
 
 import java.net.MalformedURLException;
+import java.util.Date;
 import java.util.concurrent.TimeoutException;
 
 import org.cloudifysource.esc.driver.provisioning.azure.TestUtils;
-import org.cloudifysource.esc.driver.provisioning.azure.model.VirtualNetworkSites;
+import org.cloudifysource.esc.driver.provisioning.azure.model.VirtualNetworkConfiguration;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -19,10 +20,15 @@ public class MicrosoftAzureRestClientTestIT {
 
 	@Test
 	public void testListVirtualNetworkSites() throws MalformedURLException, MicrosoftAzureException, TimeoutException {
-		VirtualNetworkSites listVirtualNetworkSites = client.listVirtualNetworkSites();
+		VirtualNetworkConfiguration listVirtualNetworkConfiguration = client.getVirtualNetworkConfiguration();
+		System.out.println(listVirtualNetworkConfiguration);
+	}
 
-		System.out.println(listVirtualNetworkSites);
-
+	@Test
+	public void testRebootVirtualMachine() throws Exception {
+		long timeout = 60L * 1000L * 20L;
+		client.rebootVirtualMachine(new Date().getTime() + timeout);
+		System.out.println("rebooted");
 	}
 
 }

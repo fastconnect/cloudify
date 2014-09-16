@@ -6,13 +6,23 @@ import javax.xml.bind.annotation.XmlType;
 /**
  * 
  * @author elip
- *
+ * 
  */
 
-@XmlType(name = "VirtualNetworkConfiguration", propOrder = { "virtualNetworkSites" })
+@XmlType(name = "VirtualNetworkConfiguration", propOrder = { "dns", "virtualNetworkSites" })
 public class VirtualNetworkConfiguration {
 
+	private Dns dns;
 	private VirtualNetworkSites virtualNetworkSites;
+
+	@XmlElement(name = "Dns")
+	public Dns getDns() {
+		return dns;
+	}
+
+	public void setDns(Dns dns) {
+		this.dns = dns;
+	}
 
 	@XmlElement(name = "VirtualNetworkSites")
 	public VirtualNetworkSites getVirtualNetworkSites() {

@@ -9,13 +9,24 @@ import javax.xml.bind.annotation.XmlType;
  * @author elip
  * 
  */
-@XmlType(name = "VirtualNetworkSite", propOrder = { "addressSpace", "subnets" })
+@XmlType(name = "VirtualNetworkSite", propOrder = { "addressSpace", "subnets", "dnsServersRef" })
 public class VirtualNetworkSite {
 
+	private String location;
 	private String name;
 	private String affinityGroup;
 	private AddressSpace addressSpace;
 	private Subnets subnets;
+	private DnsServersRef dnsServersRef;
+
+	@XmlAttribute(name = "Location")
+	public String getLocation() {
+		return location;
+	}
+
+	public void setLocation(String location) {
+		this.location = location;
+	}
 
 	@XmlAttribute(name = "name")
 	public String getName() {
@@ -51,6 +62,15 @@ public class VirtualNetworkSite {
 
 	public void setSubnets(Subnets subnets) {
 		this.subnets = subnets;
+	}
+
+	@XmlElement(name = "DnsServersRef")
+	public DnsServersRef getDnsServersRef() {
+		return dnsServersRef;
+	}
+
+	public void setDnsServersRef(DnsServersRef dnsServersRef) {
+		this.dnsServersRef = dnsServersRef;
 	}
 
 	/**

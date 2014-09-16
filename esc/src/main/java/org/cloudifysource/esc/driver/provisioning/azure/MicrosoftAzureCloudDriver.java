@@ -78,14 +78,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String AZURE_ENDPOINTS = "azure.endpoints";
 	private static final String AZURE_FIREWALL_PORTS = "azure.firewall.ports";
 
-	/**
-	 * static ips for the Vm ( separated with ',' ex : 192.168.0.5, 192.168.0.6 )
-	 */
 	private static final String VM_IP_ADDRESSES = "ipAddresses";
-
-	/**
-	 * subnet name
-	 */
 	private static final String VM_SUBNET = "subnet";
 
 	// Custom cloud DSL properties
@@ -99,6 +92,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String AZURE_STORAGE_ACCOUNT = "azure.storage.account";
 	private static final String AZURE_AVAILABILITY_SET = "azure.availability.set";
 	private static final String AZURE_CLEANUP_ON_TEARDOWN = "azure.cleanup.on.teardown";
+
+	private static final String CDISCOUNT_PLATFORM_CODE = "cdiscount.platform.code";
+	private static final String CDISCOUNT_ENVIRONMENT_CODE = "cdiscount.environment.code";
 
 	private boolean cleanup;
 
@@ -130,6 +126,10 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	private List<Map<String, String>> endpoints;
 	private List<Map<String, String>> firewallPorts;
+
+	// cdiscount configuration
+	private String cdiscountPlatformCode;
+	private String cdiscountEnvironmentCode;
 
 	private static final int WEBUI_PORT = 8099;
 	private static final int REST_PORT = 8100;
@@ -262,6 +262,16 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		this.storageAccountName = (String) this.cloud.getCustom().get(AZURE_STORAGE_ACCOUNT);
 		if (storageAccountName == null) {
 			throw new IllegalArgumentException("Custom field '" + AZURE_STORAGE_ACCOUNT + "' must be set");
+		}
+
+		this.cdiscountPlatformCode = (String) this.cloud.getCustom().get(CDISCOUNT_PLATFORM_CODE);
+		if (cdiscountPlatformCode == null) {
+			throw new IllegalArgumentException("Custom field '" + CDISCOUNT_PLATFORM_CODE + "' must be set");
+		}
+
+		this.cdiscountEnvironmentCode = (String) this.cloud.getCustom().get(CDISCOUNT_ENVIRONMENT_CODE);
+		if (cdiscountEnvironmentCode == null) {
+			throw new IllegalArgumentException("Custom field '" + CDISCOUNT_ENVIRONMENT_CODE + "' must be set");
 		}
 
 		if (this.management) {

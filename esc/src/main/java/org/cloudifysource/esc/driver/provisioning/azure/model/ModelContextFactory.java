@@ -7,9 +7,9 @@ import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 
 /**
- * 
+ *
  * @author elip
- * 
+ *
  */
 public final class ModelContextFactory {
 
@@ -56,6 +56,7 @@ public final class ModelContextFactory {
 		CLASSES.add(DnsServer.class);
 		CLASSES.add(DnsServers.class);
 		CLASSES.add(Dns.class);
+		CLASSES.add(SubnetNames.class);
 		CLASSES.add(AddressSpace.class);
 		CLASSES.add(GlobalNetworkConfiguration.class);
 		CLASSES.add(VirtualNetworkConfiguration.class);
@@ -73,7 +74,7 @@ public final class ModelContextFactory {
 	}
 
 	/**
-	 * 
+	 *
 	 * @return - a {@link JAXBContext} to be used for marshaling and unmarshalling objects
 	 */
 	public static synchronized JAXBContext createInstance() {

@@ -39,7 +39,8 @@ cloud {
 
 		managementOnlyFiles ([])
 
-		managementGroup "cloudify_manager"
+	//	managementGroup "cloudify_manager"
+		managementGroup "cfy_manager"
 		numberOfManagementMachines 1
 
 		reservedMemoryCapacityPerMachineInMB 1024
@@ -139,8 +140,9 @@ cloud {
 					// Password that was used to create the certificate
 					"azure.pfx.password" : pfxPassword
 				])
-				options ([ "ipAddresses" : "10.0.0.4" ,
-							"subnet" : "Subnet-1"])
+				options ([ "ipAddresses" : "10.0.0.10" ,
+							"subnet" : "Subnet-1"
+				])
 				
 
 			},
@@ -184,10 +186,56 @@ cloud {
 					"azure.pfx.password" : pfxPassword
 				])
 				options ([ "ipAddresses" : "10.0.0.4" ,
-							"subnet" : "abcnder1245"])
+							"subnet" : "abcnder1245"
+				])
 				
 
 			},
+			UBUNTUnoIpSpecified : computeTemplate{
+			
+				imageId "b39f27a8b8c64d52b05eac6a62ebad85__Ubuntu-12_04_2-LTS-amd64-server-20130624-en-us-30GB"
+				machineMemoryMB 1600
+				hardwareId "Small"
+
+				username username
+				password password
+				
+				remoteDirectory "/home/${username}/gs-files"
+				
+				localDirectory "upload"
+
+				fileTransfer "SCP"
+				remoteExecution "SSH"
+				scriptLanguage "LINUX_SHELL"
+
+				//javaUrl "https://s3-eu-west-1.amazonaws.com/cloudify-eu/jdk-6u32-linux-x64.bin"
+
+				custom ([
+				
+					// Optional. each availability set represents a different fault domain.
+					
+					// "azure.availability.set" : "ENTER_AVAILABILITY_SET",
+					
+					// Choose whether do deploy this instance in Staging or Production environment. defaults to Staging
+					
+					"azure.deployment.slot": "Production",
+					
+					/**************************************************************
+					 * Mandatory only for templates used for management machines. *
+					 * Put this file under the path specified in 'localDirectory' *
+					***************************************************************/
+					
+					"azure.pfx.file": pfxFile,
+					
+					// Password that was used to create the certificate
+					"azure.pfx.password" : pfxPassword
+				])
+				options ([ "subnet" : "Subnet-1"
+				])
+				
+
+			},
+		
 			LARGE_WIN2008R2 : computeTemplate{
 
 				imageId "bd507d3a70934695bc2128e3e5a255ba__RightImage-Windows-2012-x64-v13.5"
@@ -410,7 +458,25 @@ cloud {
 
 		// Enable/Disable Cloud Requests Logging.
 
-		"azure.wireLog": "false"
+		"azure.wireLog": "true",
+				
+		
+		/******************************
+		 *
+		 * Configuration CDISCOUNT
+		 * 
+		******************************/
+		
+		// Code de la platforme
+		"cdiscount.platform.code" : cdiscountPlatformCode,
+		
+		// Code de l’environnement
+		"cdiscount.environment.code" : cdiscountEnvironmentCode,
+		
+		// code pour les storages (sys et data)
+		"cdiscount.storageAcount.sys.prefix" : cdiscountEnvironmentCode,
+		"cdiscount.storageAcount.data.prefix" : cdiscountStorageAcountDataPrefix
+		
 	])
 }
 

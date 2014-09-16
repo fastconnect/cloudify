@@ -63,6 +63,9 @@ public class ConfigurationSetAdapter
 			NetworkConfigurationSet networkConfigurationSet = new NetworkConfigurationSet();
 			networkConfigurationSet.setConfigurationSetType(adaptedConfigurationSet.configurationSetType);
 			networkConfigurationSet.setInputEndpoints(adaptedConfigurationSet.inputEndpoints);
+			networkConfigurationSet.setSubnetNames(adaptedConfigurationSet.subnetNames);
+			networkConfigurationSet.setStaticVirtualNetworkIPAddress(adaptedConfigurationSet.
+					staticVirtualNetworkIPAddress);
 			return networkConfigurationSet;
 		}
 
@@ -95,6 +98,7 @@ public class ConfigurationSetAdapter
 			adaptedConfigurationSet.hostName = linuxProvisioningConfigurationSet.getHostName();
 			adaptedConfigurationSet.userName = linuxProvisioningConfigurationSet.getUserName();
 			adaptedConfigurationSet.userPassword = linuxProvisioningConfigurationSet.getUserPassword();
+
 		} else if (configurationSet instanceof WindowsProvisioningConfigurationSet) {
 
 			WindowsProvisioningConfigurationSet WindowsProvisioningConfigurationSet =

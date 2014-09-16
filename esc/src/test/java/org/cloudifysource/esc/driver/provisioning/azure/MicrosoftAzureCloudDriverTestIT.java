@@ -78,4 +78,14 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 		this.doTestStartMachine("UBUNTUnoSubnet", null);
 	}
 
+	@Test
+	public void testStartManagementMachineWithCdiscountConfig() throws Exception {
+		this.doTestStartManagementMachine("LARGE_WIN2008R2", null);
+	}
+
+	@Test
+	public void testStartMachineWithoutStaticIp() throws Exception {
+		this.doTestStartMachine("UBUNTUnoIpSpecified", null);
+	}
+
 }

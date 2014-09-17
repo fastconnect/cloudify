@@ -47,7 +47,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 
 	private void doTestStartMachine(String computeTemplate, String overridesDir) throws Exception {
 		MicrosoftAzureCloudDriver driver = this.createDriver(computeTemplate, overridesDir, false);
-		MachineDetails md = new MachineDetails();
+		MachineDetails md = null;
 		try {
 			md = driver.startMachine(null, TIMEOUT, TimeUnit.MILLISECONDS);
 			this.assertMachineDetails(md);
@@ -69,23 +69,18 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 	}
 
 	@Test
-	public void testStartMachineWithStaticIp() throws Exception {
-		this.doTestStartMachine("UBUNTU1404", null);
+	public void testStartMachineUbuntuWithStaticIp() throws Exception {
+		this.doTestStartManagementMachine("UBUNTU1404", null);
 	}
 
-	@Test(expected = Exception.class)
-	public void testStartMachineWithNotExistingSubnet() throws Exception {
-		this.doTestStartMachine("UBUNTUnoSubnet", null);
+	@Test
+	public void testStartMachineWindowsWithStaticIp() throws Exception {
+		this.doTestStartManagementMachine("WIN2008R2_IP", null);
 	}
 
 	@Test
 	public void testStartManagementMachineWithCdiscountConfig() throws Exception {
 		this.doTestStartManagementMachine("LARGE_WIN2008R2", null);
-	}
-
-	@Test
-	public void testStartMachineWithoutStaticIp() throws Exception {
-		this.doTestStartMachine("UBUNTUnoIpSpecified", null);
 	}
 
 }

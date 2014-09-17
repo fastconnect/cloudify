@@ -11,6 +11,7 @@ package org.cloudifysource.esc.driver.provisioning.azure.client;
 
 import java.io.UnsupportedEncodingException;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.cloudifysource.esc.driver.provisioning.azure.model.AddressSpace;
 import org.cloudifysource.esc.driver.provisioning.azure.model.ConfigurationSets;
@@ -51,6 +52,7 @@ public class MicrosoftAzureRequestBodyBuilder {
 	private String affinityPrefix;
 	private String cloudServicePrefix;
 	private String storagePrefix;
+	private AtomicInteger cloudServiceAtomicInteger = new AtomicInteger(001);
 
 	public MicrosoftAzureRequestBodyBuilder(final String affinityPrefix,
 			final String cloudServicePrefix, final String storagePrefix) {
@@ -102,18 +104,16 @@ public class MicrosoftAzureRequestBodyBuilder {
 		CreateHostedService hostedService = new CreateHostedService();
 		hostedService.setAffinityGroup(affinityGroup);
 
-		String randomUID = generateRandomUUID(UUID_LENGTH);
+		String counterWithPadding = String.format("%03d", cloudServiceAtomicInteger.getAndIncrement());
 
 		try {
-			hostedService.setLabel(new String(Base64
-					.encode(cloudServicePrefix
-							+ randomUID), UTF_8));
+			hostedService.setLabel(new String(Base64.encode(cloudServicePrefix +
+					counterWithPadding), UTF_8));
 		} catch (UnsupportedEncodingException e) {
 			// ignore
 		}
-		hostedService.setServiceName(cloudServicePrefix
-				+ randomUID);
 
+		hostedService.setServiceName(cloudServicePrefix + counterWithPadding);
 		return hostedService;
 	}
 
@@ -268,6 +268,9 @@ public class MicrosoftAzureRequestBodyBuilder {
 			linuxProvisioningSet.setUserPassword(password);
 			configurationSets.getConfigurationSets().add(linuxProvisioningSet);
 		}
+
+		// availability set
+		role.setAvailabilitySetName(desc.getAvailabilitySetName());
 
 		// NetworkConfiguration
 		NetworkConfigurationSet networkConfiguration = new NetworkConfigurationSet();

@@ -40,7 +40,7 @@ cloud {
 		managementOnlyFiles ([])
 
 	//	managementGroup "cloudify_manager"
-		managementGroup "cfy_manager"
+		managementGroup "A01"
 		numberOfManagementMachines 1
 
 		reservedMemoryCapacityPerMachineInMB 1024
@@ -123,9 +123,9 @@ cloud {
 				custom ([
 				
 					// Optional. each availability set represents a different fault domain.
-					
-					// "azure.availability.set" : "ENTER_AVAILABILITY_SET",
-					
+					// sans ajouter le préfixe 'AV' 
+					"azure.availability.set" : "TEST",
+										
 					// Choose whether do deploy this instance in Staging or Production environment. defaults to Staging
 					
 					"azure.deployment.slot": "Production",
@@ -140,8 +140,8 @@ cloud {
 					// Password that was used to create the certificate
 					"azure.pfx.password" : pfxPassword
 				])
-				options ([ "ipAddresses" : "10.0.0.10" ,
-							"subnet" : "Subnet-1"
+				options ([ "ipAddresses" : "10.0.0.12" ,
+							"subnet" : "Subnet-1",						
 				])
 				
 
@@ -467,16 +467,11 @@ cloud {
 		 * 
 		******************************/
 		
-		// Code de la platforme
-		"cdiscount.platform.code" : cdiscountPlatformCode,
+		// code d'un cloud service
+		"cdiscount.cloud.service.code" : cloudServiceCode,
 		
-		// Code de l’environnement
-		"cdiscount.environment.code" : cdiscountEnvironmentCode,
-		
-		// code pour les storages (sys et data)
-		"cdiscount.storageAcount.sys.prefix" : cdiscountEnvironmentCode,
-		"cdiscount.storageAcount.data.prefix" : cdiscountStorageAcountDataPrefix
-		
+		// code d'un availability set
+		"cdiscount.availability.code" : availabilityCode,
 	])
 }
 

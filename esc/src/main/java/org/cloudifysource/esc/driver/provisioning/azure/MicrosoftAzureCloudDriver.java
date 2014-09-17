@@ -25,6 +25,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -69,7 +70,7 @@ import org.cloudifysource.esc.util.Utils;
 public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	private static final String CLOUDIFY_AFFINITY_PREFIX = "cloudifyaffinity";
-	private static final String CLOUDIFY_CLOUD_SERVICE_PREFIX = "cloudifycloudservice";
+	private static String CLOUDIFY_CLOUD_SERVICE_PREFIX = "cloudifycloudservice";
 	private static final String CLOUDIFY_STORAGE_ACCOUNT_PREFIX = "cloudifystorage";
 
 	// Custom template DSL properties
@@ -93,8 +94,10 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String AZURE_AVAILABILITY_SET = "azure.availability.set";
 	private static final String AZURE_CLEANUP_ON_TEARDOWN = "azure.cleanup.on.teardown";
 
-	private static final String CDISCOUNT_PLATFORM_CODE = "cdiscount.platform.code";
-	private static final String CDISCOUNT_ENVIRONMENT_CODE = "cdiscount.environment.code";
+	private static final String CDISCOUNT_CLOUD_SERVICE_CODE = "cdiscount.cloud.service.code";
+	private static final String CDISCOUNT_AVAILABILITY_CODE = "cdiscount.availability.code";
+
+	private AtomicInteger availabilitySetCounter = new AtomicInteger(1);
 
 	private boolean cleanup;
 
@@ -126,10 +129,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	private List<Map<String, String>> endpoints;
 	private List<Map<String, String>> firewallPorts;
-
-	// cdiscount configuration
-	private String cdiscountPlatformCode;
-	private String cdiscountEnvironmentCode;
 
 	private static final int WEBUI_PORT = 8099;
 	private static final int REST_PORT = 8100;
@@ -179,8 +178,16 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		this.stopManagementMachinesTimeoutInMinutes = Utils.getInteger(cloud.getCustom().get(CloudifyConstants
 				.STOP_MANAGEMENT_TIMEOUT_IN_MINUTES), DEFAULT_STOP_MANAGEMENT_TIMEOUT);
 
-		// Per template properties
-		this.availabilitySet = (String) this.template.getCustom().get(AZURE_AVAILABILITY_SET);
+		// cdis custom
+		String availabilityCode = (String) this.cloud.getCustom().get(CDISCOUNT_AVAILABILITY_CODE);
+		String availability = (String) this.template.getCustom().get(AZURE_AVAILABILITY_SET);
+
+		if (availability != null && availability.trim().isEmpty()) {
+			this.availabilitySet = availabilityCode + (String) this.template.getCustom().get(AZURE_AVAILABILITY_SET);
+		} else {
+			this.availabilitySet = null;
+		}
+
 		this.deploymentSlot = (String) this.template.getCustom().get(AZURE_DEPLOYMENT_SLOT);
 		this.deploymentName = (String) this.template.getCustom().get(AZURE_DEPLOYMENT_NAME);
 		if (StringUtils.isBlank(deploymentSlot)) {
@@ -264,20 +271,12 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			throw new IllegalArgumentException("Custom field '" + AZURE_STORAGE_ACCOUNT + "' must be set");
 		}
 
-		this.cdiscountPlatformCode = (String) this.cloud.getCustom().get(CDISCOUNT_PLATFORM_CODE);
-		if (cdiscountPlatformCode == null) {
-			throw new IllegalArgumentException("Custom field '" + CDISCOUNT_PLATFORM_CODE + "' must be set");
-		}
-
-		this.cdiscountEnvironmentCode = (String) this.cloud.getCustom().get(CDISCOUNT_ENVIRONMENT_CODE);
-		if (cdiscountEnvironmentCode == null) {
-			throw new IllegalArgumentException("Custom field '" + CDISCOUNT_ENVIRONMENT_CODE + "' must be set");
-		}
-
+		// cdis custom
 		if (this.management) {
-			this.serverNamePrefix = this.cloud.getProvider().getManagementGroup();
+			this.serverNamePrefix = this.cloud.getProvider().getManagementGroup() + "-Manager";
+
 		} else {
-			this.serverNamePrefix = this.cloud.getProvider().getMachineNamePrefix();
+			this.serverNamePrefix = this.cloud.getProvider().getManagementGroup() + configuration.getServiceName();
 		}
 
 	}
@@ -305,8 +304,20 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			enableWireLog = Boolean.parseBoolean(wireLog);
 		}
 
-		initRestClient(this.subscriptionId, this.pathToPfxFile, this.pfxPassword, enableWireLog);
+		// reset cloudserviceName
+		// cdiscount configuration
+		String cloudServiceCode = (String) this.cloud.getCustom().get(CDISCOUNT_CLOUD_SERVICE_CODE);
 
+		if (this.management) {
+			CLOUDIFY_CLOUD_SERVICE_PREFIX = this.cloud.getProvider().getManagementGroup() +
+					cloudServiceCode + "Manager";
+
+		} else {
+			CLOUDIFY_CLOUD_SERVICE_PREFIX = this.cloud.getProvider().getManagementGroup() + cloudServiceCode +
+					configuration.getServiceName();
+		}
+
+		initRestClient(this.subscriptionId, this.pathToPfxFile, this.pfxPassword, enableWireLog);
 	}
 
 	@Override
@@ -349,10 +360,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	protected MachineDetails createServer(String serverName, long endTime, ComputeTemplate template)
 			throws CloudProvisioningException, TimeoutException {
 
-		/*
-		 * private MachineDetails startMachine(final long endTime) throws TimeoutException, CloudProvisioningException {
-		 */
-
 		MachineDetails machineDetails = new MachineDetails();
 		CreatePersistentVMRoleDeploymentDescriptor desc;
 		RoleDetails roleAddressDetails;
@@ -363,7 +370,14 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			desc.setDeploymentSlot(deploymentSlot);
 			desc.setDeploymentName(deploymentName);
 			desc.setImageName(imageName);
-			desc.setAvailabilitySetName(availabilitySet);
+
+			String availabilitySetName = null;
+			if (availabilitySet != null || !availabilitySet.trim().isEmpty()) {
+				availabilitySetName = this.cloud.getProvider().getManagementGroup() + availabilitySet +
+						String.format("%03d", availabilitySetCounter.getAndIncrement());
+			}
+
+			desc.setAvailabilitySetName(availabilitySetName);
 			desc.setAffinityGroup(affinityGroup);
 
 			InputEndpoints inputEndpoints = createInputEndPoints();
@@ -716,7 +730,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	@Override
 	public void close() {
 		// TODO Auto-generated method stub
-
 	}
 
 	/**

@@ -52,11 +52,11 @@ public class BaseDriverTestIT {
 
 		CloudProvider provider = cloud.getProvider();
 
-		provider.setManagementGroup("management");
+		// provider.setManagementGroup("management");
 		provider.setMachineNamePrefix("agent");
 
 		if (!isManagement) {
-			configuration.setServiceName("default.service");
+			configuration.setServiceName("NOM");
 		}
 
 		driver.setConfig(configuration);

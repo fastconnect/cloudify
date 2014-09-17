@@ -79,7 +79,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String AZURE_FIREWALL_PORTS = "azure.firewall.ports";
 
 	private static final String VM_IP_ADDRESSES = "ipAddresses";
-	private static final String VM_SUBNET = "subnet";
 
 	// Custom cloud DSL properties
 	private static final String AZURE_WIRE_LOG = "azure.wireLog";
@@ -375,7 +374,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			desc.setStorageAccountName(storageAccountName);
 			desc.setUserName(userName);
 			desc.setIpAddresses(this.getIpAddressesList(this.template.getOptions()));
-			desc.setSubnetName(this.getSubnetName(this.template.getOptions()));
+			desc.setSubnetName("subnet-" + networkName); // TODO to be enhance once the driver supports network
 
 			logger.info("Launching a new virtual machine");
 			boolean isWindows = isWindowsVM();
@@ -568,11 +567,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 		long endTime = System.currentTimeMillis() + unit.toMillis(duration);
 
-		boolean connectToPrivateIp = this.cloud.getConfiguration()
-				.isConnectToPrivateIp();
+		boolean connectToPrivateIp = this.cloud.getConfiguration().isConnectToPrivateIp();
 		try {
-			azureClient.deleteVirtualMachineByIp(machineIp, connectToPrivateIp,
-					endTime);
+			azureClient.deleteVirtualMachineByIp(machineIp, connectToPrivateIp, endTime);
 			return true;
 		} catch (MicrosoftAzureException e) {
 			throw new CloudProvisioningException(e);
@@ -657,11 +654,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 				if (roleName.startsWith(this.serverNamePrefix)) {
 					final String diskName = disk.getName();
 					final String deploymentName = attachedTo.getDeploymentName();
-					final String hostedServiceName = attachedTo
-							.getHostedServiceName();
+					final String hostedServiceName = attachedTo.getHostedServiceName();
 					StopManagementMachineCallable task = new StopManagementMachineCallable(
-							deploymentName, hostedServiceName, diskName,
-							endTime);
+							deploymentName, hostedServiceName, diskName, endTime);
 					futures.add(service.submit(task));
 				}
 			} else {
@@ -874,20 +869,5 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 		}
 		return ipAddressesList;
-	}
-
-	private String getSubnetName(Map<String, Object> templateOptions) {
-
-		String subnetName = null;
-
-		if (templateOptions != null && !templateOptions.isEmpty()) {
-			if (templateOptions.get(VM_SUBNET) != null) {
-				String subnetString = (String) templateOptions.get(VM_SUBNET);
-				if (subnetString != null && !subnetString.trim().isEmpty()) {
-					subnetName = subnetString;
-				}
-			}
-		}
-		return subnetName;
 	}
 }

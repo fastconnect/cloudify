@@ -71,13 +71,11 @@ public class MicrosoftAzureRequestBodyBuilder {
 	 *         see <a href= "http://msdn.microsoft.com/en-us/library/windowsazure/gg715317.aspx" >Create Affinity
 	 *         Group</a>
 	 */
-	public CreateAffinityGroup buildCreateAffinity(final String name,
-			final String location) {
+	public CreateAffinityGroup buildCreateAffinity(final String name, final String location) {
 
 		CreateAffinityGroup affinityGroup = new CreateAffinityGroup();
 		affinityGroup.setName(name);
-		String affinityGroupName = affinityPrefix
-				+ generateRandomUUID(UUID_LENGTH);
+		String affinityGroupName = affinityPrefix + generateRandomUUID(UUID_LENGTH);
 		try {
 			affinityGroup.setLabel(new String(Base64.encode(affinityGroupName), UTF_8));
 		} catch (UnsupportedEncodingException e) {
@@ -96,8 +94,7 @@ public class MicrosoftAzureRequestBodyBuilder {
 	 *         see <a href= "http://msdn.microsoft.com/en-us/library/windowsazure/gg441304.aspx" >Create Hosted
 	 *         Service</a>
 	 */
-	public CreateHostedService buildCreateCloudService(
-			final String affinityGroup) {
+	public CreateHostedService buildCreateCloudService(final String affinityGroup) {
 
 		CreateHostedService hostedService = new CreateHostedService();
 		hostedService.setAffinityGroup(affinityGroup);
@@ -105,14 +102,12 @@ public class MicrosoftAzureRequestBodyBuilder {
 		String randomUID = generateRandomUUID(UUID_LENGTH);
 
 		try {
-			hostedService.setLabel(new String(Base64
-					.encode(cloudServicePrefix
-							+ randomUID), UTF_8));
+			hostedService.setLabel(new String(Base64.encode(cloudServicePrefix
+					+ randomUID), UTF_8));
 		} catch (UnsupportedEncodingException e) {
 			// ignore
 		}
-		hostedService.setServiceName(cloudServicePrefix
-				+ randomUID);
+		hostedService.setServiceName(cloudServicePrefix + randomUID);
 
 		return hostedService;
 	}
@@ -236,7 +231,8 @@ public class MicrosoftAzureRequestBodyBuilder {
 
 			// Windows Specific : roleName de la forme cloudify_manager_roled57f => ROLED57F (15 car limit size limit)
 			String[] computerNameArray = roleName.split("_");
-			String computerName = (computerNameArray[2]).toUpperCase();
+			String computerName =
+					(computerNameArray.length > 1 ? computerNameArray[2] : computerNameArray[0]).toUpperCase();
 
 			WindowsProvisioningConfigurationSet windowsProvisioningSet = new WindowsProvisioningConfigurationSet();
 			// windowsProvisioningSet.setDisableSshPasswordAuthentication(true);
@@ -307,8 +303,7 @@ public class MicrosoftAzureRequestBodyBuilder {
 		CreateStorageServiceInput storageAccount = new CreateStorageServiceInput();
 		storageAccount.setAffinityGroup(affinityGroupName);
 		try {
-			storageAccount.setLabel(new String(Base64
-					.encode(storagePrefix), UTF_8));
+			storageAccount.setLabel(new String(Base64.encode(storagePrefix), UTF_8));
 		} catch (UnsupportedEncodingException e) {
 			// ignore
 		}

@@ -109,9 +109,9 @@ cloud {
 
 				username username
 				password password
-				
+
 				remoteDirectory "/home/${username}/gs-files"
-				
+
 				localDirectory "upload"
 
 				fileTransfer "SCP"
@@ -121,121 +121,103 @@ cloud {
 				//javaUrl "https://s3-eu-west-1.amazonaws.com/cloudify-eu/jdk-6u32-linux-x64.bin"
 
 				custom ([
-				
+
 					// Optional. each availability set represents a different fault domain.
-					
+
 					// "azure.availability.set" : "ENTER_AVAILABILITY_SET",
-					
+
 					// Choose whether do deploy this instance in Staging or Production environment. defaults to Staging
-					
+
 					"azure.deployment.slot": "Production",
-					
+
 					/**************************************************************
 					 * Mandatory only for templates used for management machines. *
 					 * Put this file under the path specified in 'localDirectory' *
 					***************************************************************/
-					
+
 					"azure.pfx.file": pfxFile,
-					
+
 					// Password that was used to create the certificate
 					"azure.pfx.password" : pfxPassword
 				])
-				options ([ "ipAddresses" : "10.0.0.10" ,
-							"subnet" : "Subnet-1"
-				])
-				
+				options ([ "ipAddresses" : "192.168.0.10" ])
+
 
 			},
-			UBUNTUnoSubnet : computeTemplate{
 
-				imageId "b39f27a8b8c64d52b05eac6a62ebad85__Ubuntu-12_04_2-LTS-amd64-server-20130624-en-us-30GB"
-				machineMemoryMB 1600
-				hardwareId "Small"
+      WIN2008R2_IP : computeTemplate {
 
-				username username
-				password password
-				
-				remoteDirectory "/home/${username}/gs-files"
-				
-				localDirectory "upload"
+        imageId "bd507d3a70934695bc2128e3e5a255ba__RightImage-Windows-2012-x64-v13.5"
 
-				fileTransfer "SCP"
-				remoteExecution "SSH"
-				scriptLanguage "LINUX_SHELL"
+        machineMemoryMB 3500
+        hardwareId "Medium"
 
-				//javaUrl "https://s3-eu-west-1.amazonaws.com/cloudify-eu/jdk-6u32-linux-x64.bin"
+        username username
+        password password
 
-				custom ([
-				
-					// Optional. each availability set represents a different fault domain.
-					
-					// "azure.availability.set" : "ENTER_AVAILABILITY_SET",
-					
-					// Choose whether do deploy this instance in Staging or Production environment. defaults to Staging
-					
-					"azure.deployment.slot": "Production",
-					
-					/**************************************************************
-					 * Mandatory only for templates used for management machines. *
-					 * Put this file under the path specified in 'localDirectory' *
-					***************************************************************/
-					
-					"azure.pfx.file": pfxFile,
-					
-					// Password that was used to create the certificate
-					"azure.pfx.password" : pfxPassword
-				])
-				options ([ "ipAddresses" : "10.0.0.4" ,
-							"subnet" : "abcnder1245"
-				])
-				
+        remoteDirectory "/C\$/Users/${username}/gs-files"
 
-			},
-			UBUNTUnoIpSpecified : computeTemplate{
-			
-				imageId "b39f27a8b8c64d52b05eac6a62ebad85__Ubuntu-12_04_2-LTS-amd64-server-20130624-en-us-30GB"
-				machineMemoryMB 1600
-				hardwareId "Small"
+        localDirectory "upload-windows"
 
-				username username
-				password password
-				
-				remoteDirectory "/home/${username}/gs-files"
-				
-				localDirectory "upload"
+        // File transfer mode. Optional, defaults to SCP.
+        fileTransfer "CIFS"
+        // Remote execution mode. Options, defaults to SSH.
+        remoteExecution "WINRM"
+        // Script language for remote execution. Defaults to Linux Shell.
+        scriptLanguage "WINDOWS_BATCH"
 
-				fileTransfer "SCP"
-				remoteExecution "SSH"
-				scriptLanguage "LINUX_SHELL"
+        //javaUrl "https://s3-eu-west-1.amazonaws.com/cloudify-eu/TODO"
 
-				//javaUrl "https://s3-eu-west-1.amazonaws.com/cloudify-eu/jdk-6u32-linux-x64.bin"
+        custom ([
 
-				custom ([
-				
-					// Optional. each availability set represents a different fault domain.
-					
-					// "azure.availability.set" : "ENTER_AVAILABILITY_SET",
-					
-					// Choose whether do deploy this instance in Staging or Production environment. defaults to Staging
-					
-					"azure.deployment.slot": "Production",
-					
-					/**************************************************************
-					 * Mandatory only for templates used for management machines. *
-					 * Put this file under the path specified in 'localDirectory' *
-					***************************************************************/
-					
-					"azure.pfx.file": pfxFile,
-					
-					// Password that was used to create the certificate
-					"azure.pfx.password" : pfxPassword
-				])
-				options ([ "subnet" : "Subnet-1"
-				])
-				
+          // Optional. each availability set represents a different fault domain.
 
-			},
-		
+          // "azure.availability.set" : "ENTER_AVAILABILITY_SET",
+
+          // Choose whether do deploy this instance in Staging or Production environment. defaults to Staging
+
+          "azure.deployment.slot": "Staging",
+
+          /**************************************************************
+           * Mandatory only for templates used for management machines. *
+           * Put this file under the path specified in 'localDirectory' *
+          ***************************************************************/
+
+          "azure.pfx.file": pfxFile,
+
+          // Password that was used to create the certificate
+          "azure.pfx.password" : pfxPassword,
+
+          // Endpoints definition
+          "azure.endpoints" : [
+            /*[name:"REMOTE_DESKTOP", protocol:"TCP", port:"3389"],*/
+            [name:"CIFS_SMB", protocol:"TCP", port:"445"],
+            [name:"WINRM", protocol:"TCP", port:"5985"],
+            [name:"WINRM_SSL", protocol:"TCP", port:"5986"],
+            [name:"HTTP", protocol:"TCP", port:"80"],
+                        //[name:"CLOUDIFY_GUI", protocol:"TCP", port:"8099"],
+                        //[name:"CLOUDIFY_REST", protocol:"TCP", port:"8100"]/*,
+            //[name:"CLOUDIFY_LUS", protocol:"TCP", port:"4174"],
+            //[name:"CLOUDIFY_LRMIALL", protocol:"TCP", port:"7010-7110"]*/
+          ],
+
+          // Firewall port to open (winrm port 5985 should be opened by default on the image)
+          "azure.firewall.ports" : [
+//            [name:"IIS_WEBSERVER", protocol:"TCP", port:"80"],
+            [name:"CLOUDIFY_GUI", protocol:"TCP", port:"8099"],
+            [name:"CLOUDIFY_REST", protocol:"TCP", port:"8100"],
+//            [name:"CLOUDIFY_LUS", protocol:"TCP", port:"4174"],
+//            [name:"CLOUDIFY_HTTPPU", protocol:"TCP", port:"6666"],
+//            [name:"CLOUDIFY_LRMI0", protocol:"TCP", port:"7000"],
+//            [name:"CLOUDIFY_LRMI1", protocol:"TCP", port:"7001"],
+//            [name:"CLOUDIFY_LRMI2", protocol:"TCP", port:"7002"],
+//            [name:"CLOUDIFY_LRMI3", protocol:"TCP", port:"7003"],
+//            [name:"CLOUDIFY_LRMIALL", protocol:"TCP", port:"7010-7110"]
+          ]
+        ])
+        options ([ "ipAddresses" : "192.168.0.10" ])
+      },
+
 			LARGE_WIN2008R2 : computeTemplate{
 
 				imageId "bd507d3a70934695bc2128e3e5a255ba__RightImage-Windows-2012-x64-v13.5"
@@ -332,7 +314,7 @@ cloud {
 
 			MEDIUM_WIN2008R2_SERVICE : computeTemplate {
 
-				imageId "img-fc-nord-5985"
+				imageId "bd507d3a70934695bc2128e3e5a255ba__RightImage-Windows-2012-x64-v13.5"
 
 				machineMemoryMB 3500
 				hardwareId "Medium"
@@ -459,24 +441,24 @@ cloud {
 		// Enable/Disable Cloud Requests Logging.
 
 		"azure.wireLog": "true",
-				
-		
+
+
 		/******************************
 		 *
 		 * Configuration CDISCOUNT
-		 * 
+		 *
 		******************************/
-		
+
 		// Code de la platforme
 		"cdiscount.platform.code" : cdiscountPlatformCode,
-		
+
 		// Code de l’environnement
 		"cdiscount.environment.code" : cdiscountEnvironmentCode,
-		
+
 		// code pour les storages (sys et data)
 		"cdiscount.storageAcount.sys.prefix" : cdiscountEnvironmentCode,
 		"cdiscount.storageAcount.data.prefix" : cdiscountStorageAcountDataPrefix
-		
+
 	])
 }
 

@@ -15,8 +15,6 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoints;
 
 public class CreatePersistentVMRoleDeploymentDescriptor {
 
-	private static final int ROLE_NAME_UID_LENGTH = 4;
-
 	private String deploymentName;
 	private String deploymentSlot;
 	private String imageName;
@@ -50,7 +48,7 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 	}
 
 	public void setRoleName(final String roleName) {
-		this.roleName = roleName + UUIDHelper.generateRandomUUID(ROLE_NAME_UID_LENGTH);
+		this.roleName = roleName;
 	}
 
 	public String getDeploymentName() {

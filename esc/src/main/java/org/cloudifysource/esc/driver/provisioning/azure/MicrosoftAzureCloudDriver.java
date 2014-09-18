@@ -37,6 +37,8 @@ import org.cloudifysource.domain.cloud.RemoteExecutionModes;
 import org.cloudifysource.domain.cloud.ScriptLanguages;
 import org.cloudifysource.domain.cloud.compute.ComputeTemplate;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
+import org.cloudifysource.dsl.utils.ServiceUtils;
+import org.cloudifysource.dsl.utils.ServiceUtils.FullServiceName;
 import org.cloudifysource.esc.driver.provisioning.BaseProvisioningDriver;
 import org.cloudifysource.esc.driver.provisioning.CloudProvisioningException;
 import org.cloudifysource.esc.driver.provisioning.ComputeDriverConfiguration;
@@ -98,6 +100,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String CDISCOUNT_AVAILABILITY_CODE = "cdiscount.availability.code";
 
 	private AtomicInteger availabilitySetCounter = new AtomicInteger(1);
+	private AtomicInteger serviceCounter = new AtomicInteger(1);
 
 	private boolean cleanup;
 
@@ -178,6 +181,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 		// cdis custom
 		String availabilityCode = (String) this.cloud.getCustom().get(CDISCOUNT_AVAILABILITY_CODE);
+		if (availabilityCode == null || availabilityCode.trim().isEmpty()) {
+			availabilityCode = "L";
+		}
 		String availability = (String) this.template.getCustom().get(AZURE_AVAILABILITY_SET);
 
 		if (availability != null && !availability.trim().isEmpty()) {
@@ -274,7 +280,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			this.serverNamePrefix = this.cloud.getProvider().getManagementGroup() + CLOUDIFY_MANAGER_DEFAULT_NAME;
 
 		} else {
-			this.serverNamePrefix = this.cloud.getProvider().getManagementGroup() + configuration.getServiceName();
+			FullServiceName fullServiceName = ServiceUtils.getFullServiceName(configuration.getServiceName());
+			this.serverNamePrefix = this.cloud.getProvider().getManagementGroup() + fullServiceName.getServiceName();
 		}
 
 	}
@@ -306,13 +313,18 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		// cdiscount configuration
 		String cloudServiceCode = (String) this.cloud.getCustom().get(CDISCOUNT_CLOUD_SERVICE_CODE);
 
+		if (cloudServiceCode == null || cloudServiceCode.trim().isEmpty()) {
+			cloudServiceCode = "Y";
+		}
+
 		if (this.management) {
 			CLOUDIFY_CLOUD_SERVICE_PREFIX = this.cloud.getProvider().getManagementGroup() +
 					cloudServiceCode + CLOUDIFY_MANAGER_DEFAULT_NAME;
 
 		} else {
+			FullServiceName fullServiceName = ServiceUtils.getFullServiceName(configuration.getServiceName());
 			CLOUDIFY_CLOUD_SERVICE_PREFIX = this.cloud.getProvider().getManagementGroup() + cloudServiceCode +
-					configuration.getServiceName();
+					fullServiceName.getServiceName();
 		}
 
 		initRestClient(this.subscriptionId, this.pathToPfxFile, this.pfxPassword, enableWireLog);
@@ -350,7 +362,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			throws TimeoutException, CloudProvisioningException {
 		long endTime = System.currentTimeMillis() + unit.toMillis(duration);
 		// underscore character in hostname might cause deployment to fail
-		String serverName = serverNamePrefix + "-role";
+		String serverName = this.serverNamePrefix + String.format("%03d", serviceCounter.getAndIncrement());
 		final ComputeTemplate computeTemplate = this.cloud.getCloudCompute().getTemplates().get(this.cloudTemplateName);
 		return createServer(serverName, endTime, computeTemplate);
 	}

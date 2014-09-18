@@ -262,11 +262,11 @@ cloud {
 
 					// Optional. each availability set represents a different fault domain.
 
-					// "azure.availability.set" : "ENTER_AVAILABILITY_SET",
-
+					"azure.availability.set" : "MAS",
+					
 					// Choose whether do deploy this instance in Staging or Production environment. defaults to Staging
 
-					"azure.deployment.slot": "Staging",
+					"azure.deployment.slot": "Production",
 
 					/**************************************************************
 					 * Mandatory only for templates used for management machines. *

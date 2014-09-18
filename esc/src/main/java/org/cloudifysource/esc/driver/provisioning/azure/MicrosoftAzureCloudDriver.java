@@ -72,6 +72,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String CLOUDIFY_AFFINITY_PREFIX = "cloudifyaffinity";
 	private static String CLOUDIFY_CLOUD_SERVICE_PREFIX = "cloudifycloudservice";
 	private static final String CLOUDIFY_STORAGE_ACCOUNT_PREFIX = "cloudifystorage";
+	private static final String CLOUDIFY_MANAGER_DEFAULT_NAME = "CFYM";
 
 	// Custom template DSL properties
 	private static final String AZURE_PFX_FILE = "azure.pfx.file";
@@ -99,8 +100,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private AtomicInteger availabilitySetCounter = new AtomicInteger(1);
 
 	private boolean cleanup;
-
-	private String serverNamePrefix;
 
 	// Azure Credentials
 	private String subscriptionId;
@@ -181,7 +180,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		String availabilityCode = (String) this.cloud.getCustom().get(CDISCOUNT_AVAILABILITY_CODE);
 		String availability = (String) this.template.getCustom().get(AZURE_AVAILABILITY_SET);
 
-		if (availability != null && availability.trim().isEmpty()) {
+		if (availability != null && !availability.trim().isEmpty()) {
 			this.availabilitySet = availabilityCode + (String) this.template.getCustom().get(AZURE_AVAILABILITY_SET);
 		} else {
 			this.availabilitySet = null;
@@ -272,7 +271,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 		// cdis custom
 		if (this.management) {
-			this.serverNamePrefix = this.cloud.getProvider().getManagementGroup() + "-Manager";
+			this.serverNamePrefix = this.cloud.getProvider().getManagementGroup() + CLOUDIFY_MANAGER_DEFAULT_NAME;
 
 		} else {
 			this.serverNamePrefix = this.cloud.getProvider().getManagementGroup() + configuration.getServiceName();
@@ -309,7 +308,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 		if (this.management) {
 			CLOUDIFY_CLOUD_SERVICE_PREFIX = this.cloud.getProvider().getManagementGroup() +
-					cloudServiceCode + "Manager";
+					cloudServiceCode + CLOUDIFY_MANAGER_DEFAULT_NAME;
 
 		} else {
 			CLOUDIFY_CLOUD_SERVICE_PREFIX = this.cloud.getProvider().getManagementGroup() + cloudServiceCode +
@@ -370,8 +369,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			desc.setDeploymentName(deploymentName);
 			desc.setImageName(imageName);
 
+			// verify availability set and avoid name concatenation if itsn't
 			String availabilitySetName = null;
-			if (availabilitySet != null || !availabilitySet.trim().isEmpty()) {
+			if (availabilitySet != null && !availabilitySet.trim().isEmpty()) {
 				availabilitySetName = this.cloud.getProvider().getManagementGroup() + availabilitySet +
 						String.format("%03d", availabilitySetCounter.getAndIncrement());
 			}

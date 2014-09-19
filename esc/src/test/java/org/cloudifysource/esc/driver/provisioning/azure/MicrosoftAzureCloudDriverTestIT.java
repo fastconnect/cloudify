@@ -1,6 +1,8 @@
 package org.cloudifysource.esc.driver.provisioning.azure;
 
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.logging.Logger;
 
 import org.cloudifysource.domain.cloud.compute.ComputeTemplate;
@@ -9,6 +11,7 @@ import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureRes
 import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
 import org.cloudifysource.esc.driver.provisioning.azure.model.HostedServices;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleInstanceList;
+import org.cloudifysource.esc.util.Utils;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -104,6 +107,10 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 		}
 	}
 
+	public void testStartMachineUbuntuWithCustomData() throws Exception {
+		this.startAndStopManagementMachine("ubuntu1410", null);
+	}
+
 	@Test
 	public void testStartUbuntuManagementMachineInExsitingCS() throws Exception {
 
@@ -144,5 +151,32 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 				}
 			};
 		});
+	}
+
+	@Test
+	public void testCustomData() throws Exception {
+
+		this.startAndStopManagementMachine("ubuntu1410_customdata", new MachineDetailsAssertion() {
+			@Override
+			public void additionalAssertions(MachineDetails md) throws TimeoutException {
+				try {
+					Utils.executeSSHCommand(md.getPublicAddress(),
+							"ls -l /home/administrateur/hello.txt",
+							md.getRemoteUsername(),
+							md.getRemotePassword(),
+							null,
+							30L, TimeUnit.SECONDS);
+				} catch (Exception e) {
+					Assert.fail("Failed to find the file '/home/administrateur/hello.txt' which should have been created by the custom data.");
+				}
+			}
+		});
+
+	}
+
+	@Test
+	@Ignore
+	public void testCustomDataAgent() throws Exception {
+		this.startAndStopMachine("ubuntu1410_customdata", new MachineDetailsAssertion());
 	}
 }

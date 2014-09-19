@@ -1,5 +1,5 @@
 /**
- * 
+ *
  */
 package org.cloudifysource.esc.driver.provisioning.azure.client;
 
@@ -9,7 +9,7 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoints;
 
 /************************************************************************************************
  * * A POJO holding all necessary properties for create a new vm to an existing virtual network. * *
- * 
+ *
  * @author elip * *
  ************************************************************************************************/
 
@@ -32,6 +32,7 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 	private String subnetName;
 	private boolean addToExistingDeployment = false;
 	private boolean appendCloudServiceName = true;
+	private String customData;
 
 	public String getHostedServiceName() {
 		return hostedServiceName;
@@ -189,6 +190,14 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 
 	public void setAppendCloudServiceName(boolean appendCloudServiceName) {
 		this.appendCloudServiceName = appendCloudServiceName;
+  }
+
+	public void setCustomData(String customData) {
+		this.customData = customData;
+	}
+
+	public String getCustomData() {
+		return customData;
 	}
 
 }

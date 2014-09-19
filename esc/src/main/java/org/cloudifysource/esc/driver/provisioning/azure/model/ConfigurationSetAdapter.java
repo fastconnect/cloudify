@@ -98,6 +98,7 @@ public class ConfigurationSetAdapter
 			adaptedConfigurationSet.hostName = linuxProvisioningConfigurationSet.getHostName();
 			adaptedConfigurationSet.userName = linuxProvisioningConfigurationSet.getUserName();
 			adaptedConfigurationSet.userPassword = linuxProvisioningConfigurationSet.getUserPassword();
+			adaptedConfigurationSet.customData = linuxProvisioningConfigurationSet.getCustomData();
 
 		} else if (configurationSet instanceof WindowsProvisioningConfigurationSet) {
 
@@ -115,6 +116,7 @@ public class ConfigurationSetAdapter
 			adaptedConfigurationSet.adminPassword = WindowsProvisioningConfigurationSet.getAdminPassword();
 			adaptedConfigurationSet.computerName = WindowsProvisioningConfigurationSet.getComputerName();
 			adaptedConfigurationSet.winRM = WindowsProvisioningConfigurationSet.getWinRM();
+			adaptedConfigurationSet.customData = WindowsProvisioningConfigurationSet.getCustomData();
 
 		} else {
 			NetworkConfigurationSet networkConfigurationSet = (NetworkConfigurationSet) configurationSet;
@@ -131,7 +133,7 @@ public class ConfigurationSetAdapter
 	/**
 	 * 
 	 * @author elip
-	 *
+	 * 
 	 */
 
 	static class AdaptedConfigurationSet {
@@ -165,6 +167,9 @@ public class ConfigurationSetAdapter
 
 		@XmlElement(name = "DisableSshPasswordAuthentication")
 		private boolean disableSshPasswordAuthentication;
+
+		@XmlElement(name = "CustomData")
+		private String customData;
 
 		@XmlElement(name = "InputEndpoints")
 		private InputEndpoints inputEndpoints;

@@ -13,6 +13,7 @@ import java.io.UnsupportedEncodingException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.commons.lang.StringUtils;
 import org.cloudifysource.esc.driver.provisioning.azure.model.AddressSpace;
 import org.cloudifysource.esc.driver.provisioning.azure.model.ConfigurationSets;
 import org.cloudifysource.esc.driver.provisioning.azure.model.CreateAffinityGroup;
@@ -218,6 +219,7 @@ public class MicrosoftAzureRequestBodyBuilder {
 		String deploymentName = desc.getDeploymentName();
 		InputEndpoints endPoints = desc.getInputEndpoints();
 		String roleName = desc.getRoleName();
+		String customData = desc.getCustomData();
 
 		Deployment deployment = new Deployment();
 		deployment.setDeploymentSlot(deploymentSlot);
@@ -232,6 +234,7 @@ public class MicrosoftAzureRequestBodyBuilder {
 		role.setRoleType("PersistentVMRole");
 		role.setRoleName(roleName);
 		role.setRoleSize(size);
+		role.setProvisionGuestAgent(true);
 
 		OSVirtualHardDisk osVirtualHardDisk = new OSVirtualHardDisk();
 		osVirtualHardDisk.setSourceImageName(imageName);
@@ -252,7 +255,6 @@ public class MicrosoftAzureRequestBodyBuilder {
 		ConfigurationSets configurationSets = new ConfigurationSets();
 
 		if (isWindows) {
-
 			// Windows Specific : roleName de la forme cloudify_manager_roled57f => ROLED57F (15 car limit size limit)
 			String[] computerNameArray = roleName.split("_");
 			String computerName =
@@ -279,6 +281,14 @@ public class MicrosoftAzureRequestBodyBuilder {
 
 			winRM.setListeners(listeners);
 			windowsProvisioningSet.setWinRM(winRM);
+			if (StringUtils.isNotBlank(customData)) {
+				try {
+					windowsProvisioningSet.setCustomData(new String(Base64.encode(customData), UTF_8));
+				} catch (UnsupportedEncodingException e) {
+					// ignore
+				}
+
+			}
 		}
 		else {
 			LinuxProvisioningConfigurationSet linuxProvisioningSet = new LinuxProvisioningConfigurationSet();
@@ -286,6 +296,13 @@ public class MicrosoftAzureRequestBodyBuilder {
 			linuxProvisioningSet.setHostName(roleName);
 			linuxProvisioningSet.setUserName(userName);
 			linuxProvisioningSet.setUserPassword(password);
+			if (StringUtils.isNotBlank(customData)) {
+				try {
+					linuxProvisioningSet.setCustomData(new String(Base64.encode(customData), UTF_8));
+				} catch (UnsupportedEncodingException e) {
+					// ignore
+				}
+			}
 			configurationSets.getConfigurationSets().add(linuxProvisioningSet);
 		}
 

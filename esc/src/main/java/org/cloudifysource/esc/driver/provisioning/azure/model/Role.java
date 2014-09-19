@@ -9,16 +9,17 @@ import javax.xml.bind.annotation.XmlType;
  * 
  */
 @XmlType(name = "Role", propOrder = {
-		"roleName", "roleType", "configurationSets", "availabilitySetName" , "osVirtualHardDisk",
-		"roleSize" })
+		"roleName", "roleType", "configurationSets", "availabilitySetName", "osVirtualHardDisk",
+		"roleSize", "provisionGuestAgent" })
 public class Role {
 
 	private String roleName;
 	private String roleType;
 	private ConfigurationSets configurationSets;
-	private String availabilitySetName;	
+	private String availabilitySetName;
 	private OSVirtualHardDisk osVirtualHardDisk;
 	private String roleSize;
+	private Boolean provisionGuestAgent;
 
 	@XmlElement(name = "RoleName")
 	public String getRoleName() {
@@ -64,7 +65,7 @@ public class Role {
 	public void setRoleSize(final String roleSize) {
 		this.roleSize = roleSize;
 	}
-	
+
 	@XmlElement(name = "AvailabilitySetName")
 	public String getAvailabilitySetName() {
 		return availabilitySetName;
@@ -72,6 +73,15 @@ public class Role {
 
 	public void setAvailabilitySetName(final String availabilitySetName) {
 		this.availabilitySetName = availabilitySetName;
+	}
+
+	@XmlElement(name = "ProvisionGuestAgent")
+	public Boolean getProvisionGuestAgent() {
+		return provisionGuestAgent;
+	}
+
+	public void setProvisionGuestAgent(Boolean provisionGuestAgent) {
+		this.provisionGuestAgent = provisionGuestAgent;
 	}
 
 }

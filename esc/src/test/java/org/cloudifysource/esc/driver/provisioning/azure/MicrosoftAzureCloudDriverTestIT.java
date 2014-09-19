@@ -70,6 +70,11 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 
 	@Test
 	public void testStartMachineUbuntuWithStaticIp() throws Exception {
+		this.doTestStartMachine("UBUNTU1404", null);
+	}
+
+	@Test
+	public void testStartMangementMachineUbuntuWithStaticIp() throws Exception {
 		this.doTestStartManagementMachine("UBUNTU1404", null);
 	}
 

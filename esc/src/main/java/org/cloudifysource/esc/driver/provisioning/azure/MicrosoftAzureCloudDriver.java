@@ -182,10 +182,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		// cdis custom
 		String availabilityCode = (String) this.cloud.getCustom().get(CDISCOUNT_AVAILABILITY_CODE);
 		if (availabilityCode == null || availabilityCode.trim().isEmpty()) {
-			availabilityCode = "L";
+			availabilityCode = "";
 		}
 		String availability = (String) this.template.getCustom().get(AZURE_AVAILABILITY_SET);
-
 		if (availability != null && !availability.trim().isEmpty()) {
 			this.availabilitySet = availabilityCode + (String) this.template.getCustom().get(AZURE_AVAILABILITY_SET);
 		} else {
@@ -314,7 +313,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		String cloudServiceCode = (String) this.cloud.getCustom().get(CDISCOUNT_CLOUD_SERVICE_CODE);
 
 		if (cloudServiceCode == null || cloudServiceCode.trim().isEmpty()) {
-			cloudServiceCode = "Y";
+			cloudServiceCode = "";
 		}
 
 		if (this.management) {

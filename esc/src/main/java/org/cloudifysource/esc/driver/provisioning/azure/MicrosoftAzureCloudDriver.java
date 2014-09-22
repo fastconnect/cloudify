@@ -310,7 +310,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		}
 
 		// reset cloudserviceName
-		// cdiscount configuration
 		String cloudServiceCode = (String) this.cloud.getCustom().get(AZURE_CLOUD_SERVICE_CODE);
 
 		if (cloudServiceCode == null || cloudServiceCode.trim().isEmpty()) {

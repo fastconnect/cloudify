@@ -89,9 +89,7 @@ public class MicrosoftAzureRestClient {
 
 	// Header names and values
 	private static final String X_MS_VERSION_HEADER_NAME = "x-ms-version";
-	private static final String X_MS_VERSION_HEADER_VALUE = "2013-03-01";
-
-	private static final String X_MS_NEW_VERSION_2013_11_01 = "2013-11-01";
+	private static final String X_MS_VERSION_HEADER_VALUE = "2014-06-01";
 
 	private static final String CONTENT_TYPE_HEADER_NAME = "Content-Type";
 	private static final String CONTENT_TYPE_HEADER_VALUE = "application/xml";
@@ -101,11 +99,8 @@ public class MicrosoftAzureRestClient {
 	private static final String IN_PROGRESS = "InProgress";
 
 	private static final int MAX_RETRIES = 5;
-
 	private static final long DEFAULT_POLLING_INTERVAL = 5 * 1000; // 5 seconds
-
-	private static final long ESTIMATED_TIME_TO_START_VM = 5 * 60 * 1000; // 5
-																			// minutes
+	private static final long ESTIMATED_TIME_TO_START_VM = 5 * 60 * 1000; // 5 minutes
 
 	private WebResource resource;
 	private Client client;
@@ -583,7 +578,7 @@ public class MicrosoftAzureRestClient {
 				sb.append("?op=checkavailability");
 				sb.append("&address=");
 				sb.append(ip);
-				response = doGet(sb.toString(), X_MS_NEW_VERSION_2013_11_01);
+				response = doGet(sb.toString());
 				checkForError(response);
 				String requestId = extractRequestId(response);
 				waitForRequestToFinish(requestId, endTime);
@@ -1231,33 +1226,6 @@ public class MicrosoftAzureRestClient {
 								X_MS_VERSION_HEADER_VALUE)
 						.header(CONTENT_TYPE_HEADER_NAME,
 								CONTENT_TYPE_HEADER_VALUE)
-						.get(ClientResponse.class);
-				break;
-			} catch (ClientHandlerException e) {
-				logger.warning("Caught an exception while executing GET with url "
-						+ url + ". Message :" + e.getMessage());
-				logger.warning("Retrying request");
-				continue;
-			}
-		}
-		if (response == null) {
-			throw new TimeoutException("Timed out while executing GET after "
-					+ MAX_RETRIES);
-		}
-
-		return response;
-	}
-
-	private ClientResponse doGet(final String url, final String versionHeader)
-			throws MicrosoftAzureException, TimeoutException {
-
-		ClientResponse response = null;
-		for (int i = 0; i < MAX_RETRIES; i++) {
-			try {
-				response = resource
-						.path(subscriptionId + url)
-						.header(X_MS_VERSION_HEADER_NAME, versionHeader)
-						.header(CONTENT_TYPE_HEADER_NAME, CONTENT_TYPE_HEADER_VALUE)
 						.get(ClientResponse.class);
 				break;
 			} catch (ClientHandlerException e) {

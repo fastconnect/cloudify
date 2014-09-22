@@ -96,8 +96,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String AZURE_AVAILABILITY_SET = "azure.availability.set";
 	private static final String AZURE_CLEANUP_ON_TEARDOWN = "azure.cleanup.on.teardown";
 
-	private static final String CDISCOUNT_CLOUD_SERVICE_CODE = "cdiscount.cloud.service.code";
-	private static final String CDISCOUNT_AVAILABILITY_CODE = "cdiscount.availability.code";
+	private static final String AZURE_CLOUD_SERVICE_CODE = "azure.cloud.service.code";
+	private static final String AZURE_AVAILABILITY_CODE = "azure.availability.code";
 
 	private AtomicInteger availabilitySetCounter = new AtomicInteger(1);
 	private AtomicInteger serviceCounter = new AtomicInteger(1);
@@ -180,7 +180,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 				.STOP_MANAGEMENT_TIMEOUT_IN_MINUTES), DEFAULT_STOP_MANAGEMENT_TIMEOUT);
 
 		// cdis custom
-		String availabilityCode = (String) this.cloud.getCustom().get(CDISCOUNT_AVAILABILITY_CODE);
+		String availabilityCode = (String) this.cloud.getCustom().get(AZURE_AVAILABILITY_CODE);
 		if (availabilityCode == null || availabilityCode.trim().isEmpty()) {
 			availabilityCode = "";
 		}
@@ -310,7 +310,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 		// reset cloudserviceName
 		// cdiscount configuration
-		String cloudServiceCode = (String) this.cloud.getCustom().get(CDISCOUNT_CLOUD_SERVICE_CODE);
+		String cloudServiceCode = (String) this.cloud.getCustom().get(AZURE_CLOUD_SERVICE_CODE);
 
 		if (cloudServiceCode == null || cloudServiceCode.trim().isEmpty()) {
 			cloudServiceCode = "";

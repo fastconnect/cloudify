@@ -83,6 +83,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String AZURE_FIREWALL_PORTS = "azure.firewall.ports";
 
 	private static final String VM_IP_ADDRESSES = "ipAddresses";
+	private static final String VM_CLOUD_SERVICE = "cloudService";
 
 	// Custom cloud DSL properties
 	private static final String AZURE_WIRE_LOG = "azure.wireLog";
@@ -377,7 +378,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			desc = new CreatePersistentVMRoleDeploymentDescriptor();
 			desc.setRoleName(serverName);
 			desc.setDeploymentSlot(deploymentSlot);
+			// TODO useless, the value will be reset latter (cloud service/ hosted/ serverName)
 			desc.setDeploymentName(deploymentName);
+
 			desc.setImageName(imageName);
 
 			// verify availability set and avoid name concatenation if itsn't
@@ -388,6 +391,22 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			}
 
 			desc.setAvailabilitySetName(availabilitySetName);
+
+			// verify whether hosted service is set or not
+			String hostedCloudService = (String) template.getCustom().get(VM_CLOUD_SERVICE);
+
+			if (hostedCloudService != null && !hostedCloudService.trim().isEmpty()) {
+				HostedServices hostedServices = azureClient.listHostedServices();
+
+				// is specified hosted service exist on azure ?
+				if (hostedServices.contains(hostedCloudService)) {
+					// set it in CreatePersistentVMRoleDeploymentDescriptor
+					desc.setHostedServiceName(hostedCloudService);
+					// choose a different deployment name
+					desc.setDeploymentName(serverName);
+				}
+			}
+
 			desc.setAffinityGroup(affinityGroup);
 
 			InputEndpoints inputEndpoints = createInputEndPoints();

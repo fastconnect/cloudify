@@ -22,7 +22,7 @@ public class TestUtils {
 	private static final Logger logger = Logger.getLogger(TestUtils.class.getName());
 
 	private static final String credentialsPath = "./src/test/resources/clouds/credentials/azure";
-	private static final String credentialPropertyName = "azure_win-cdiscount-cloud.properties";
+	private static final String credentialPropertyName = "azure_win-cloud.properties";
 
 	private static final String CLOUDIFY_AFFINITY_PREFIX = "cloudifyaffinity";
 	private static final String CLOUDIFY_CLOUD_SERVICE_PREFIX = "cloudifycloudservice";

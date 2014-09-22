@@ -23,7 +23,7 @@ public class BaseDriverTestIT {
 	protected MicrosoftAzureCloudDriver createDriver(String computeTemplate, String overridesDir, boolean isManagement)
 			throws IOException, DSLException, CloudProvisioningException {
 		return this.createDriver(computeTemplate, overridesDir, isManagement, "./src/main/resources/clouds",
-				"azure_win-cdiscount");
+				"azure_win");
 	}
 
 	protected MicrosoftAzureCloudDriver createDriver(String cloudFolder, String cloudName) throws IOException,

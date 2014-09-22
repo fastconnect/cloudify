@@ -59,18 +59,18 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 	}
 
 	@Test
-	public void testStartManagementMachine() throws Exception {
+	public void testStartWindowsManagementMachine() throws Exception {
 		this.doTestStartManagementMachine("MEDIUM_WIN2012", null);
 	}
 
 	@Test
-	public void testStartMachine() throws Exception {
-		this.doTestStartMachine("LINUX", null);
+	public void testStartUbuntuManagementMachine() throws Exception {
+		this.doTestStartManagementMachine("UBUNTU1410", null);
 	}
 
 	@Test
-	public void testStartMangementMachineUbuntuWithStaticIp() throws Exception {
-		this.doTestStartManagementMachine("UBUNTU1404", null);
+	public void testStartMachineUbuntuWithStaticIp() throws Exception {
+		this.doTestStartManagementMachine("UBUNTU1410_IP", null);
 	}
 
 	@Test

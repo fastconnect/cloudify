@@ -262,8 +262,7 @@ public class MicrosoftAzureRestClient {
 				.buildCreateStorageAccount(affinityGroup, storageAccountName);
 
 		if (storageExists(storageAccountName)) {
-			logger.info("Using an already existing storage account : "
-					+ storageAccountName);
+			logger.info("Using an already existing storage account : " + storageAccountName);
 			return;
 		}
 

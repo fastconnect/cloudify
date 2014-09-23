@@ -7,50 +7,61 @@ import javax.xml.bind.annotation.XmlType;
 /**
  * 
  * @author elip
- *
+ * 
  */
 @XmlRootElement(name = "CreateStorageServiceInput")
-@XmlType(propOrder = {"serviceName" , "label" , "description" , "affinityGroup" })
+@XmlType(propOrder = { "serviceName", "label", "description", "affinityGroup", "accountType" })
 public class CreateStorageServiceInput {
-	
+
 	private String serviceName;
 	private String label;
 	private String description;
 	private String affinityGroup;
-	
+	private AccountType accountType = AccountType.Standard_GRS; // Geo Redundant Storage
+
 	@XmlElement(name = "ServiceName")
 	public String getServiceName() {
 		return serviceName;
 	}
-	
+
 	public void setServiceName(final String serviceName) {
 		this.serviceName = serviceName;
 	}
-	
+
 	@XmlElement(name = "Label")
 	public String getLabel() {
 		return label;
 	}
-	
+
 	public void setLabel(final String label) {
 		this.label = label;
 	}
-	
+
 	@XmlElement(name = "Description")
 	public String getDescription() {
 		return description;
 	}
-	
+
 	public void setDescription(final String description) {
 		this.description = description;
 	}
-	
+
 	@XmlElement(name = "AffinityGroup")
 	public String getAffinityGroup() {
 		return affinityGroup;
 	}
-	
+
 	public void setAffinityGroup(final String affinityGroup) {
 		this.affinityGroup = affinityGroup;
 	}
+
+	@XmlElement(name = "AccountType")
+	public AccountType getAccountType() {
+		return accountType;
+	}
+
+	public void setAccountType(AccountType accountType) {
+		this.accountType = accountType;
+	}
+
 }

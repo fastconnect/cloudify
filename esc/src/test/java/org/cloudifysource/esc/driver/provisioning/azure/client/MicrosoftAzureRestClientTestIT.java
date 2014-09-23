@@ -5,7 +5,7 @@ import java.util.Date;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Logger;
 
-import org.cloudifysource.esc.driver.provisioning.azure.TestUtils;
+import org.cloudifysource.esc.driver.provisioning.azure.AzureTestUtils;
 import org.cloudifysource.esc.driver.provisioning.azure.model.AffinityGroups;
 import org.cloudifysource.esc.driver.provisioning.azure.model.StorageServices;
 import org.cloudifysource.esc.driver.provisioning.azure.model.VirtualNetworkConfiguration;
@@ -22,7 +22,7 @@ public class MicrosoftAzureRestClientTestIT {
 
 	@BeforeClass
 	public static void beforeClass() throws MalformedURLException {
-		client = TestUtils.createOpenStackNumergyNetworkClient();
+		client = AzureTestUtils.createMicrosoftAzureRestClient();
 	}
 
 	private long createDefaultEndTime() {

@@ -27,8 +27,8 @@ public class AzureTestUtils {
 
 	private static final String TEMPLATES_FOLDER = "src/test/resources/azure/templates";
 
-	private static final String credentialsPath = "./src/test/resources/clouds/credentials/azure";
-	private static final String credentialPropertyName = "azure_win-cloud.properties";
+	private static final String defaultCredentialsFolder = "./src/test/resources/clouds/credentials/azure";
+	private static final String defaultCredentialsFilename = "azure_win-cloud.properties";
 
 	private static final String CLOUDIFY_AFFINITY_PREFIX = "cloudifyaffinity";
 	private static final String CLOUDIFY_CLOUD_SERVICE_PREFIX = "cloudifycloudservice";
@@ -36,6 +36,16 @@ public class AzureTestUtils {
 
 	private AzureTestUtils() {
 
+	}
+
+	private static String getCredentialsFolder() {
+		String systemCredentialsPath = (String) System.getProperty("CredentialsFolder");
+		return systemCredentialsPath == null ? defaultCredentialsFolder : systemCredentialsPath;
+	}
+
+	private static String getCredentialFilename() {
+		String systemCredentialsFilename = (String) System.getProperty("CredentialsFilename");
+		return systemCredentialsFilename == null ? defaultCredentialsFilename : systemCredentialsFilename;
 	}
 
 	private static void copyTemplate(String computeTemplate, File destFolder) throws IOException {
@@ -49,7 +59,7 @@ public class AzureTestUtils {
 				logger.info("Use template properties file from  '" + templatePropsFile + "'");
 				FileUtils.copyFile(templatePropsFile, new File(destFolder, templatePropsFilename));
 			} else {
-				File credentialsProperties = new File(credentialsPath, credentialPropertyName);
+				File credentialsProperties = new File(getCredentialsFolder(), getCredentialFilename());
 				logger.info("Use template properties file from  '" + credentialsProperties + "'");
 				FileUtils.copyFile(credentialsProperties, new File(destFolder, templatePropsFilename));
 			}
@@ -69,12 +79,12 @@ public class AzureTestUtils {
 	}
 
 	public static MicrosoftAzureRestClient createMicrosoftAzureRestClient() throws MalformedURLException {
-		File configFile = new File(credentialsPath, credentialPropertyName);
+		File configFile = new File(getCredentialsFolder(), getCredentialFilename());
 		ConfigObject config = new ConfigSlurper().parse(configFile.toURI().toURL());
 
 		String subscriptionId = (String) config.getProperty("subscriptionId");
 		String pfxFile = (String) config.getProperty("pfxFile");
-		String pathToPfx = credentialsPath + "/upload/" + pfxFile;
+		String pathToPfx = getCredentialsFolder() + "/upload/" + pfxFile;
 		String pfxPassword = (String) config.getProperty("pfxPassword");
 
 		return new MicrosoftAzureRestClient(subscriptionId, pathToPfx, pfxPassword, CLOUDIFY_AFFINITY_PREFIX,
@@ -100,7 +110,7 @@ public class AzureTestUtils {
 
 		// Copy azure cloud file into the temporary directory
 		FileUtils.copyDirectory(new File(cloudFolder, cloudName), tmpCloudDir);
-		FileUtils.copyDirectory(new File(credentialsPath), tmpCloudDir);
+		FileUtils.copyDirectory(new File(getCredentialsFolder()), tmpCloudDir);
 		// FileUtils.deleteQuietly(new File(tmpCloudDir, cloudName + "-cloud.properties"));
 		// FileUtils.moveFile(new File(tmpCloudDir, credentialPropertyName), new File(tmpCloudDir, cloudName
 		// + "-cloud.properties"));

@@ -763,8 +763,7 @@ public class MicrosoftAzureRestClient {
 		}
 
 		logger.info("Deleting Virtual Machine " + roleName);
-		deleteDeployment(cloudServiceName, deploymentName,
-				endTime);
+		deleteDeployment(cloudServiceName, deploymentName, endTime);
 
 		logger.fine("Deleting cloud service : " + cloudServiceName
 				+ " that was dedicated for virtual machine " + roleName);

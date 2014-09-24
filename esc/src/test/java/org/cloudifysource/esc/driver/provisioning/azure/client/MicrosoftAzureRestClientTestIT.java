@@ -11,6 +11,7 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.StorageServices;
 import org.cloudifysource.esc.driver.provisioning.azure.model.VirtualNetworkConfiguration;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class MicrosoftAzureRestClientTestIT {
@@ -36,6 +37,7 @@ public class MicrosoftAzureRestClientTestIT {
 	}
 
 	@Test
+	@Ignore
 	public void testRebootVirtualMachine() throws Exception {
 		long timeout = 60L * 1000L * 20L;
 		client.rebootVirtualMachine(new Date().getTime() + timeout);

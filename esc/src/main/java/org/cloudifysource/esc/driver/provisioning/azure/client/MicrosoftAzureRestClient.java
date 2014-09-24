@@ -186,8 +186,7 @@ public class MicrosoftAzureRestClient {
 
 	private Client createClient(final SSLContext context) {
 		ClientConfig config = new DefaultClientConfig();
-		config.getProperties().put(HTTPSProperties.PROPERTY_HTTPS_PROPERTIES,
-				new HTTPSProperties(null, context));
+		config.getProperties().put(HTTPSProperties.PROPERTY_HTTPS_PROPERTIES, new HTTPSProperties(null, context));
 		Client httpClient = Client.create(config);
 		httpClient.setConnectTimeout(CloudifyConstants.DEFAULT_HTTP_CONNECTION_TIMEOUT);
 		httpClient.setReadTimeout(CloudifyConstants.DEFAULT_HTTP_READ_TIMEOUT);
@@ -212,16 +211,13 @@ public class MicrosoftAzureRestClient {
 
 		logger.fine(getThreadIdentity() + "Creating cloud service");
 
-		CreateHostedService createHostedService = requestBodyBuilder
-				.buildCreateCloudService(affinityGroup);
+		CreateHostedService createHostedService = requestBodyBuilder.buildCreateCloudService(affinityGroup);
 
 		String serviceName = null;
 		try {
-			String xmlRequest = MicrosoftAzureModelUtils.marshall(
-					createHostedService, false);
+			String xmlRequest = MicrosoftAzureModelUtils.marshall(createHostedService, false);
 
-			ClientResponse response = doPost("/services/hostedservices",
-					xmlRequest);
+			ClientResponse response = doPost("/services/hostedservices", xmlRequest);
 			String requestId = extractRequestId(response);
 			waitForRequestToFinish(requestId, endTime);
 			serviceName = createHostedService.getServiceName();
@@ -255,26 +251,21 @@ public class MicrosoftAzureRestClient {
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
 	 */
-	public void createStorageAccount(final String affinityGroup,
-			final String storageAccountName, final long endTime)
-			throws MicrosoftAzureException, TimeoutException,
-			InterruptedException {
+	public void createStorageAccount(final String affinityGroup, final String storageAccountName, final long endTime)
+			throws MicrosoftAzureException, TimeoutException, InterruptedException {
 
-		CreateStorageServiceInput createStorageServiceInput = requestBodyBuilder
-				.buildCreateStorageAccount(affinityGroup, storageAccountName);
+		CreateStorageServiceInput createStorageServiceInput =
+				requestBodyBuilder.buildCreateStorageAccount(affinityGroup, storageAccountName);
 
 		if (storageExists(storageAccountName)) {
-			logger.info("Using an already existing storage account : "
-					+ storageAccountName);
+			logger.info("Using an already existing storage account : " + storageAccountName);
 			return;
 		}
 
 		logger.info("Creating a storage account : " + storageAccountName);
 
-		String xmlRequest = MicrosoftAzureModelUtils.marshall(
-				createStorageServiceInput, false);
-		ClientResponse response = doPost("/services/storageservices",
-				xmlRequest);
+		String xmlRequest = MicrosoftAzureModelUtils.marshall(createStorageServiceInput, false);
+		ClientResponse response = doPost("/services/storageservices", xmlRequest);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
 
@@ -366,8 +357,7 @@ public class MicrosoftAzureRestClient {
 
 		logger.info("Creating affinity group : " + affinityGroup);
 
-		String xmlRequest = MicrosoftAzureModelUtils.marshall(
-				createAffinityGroup, false);
+		String xmlRequest = MicrosoftAzureModelUtils.marshall(createAffinityGroup, false);
 		ClientResponse response = doPost("/affinitygroups", xmlRequest);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
@@ -392,8 +382,7 @@ public class MicrosoftAzureRestClient {
 	 */
 	public RoleDetails createVirtualMachineDeployment(
 			final CreatePersistentVMRoleDeploymentDescriptor deplyomentDesc,
-			final boolean isWindows,
-			final long endTime) throws MicrosoftAzureException,
+			final boolean isWindows, final long endTime) throws MicrosoftAzureException,
 			TimeoutException, InterruptedException {
 
 		long currentTimeInMillis = System.currentTimeMillis();
@@ -406,8 +395,7 @@ public class MicrosoftAzureRestClient {
 		}
 
 		logger.fine(getThreadIdentity() + "Waiting for pending request lock for lock " + pendingRequest.hashCode());
-		boolean lockAcquired = pendingRequest.tryLock(lockTimeout,
-				TimeUnit.MILLISECONDS);
+		boolean lockAcquired = pendingRequest.tryLock(lockTimeout, TimeUnit.MILLISECONDS);
 
 		String serviceName = null;
 		Deployment deployment = null;
@@ -721,8 +709,7 @@ public class MicrosoftAzureRestClient {
 		}
 
 		logger.info("Deleting affinity group : " + affinityGroupName);
-		ClientResponse response = doDelete("/affinitygroups/"
-				+ affinityGroupName);
+		ClientResponse response = doDelete("/affinitygroups/" + affinityGroupName);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
 		logger.fine("Deleted affinity group : " + affinityGroupName);
@@ -742,9 +729,8 @@ public class MicrosoftAzureRestClient {
 	 * @throws TimeoutException .
 	 * @throws InterruptedException .
 	 */
-	public boolean deleteCloudService(final String cloudServiceName,
-			final long endTime) throws MicrosoftAzureException,
-			TimeoutException, InterruptedException {
+	public boolean deleteCloudService(final String cloudServiceName, final long endTime)
+			throws MicrosoftAzureException, TimeoutException, InterruptedException {
 
 		if (!cloudServiceExists(cloudServiceName)) {
 			logger.info("Cloud service " + cloudServiceName + " does not exist.");
@@ -773,8 +759,7 @@ public class MicrosoftAzureRestClient {
 	 */
 	public void deleteVirtualMachineByIp(final String machineIp,
 			final boolean isPrivateIp, final long endTime)
-			throws TimeoutException, MicrosoftAzureException,
-			InterruptedException {
+			throws TimeoutException, MicrosoftAzureException, InterruptedException {
 
 		Deployment deployment = getDeploymentByIp(machineIp, isPrivateIp);
 		if (deployment == null) {
@@ -801,9 +786,8 @@ public class MicrosoftAzureRestClient {
 	 * @throws InterruptedException .
 	 */
 	public void deleteVirtualMachineByDeploymentName(
-			final String cloudServiceName, final String deploymentName,
-			final long endTime) throws TimeoutException,
-			MicrosoftAzureException, InterruptedException {
+			final String cloudServiceName, final String deploymentName, final long endTime)
+			throws TimeoutException, MicrosoftAzureException, InterruptedException {
 
 		String diskName = null;
 		String roleName = null;
@@ -817,8 +801,7 @@ public class MicrosoftAzureRestClient {
 		}
 
 		logger.info("Deleting Virtual Machine " + roleName);
-		deleteDeployment(cloudServiceName, deploymentName,
-				endTime);
+		deleteDeployment(cloudServiceName, deploymentName, endTime);
 
 		logger.fine("Deleting cloud service : " + cloudServiceName
 				+ " that was dedicated for virtual machine " + roleName);
@@ -934,8 +917,7 @@ public class MicrosoftAzureRestClient {
 	 */
 	public boolean deleteDeployment(final String hostedServiceName,
 			final String deploymentName, final long endTime)
-			throws MicrosoftAzureException, TimeoutException,
-			InterruptedException {
+			throws MicrosoftAzureException, TimeoutException, InterruptedException {
 
 		if (!deploymentExists(hostedServiceName, deploymentName)) {
 			logger.info("Deployment " + deploymentName + " does not exist");
@@ -1023,12 +1005,10 @@ public class MicrosoftAzureRestClient {
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
 	 */
-	public StorageServices listStorageServices()
-			throws MicrosoftAzureException, TimeoutException {
+	public StorageServices listStorageServices() throws MicrosoftAzureException, TimeoutException {
 		ClientResponse response = doGet("/services/storageservices");
 		String responseBody = response.getEntity(String.class);
-		return (StorageServices) MicrosoftAzureModelUtils
-				.unmarshall(responseBody);
+		return (StorageServices) MicrosoftAzureModelUtils.unmarshall(responseBody);
 	}
 
 	/**
@@ -1085,8 +1065,7 @@ public class MicrosoftAzureRestClient {
 		ClientResponse response = doGet(builder.toString());
 		checkForError(response);
 		String responseBody = response.getEntity(String.class);
-		return (HostedService) MicrosoftAzureModelUtils
-				.unmarshall(responseBody);
+		return (HostedService) MicrosoftAzureModelUtils.unmarshall(responseBody);
 	}
 
 	/**
@@ -1114,8 +1093,7 @@ public class MicrosoftAzureRestClient {
 		}
 
 		String responseBody = response.getEntity(String.class);
-		return (Deployment) MicrosoftAzureModelUtils
-				.unmarshall(responseBody);
+		return (Deployment) MicrosoftAzureModelUtils.unmarshall(responseBody);
 	}
 
 	/**
@@ -1134,8 +1112,7 @@ public class MicrosoftAzureRestClient {
 
 		ClientResponse response = null;
 		try {
-			response = doGet("/services/hostedservices/" + hostedServiceName
-					+ "/deployments/" + deploymentName);
+			response = doGet("/services/hostedservices/" + hostedServiceName + "/deployments/" + deploymentName);
 			checkForError(response);
 		} catch (TimeoutException e) {
 			logger.warning("Timed out while waiting for deployment details. this may cause a leaking node");
@@ -1143,8 +1120,7 @@ public class MicrosoftAzureRestClient {
 		}
 
 		String responseBody = response.getEntity(String.class);
-		Deployment deployment = (Deployment) MicrosoftAzureModelUtils
-				.unmarshall(responseBody);
+		Deployment deployment = (Deployment) MicrosoftAzureModelUtils.unmarshall(responseBody);
 		deployment.setHostedServiceName(hostedServiceName);
 		return deployment;
 	}
@@ -1167,14 +1143,12 @@ public class MicrosoftAzureRestClient {
 		HostedServices cloudServices = listHostedServices();
 		for (HostedService hostedService : cloudServices) {
 			String cloudServiceName = hostedService.getServiceName();
-			Deployments deployments = getHostedService(cloudServiceName, true)
-					.getDeployments();
+			Deployments deployments = getHostedService(cloudServiceName, true).getDeployments();
 			// skip empty cloud services
 			if (!deployments.getDeployments().isEmpty()) {
 				deployment = deployments.getDeployments().get(0);
 				String deploymentName = deployment.getName();
-				deployment = getDeploymentByDeploymentName(cloudServiceName,
-						deploymentName);
+				deployment = getDeploymentByDeploymentName(cloudServiceName, deploymentName);
 				String publicIp = getPublicIpFromDeployment(deployment);
 				String privateIp = getPrivateIpFromDeployment(deployment);
 				String ip = isPrivateIp ? privateIp : publicIp;

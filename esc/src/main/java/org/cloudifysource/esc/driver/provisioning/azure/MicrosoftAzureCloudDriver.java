@@ -51,6 +51,7 @@ import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureRes
 import org.cloudifysource.esc.driver.provisioning.azure.client.RoleDetails;
 import org.cloudifysource.esc.driver.provisioning.azure.model.AttachedTo;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
+import org.cloudifysource.esc.driver.provisioning.azure.model.Deployments;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Disk;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Disks;
 import org.cloudifysource.esc.driver.provisioning.azure.model.HostedService;
@@ -74,7 +75,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String CLOUDIFY_AFFINITY_PREFIX = "cloudifyaffinity";
 	private static String CLOUDIFY_CLOUD_SERVICE_PREFIX = "cloudifycloudservice";
 	private static final String CLOUDIFY_STORAGE_ACCOUNT_PREFIX = "cloudifystorage";
-	private static final String CLOUDIFY_MANAGER_DEFAULT_NAME = "CFYM";
+
+	// TODO set dynamic value for manager name if necessary
+	private static final String CLOUDIFY_MANAGER_NAME = "CFYM";
 
 	// Custom template DSL properties
 	private static final String AZURE_PFX_FILE = "azure.pfx.file";
@@ -83,12 +86,11 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String AZURE_FIREWALL_PORTS = "azure.firewall.ports";
 
 	private static final String VM_IP_ADDRESSES = "ipAddresses";
-	private static final String VM_CLOUD_SERVICE = "cloudService";
+	private static final String AZURE_CLOUD_SERVICE = "azure.cloud.service";
 
 	// Custom cloud DSL properties
 	private static final String AZURE_WIRE_LOG = "azure.wireLog";
 	private static final String AZURE_DEPLOYMENT_SLOT = "azure.deployment.slot";
-	private static final String AZURE_DEPLOYMENT_NAME = "azure.deployment.name";
 	private static final String AZURE_AFFINITY_LOCATION = "azure.affinity.location";
 	private static final String AZURE_NETOWRK_ADDRESS_SPACE = "azure.address.space";
 	private static final String AZURE_AFFINITY_GROUP = "azure.affinity.group";
@@ -117,7 +119,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	// Arguments per template
 	private String deploymentSlot;
-	private String deploymentName;
 	private String imageName;
 	private String userName;
 	private String password;
@@ -193,7 +194,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		}
 
 		this.deploymentSlot = (String) this.template.getCustom().get(AZURE_DEPLOYMENT_SLOT);
-		this.deploymentName = (String) this.template.getCustom().get(AZURE_DEPLOYMENT_NAME);
 		if (StringUtils.isBlank(deploymentSlot)) {
 			deploymentSlot = "Staging";
 		} else {
@@ -277,7 +277,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 		// cdis custom
 		if (this.management) {
-			this.serverNamePrefix = this.cloud.getProvider().getManagementGroup() + CLOUDIFY_MANAGER_DEFAULT_NAME;
+			this.serverNamePrefix = this.cloud.getProvider().getManagementGroup() + CLOUDIFY_MANAGER_NAME;
 
 		} else {
 			FullServiceName fullServiceName = ServiceUtils.getFullServiceName(configuration.getServiceName());
@@ -318,7 +318,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 		if (this.management) {
 			CLOUDIFY_CLOUD_SERVICE_PREFIX = this.cloud.getProvider().getManagementGroup() +
-					cloudServiceCode + CLOUDIFY_MANAGER_DEFAULT_NAME;
+					cloudServiceCode + CLOUDIFY_MANAGER_NAME;
 
 		} else {
 			FullServiceName fullServiceName = ServiceUtils.getFullServiceName(configuration.getServiceName());
@@ -377,8 +377,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			desc = new CreatePersistentVMRoleDeploymentDescriptor();
 			desc.setRoleName(serverName);
 			desc.setDeploymentSlot(deploymentSlot);
+
 			// TODO useless, the value will be reset latter (cloud service/ hosted/ serverName)
-			desc.setDeploymentName(deploymentName);
+			// desc.setDeploymentName(deploymentName);
 
 			desc.setImageName(imageName);
 
@@ -392,17 +393,37 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			desc.setAvailabilitySetName(availabilitySetName);
 
 			// verify whether hosted service is set or not
-			String hostedCloudService = (String) template.getCustom().get(VM_CLOUD_SERVICE);
-
+			String hostedCloudService = (String) template.getCustom().get(AZURE_CLOUD_SERVICE);
 			if (hostedCloudService != null && !hostedCloudService.trim().isEmpty()) {
+
 				HostedServices hostedServices = azureClient.listHostedServices();
 
 				// is specified hosted service exist on azure ?
 				if (hostedServices.contains(hostedCloudService)) {
-					// set it in CreatePersistentVMRoleDeploymentDescriptor
+
+					Deployment deployment = azureClient.listDeploymentsBySlot(hostedCloudService,
+							deploymentSlot, endTime);
+
+					// is there any deployment in the selected cloud service/slot
+					if (deployment != null) {
+
+						String name = deployment.getName();
+						logger.info(String.format("Choosing automatically deployment '%s", name));
+						desc.setDeploymentName(name);
+						// use add role
+						desc.setAddToExistingDeployment(true);
+
+						// create a new one
+					} else {
+						desc.setDeploymentName(hostedCloudService);
+					}
+
 					desc.setHostedServiceName(hostedCloudService);
-					// choose a different deployment name
-					desc.setDeploymentName(serverName);
+
+				} else {
+					// at this point a cs/deployment will be created
+					logger.warning(String.format("The cloud service '%s' doesn't exist on azure. "
+							+ "A new cloud service creation will be requested.", hostedCloudService));
 				}
 			}
 
@@ -421,6 +442,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 			logger.info("Launching a new virtual machine");
 			boolean isWindows = isWindowsVM();
+
 			roleAddressDetails = azureClient.createVirtualMachineDeployment(desc, isWindows, endTime);
 
 			machineDetails.setPrivateAddress(roleAddressDetails.getPrivateIp());
@@ -463,7 +485,14 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		details.setLocalDir(localBootstrapScript);
 
 		// Activate sharing on remote machine
-		remoteExecutor.execute(machineDetails.getPublicAddress(), details, COMMAND_ACTIVATE_SHARING,
+		String hostAddress = null;
+		if (this.management) {
+			hostAddress = machineDetails.getPublicAddress();
+		} else {
+			hostAddress = machineDetails.getPrivateAddress();
+		}
+
+		remoteExecutor.execute(hostAddress, details, COMMAND_ACTIVATE_SHARING,
 				DEFAULT_COMMAND_TIMEOUT);
 
 		// Remote command to target : open all defined ports
@@ -484,7 +513,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 						// Opening from port portStart -> portEnd (with +1 increment)
 						for (int i = portStart; i <= portEnd; i++) {
 							cmd = COMMAND_OPEN_FIREWALL_PORT + " " + protocol + " " + i + " " + (name + i);
-							remoteExecutor.execute(machineDetails.getPublicAddress(), details, cmd,
+							remoteExecutor.execute(hostAddress, details, cmd,
 									DEFAULT_COMMAND_TIMEOUT);
 						}
 					}
@@ -495,7 +524,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 						int portNumber = Integer.parseInt(port);
 						cmd = COMMAND_OPEN_FIREWALL_PORT + " " + protocol + " " + portNumber + " " + name;
 						remoteExecutor
-								.execute(machineDetails.getPublicAddress(), details, cmd, DEFAULT_COMMAND_TIMEOUT);
+								.execute(hostAddress, details, cmd, DEFAULT_COMMAND_TIMEOUT);
 					}
 				}
 			}

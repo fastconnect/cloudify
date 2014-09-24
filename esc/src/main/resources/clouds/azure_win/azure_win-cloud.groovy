@@ -97,7 +97,7 @@ cloud {
 					// Password that was used to create the certificate
 					"azure.pfx.password" : pfxPassword
 				])
-			}
+			},
 
 			LARGE_WIN2012 : computeTemplate{
 

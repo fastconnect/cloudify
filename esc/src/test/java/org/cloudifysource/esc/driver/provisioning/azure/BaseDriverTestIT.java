@@ -56,6 +56,8 @@ public class BaseDriverTestIT {
 
 		if (!isManagement) {
 			configuration.setServiceName("default.NOM");
+		} else {
+			cloud.getConfiguration().setManagementMachineTemplate(computeTemplate);
 		}
 
 		driver.setConfig(configuration);
@@ -105,7 +107,7 @@ public class BaseDriverTestIT {
 	}
 
 	public class MachineDetailsAssertion {
-		public void assertMachineDetails(MachineDetails md) {
+		public void assertMachineDetails(MachineDetails md) throws Exception {
 			Assert.assertNotNull("MachineDetails is null", md);
 			Assert.assertNotNull("machineId is null", md.getMachineId());
 			String privateAddress = md.getPrivateAddress();
@@ -117,7 +119,7 @@ public class BaseDriverTestIT {
 			additionalAssertions(md);
 		}
 
-		public void additionalAssertions(MachineDetails md) {
+		public void additionalAssertions(MachineDetails md) throws Exception {
 		}
 	}
 }

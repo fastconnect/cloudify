@@ -105,8 +105,7 @@ public class MicrosoftAzureRequestBodyBuilder {
 		String counterWithPadding = String.format("%03d", cloudServiceAtomicInteger.getAndIncrement());
 
 		try {
-			hostedService.setLabel(new String(Base64.encode(cloudServicePrefix +
-					counterWithPadding), UTF_8));
+			hostedService.setLabel(new String(Base64.encode(cloudServicePrefix + counterWithPadding), UTF_8));
 		} catch (UnsupportedEncodingException e) {
 			// ignore
 		}

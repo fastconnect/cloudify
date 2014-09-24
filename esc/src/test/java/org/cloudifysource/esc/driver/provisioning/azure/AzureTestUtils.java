@@ -8,9 +8,13 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
 import org.cloudifysource.domain.ComputeTemplateHolder;
@@ -43,9 +47,39 @@ public class AzureTestUtils {
 		return systemCredentialsPath == null ? defaultCredentialsFolder : systemCredentialsPath;
 	}
 
-	private static String getCredentialFilename() {
+	private static String getCredentialsFilename() {
 		String systemCredentialsFilename = (String) System.getProperty("CredentialsFilename");
 		return systemCredentialsFilename == null ? defaultCredentialsFilename : systemCredentialsFilename;
+	}
+
+	public static File getCredentialsFile() {
+		return new File(getCredentialsFolder(), getCredentialsFilename());
+	}
+
+	public static Map<String, String> getCloudProperties() throws FileNotFoundException, IOException {
+
+		File credentialsFile = AzureTestUtils.getCredentialsFile();
+		Properties props = new Properties();
+		props.load(new FileInputStream(credentialsFile));
+
+		Map<String, String> cloudProperties = new HashMap<String, String>();
+
+		String regex = "\"(.*)\"";
+		Pattern pattern = Pattern.compile(regex);
+		for (Object k : props.keySet()) {
+			String key = (String) k;
+			if (!key.startsWith("//")) {
+				String value = (String) props.getProperty(key);
+				Matcher matcher = pattern.matcher(value);
+				if (matcher.matches()) {
+					cloudProperties.put(key, matcher.group(1));
+				} else {
+					cloudProperties.put(key, value);
+				}
+			}
+		}
+
+		return cloudProperties;
 	}
 
 	private static void copyTemplate(String computeTemplate, File destFolder) throws IOException {
@@ -59,7 +93,7 @@ public class AzureTestUtils {
 				logger.info("Use template properties file from  '" + templatePropsFile + "'");
 				FileUtils.copyFile(templatePropsFile, new File(destFolder, templatePropsFilename));
 			} else {
-				File credentialsProperties = new File(getCredentialsFolder(), getCredentialFilename());
+				File credentialsProperties = getCredentialsFile();
 				logger.info("Use template properties file from  '" + credentialsProperties + "'");
 				FileUtils.copyFile(credentialsProperties, new File(destFolder, templatePropsFilename));
 			}
@@ -79,7 +113,7 @@ public class AzureTestUtils {
 	}
 
 	public static MicrosoftAzureRestClient createMicrosoftAzureRestClient() throws MalformedURLException {
-		File configFile = new File(getCredentialsFolder(), getCredentialFilename());
+		File configFile = getCredentialsFile();
 		ConfigObject config = new ConfigSlurper().parse(configFile.toURI().toURL());
 
 		String subscriptionId = (String) config.getProperty("subscriptionId");

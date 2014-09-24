@@ -34,13 +34,11 @@ cloud {
 		// Therefore, if setting a custom URL, make sure to leave out the suffix.
 		// cloudifyUrl "http://repository.cloudifysource.org/org/cloudifysource/2.7.1-6300-RELEASE/gigaspaces-cloudify-2.7.1-ga-b6300.zip"
 
-		machineNamePrefix "cloudify_agent"
-
+    managementGroup "${codeCountry}${codeEnvironment}"
+    machineNamePrefix "${codeCountry}${codeEnvironment}"
 
 		managementOnlyFiles ([])
 
-	//	managementGroup "cloudify_manager"
-		managementGroup "A01"
 		numberOfManagementMachines 1
 
 		reservedMemoryCapacityPerMachineInMB 1024

@@ -71,8 +71,8 @@ import org.cloudifysource.esc.util.Utils;
 
 public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
-	private static final String CLOUDIFY_AFFINITY_PREFIX = "cloudifyaffinity";
 	private static String CLOUDIFY_CLOUD_SERVICE_PREFIX = "cloudifycloudservice";
+	private static final String CLOUDIFY_AFFINITY_PREFIX = "cloudifyaffinity";
 	private static final String CLOUDIFY_STORAGE_ACCOUNT_PREFIX = "cloudifystorage";
 	private static final String CLOUDIFY_MANAGER_DEFAULT_NAME = "CFYM";
 
@@ -180,9 +180,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 				.STOP_MANAGEMENT_TIMEOUT_IN_MINUTES), DEFAULT_STOP_MANAGEMENT_TIMEOUT);
 
 		// cdis custom
-		String availabilityCode = (String) this.cloud.getCustom().get(AZURE_AVAILABILITY_CODE);
-		if (availabilityCode == null || availabilityCode.trim().isEmpty()) {
-			availabilityCode = "";
+		String availabilityCode = null;
+		if (this.cloud.getCustom().containsKey(AZURE_AVAILABILITY_CODE)) {
+			availabilityCode = this.cloud.getCustom().get(AZURE_AVAILABILITY_CODE).toString().trim();
 		}
 		String availability = (String) this.template.getCustom().get(AZURE_AVAILABILITY_SET);
 		if (availability != null && !availability.trim().isEmpty()) {
@@ -277,10 +277,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		// cdis custom
 		if (this.management) {
 			this.serverNamePrefix = this.cloud.getProvider().getManagementGroup() + CLOUDIFY_MANAGER_DEFAULT_NAME;
-
 		} else {
 			FullServiceName fullServiceName = ServiceUtils.getFullServiceName(configuration.getServiceName());
-			this.serverNamePrefix = this.cloud.getProvider().getManagementGroup() + fullServiceName.getServiceName();
+			this.serverNamePrefix = this.cloud.getProvider().getMachineNamePrefix() + fullServiceName.getServiceName();
 		}
 
 	}
@@ -309,19 +308,16 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		}
 
 		// reset cloudserviceName
-		String cloudServiceCode = (String) this.cloud.getCustom().get(AZURE_CLOUD_SERVICE_CODE);
-
-		if (cloudServiceCode == null || cloudServiceCode.trim().isEmpty()) {
-			cloudServiceCode = "";
+		String cloudServiceCode = null;
+		if (this.cloud.getCustom().containsKey(AZURE_CLOUD_SERVICE_CODE)) {
+			cloudServiceCode = this.cloud.getCustom().get(AZURE_CLOUD_SERVICE_CODE).toString().trim();
 		}
 
 		if (this.management) {
-			CLOUDIFY_CLOUD_SERVICE_PREFIX = this.cloud.getProvider().getManagementGroup() +
-					cloudServiceCode + CLOUDIFY_MANAGER_DEFAULT_NAME;
-
+			CLOUDIFY_CLOUD_SERVICE_PREFIX = this.cloud.getProvider().getManagementGroup() + cloudServiceCode;
 		} else {
 			FullServiceName fullServiceName = ServiceUtils.getFullServiceName(configuration.getServiceName());
-			CLOUDIFY_CLOUD_SERVICE_PREFIX = this.cloud.getProvider().getManagementGroup() + cloudServiceCode +
+			CLOUDIFY_CLOUD_SERVICE_PREFIX = this.cloud.getProvider().getMachineNamePrefix() + cloudServiceCode +
 					fullServiceName.getServiceName();
 		}
 

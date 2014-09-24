@@ -2,7 +2,7 @@
 
 	win2012_ipfixed : computeTemplate {
 
-		imageId "bd507d3a70934695bc2128e3e5a255ba__RightImage-Windows-2012-x64-v13.5"
+		imageId "a699494373c04fc0bc8f2bb1389d6106__Windows-Server-2012-R2-201408.01-en.us-127GB.vhd"
 
 		machineMemoryMB 3500
 		hardwareId "Medium"

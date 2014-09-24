@@ -1,6 +1,6 @@
 [
   ubuntu1410_ipfixed : computeTemplate {
-		imageId "b39f27a8b8c64d52b05eac6a62ebad85__Ubuntu_DAILY_BUILD-utopic-14_10-amd64-server-20140917.2-en-us-30GB"
+		imageId "b39f27a8b8c64d52b05eac6a62ebad85__Ubuntu-14_04_1-LTS-amd64-server-20140909-en-us-30GB"
 		machineMemoryMB 1600
 		hardwareId "Small"
 		username username

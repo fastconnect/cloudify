@@ -26,6 +26,7 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.Listener;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Listeners;
 import org.cloudifysource.esc.driver.provisioning.azure.model.NetworkConfigurationSet;
 import org.cloudifysource.esc.driver.provisioning.azure.model.OSVirtualHardDisk;
+import org.cloudifysource.esc.driver.provisioning.azure.model.PersistentVMRole;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RestartRoleOperation;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Role;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleList;
@@ -331,4 +332,28 @@ public class MicrosoftAzureRequestBodyBuilder {
 		return UUIDHelper.generateRandomUUID(length);
 	}
 
+	PersistentVMRole buildPersistentVMRole(CreatePersistentVMRoleDeploymentDescriptor deplyomentDesc, boolean isWindows) {
+		Deployment deployment = this.buildDeployment(deplyomentDesc, isWindows);
+		Role role = deployment.getRoleList().getRoles().get(0);
+
+		// override medialink, otherwise it will use the deployment name
+		String storageAccountName = deplyomentDesc.getStorageAccountName();
+		String mediaLink = "https://" + storageAccountName + ".blob.core.windows.net/vhds/" +
+				deplyomentDesc.getHostedServiceName() + "-" + role.getRoleName() + ".vhd";
+
+		role.getOsVirtualHardDisk().setMediaLink(mediaLink);
+
+		// let azure generate a name ($cloudservice-$rolename-number )for osDisk
+		role.getOsVirtualHardDisk().setName(null);
+
+		PersistentVMRole persistentVMRole = new PersistentVMRole();
+		persistentVMRole.setAvailabilitySetName(role.getAvailabilitySetName());
+		persistentVMRole.setConfigurationSets(role.getConfigurationSets());
+		persistentVMRole.setOSVirtualHardDisk(role.getOsVirtualHardDisk());
+
+		persistentVMRole.setRoleName(role.getRoleName());
+		persistentVMRole.setRoleSize(role.getRoleSize());
+		persistentVMRole.setRoleType(role.getRoleType());
+		return persistentVMRole;
+	}
 }

@@ -65,6 +65,7 @@ public final class ModelContextFactory {
 		CLASSES.add(AttachedTo.class);
 		CLASSES.add(Disk.class);
 		CLASSES.add(Disks.class);
+		CLASSES.add(PersistentVMRole.class);
 	}
 
 	private static Class<?>[] getClasses() {

@@ -6,15 +6,11 @@
 
 		machineMemoryMB 3500
 		hardwareId "Medium"
-
 		username username
 		password password
-
 		remoteDirectory "/C\$/Users/${username}/gs-files"
 
 		localDirectory "upload-windows"
-
-		// File transfer mode. Optional, defaults to SCP.
 		fileTransfer "CIFS"
 		// Remote execution mode. Options, defaults to SSH.
 		remoteExecution "WINRM"
@@ -24,10 +20,7 @@
 		custom ([
 
 			"azure.deployment.slot": "Production",
-
 			"azure.pfx.file": pfxFile,
-
-			// Password that was used to create the certificate
 			"azure.pfx.password" : pfxPassword,
 
 			// Endpoints definition

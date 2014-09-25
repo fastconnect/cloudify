@@ -332,14 +332,15 @@ public class MicrosoftAzureRequestBodyBuilder {
 		return UUIDHelper.generateRandomUUID(length);
 	}
 
+	// TODO using new hd for os (randomize a suffix) ?
 	PersistentVMRole buildPersistentVMRole(CreatePersistentVMRoleDeploymentDescriptor deplyomentDesc, boolean isWindows) {
 		Deployment deployment = this.buildDeployment(deplyomentDesc, isWindows);
 		Role role = deployment.getRoleList().getRoles().get(0);
 
 		// override medialink, otherwise it will use the deployment name
 		String storageAccountName = deplyomentDesc.getStorageAccountName();
-
 		StringBuilder mediaLinkBuilder = new StringBuilder();
+
 		mediaLinkBuilder.append("https://");
 		mediaLinkBuilder.append(storageAccountName);
 		mediaLinkBuilder.append(".blob.core.windows.net/vhds/");
@@ -348,6 +349,7 @@ public class MicrosoftAzureRequestBodyBuilder {
 		mediaLinkBuilder.append(role.getRoleName());
 		mediaLinkBuilder.append("-");
 		mediaLinkBuilder.append(generateRandomUUID(7));
+		mediaLinkBuilder.append(".vhd");
 		role.getOsVirtualHardDisk().setMediaLink(mediaLinkBuilder.toString());
 
 		// let azure generate a name ($cloudservice-$rolename-random ) for os disk name

@@ -376,10 +376,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			desc = new CreatePersistentVMRoleDeploymentDescriptor();
 			desc.setRoleName(serverName);
 			desc.setDeploymentSlot(deploymentSlot);
-
-			// TODO useless, the value will be reset latter (cloud service/ hosted/ serverName)
-			// desc.setDeploymentName(deploymentName);
-
 			desc.setImageName(imageName);
 
 			// verify availability set and avoid name concatenation if itsn't

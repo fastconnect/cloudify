@@ -205,9 +205,8 @@ public class MicrosoftAzureRestClient {
 	 * @throws TimeoutException .
 	 * @throws InterruptedException .
 	 */
-	public String createCloudService(final String affinityGroup,
-			final long endTime) throws MicrosoftAzureException,
-			TimeoutException, InterruptedException {
+	public String createCloudService(final String affinityGroup, final long endTime)
+			throws MicrosoftAzureException, TimeoutException, InterruptedException {
 
 		logger.fine(getThreadIdentity() + "Creating cloud service");
 
@@ -216,7 +215,6 @@ public class MicrosoftAzureRestClient {
 		String serviceName = null;
 		try {
 			String xmlRequest = MicrosoftAzureModelUtils.marshall(createHostedService, false);
-
 			ClientResponse response = doPost("/services/hostedservices", xmlRequest);
 			String requestId = extractRequestId(response);
 			waitForRequestToFinish(requestId, endTime);
@@ -371,7 +369,7 @@ public class MicrosoftAzureRestClient {
 	 * 
 	 * If a failure happened after the cloud service was created, this method will delete it and throw.
 	 * 
-	 * @param deplyomentDesc
+	 * @param deploymentDesc
 	 *            .
 	 * @param endTime
 	 *            .
@@ -381,13 +379,12 @@ public class MicrosoftAzureRestClient {
 	 * @throws InterruptedException .
 	 */
 	public RoleDetails createVirtualMachineDeployment(
-			final CreatePersistentVMRoleDeploymentDescriptor deplyomentDesc,
+			final CreatePersistentVMRoleDeploymentDescriptor deploymentDesc,
 			final boolean isWindows, final long endTime) throws MicrosoftAzureException,
 			TimeoutException, InterruptedException {
 
 		long currentTimeInMillis = System.currentTimeMillis();
-		long lockTimeout = endTime - currentTimeInMillis
-				- ESTIMATED_TIME_TO_START_VM;
+		long lockTimeout = endTime - currentTimeInMillis - ESTIMATED_TIME_TO_START_VM;
 		if (lockTimeout < 0) {
 			throw new MicrosoftAzureException(
 					"Aborted request to provision virtual machine. "
@@ -399,7 +396,7 @@ public class MicrosoftAzureRestClient {
 
 		String serviceName = null;
 		Deployment deployment = null;
-		String deploymentSlot = deplyomentDesc.getDeploymentSlot();
+		String deploymentSlot = deploymentDesc.getDeploymentSlot();
 
 		if (lockAcquired) {
 
@@ -409,53 +406,53 @@ public class MicrosoftAzureRestClient {
 			try {
 
 				// create a new cloud service
-				if (deplyomentDesc.getHostedServiceName() == null) {
-					serviceName = createCloudService(deplyomentDesc.getAffinityGroup(), endTime);
-					deplyomentDesc.setHostedServiceName(serviceName);
-					deplyomentDesc.setDeploymentName(serviceName);
+				if (deploymentDesc.getHostedServiceName() == null) {
+					serviceName = createCloudService(deploymentDesc.getAffinityGroup(), endTime);
+					deploymentDesc.setHostedServiceName(serviceName);
+					deploymentDesc.setDeploymentName(serviceName);
 				} else {
 					// use existing cloud service
-					serviceName = deplyomentDesc.getHostedServiceName();
+					serviceName = deploymentDesc.getHostedServiceName();
 				}
 
 				// check static IP(s) availability
 				// this will be skipped if no private ip was defined in the current compute template
-				if (deplyomentDesc.getIpAddresses() != null) {
-					String availableIp = setAvailableIpIfExist(deplyomentDesc.getIpAddresses(),
-							deplyomentDesc.getNetworkName(), deplyomentDesc.getSubnetName(), endTime);
+				if (deploymentDesc.getIpAddresses() != null) {
+					String availableIp = setAvailableIpIfExist(deploymentDesc.getIpAddresses(),
+							deploymentDesc.getNetworkName(), deploymentDesc.getSubnetName(), endTime);
 
 					if (availableIp == null) {
 						String noIpAvailableString = String.format("The specified Ip addresses '%s' are not available",
-								deplyomentDesc.getIpAddresses().toString());
+								deploymentDesc.getIpAddresses().toString());
 
 						logger.severe(noIpAvailableString);
 						throw new MicrosoftAzureException("Can't provision VM :" + noIpAvailableString);
 
 					}
-					deplyomentDesc.setAvailableIp(availableIp);
+					deploymentDesc.setAvailableIp(availableIp);
 				}
 				// add role to specified deployment
-				if (deplyomentDesc.isAddToExistingDeployment()) {
-					PersistentVMRole persistentVMRole = requestBodyBuilder.buildPersistentVMRole(deplyomentDesc,
+				if (deploymentDesc.isAddToExistingDeployment()) {
+					PersistentVMRole persistentVMRole = requestBodyBuilder.buildPersistentVMRole(deploymentDesc,
 							isWindows);
 					String xmlRequest = MicrosoftAzureModelUtils.marshall(persistentVMRole, false);
 					logger.fine(getThreadIdentity()
 							+ String.format("Launching virtual machine '%s', in current deployment '%s'",
-									deplyomentDesc.getRoleName(), deplyomentDesc.getDeploymentName()));
+									deploymentDesc.getRoleName(), deploymentDesc.getDeploymentName()));
 
 					ClientResponse response = doPost("/services/hostedservices/" + serviceName + "/deployments/" +
-							deplyomentDesc.getDeploymentName() + "/roles", xmlRequest);
+							deploymentDesc.getDeploymentName() + "/roles", xmlRequest);
 					String requestId = extractRequestId(response);
 					waitForRequestToFinish(requestId, endTime);
 
 					// regular deployment
 				} else {
 
-					deployment = requestBodyBuilder.buildDeployment(deplyomentDesc, isWindows);
+					deployment = requestBodyBuilder.buildDeployment(deploymentDesc, isWindows);
 					String xmlRequest = MicrosoftAzureModelUtils.marshall(deployment, false);
 
 					logger.fine(getThreadIdentity() + "Launching virtual machine : "
-							+ deplyomentDesc.getRoleName());
+							+ deploymentDesc.getRoleName());
 
 					ClientResponse response = doPost("/services/hostedservices/"
 							+ serviceName + "/deployments", xmlRequest);
@@ -498,11 +495,8 @@ public class MicrosoftAzureRestClient {
 
 		Deployment deploymentResponse = null;
 		try {
-			deploymentResponse = waitForDeploymentStatus("Running",
-					serviceName, deploymentSlot, endTime);
-
-			deploymentResponse = waitForRoleInstanceStatus("ReadyRole",
-					serviceName, deploymentSlot, endTime);
+			deploymentResponse = waitForDeploymentStatus("Running", serviceName, deploymentSlot, endTime);
+			deploymentResponse = waitForRoleInstanceStatus("ReadyRole", serviceName, deploymentSlot, endTime);
 		} catch (final Exception e) {
 			logger.fine("Error while waiting for VM status : " + e.getMessage());
 			// the VM was created but with a bad status
@@ -524,9 +518,9 @@ public class MicrosoftAzureRestClient {
 
 		String privateIp = null;
 		// get instanceRole from details
-		if (deplyomentDesc.isAddToExistingDeployment()) {
+		if (deploymentDesc.isAddToExistingDeployment()) {
 			RoleInstance roleInstance = deploymentResponse.getRoleInstanceList().
-					getInstanceRoleByRoleName(deplyomentDesc.getRoleName());
+					getInstanceRoleByRoleName(deploymentDesc.getRoleName());
 			privateIp = roleInstance.getIpAddress();
 
 		} else {
@@ -648,8 +642,7 @@ public class MicrosoftAzureRestClient {
 	 *             - indicates an exception was caught during the API call
 	 * @throws TimeoutException .
 	 */
-	public String listOsImages() throws MicrosoftAzureException,
-			TimeoutException {
+	public String listOsImages() throws MicrosoftAzureException, TimeoutException {
 		ClientResponse response = doGet("/services/images");
 		checkForError(response);
 		return response.getEntity(String.class);
@@ -670,17 +663,15 @@ public class MicrosoftAzureRestClient {
 	 * @throws TimeoutException .
 	 * @throws InterruptedException .
 	 */
-	public boolean deleteStorageAccount(final String storageAccountName,
-			final long endTime) throws MicrosoftAzureException,
-			TimeoutException, InterruptedException {
+	public boolean deleteStorageAccount(final String storageAccountName, final long endTime)
+			throws MicrosoftAzureException, TimeoutException, InterruptedException {
 
 		if (!storageExists(storageAccountName)) {
 			return true;
 		}
 
 		logger.info("Deleting storage account : " + storageAccountName);
-		ClientResponse response = doDelete("/services/storageservices/"
-				+ storageAccountName);
+		ClientResponse response = doDelete("/services/storageservices/" + storageAccountName);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
 		logger.fine("Deleted storage account : " + storageAccountName);
@@ -701,14 +692,11 @@ public class MicrosoftAzureRestClient {
 	 * @throws TimeoutException .
 	 * @throws InterruptedException .
 	 */
-	public boolean deleteAffinityGroup(final String affinityGroupName,
-			final long endTime) throws MicrosoftAzureException,
-			TimeoutException, InterruptedException {
-
+	public boolean deleteAffinityGroup(final String affinityGroupName, final long endTime)
+			throws MicrosoftAzureException, TimeoutException, InterruptedException {
 		if (!affinityExists(affinityGroupName)) {
 			return true;
 		}
-
 		logger.info("Deleting affinity group : " + affinityGroupName);
 		ClientResponse response = doDelete("/affinitygroups/" + affinityGroupName);
 		String requestId = extractRequestId(response);
@@ -739,8 +727,7 @@ public class MicrosoftAzureRestClient {
 		}
 
 		logger.fine("Deleting cloud service : " + cloudServiceName);
-		ClientResponse response = doDelete("/services/hostedservices/"
-				+ cloudServiceName);
+		ClientResponse response = doDelete("/services/hostedservices/" + cloudServiceName);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
 		return true;
@@ -929,8 +916,7 @@ public class MicrosoftAzureRestClient {
 		long lockTimeout = endTime - currentTimeInMillis;
 
 		logger.fine(getThreadIdentity() + "Waiting for pending request lock...");
-		boolean lockAcquired = pendingRequest.tryLock(lockTimeout,
-				TimeUnit.MILLISECONDS);
+		boolean lockAcquired = pendingRequest.tryLock(lockTimeout, TimeUnit.MILLISECONDS);
 
 		if (lockAcquired) {
 
@@ -1462,7 +1448,6 @@ public class MicrosoftAzureRestClient {
 			InterruptedException {
 
 		// https://management.core.windows.net/<subscription-id>/services/hostedservices/<cloudservice-name>/deploymentslots/<deployment-slot>/roleinstances/<role-instance-name>
-
 		// https://management.core.windows.net/828d8ef4-292e-45b0-b029-50b9442e105a/services/hostedservices/fastubuntu1404/deployments/ubuntu/roleinstances/ubuntu-test/Operations
 
 		String cloudServiceName = "fastubuntu1404";

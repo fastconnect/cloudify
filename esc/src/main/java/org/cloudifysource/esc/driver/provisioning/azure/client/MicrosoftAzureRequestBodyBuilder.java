@@ -332,18 +332,18 @@ public class MicrosoftAzureRequestBodyBuilder {
 	}
 
 	// TODO using new hd for os (randomize a suffix) ?
-	PersistentVMRole buildPersistentVMRole(CreatePersistentVMRoleDeploymentDescriptor deplyomentDesc, boolean isWindows) {
-		Deployment deployment = this.buildDeployment(deplyomentDesc, isWindows);
+	PersistentVMRole buildPersistentVMRole(CreatePersistentVMRoleDeploymentDescriptor deploymentDesc, boolean isWindows) {
+		Deployment deployment = this.buildDeployment(deploymentDesc, isWindows);
 		Role role = deployment.getRoleList().getRoles().get(0);
 
 		// override medialink, otherwise it will use the deployment name
-		String storageAccountName = deplyomentDesc.getStorageAccountName();
+		String storageAccountName = deploymentDesc.getStorageAccountName();
 		StringBuilder mediaLinkBuilder = new StringBuilder();
 
 		mediaLinkBuilder.append("https://");
 		mediaLinkBuilder.append(storageAccountName);
 		mediaLinkBuilder.append(".blob.core.windows.net/vhds/");
-		mediaLinkBuilder.append(deplyomentDesc.getHostedServiceName());
+		mediaLinkBuilder.append(deploymentDesc.getHostedServiceName());
 		mediaLinkBuilder.append("-");
 		mediaLinkBuilder.append(role.getRoleName());
 		mediaLinkBuilder.append("-");

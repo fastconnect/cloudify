@@ -1,11 +1,11 @@
 /*******************************************************************************
  * Copyright (c) 2012 GigaSpaces Technologies Ltd. All rights reserved
- *
+ * 
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
- *
+ * 
  * http://www.apache.org/licenses/LICENSE-2.0
- *
+ * 
  * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
@@ -65,18 +65,17 @@ import org.cloudifysource.esc.util.Utils;
 
 /***************************************************************************************
  * A custom Cloud Driver implementation for provisioning machines on Azure.
- *
+ * 
  * @author elip
  ***************************************************************************************/
 
 public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
-	private static String CLOUDIFY_CLOUD_SERVICE_PREFIX = "cloudifycloudservice";
+	// TODO set dynamic value for manager name if necessary
+	protected static final String CLOUDIFY_MANAGER_NAME = "CFYM";
+
 	private static final String CLOUDIFY_AFFINITY_PREFIX = "cloudifyaffinity";
 	private static final String CLOUDIFY_STORAGE_ACCOUNT_PREFIX = "cloudifystorage";
-
-	// TODO set dynamic value for manager name if necessary
-	private static final String CLOUDIFY_MANAGER_NAME = "CFYM";
 
 	// Custom template DSL properties
 	private static final String AZURE_PFX_FILE = "azure.pfx.file";
@@ -100,6 +99,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	private static final String AZURE_CLOUD_SERVICE_CODE = "azure.cloud.service.code";
 	private static final String AZURE_AVAILABILITY_CODE = "azure.availability.code";
+
+	private static String cloudServicePrefix = "cloudifycloudservice";
 
 	private AtomicInteger availabilitySetCounter = new AtomicInteger(1);
 	private AtomicInteger serviceCounter = new AtomicInteger(1);
@@ -164,8 +165,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			logger.fine("Initializing Azure REST client");
 			azureClient = new MicrosoftAzureRestClient(subscriptionId,
 					pathToPfxFile, pfxPassword, CLOUDIFY_AFFINITY_PREFIX,
-					CLOUDIFY_CLOUD_SERVICE_PREFIX,
-					CLOUDIFY_STORAGE_ACCOUNT_PREFIX);
+					cloudServicePrefix, CLOUDIFY_STORAGE_ACCOUNT_PREFIX);
 			if (enableWireLog) {
 				azureClient.setLoggingFilter(logger);
 			}
@@ -314,10 +314,10 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		}
 
 		if (this.management) {
-			CLOUDIFY_CLOUD_SERVICE_PREFIX = this.cloud.getProvider().getManagementGroup() + cloudServiceCode;
+			cloudServicePrefix = this.cloud.getProvider().getManagementGroup() + cloudServiceCode;
 		} else {
 			FullServiceName fullServiceName = ServiceUtils.getFullServiceName(configuration.getServiceName());
-			CLOUDIFY_CLOUD_SERVICE_PREFIX = this.cloud.getProvider().getMachineNamePrefix() + cloudServiceCode +
+			cloudServicePrefix = this.cloud.getProvider().getMachineNamePrefix() + cloudServiceCode +
 					fullServiceName.getServiceName();
 		}
 
@@ -603,7 +603,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	/*********
 	 * Checks if a stop request for this machine was already requested recently.
-	 *
+	 * 
 	 * @param ip
 	 *            the IP address of the machine.
 	 * @return true if there was a recent request, false otherwise.
@@ -780,9 +780,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	}
 
 	/**
-	 *
+	 * 
 	 * @author elip
-	 *
+	 * 
 	 */
 	private class StopManagementMachineCallable implements Callable<Boolean> {
 
@@ -800,7 +800,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 		/*
 		 * (non-Javadoc)
-		 *
+		 * 
 		 * @see java.lang.Runnable#run()
 		 */
 		@Override

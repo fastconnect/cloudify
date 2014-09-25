@@ -18,33 +18,18 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 	public void testNamingConvention() throws Exception {
 
 		this.doStartManagementMachine("ubuntu1410", new MachineDetailsAssertion() {
-
-			private String affinityGroup;
-			private String affinityLocation;
-			private String netWorksite;
-			private String netAddress;
-			private String storageAccount;
-			private String codeCountry;
-			private String codeEnvironment;
-			private String cloudServiceCode;
-			private String availabilityCode;
-
 			@Override
 			public void additionalAssertions(MachineDetails md) throws Exception {
-
 				Map<String, String> cloudProperties = AzureTestUtils.getCloudProperties();
-				this.affinityGroup = cloudProperties.get("affinityGroup");
-				this.affinityLocation = cloudProperties.get("affinityLocation");
-				this.netWorksite = cloudProperties.get("netWorksite");
-				this.netAddress = cloudProperties.get("netAddress");
-				this.storageAccount = cloudProperties.get("storageAccount");
-				this.codeCountry = cloudProperties.get("codeCountry");
-				this.codeEnvironment = cloudProperties.get("codeEnvironment");
-				this.cloudServiceCode = cloudProperties.get("cloudServiceCode");
-				this.availabilityCode = cloudProperties.get("availabilityCode");
+				String codeCountry = cloudProperties.get("codeCountry");
+				String codeEnvironment = cloudProperties.get("codeEnvironment");
+				String cloudServiceCode = cloudProperties.get("cloudServiceCode");
 
+				// Cloud Service : {codeCountry}{codeEnv}{codeCloudService}XXX
 				String cloudServiceName = String.format("%s%s%s001", codeCountry, codeEnvironment,
 						cloudServiceCode);
+
+				// Machine Name : {codeCountry}{codeEnv}{serviceName}XXX
 				String machineName = String.format("%s%s" + MicrosoftAzureCloudDriver.CLOUDIFY_MANAGER_NAME + "1",
 						codeCountry, codeEnvironment);
 

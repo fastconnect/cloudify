@@ -41,7 +41,9 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.HostedService;
 import org.cloudifysource.esc.driver.provisioning.azure.model.HostedServices;
 import org.cloudifysource.esc.driver.provisioning.azure.model.NetworkConfigurationSet;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Operation;
+import org.cloudifysource.esc.driver.provisioning.azure.model.PersistentVMRole;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RestartRoleOperation;
+import org.cloudifysource.esc.driver.provisioning.azure.model.RoleInstance;
 import org.cloudifysource.esc.driver.provisioning.azure.model.StorageServices;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Subnet;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Subnets;
@@ -396,7 +398,8 @@ public class MicrosoftAzureRestClient {
 		boolean lockAcquired = pendingRequest.tryLock(lockTimeout, TimeUnit.MILLISECONDS);
 
 		String serviceName = null;
-		Deployment deployment;
+		Deployment deployment = null;
+		String deploymentSlot = deplyomentDesc.getDeploymentSlot();
 
 		if (lockAcquired) {
 
@@ -405,10 +408,15 @@ public class MicrosoftAzureRestClient {
 
 			try {
 
-				serviceName = createCloudService(deplyomentDesc.getAffinityGroup(), endTime);
-
-				deplyomentDesc.setHostedServiceName(serviceName);
-				deplyomentDesc.setDeploymentName(serviceName);
+				// create a new cloud service
+				if (deplyomentDesc.getHostedServiceName() == null) {
+					serviceName = createCloudService(deplyomentDesc.getAffinityGroup(), endTime);
+					deplyomentDesc.setHostedServiceName(serviceName);
+					deplyomentDesc.setDeploymentName(serviceName);
+				} else {
+					// use existing cloud service
+					serviceName = deplyomentDesc.getHostedServiceName();
+				}
 
 				// check static IP(s) availability
 				// this will be skipped if no private ip was defined in the current compute template
@@ -426,20 +434,38 @@ public class MicrosoftAzureRestClient {
 					}
 					deplyomentDesc.setAvailableIp(availableIp);
 				}
+				// add role to specified deployment
+				if (deplyomentDesc.isAddToExistingDeployment()) {
+					PersistentVMRole persistentVMRole = requestBodyBuilder.buildPersistentVMRole(deplyomentDesc,
+							isWindows);
+					String xmlRequest = MicrosoftAzureModelUtils.marshall(persistentVMRole, false);
+					logger.fine(getThreadIdentity()
+							+ String.format("Launching virtual machine '%s', in current deployment '%s'",
+									deplyomentDesc.getRoleName(), deplyomentDesc.getDeploymentName()));
 
-				deployment = requestBodyBuilder.buildDeployment(deplyomentDesc, isWindows);
+					ClientResponse response = doPost("/services/hostedservices/" + serviceName + "/deployments/" +
+							deplyomentDesc.getDeploymentName() + "/roles", xmlRequest);
+					String requestId = extractRequestId(response);
+					waitForRequestToFinish(requestId, endTime);
 
-				String xmlRequest = MicrosoftAzureModelUtils.marshall(deployment, false);
+					// regular deployment
+				} else {
 
-				logger.fine(getThreadIdentity() + "Launching virtual machine : "
-						+ deplyomentDesc.getRoleName());
+					deployment = requestBodyBuilder.buildDeployment(deplyomentDesc, isWindows);
+					String xmlRequest = MicrosoftAzureModelUtils.marshall(deployment, false);
 
-				ClientResponse response = doPost("/services/hostedservices/"
-						+ serviceName + "/deployments", xmlRequest);
-				String requestId = extractRequestId(response);
-				waitForRequestToFinish(requestId, endTime);
+					logger.fine(getThreadIdentity() + "Launching virtual machine : "
+							+ deplyomentDesc.getRoleName());
+
+					ClientResponse response = doPost("/services/hostedservices/"
+							+ serviceName + "/deployments", xmlRequest);
+					String requestId = extractRequestId(response);
+					waitForRequestToFinish(requestId, endTime);
+				}
+
 				logger.fine(getThreadIdentity() + "About to release lock " + pendingRequest.hashCode());
 				pendingRequest.unlock();
+
 			} catch (final Exception e) {
 				logger.log(Level.FINE, getThreadIdentity() + "A failure occured : about to release lock "
 						+ pendingRequest.hashCode(), e);
@@ -473,14 +499,15 @@ public class MicrosoftAzureRestClient {
 		Deployment deploymentResponse = null;
 		try {
 			deploymentResponse = waitForDeploymentStatus("Running",
-					serviceName, deployment.getDeploymentSlot(), endTime);
+					serviceName, deploymentSlot, endTime);
 
 			deploymentResponse = waitForRoleInstanceStatus("ReadyRole",
-					serviceName, deployment.getDeploymentSlot(), endTime);
+					serviceName, deploymentSlot, endTime);
 		} catch (final Exception e) {
 			logger.fine("Error while waiting for VM status : " + e.getMessage());
 			// the VM was created but with a bad status
-			deleteVirtualMachineByDeploymentName(serviceName, deployment.getName(), endTime);
+			// TODO clean the current VM
+			// deleteVirtualMachineByDeploymentName(serviceName, deployment.getName(), endTime);
 			if (e instanceof MicrosoftAzureException) {
 				throw (MicrosoftAzureException) e;
 			}
@@ -494,12 +521,24 @@ public class MicrosoftAzureRestClient {
 		}
 
 		RoleDetails roleAddressDetails = new RoleDetails();
+
+		String privateIp = null;
+		// get instanceRole from details
+		if (deplyomentDesc.isAddToExistingDeployment()) {
+			RoleInstance roleInstance = deploymentResponse.getRoleInstanceList().
+					getInstanceRoleByRoleName(deplyomentDesc.getRoleName());
+			privateIp = roleInstance.getIpAddress();
+
+		} else {
+			privateIp = deploymentResponse.getRoleInstanceList().getRoleInstances().get(0).getIpAddress();
+		}
+
 		roleAddressDetails.setId(deploymentResponse.getPrivateId());
-		roleAddressDetails.setPrivateIp(deploymentResponse.getRoleInstanceList()
-				.getRoleInstances().get(0).getIpAddress());
+		roleAddressDetails.setPrivateIp(privateIp);
 		ConfigurationSets configurationSets = deploymentResponse.getRoleList()
 				.getRoles().get(0).getConfigurationSets();
 
+		// TODO handle for vms on the same cloud service
 		String publicIp = null;
 		for (ConfigurationSet configurationSet : configurationSets) {
 			if (configurationSet instanceof NetworkConfigurationSet) {
@@ -508,8 +547,8 @@ public class MicrosoftAzureRestClient {
 						.getInputEndpoints().get(0).getvIp();
 			}
 		}
-		roleAddressDetails.setPublicIp(publicIp);
 
+		roleAddressDetails.setPublicIp(publicIp);
 		return roleAddressDetails;
 	}
 
@@ -1178,7 +1217,6 @@ public class MicrosoftAzureRestClient {
 
 	private ClientResponse doPost(final String url, final String body)
 			throws MicrosoftAzureException {
-
 		ClientResponse response = resource.path(subscriptionId + url)
 				.header(X_MS_VERSION_HEADER_NAME, X_MS_VERSION_HEADER_VALUE)
 				.header(CONTENT_TYPE_HEADER_NAME, CONTENT_TYPE_HEADER_VALUE)
@@ -1458,6 +1496,32 @@ public class MicrosoftAzureRestClient {
 			}
 			throw new MicrosoftAzureException(e);
 		}
+	}
+
+	// TODO need improvement / refactoring with similar method
+	public Deployment listDeploymentsBySlot(String cloudService, String deploymentSlot, long endTime)
+			throws MicrosoftAzureException,
+			TimeoutException, InterruptedException {
+
+		Deployment deployment = null;
+
+		ClientResponse response = doGet("/services/hostedservices/" + cloudService + "/deploymentslots/"
+				+ deploymentSlot);
+
+		if (response.getStatus() != HTTP_NOT_FOUND) {
+
+			String requestId = extractRequestId(response);
+			this.waitForRequestToFinish(requestId, endTime);
+			String responseBody = response.getEntity(String.class);
+			deployment = (Deployment) MicrosoftAzureModelUtils.unmarshall(responseBody);
+
+			// no deployment found (404)
+		} else {
+			logger.warning(String.format("The cloud service '%s' doesn't have any deployment in slot '%s'.",
+					cloudService, deploymentSlot));
+		}
+
+		return deployment;
 	}
 
 }

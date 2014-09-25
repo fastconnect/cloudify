@@ -83,4 +83,9 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 		});
 	}
 
+	@Test
+	public void testStartWinManagementMachineInExsitingCS() throws Exception {
+		this.doStartManagementMachine("medium_win2012_cloudservice");
+	}
+
 }

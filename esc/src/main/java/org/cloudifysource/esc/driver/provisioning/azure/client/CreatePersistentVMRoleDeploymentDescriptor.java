@@ -30,6 +30,7 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 	private List<String> ipAddresses;
 	private String availableIp = null;
 	private String subnetName;
+	private boolean addToExistingDeployment = false;
 
 	public String getHostedServiceName() {
 		return hostedServiceName;
@@ -171,6 +172,14 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 
 	public void setAvailableIp(String availableIp) {
 		this.availableIp = availableIp;
+	}
+
+	public boolean isAddToExistingDeployment() {
+		return addToExistingDeployment;
+	}
+
+	public void setAddToExistingDeployment(boolean addToExistingDeployment) {
+		this.addToExistingDeployment = addToExistingDeployment;
 	}
 
 }

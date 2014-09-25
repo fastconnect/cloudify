@@ -588,11 +588,11 @@ public class MicrosoftAzureRestClient {
 			TimeoutException, InterruptedException {
 
 		if (ips != null && !ips.isEmpty()) {
-			StringBuilder sb = new StringBuilder();
 			ClientResponse response;
 
 			for (String ip : ips) {
 
+				StringBuilder sb = new StringBuilder();
 				sb.append("/services/networking/");
 				sb.append(virtualNetwork);
 				sb.append("?op=checkavailability");

@@ -83,8 +83,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String AZURE_ENDPOINTS = "azure.endpoints";
 	private static final String AZURE_FIREWALL_PORTS = "azure.firewall.ports";
 
-	private static final String VM_IP_ADDRESSES = "ipAddresses";
 	private static final String AZURE_CLOUD_SERVICE = "azure.cloud.service";
+	private static final String VM_IP_ADDRESSES = "azure.network.ipAddresses";
 
 	// Custom cloud DSL properties
 	private static final String AZURE_WIRE_LOG = "azure.wireLog";
@@ -428,7 +428,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			desc.setSize(size);
 			desc.setStorageAccountName(storageAccountName);
 			desc.setUserName(userName);
-			desc.setIpAddresses(this.getIpAddressesList(this.template.getOptions()));
+			desc.setIpAddresses(this.getIpAddressesList(this.template.getCustom()));
 			desc.setSubnetName("subnet-" + networkName); // TODO to be enhance once the driver supports network
 
 			logger.info("Launching a new virtual machine");
@@ -920,12 +920,12 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		// TODO Auto-generated method stub
 	}
 
-	private List<String> getIpAddressesList(Map<String, Object> templateOptions) {
+	private List<String> getIpAddressesList(Map<String, Object> map) {
 		List<String> ipAddressesList = null;
 
-		if (templateOptions != null && !templateOptions.isEmpty()) {
-			if (templateOptions.get(VM_IP_ADDRESSES) != null) {
-				String ipAddressesString = (String) templateOptions.get(VM_IP_ADDRESSES);
+		if (map != null && !map.isEmpty()) {
+			if (map.get(VM_IP_ADDRESSES) != null) {
+				String ipAddressesString = (String) map.get(VM_IP_ADDRESSES);
 				if (ipAddressesString != null && !ipAddressesString.trim().isEmpty()) {
 					String[] split = ipAddressesString.split(",");
 					ipAddressesList = Arrays.asList(split);

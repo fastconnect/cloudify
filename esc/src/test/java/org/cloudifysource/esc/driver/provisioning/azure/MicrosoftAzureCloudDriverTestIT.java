@@ -17,7 +17,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 	@Test
 	public void testNamingConvention() throws Exception {
 
-		this.doStartManagementMachine("ubuntu1410", new MachineDetailsAssertion() {
+		this.startAndStopManagementMachine("ubuntu1410", new MachineDetailsAssertion() {
 			@Override
 			public void additionalAssertions(MachineDetails md) throws Exception {
 				Map<String, String> cloudProperties = AzureTestUtils.getCloudProperties();
@@ -50,12 +50,12 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 
 	@Test
 	public void testStartWindowsManagementMachine() throws Exception {
-		this.doStartManagementMachine("win2012");
+		this.startAndStopManagementMachine("win2012");
 	}
 
 	@Test
-	public void testStartMachineWindowsWithStaticIp() throws Exception {
-		this.doStartManagementMachine("win2012_ipfixed", new MachineDetailsAssertion() {
+	public void testStartWindowsManagementMachineWithStaticIp() throws Exception {
+		this.startAndStopManagementMachine("win2012_ipfixed", new MachineDetailsAssertion() {
 			@Override
 			public void additionalAssertions(MachineDetails md) {
 				Assert.assertEquals("10.0.0.12", md.getPrivateAddress());
@@ -65,12 +65,12 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 
 	@Test
 	public void testStartUbuntuManagementMachine() throws Exception {
-		this.doStartManagementMachine("ubuntu1410");
+		this.startAndStopManagementMachine("ubuntu1410");
 	}
 
 	@Test
-	public void testStartMachineUbuntuWithStaticIp() throws Exception {
-		this.doStartManagementMachine("ubuntu1410_ipfixed", new MachineDetailsAssertion() {
+	public void testStartUbuntuManagementMachineWithStaticIp() throws Exception {
+		this.startAndStopManagementMachine("ubuntu1410_ipfixed", new MachineDetailsAssertion() {
 			@Override
 			public void additionalAssertions(MachineDetails md) {
 				Assert.assertEquals("10.0.0.12", md.getPrivateAddress());
@@ -79,8 +79,30 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 	}
 
 	@Test
+	public void testStartUbuntuMachinesMultipleStaticIPs() throws Exception {
+		MicrosoftAzureCloudDriver driver = createDriver("ubuntu1410_multipleFixedIPs", true);
+		try {
+			this.startManagementMachine(driver, new MachineDetailsAssertion() {
+				@Override
+				public void additionalAssertions(MachineDetails md) {
+					Assert.assertEquals("10.0.0.12", md.getPrivateAddress());
+				}
+			});
+
+			this.startAndStopMachine("ubuntu1410_multipleFixedIPs", new MachineDetailsAssertion() {
+				@Override
+				public void additionalAssertions(MachineDetails md) {
+					Assert.assertEquals("10.0.0.13", md.getPrivateAddress());
+				}
+			});
+		} finally {
+			stopManagementMachines(driver);
+		}
+	}
+
+	@Test
 	public void testStartWinManagementMachineInExsitingCS() throws Exception {
-		this.doStartManagementMachine("medium_win2012_cloudservice");
+		this.startAndStopManagementMachine("medium_win2012_cloudservice");
 	}
 
 }

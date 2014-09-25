@@ -51,7 +51,6 @@ import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureRes
 import org.cloudifysource.esc.driver.provisioning.azure.client.RoleDetails;
 import org.cloudifysource.esc.driver.provisioning.azure.model.AttachedTo;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
-import org.cloudifysource.esc.driver.provisioning.azure.model.Deployments;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Disk;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Disks;
 import org.cloudifysource.esc.driver.provisioning.azure.model.HostedService;
@@ -460,6 +459,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 			if (isWindows) {
 				// Open firewall ports needed for the template
+				// TODO remove this/ use other way to open firewall bootstrap ? customdata ?
 				openFirewallPorts(machineDetails);
 			}
 
@@ -471,6 +471,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	}
 
+	// TODO replace/remove opening ports with this logic
+	@Deprecated
 	private void openFirewallPorts(MachineDetails machineDetails) throws InstallerException, TimeoutException,
 			InterruptedException {
 

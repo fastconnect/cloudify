@@ -538,6 +538,7 @@ public class MicrosoftAzureRestClient {
 		ConfigurationSets configurationSets = deploymentResponse.getRoleList()
 				.getRoles().get(0).getConfigurationSets();
 
+		// TODO handle for vms on the same cloud service
 		String publicIp = null;
 		for (ConfigurationSet configurationSet : configurationSets) {
 			if (configurationSet instanceof NetworkConfigurationSet) {

@@ -56,6 +56,8 @@ public class BaseDriverTestIT {
 
 		if (!isManagement) {
 			configuration.setServiceName("default.NOM");
+		} else {
+			configuration.getCloud().getConfiguration().setManagementMachineTemplate(computeTemplate);
 		}
 
 		driver.setConfig(configuration);

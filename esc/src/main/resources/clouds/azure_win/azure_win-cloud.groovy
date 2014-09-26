@@ -51,6 +51,36 @@ cloud {
 		user subscriptionId
 	}
 
+  cloudNetwork {
+    custom ([
+      /*******************************************************************************************
+       * A Virtaul Network Site name.                                                            *
+       * All VM's will belong to this network site.                                              *
+       * If the specified network site does not exist, it will be created automatically for you. *
+       * in this case, you must specify the 'azure.address.space' property                       *
+      *******************************************************************************************/
+      "azure.networksite.name" : netWorksite,
+
+      /***************************************************************************************
+       * CIDR notation specifying the Address Space for your Virtaul Network.                *
+       * All VM's will be assigned a private ip from this address space.                     *
+      ***************************************************************************************/
+      "azure.address.space"    : netAddress,
+    ])
+    management {
+      networkConfiguration {
+        subnets ([
+          subnet {
+            // The name of the subnet.
+            name  managementSubnetName
+            // CIDR notation specifying the address range for the subnet.
+            range adminNetAddress
+          }
+        ])
+      }
+    }
+  }
+
 	cloudCompute {
 
 		templates ([
@@ -116,9 +146,15 @@ cloud {
 				//javaUrl "https://s3-eu-west-1.amazonaws.com/cloudify-eu/TODO"
 
 				custom ([
-
-					// Optional. each availability set represents a different fault domain.
-					"azure.availability.set" : "MAS",
+          /********************************************************************
+           * Optional. Each availability set represents a different fault domain.
+           * Availability set code
+           * The code will be append to the machineNamePrefix/managementGroup.
+           * The cloud service name will resulting to be something like :
+           *   ${machineNamePrefix}${availabilityCode}XXX
+           * where XXX is an incremental index
+          *********************************************************************/
+          "azure.availability.set" : "MAS",
 
 					// Choose whether do deploy this instance in Staging or Production environment. defaults to Staging
 					"azure.deployment.slot": "Production",
@@ -225,22 +261,7 @@ cloud {
 		])
 	}
 
-
 	custom ([
-
-		/*****************************************************************************************
-		 * A Virtaul Network Site name.																 *
-		 * All VM's will belong to this network site. 												 *
-		 * If the specified network site does not exist, it will be created automatically for you.	 *
-		 * in this case, you must specify the 'azure.address.space' property					 *
-		******************************************************************************************/
-		"azure.networksite.name" : netWorksite,
-
-		/***************************************************************************************
-		 * CIDR notation specifying the Address Space for your Virtaul Network. 			   *
-		 * All VM's will be assigned a private ip from this address space.					   *
-		****************************************************************************************/
-		"azure.address.space" : netAddress,
 
 		/****************************************************************************************
 		 * An Affinity Group name.																*
@@ -278,15 +299,6 @@ cloud {
      * where XXX is an incremental index
     *********************************************************************/
 		"azure.cloud.service.code" : cloudServiceCode,
-
-    /********************************************************************
-     * Availability set code
-     * The code will be append to the machineNamePrefix/managementGroup.
-     * The cloud service name will resulting to be something like :
-     *   ${machineNamePrefix}${availabilityCode}XXX
-     * where XXX is an incremental index
-    *********************************************************************/
-		"azure.availability.code" : availabilityCode,
 
     // Enable/Disable Cloud Requests Logging.
     "azure.wireLog": "false",

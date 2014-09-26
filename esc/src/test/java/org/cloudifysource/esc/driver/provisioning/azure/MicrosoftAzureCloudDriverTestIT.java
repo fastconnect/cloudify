@@ -10,6 +10,7 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
 import org.cloudifysource.esc.driver.provisioning.azure.model.HostedServices;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleInstanceList;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
@@ -28,8 +29,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 				String cloudServiceCode = cloudProperties.get("cloudServiceCode");
 
 				// Cloud Service : {codeCountry}{codeEnv}{codeCloudService}XXX
-				String cloudServiceName = String.format("%s%s%s001", codeCountry, codeEnvironment,
-						cloudServiceCode);
+				String cloudServiceName = String.format("%s%s%s001", codeCountry, codeEnvironment, cloudServiceCode);
 
 				// Machine Name : {codeCountry}{codeEnv}{serviceName}XXX
 				String machineName = String.format("%s%s" + MicrosoftAzureCloudDriver.CLOUDIFY_MANAGER_NAME + "1",
@@ -38,7 +38,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 				MicrosoftAzureRestClient client = AzureTestUtils.createMicrosoftAzureRestClient();
 
 				// Check Cloud service name
-				Deployment deployment = client.getDeploymentByDeploymentName("vk14adm001", "vk14adm001");
+				Deployment deployment = client.getDeploymentByDeploymentName(cloudServiceName, cloudServiceName);
 				Assert.assertEquals("Cloud service name is not correct", cloudServiceName,
 						deployment.getHostedServiceName());
 
@@ -51,11 +51,13 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 	}
 
 	@Test
+	@Ignore("Issue with windows tests. Powershell can't be executed on Linux machines. Reactivate the test once the custom data feature is implemented")
 	public void testStartWindowsManagementMachine() throws Exception {
 		this.startAndStopManagementMachine("win2012");
 	}
 
 	@Test
+	@Ignore("Issue with windows tests. Powershell can't be executed on Linux machines. Reactivate the test once the custom data feature is implemented")
 	public void testStartWindowsManagementMachineWithStaticIp() throws Exception {
 		this.startAndStopManagementMachine("win2012_ipfixed", new MachineDetailsAssertion() {
 			@Override
@@ -103,31 +105,30 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 	}
 
 	@Test
-	public void testStartWinManagementMachineInExsitingCS() throws Exception {
+	public void testStartUbuntuManagementMachineInExsitingCS() throws Exception {
 
-		String computeTemplateName = "medium_win2012_cloudservice";
-		cloud = AzureTestUtils.createCloud("./src/main/resources/clouds", "azure_win", null,
-				computeTemplateName);
+		final long endTime = 10000000;
+
+		String computeTemplateName = "ubuntu1410_cloudservice";
+		cloud = AzureTestUtils.createCloud("./src/main/resources/clouds", "azure_win", null, computeTemplateName);
+
+		// Retrieve the cloud service name
 		final ComputeTemplate computeTemplate = cloud.getCloudCompute().getTemplates().get(computeTemplateName);
 		final String cloudServiceName = (String) computeTemplate.getCustom().get("azure.cloud.service");
-
 		String affinityPrefix = (String) cloud.getCustom().get("azure.affinity.group");
+		String location = (String) cloud.getCustom().get("azure.affinity.location");
+
 		final MicrosoftAzureRestClient azureRestClient =
 				AzureTestUtils.createMicrosoftAzureRestClient(cloudServiceName, affinityPrefix);
 
-		final HostedServices listHostedServices = azureRestClient.listHostedServices();
+		// Created resources should be released by the stop management
+		azureRestClient.createAffinityGroup(affinityPrefix, location, endTime);
+		azureRestClient.createCloudService(affinityPrefix, cloudServiceName, endTime);
 
-		final long endTime = 10000000;
-		if (!listHostedServices.contains(cloudServiceName)) {
-			azureRestClient.createCloudService(affinityPrefix, cloudServiceName, endTime);
-		}
-
-		this.startAndStopManagementMachine("medium_win2012_cloudservice", new MachineDetailsAssertion() {
-
+		this.startAndStopManagementMachine(computeTemplateName, new MachineDetailsAssertion() {
 			@Override
 			public void additionalAssertions(MachineDetails md) {
 				try {
-
 					HostedServices cloudServices = azureRestClient.listHostedServices();
 					Assert.assertTrue(cloudServices.contains(cloudServiceName));
 					String deploymentSlot = (String) computeTemplate.getCustom().get("azure.deployment.slot");

@@ -36,6 +36,9 @@ import org.cloudifysource.domain.cloud.FileTransferModes;
 import org.cloudifysource.domain.cloud.RemoteExecutionModes;
 import org.cloudifysource.domain.cloud.ScriptLanguages;
 import org.cloudifysource.domain.cloud.compute.ComputeTemplate;
+import org.cloudifysource.domain.cloud.network.CloudNetwork;
+import org.cloudifysource.domain.cloud.network.NetworkConfiguration;
+import org.cloudifysource.domain.cloud.network.Subnet;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.utils.ServiceUtils;
 import org.cloudifysource.dsl.utils.ServiceUtils.FullServiceName;
@@ -90,15 +93,16 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String AZURE_WIRE_LOG = "azure.wireLog";
 	private static final String AZURE_DEPLOYMENT_SLOT = "azure.deployment.slot";
 	private static final String AZURE_AFFINITY_LOCATION = "azure.affinity.location";
-	private static final String AZURE_NETOWRK_ADDRESS_SPACE = "azure.address.space";
 	private static final String AZURE_AFFINITY_GROUP = "azure.affinity.group";
-	private static final String AZURE_NETWORK_NAME = "azure.networksite.name";
 	private static final String AZURE_STORAGE_ACCOUNT = "azure.storage.account";
 	private static final String AZURE_AVAILABILITY_SET = "azure.availability.set";
 	private static final String AZURE_CLEANUP_ON_TEARDOWN = "azure.cleanup.on.teardown";
 
+	// Networks properties
+	private static final String AZURE_NETWORK_NAME = "azure.networksite.name";
+	private static final String AZURE_NETOWRK_ADDRESS_SPACE = "azure.address.space";
+
 	private static final String AZURE_CLOUD_SERVICE_CODE = "azure.cloud.service.code";
-	private static final String AZURE_AVAILABILITY_CODE = "azure.availability.code";
 
 	private static String cloudServicePrefix = "cloudifycloudservice";
 
@@ -180,16 +184,10 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		this.stopManagementMachinesTimeoutInMinutes = Utils.getInteger(cloud.getCustom().get(CloudifyConstants
 				.STOP_MANAGEMENT_TIMEOUT_IN_MINUTES), DEFAULT_STOP_MANAGEMENT_TIMEOUT);
 
-		// cdis custom /
 		// null value for code causes problem while deploying, therefore it is set to an empty string if it's the case
-		String availabilityCode = (String) this.cloud.getCustom().get(AZURE_AVAILABILITY_CODE);
-		if (availabilityCode == null || availabilityCode.trim().isEmpty()) {
-			availabilityCode = "";
-		}
-
 		String availability = (String) this.template.getCustom().get(AZURE_AVAILABILITY_SET);
-		if (availability != null && !availability.trim().isEmpty()) {
-			this.availabilitySet = availabilityCode + (String) this.template.getCustom().get(AZURE_AVAILABILITY_SET);
+		if (StringUtils.isNotBlank(availability)) {
+			this.availabilitySet = ((String) this.template.getCustom().get(AZURE_AVAILABILITY_SET)).trim();
 		}
 
 		this.deploymentSlot = (String) this.template.getCustom().get(AZURE_DEPLOYMENT_SLOT);
@@ -257,24 +255,27 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		if (location == null) {
 			throw new IllegalArgumentException("Custom field '" + AZURE_AFFINITY_LOCATION + "' must be set");
 		}
-		this.addressSpace = (String) this.cloud.getCustom().get(AZURE_NETOWRK_ADDRESS_SPACE);
-		if (addressSpace == null) {
-			throw new IllegalArgumentException("Custom field '" + AZURE_NETOWRK_ADDRESS_SPACE + "' must be set");
-		}
 		this.affinityGroup = (String) this.cloud.getCustom().get(AZURE_AFFINITY_GROUP);
 		if (affinityGroup == null) {
 			throw new IllegalArgumentException("Custom field '" + AZURE_AFFINITY_GROUP + "' must be set");
-		}
-		this.networkName = (String) this.cloud.getCustom().get(AZURE_NETWORK_NAME);
-		if (networkName == null) {
-			throw new IllegalArgumentException("Custom field '" + AZURE_NETWORK_NAME + "' must be set");
 		}
 		this.storageAccountName = (String) this.cloud.getCustom().get(AZURE_STORAGE_ACCOUNT);
 		if (storageAccountName == null) {
 			throw new IllegalArgumentException("Custom field '" + AZURE_STORAGE_ACCOUNT + "' must be set");
 		}
 
-		// cdis custom
+		// Network
+		Map<String, String> networkCustom = this.cloud.getCloudNetwork().getCustom();
+		this.networkName = (String) networkCustom.get(AZURE_NETWORK_NAME);
+		if (networkName == null) {
+			throw new IllegalArgumentException("Custom field '" + AZURE_NETWORK_NAME + "' must be set");
+		}
+		this.addressSpace = (String) networkCustom.get(AZURE_NETOWRK_ADDRESS_SPACE);
+		if (addressSpace == null) {
+			throw new IllegalArgumentException("Custom field '" + AZURE_NETOWRK_ADDRESS_SPACE + "' must be set");
+		}
+
+		// Prefixes
 		if (this.management) {
 			this.serverNamePrefix = this.cloud.getProvider().getManagementGroup() + CLOUDIFY_MANAGER_NAME;
 		} else {
@@ -378,7 +379,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 			// verify availability set and avoid name concatenation if itsn't
 			String availabilitySetName = null;
-			if (availabilitySet != null && !availabilitySet.trim().isEmpty()) {
+			if (StringUtils.isNotBlank(availabilitySet)) {
 				availabilitySetName = this.cloud.getProvider().getManagementGroup() + availabilitySet +
 						String.format("%03d", availabilitySetCounter.getAndIncrement());
 			}
@@ -424,14 +425,17 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 			InputEndpoints inputEndpoints = createInputEndPoints();
 
+			CloudNetwork cloudNetwork = this.cloud.getCloudNetwork();
+			String subnetName = cloudNetwork.getManagement().getNetworkConfiguration().getSubnets().get(0).getName();
+
 			desc.setInputEndpoints(inputEndpoints);
-			desc.setNetworkName(networkName);
 			desc.setPassword(password);
 			desc.setSize(size);
 			desc.setStorageAccountName(storageAccountName);
 			desc.setUserName(userName);
+			desc.setNetworkName(networkName);
+			desc.setSubnetName(subnetName);
 			desc.setIpAddresses(this.getIpAddressesList(this.template.getCustom()));
-			desc.setSubnetName("subnet-" + networkName); // TODO to be enhance once the driver supports network
 
 			logger.info("Launching a new virtual machine");
 			boolean isWindows = isWindowsVM();
@@ -488,8 +492,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			hostAddress = machineDetails.getPrivateAddress();
 		}
 
-		remoteExecutor.execute(hostAddress, details, COMMAND_ACTIVATE_SHARING,
-				DEFAULT_COMMAND_TIMEOUT);
+		remoteExecutor.execute(hostAddress, details, COMMAND_ACTIVATE_SHARING, DEFAULT_COMMAND_TIMEOUT);
 
 		// Remote command to target : open all defined ports
 		String cmd = "";
@@ -535,7 +538,13 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		long endTime = System.currentTimeMillis() + unit.toMillis(duration);
 		try {
 			azureClient.createAffinityGroup(affinityGroup, location, endTime);
-			azureClient.createVirtualNetworkSite(addressSpace, affinityGroup, networkName, endTime);
+
+			CloudNetwork cloudNetwork = this.cloud.getCloudNetwork();
+			NetworkConfiguration networkConfiguration = cloudNetwork.getManagement().getNetworkConfiguration();
+			Subnet subnet = networkConfiguration.getSubnets().get(0);
+			azureClient.createVirtualNetworkSite(addressSpace, affinityGroup, networkName, subnet.getName(),
+					subnet.getRange(), endTime);
+
 			azureClient.createStorageAccount(affinityGroup, storageAccountName, endTime);
 		} catch (final Exception e) {
 			logger.warning("Failed creating management services : " + e.getMessage());

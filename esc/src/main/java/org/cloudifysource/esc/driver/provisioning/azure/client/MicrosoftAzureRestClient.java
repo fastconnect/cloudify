@@ -288,17 +288,14 @@ public class MicrosoftAzureRestClient {
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
 	 */
-	public void createVirtualNetworkSite(final String addressSpace,
-			final String affinityGroup, final String networkSiteName,
-			final long endTime) throws MicrosoftAzureException,
-			TimeoutException, InterruptedException {
+	public void createVirtualNetworkSite(final String addressSpace, final String affinityGroup,
+			final String networkSiteName, final long endTime)
+			throws MicrosoftAzureException, TimeoutException, InterruptedException {
 
 		VirtualNetworkConfiguration virtualNetworkConfiguration = getVirtualNetworkConfiguration();
 		VirtualNetworkSites virtualNetworkSites = virtualNetworkConfiguration.getVirtualNetworkSites();
-		if (virtualNetworkSites != null
-				&& virtualNetworkSites.contains(networkSiteName)) {
-			logger.info("Using an already existing virtual netowrk site : "
-					+ networkSiteName);
+		if (virtualNetworkSites != null && virtualNetworkSites.contains(networkSiteName)) {
+			logger.info("Using an already existing virtual netowrk site : " + networkSiteName);
 			return;
 		} else {
 			if (virtualNetworkSites == null) {
@@ -325,6 +322,63 @@ public class MicrosoftAzureRestClient {
 
 		setNetworkConfiguration(endTime, virtualNetworkConfiguration);
 		logger.fine("Created virtual network site : " + networkSiteName);
+	}
+
+	public void createVirtualNetworkSite(String addressSpace, String affinityGroup, String networkSiteName,
+			String subnetName, String subnetAddr, long endTime) throws MicrosoftAzureException, TimeoutException,
+			InterruptedException {
+
+		VirtualNetworkConfiguration virtualNetworkConfiguration = getVirtualNetworkConfiguration();
+		VirtualNetworkSites virtualNetworkSites = virtualNetworkConfiguration.getVirtualNetworkSites();
+
+		if (virtualNetworkSites == null) {
+			logger.info("Creating virtual network sites");
+			virtualNetworkSites = new VirtualNetworkSites();
+		}
+
+		VirtualNetworkSite virtualNetworkSite = null;
+		if (!virtualNetworkSites.contains(networkSiteName)) {
+			VirtualNetworkSite newSite = new VirtualNetworkSite();
+			AddressSpace address = new AddressSpace();
+			address.getAddressPrefix().add(addressSpace);
+			newSite.setAddressSpace(address);
+			newSite.setAffinityGroup(affinityGroup);
+			newSite.setName(networkSiteName);
+			virtualNetworkSites.getVirtualNetworkSites().add(newSite);
+		} else {
+			logger.info("Using an already existing virtual network site : " + networkSiteName);
+		}
+
+		virtualNetworkSite = virtualNetworkSites.getVirtualNetworkSite(networkSiteName);
+		if (virtualNetworkSite.getSubnets() == null) {
+			virtualNetworkSite.setSubnets(new Subnets());
+		} else {
+			logger.info("Creating subnets for virtual network site : " + networkSiteName);
+		}
+
+		boolean shouldUpdateOrCreate = false;
+		if (!virtualNetworkSite.getSubnets().contains(subnetName)) {
+			logger.info("Creating the subnet: " + subnetName);
+			if (virtualNetworkSite.getSubnets() == null) {
+				virtualNetworkSite.setSubnets(new Subnets());
+			}
+			Subnet subnet = new Subnet();
+			subnet.setName(subnetName);
+			subnet.getAddressPrefix().add(subnetAddr);
+			virtualNetworkSite.getSubnets().getSubnets().add(subnet);
+			shouldUpdateOrCreate = true;
+		} else {
+			logger.info("Using an already existing subnet '" + subnetName + "' from virtual network site '"
+					+ networkSiteName + "'");
+		}
+
+		if (shouldUpdateOrCreate) {
+			setNetworkConfiguration(endTime, virtualNetworkConfiguration);
+			logger.fine("Created/Updated virtual network site : " + networkSiteName);
+		} else {
+			logger.fine("Using existing virtual network site configuration: " + networkSiteName);
+		}
+
 	}
 
 	/**
@@ -442,7 +496,8 @@ public class MicrosoftAzureRestClient {
 					}
 					deploymentDesc.setAvailableIp(availableIp);
 				}
-				// add role to specified deployment
+
+				// Add role to specified deployment
 				if (deploymentDesc.isAddToExistingDeployment()) {
 					PersistentVMRole persistentVMRole = requestBodyBuilder.buildPersistentVMRole(deploymentDesc,
 							isWindows);
@@ -455,10 +510,8 @@ public class MicrosoftAzureRestClient {
 							deploymentDesc.getDeploymentName() + "/roles", xmlRequest);
 					String requestId = extractRequestId(response);
 					waitForRequestToFinish(requestId, endTime);
-
-					// regular deployment
 				} else {
-
+					// regular deployment
 					deployment = requestBodyBuilder.buildDeployment(deploymentDesc, isWindows);
 					String xmlRequest = MicrosoftAzureModelUtils.marshall(deployment, false);
 

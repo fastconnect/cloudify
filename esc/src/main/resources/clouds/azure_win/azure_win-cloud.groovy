@@ -51,6 +51,36 @@ cloud {
 		user subscriptionId
 	}
 
+  cloudNetwork {
+    custom ([
+      /*******************************************************************************************
+       * A Virtaul Network Site name.                                                            *
+       * All VM's will belong to this network site.                                              *
+       * If the specified network site does not exist, it will be created automatically for you. *
+       * in this case, you must specify the 'azure.address.space' property                       *
+      *******************************************************************************************/
+      "azure.networksite.name" : netWorksite,
+
+      /***************************************************************************************
+       * CIDR notation specifying the Address Space for your Virtaul Network.                *
+       * All VM's will be assigned a private ip from this address space.                     *
+      ***************************************************************************************/
+      "azure.address.space"    : netAddress,
+    ])
+    management {
+      networkConfiguration {
+        subnets ([
+          subnet {
+            // The name of the subnet.
+            name  managementSubnetName
+            // CIDR notation specifying the address range for the subnet.
+            range adminNetAddress
+          }
+        ])
+      }
+    }
+  }
+
 	cloudCompute {
 
 		templates ([
@@ -225,22 +255,7 @@ cloud {
 		])
 	}
 
-
 	custom ([
-
-		/*****************************************************************************************
-		 * A Virtaul Network Site name.																 *
-		 * All VM's will belong to this network site. 												 *
-		 * If the specified network site does not exist, it will be created automatically for you.	 *
-		 * in this case, you must specify the 'azure.address.space' property					 *
-		******************************************************************************************/
-		"azure.networksite.name" : netWorksite,
-
-		/***************************************************************************************
-		 * CIDR notation specifying the Address Space for your Virtaul Network. 			   *
-		 * All VM's will be assigned a private ip from this address space.					   *
-		****************************************************************************************/
-		"azure.address.space" : netAddress,
 
 		/****************************************************************************************
 		 * An Affinity Group name.																*

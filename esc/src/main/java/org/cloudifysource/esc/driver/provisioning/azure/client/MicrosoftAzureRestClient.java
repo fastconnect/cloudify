@@ -205,12 +205,13 @@ public class MicrosoftAzureRestClient {
 	 * @throws TimeoutException .
 	 * @throws InterruptedException .
 	 */
-	public String createCloudService(final String affinityGroup, final long endTime)
-			throws MicrosoftAzureException, TimeoutException, InterruptedException {
+	public String createCloudService(final String affinityGroup, String cloudServiceNameOverride,
+			final long endTime) throws MicrosoftAzureException,
+			TimeoutException, InterruptedException {
 
 		logger.fine(getThreadIdentity() + "Creating cloud service");
-
-		CreateHostedService createHostedService = requestBodyBuilder.buildCreateCloudService(affinityGroup);
+		CreateHostedService createHostedService =
+				requestBodyBuilder.buildCreateCloudService(affinityGroup, cloudServiceNameOverride);
 
 		String serviceName = null;
 		try {
@@ -369,7 +370,7 @@ public class MicrosoftAzureRestClient {
 	 * 
 	 * If a failure happened after the cloud service was created, this method will delete it and throw.
 	 * 
-	 * @param deploymentDesc
+	 * @param deplyomentDesc
 	 *            .
 	 * @param endTime
 	 *            .
@@ -407,7 +408,17 @@ public class MicrosoftAzureRestClient {
 
 				// create a new cloud service
 				if (deploymentDesc.getHostedServiceName() == null) {
-					serviceName = createCloudService(deploymentDesc.getAffinityGroup(), endTime);
+
+					// final cloud service name with extra characters (count)
+					if (deploymentDesc.isAppendCloudServiceName()) {
+						serviceName = createCloudService(deploymentDesc.getAffinityGroup(), null, endTime);
+
+						// create a cloud service with the specified name in compute template
+					} else {
+						serviceName = createCloudService(deploymentDesc.getAffinityGroup(),
+								deploymentDesc.getHostedServiceName(), endTime);
+					}
+
 					deploymentDesc.setHostedServiceName(serviceName);
 					deploymentDesc.setDeploymentName(serviceName);
 				} else {

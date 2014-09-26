@@ -180,16 +180,16 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		this.stopManagementMachinesTimeoutInMinutes = Utils.getInteger(cloud.getCustom().get(CloudifyConstants
 				.STOP_MANAGEMENT_TIMEOUT_IN_MINUTES), DEFAULT_STOP_MANAGEMENT_TIMEOUT);
 
-		// cdis custom
-		String availabilityCode = null;
-		if (this.cloud.getCustom().containsKey(AZURE_AVAILABILITY_CODE)) {
-			availabilityCode = this.cloud.getCustom().get(AZURE_AVAILABILITY_CODE).toString().trim();
+		// cdis custom /
+		// null value for code causes problem while deploying, therefore it is set to an empty string if it's the case
+		String availabilityCode = (String) this.cloud.getCustom().get(AZURE_AVAILABILITY_CODE);
+		if (availabilityCode == null || availabilityCode.trim().isEmpty()) {
+			availabilityCode = "";
 		}
+
 		String availability = (String) this.template.getCustom().get(AZURE_AVAILABILITY_SET);
 		if (availability != null && !availability.trim().isEmpty()) {
 			this.availabilitySet = availabilityCode + (String) this.template.getCustom().get(AZURE_AVAILABILITY_SET);
-		} else {
-			this.availabilitySet = null;
 		}
 
 		this.deploymentSlot = (String) this.template.getCustom().get(AZURE_DEPLOYMENT_SLOT);
@@ -308,9 +308,11 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		}
 
 		// reset cloudserviceName
-		String cloudServiceCode = null;
-		if (this.cloud.getCustom().containsKey(AZURE_CLOUD_SERVICE_CODE)) {
-			cloudServiceCode = this.cloud.getCustom().get(AZURE_CLOUD_SERVICE_CODE).toString().trim();
+		// null value for code causes problem while deploying, therefore it is set to an empty string if it's the case
+		String cloudServiceCode = (String) this.cloud.getCustom().get(AZURE_CLOUD_SERVICE_CODE);
+
+		if (cloudServiceCode == null || cloudServiceCode.trim().isEmpty()) {
+			cloudServiceCode = "";
 		}
 
 		if (this.management) {
@@ -399,7 +401,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 					if (deployment != null) {
 
 						String name = deployment.getName();
-						logger.info(String.format("Choosing automatically deployment '%s", name));
 						desc.setDeploymentName(name);
 						// use add role
 						desc.setAddToExistingDeployment(true);
@@ -415,6 +416,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 					// at this point a cs/deployment will be created
 					logger.warning(String.format("The cloud service '%s' doesn't exist on azure. "
 							+ "A new cloud service creation will be requested.", hostedCloudService));
+					desc.setAppendCloudServiceName(false);
 				}
 			}
 

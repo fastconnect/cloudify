@@ -31,6 +31,7 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 	private String availableIp = null;
 	private String subnetName;
 	private boolean addToExistingDeployment = false;
+	private boolean appendCloudServiceName = true;
 
 	public String getHostedServiceName() {
 		return hostedServiceName;
@@ -180,6 +181,14 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 
 	public void setAddToExistingDeployment(boolean addToExistingDeployment) {
 		this.addToExistingDeployment = addToExistingDeployment;
+	}
+
+	public boolean isAppendCloudServiceName() {
+		return appendCloudServiceName;
+	}
+
+	public void setAppendCloudServiceName(boolean appendCloudServiceName) {
+		this.appendCloudServiceName = appendCloudServiceName;
 	}
 
 }

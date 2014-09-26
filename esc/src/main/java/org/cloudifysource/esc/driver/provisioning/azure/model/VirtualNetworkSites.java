@@ -10,11 +10,11 @@ import javax.xml.bind.annotation.XmlType;
 /**
  * 
  * @author elip
- *
+ * 
  */
 @XmlType(name = "VirtualNetworkSites")
 public class VirtualNetworkSites implements Iterable<VirtualNetworkSite> {
-	
+
 	private List<VirtualNetworkSite> virtualNetworkSites = new ArrayList<VirtualNetworkSite>();
 
 	@Override
@@ -30,10 +30,10 @@ public class VirtualNetworkSites implements Iterable<VirtualNetworkSite> {
 	public void setVirtualNetworkSites(final List<VirtualNetworkSite> virtualNetworkSites) {
 		this.virtualNetworkSites = virtualNetworkSites;
 	}
-	
+
 	/**
 	 * 
-	 * @param networkName . 
+	 * @param networkName
 	 * @return .
 	 */
 	public boolean contains(final String networkName) {
@@ -43,5 +43,14 @@ public class VirtualNetworkSites implements Iterable<VirtualNetworkSite> {
 			}
 		}
 		return false;
+	}
+
+	public VirtualNetworkSite getVirtualNetworkSite(String networkName) {
+		for (VirtualNetworkSite site : virtualNetworkSites) {
+			if (site.getName().equals(networkName)) {
+				return site;
+			}
+		}
+		return null;
 	}
 }

@@ -30,4 +30,22 @@ public class Subnets implements Iterable<Subnet> {
 	public void setSubnets(List<Subnet> subnets) {
 		this.subnets = subnets;
 	}
+
+	public boolean contains(String subnetName) {
+		for (Subnet subnet : subnets) {
+			if (subnet.getName().equals(subnetName)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public Subnet getSubnet(String subnetName) {
+		for (Subnet subnet : subnets) {
+			if (subnet.getName().equals(subnetName)) {
+				return subnet;
+			}
+		}
+		return null;
+	}
 }

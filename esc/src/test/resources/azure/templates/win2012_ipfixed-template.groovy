@@ -42,9 +42,8 @@
 			"azure.firewall.ports" : [
 				  [name:"CLOUDIFY_GUI", protocol:"TCP", port:"8099"],
 				  [name:"CLOUDIFY_REST", protocol:"TCP", port:"8100"]
-			]
+			],
+      "azure.network.ipAddresses" : "10.0.0.12"
 		])
-
-    options ([ "ipAddresses" : "10.0.0.12"])
 	}
 ]

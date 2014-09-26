@@ -1,5 +1,5 @@
 [
-  ubuntu1410_ipfixed : computeTemplate {
+  ubuntu1410_multipleFixedIPs : computeTemplate {
 		imageId "b39f27a8b8c64d52b05eac6a62ebad85__Ubuntu-14_04_1-LTS-amd64-server-20140909-en-us-30GB"
 		machineMemoryMB 1600
 		hardwareId "Small"
@@ -15,7 +15,7 @@
 			"azure.deployment.slot": "Production",
 			"azure.pfx.file": pfxFile,
 			"azure.pfx.password" : pfxPassword,
-      "azure.network.ipAddresses" : "10.0.0.12"
+      "azure.network.ipAddresses" : "10.0.0.12,10.0.0.13"
 		])
 	}
 ]

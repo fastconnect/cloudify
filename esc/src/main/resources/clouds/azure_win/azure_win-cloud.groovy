@@ -34,27 +34,21 @@ cloud {
 		// Therefore, if setting a custom URL, make sure to leave out the suffix.
 		// cloudifyUrl "http://repository.cloudifysource.org/org/cloudifysource/2.7.1-6300-RELEASE/gigaspaces-cloudify-2.7.1-ga-b6300.zip"
 
-		machineNamePrefix "cloudify_agent"
-
+    managementGroup "${codeCountry}${codeEnvironment}"
+    machineNamePrefix "${codeCountry}${codeEnvironment}"
 
 		managementOnlyFiles ([])
 
-	//	managementGroup "cloudify_manager"
-		managementGroup "A01"
 		numberOfManagementMachines 1
 
 		reservedMemoryCapacityPerMachineInMB 1024
 
 		sshLoggingLevel "WARNING"
-
-
 	}
 
 	user {
-
 		// Azure subscription id
 		user subscriptionId
-
 	}
 
 	cloudCompute {
@@ -163,28 +157,12 @@ cloud {
 						[name:"WINRM", protocol:"TCP", port:"5985"],
 						[name:"WINRM_SSL", protocol:"TCP", port:"5986"],
 						[name:"HTTP", protocol:"TCP", port:"80"],
-//            [name:"CLOUDIFY_GUI", protocol:"TCP", port:"8099"],
-//            [name:"CLOUDIFY_REST", protocol:"TCP", port:"8100"]
-//						[name:"CLOUDIFY_LUS", protocol:"TCP", port:"4174"],
-//						[name:"CLOUDIFY_HTTPPU", protocol:"TCP", port:"6666"],
-//						[name:"CLOUDIFY_LRMI0", protocol:"TCP", port:"7000"],
-//						[name:"CLOUDIFY_LRMI1", protocol:"TCP", port:"7001"],
-//						[name:"CLOUDIFY_LRMI2", protocol:"TCP", port:"7002"],
-//						[name:"CLOUDIFY_LRMI3", protocol:"TCP", port:"7003"],
-//						[name:"CLOUDIFY_LRMIALL", protocol:"TCP", port:"7010-7110"]
 					],
 
 					// Firewall port to open (winrm port 5985 should be opened by default on the image)
 					"azure.firewall.ports" : [
 						[name:"CLOUDIFY_GUI", protocol:"TCP", port:"8099"],
 						[name:"CLOUDIFY_REST", protocol:"TCP", port:"8100"],
-//						[name:"CLOUDIFY_LUS", protocol:"TCP", port:"4174"],
-//						[name:"CLOUDIFY_HTTPPU", protocol:"TCP", port:"6666"],
-//						[name:"CLOUDIFY_LRMI0", protocol:"TCP", port:"7000"],
-//						[name:"CLOUDIFY_LRMI1", protocol:"TCP", port:"7001"],
-//						[name:"CLOUDIFY_LRMI2", protocol:"TCP", port:"7002"],
-//						[name:"CLOUDIFY_LRMI3", protocol:"TCP", port:"7003"],
-//						[name:"CLOUDIFY_LRMIALL", protocol:"TCP", port:"7010-7110"]
 					]
 				])
 			},
@@ -285,22 +263,33 @@ cloud {
 		******************************************************************************************/
 		"azure.storage.account" : storageAccount,
 
-		// Specify whether or not to delete the network (if found) when you execute a teardown command.
-
 		/*************************************************************************************************************************
+     * Specify whether or not to delete the network (if found) when you execute a teardown command.
 		 * If set to 'true', the storage account, affinity group, and network specified above will be deleted upon teardown.	 *
 		 * NOTE : if you are using pre exsisting services and you dont want them to be deleted, please set this value to 'false' *
 		**************************************************************************************************************************/
 		"azure.cleanup.on.teardown" : "true",
 
-		// Enable/Disable Cloud Requests Logging.
-		"azure.wireLog": "false",
-
-		// code d'un cloud service
+    /********************************************************************
+		 * Cloud service code
+     * The code will be append to the machineNamePrefix/managementGroup.
+     * The cloud service name will resulting to be something like :
+     *   ${machineNamePrefix}${cloudServiceCode}XXX
+     * where XXX is an incremental index
+    *********************************************************************/
 		"azure.cloud.service.code" : cloudServiceCode,
 
-		// code d'un availability set
+    /********************************************************************
+     * Availability set code
+     * The code will be append to the machineNamePrefix/managementGroup.
+     * The cloud service name will resulting to be something like :
+     *   ${machineNamePrefix}${availabilityCode}XXX
+     * where XXX is an incremental index
+    *********************************************************************/
 		"azure.availability.code" : availabilityCode,
+
+    // Enable/Disable Cloud Requests Logging.
+    "azure.wireLog": "false",
 	])
 }
 

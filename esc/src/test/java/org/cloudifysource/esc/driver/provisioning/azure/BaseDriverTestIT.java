@@ -6,7 +6,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.cloudifysource.domain.cloud.Cloud;
-import org.cloudifysource.domain.cloud.CloudProvider;
 import org.cloudifysource.domain.cloud.compute.ComputeTemplate;
 import org.cloudifysource.dsl.internal.DSLException;
 import org.cloudifysource.esc.driver.provisioning.CloudProvisioningException;
@@ -20,11 +19,17 @@ public class BaseDriverTestIT {
 
 	private static final String CLOUD_RESOURCES_FOLDER = "./src/main/resources/clouds";
 	private static final String AZURE_WIN = "azure_win";
+	private static final String DEFAULT_SERVICE_NAME = "SOLR";
 
 	protected static final Logger logger = Logger.getLogger(BaseDriverTestIT.class.getName());
 	protected static final int TIMEOUT = 1000 * 60 * 60; // 60 minutes
 
 	protected Cloud cloud;
+
+	protected MicrosoftAzureCloudDriver createDriver(String computeTemplate, boolean isManagement)
+			throws IOException, DSLException, CloudProvisioningException {
+		return this.createDriver(computeTemplate, null, isManagement, CLOUD_RESOURCES_FOLDER, AZURE_WIN);
+	}
 
 	protected MicrosoftAzureCloudDriver createDriver(String computeTemplate, String overridesDir, boolean isManagement)
 			throws IOException, DSLException, CloudProvisioningException {
@@ -50,14 +55,10 @@ public class BaseDriverTestIT {
 		configuration.setCloudTemplate(computeTemplate);
 		configuration.setManagement(isManagement);
 
-		CloudProvider provider = cloud.getProvider();
-
-		provider.setMachineNamePrefix("agent");
-
 		if (!isManagement) {
-			configuration.setServiceName("default.NOM");
+			configuration.setServiceName("default." + DEFAULT_SERVICE_NAME);
 		} else {
-			configuration.getCloud().getConfiguration().setManagementMachineTemplate(computeTemplate);
+			cloud.getConfiguration().setManagementMachineTemplate(computeTemplate);
 		}
 
 		driver.setConfig(configuration);
@@ -65,16 +66,16 @@ public class BaseDriverTestIT {
 		return driver;
 	}
 
-	protected void doStartManagementMachine(String computeTemplate) throws Exception {
-		this.doStartManagementMachine(computeTemplate, null, new MachineDetailsAssertion());
+	protected void startAndStopManagementMachine(String computeTemplate) throws Exception {
+		this.startAndStopManagementMachine(computeTemplate, null, new MachineDetailsAssertion());
 	}
 
-	protected void doStartManagementMachine(String computeTemplate, MachineDetailsAssertion additionalAssertion)
+	protected void startAndStopManagementMachine(String computeTemplate, MachineDetailsAssertion additionalAssertion)
 			throws Exception {
-		this.doStartManagementMachine(computeTemplate, null, additionalAssertion);
+		this.startAndStopManagementMachine(computeTemplate, null, additionalAssertion);
 	}
 
-	protected void doStartManagementMachine(String computeTemplate, String overridesDir,
+	protected void startAndStopManagementMachine(String computeTemplate, String overridesDir,
 			MachineDetailsAssertion assertion) throws Exception {
 		MicrosoftAzureCloudDriver driver = this.createDriver(computeTemplate, overridesDir, true);
 		try {
@@ -83,22 +84,17 @@ public class BaseDriverTestIT {
 				assertion.assertMachineDetails(md);
 			}
 		} finally {
-			if (driver != null) {
-				try {
-					driver.stopManagementMachines();
-				} catch (Exception e) {
-					logger.log(Level.WARNING, "Fail to stop machine", e);
-				}
-			}
+			this.stopManagementMachines(driver);
 		}
 	}
 
-	protected void doTestStartMachine(String computeTemplate, String overridesDir) throws Exception {
-		MicrosoftAzureCloudDriver driver = this.createDriver(computeTemplate, overridesDir, false);
+	protected void startAndStopMachine(String computeTemplate, MachineDetailsAssertion machineDetailsAssertion)
+			throws Exception {
+		MicrosoftAzureCloudDriver driver = this.createDriver(computeTemplate, false);
 		MachineDetails md = null;
 		try {
 			md = driver.startMachine(null, TIMEOUT, TimeUnit.MILLISECONDS);
-			new MachineDetailsAssertion().assertMachineDetails(md);
+			machineDetailsAssertion.assertMachineDetails(md);
 		} finally {
 			if (md != null) {
 				driver.stopMachine(md.getPrivateAddress(), TIMEOUT, TimeUnit.MILLISECONDS);
@@ -106,8 +102,29 @@ public class BaseDriverTestIT {
 		}
 	}
 
+	protected MachineDetails[] startManagementMachine(MicrosoftAzureCloudDriver driver,
+			MachineDetailsAssertion assertion)
+			throws Exception {
+		MachineDetails[] mds = null;
+		mds = driver.startManagementMachines(null, TIMEOUT, TimeUnit.MILLISECONDS);
+		for (MachineDetails md : mds) {
+			assertion.assertMachineDetails(md);
+		}
+		return mds;
+	}
+
+	protected void stopManagementMachines(MicrosoftAzureCloudDriver driver) {
+		if (driver != null) {
+			try {
+				driver.stopManagementMachines();
+			} catch (Exception e) {
+				logger.log(Level.WARNING, "Fail to stop machine", e);
+			}
+		}
+	}
+
 	public class MachineDetailsAssertion {
-		public void assertMachineDetails(MachineDetails md) {
+		public void assertMachineDetails(MachineDetails md) throws Exception {
 			Assert.assertNotNull("MachineDetails is null", md);
 			Assert.assertNotNull("machineId is null", md.getMachineId());
 			String privateAddress = md.getPrivateAddress();
@@ -119,7 +136,7 @@ public class BaseDriverTestIT {
 			additionalAssertions(md);
 		}
 
-		public void additionalAssertions(MachineDetails md) {
+		public void additionalAssertions(MachineDetails md) throws Exception {
 		}
 	}
 }

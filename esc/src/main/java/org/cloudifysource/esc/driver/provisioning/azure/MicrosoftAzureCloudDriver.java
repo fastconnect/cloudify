@@ -71,12 +71,11 @@ import org.cloudifysource.esc.util.Utils;
 
 public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
-	private static final String CLOUDIFY_AFFINITY_PREFIX = "cloudifyaffinity";
-	private static String CLOUDIFY_CLOUD_SERVICE_PREFIX = "cloudifycloudservice";
-	private static final String CLOUDIFY_STORAGE_ACCOUNT_PREFIX = "cloudifystorage";
-
 	// TODO set dynamic value for manager name if necessary
-	private static final String CLOUDIFY_MANAGER_NAME = "CFYM";
+	protected static final String CLOUDIFY_MANAGER_NAME = "CFYM";
+
+	private static final String CLOUDIFY_AFFINITY_PREFIX = "cloudifyaffinity";
+	private static final String CLOUDIFY_STORAGE_ACCOUNT_PREFIX = "cloudifystorage";
 
 	// Custom template DSL properties
 	private static final String AZURE_PFX_FILE = "azure.pfx.file";
@@ -84,8 +83,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String AZURE_ENDPOINTS = "azure.endpoints";
 	private static final String AZURE_FIREWALL_PORTS = "azure.firewall.ports";
 
-	private static final String VM_IP_ADDRESSES = "ipAddresses";
 	private static final String AZURE_CLOUD_SERVICE = "azure.cloud.service";
+	private static final String VM_IP_ADDRESSES = "azure.network.ipAddresses";
 
 	// Custom cloud DSL properties
 	private static final String AZURE_WIRE_LOG = "azure.wireLog";
@@ -100,6 +99,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	private static final String AZURE_CLOUD_SERVICE_CODE = "azure.cloud.service.code";
 	private static final String AZURE_AVAILABILITY_CODE = "azure.availability.code";
+
+	private static String cloudServicePrefix = "cloudifycloudservice";
 
 	private AtomicInteger availabilitySetCounter = new AtomicInteger(1);
 	private AtomicInteger serviceCounter = new AtomicInteger(1);
@@ -164,8 +165,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			logger.fine("Initializing Azure REST client");
 			azureClient = new MicrosoftAzureRestClient(subscriptionId,
 					pathToPfxFile, pfxPassword, CLOUDIFY_AFFINITY_PREFIX,
-					CLOUDIFY_CLOUD_SERVICE_PREFIX,
-					CLOUDIFY_STORAGE_ACCOUNT_PREFIX);
+					cloudServicePrefix, CLOUDIFY_STORAGE_ACCOUNT_PREFIX);
 			if (enableWireLog) {
 				azureClient.setLoggingFilter(logger);
 			}
@@ -181,9 +181,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 				.STOP_MANAGEMENT_TIMEOUT_IN_MINUTES), DEFAULT_STOP_MANAGEMENT_TIMEOUT);
 
 		// cdis custom
-		String availabilityCode = (String) this.cloud.getCustom().get(AZURE_AVAILABILITY_CODE);
-		if (availabilityCode == null || availabilityCode.trim().isEmpty()) {
-			availabilityCode = "";
+		String availabilityCode = null;
+		if (this.cloud.getCustom().containsKey(AZURE_AVAILABILITY_CODE)) {
+			availabilityCode = this.cloud.getCustom().get(AZURE_AVAILABILITY_CODE).toString().trim();
 		}
 		String availability = (String) this.template.getCustom().get(AZURE_AVAILABILITY_SET);
 		if (availability != null && !availability.trim().isEmpty()) {
@@ -277,10 +277,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		// cdis custom
 		if (this.management) {
 			this.serverNamePrefix = this.cloud.getProvider().getManagementGroup() + CLOUDIFY_MANAGER_NAME;
-
 		} else {
 			FullServiceName fullServiceName = ServiceUtils.getFullServiceName(configuration.getServiceName());
-			this.serverNamePrefix = this.cloud.getProvider().getManagementGroup() + fullServiceName.getServiceName();
+			this.serverNamePrefix = this.cloud.getProvider().getMachineNamePrefix() + fullServiceName.getServiceName();
 		}
 
 	}
@@ -309,19 +308,16 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		}
 
 		// reset cloudserviceName
-		String cloudServiceCode = (String) this.cloud.getCustom().get(AZURE_CLOUD_SERVICE_CODE);
-
-		if (cloudServiceCode == null || cloudServiceCode.trim().isEmpty()) {
-			cloudServiceCode = "";
+		String cloudServiceCode = null;
+		if (this.cloud.getCustom().containsKey(AZURE_CLOUD_SERVICE_CODE)) {
+			cloudServiceCode = this.cloud.getCustom().get(AZURE_CLOUD_SERVICE_CODE).toString().trim();
 		}
 
 		if (this.management) {
-			CLOUDIFY_CLOUD_SERVICE_PREFIX = this.cloud.getProvider().getManagementGroup() +
-					cloudServiceCode + CLOUDIFY_MANAGER_NAME;
-
+			cloudServicePrefix = this.cloud.getProvider().getManagementGroup() + cloudServiceCode;
 		} else {
 			FullServiceName fullServiceName = ServiceUtils.getFullServiceName(configuration.getServiceName());
-			CLOUDIFY_CLOUD_SERVICE_PREFIX = this.cloud.getProvider().getManagementGroup() + cloudServiceCode +
+			cloudServicePrefix = this.cloud.getProvider().getMachineNamePrefix() + cloudServiceCode +
 					fullServiceName.getServiceName();
 		}
 
@@ -403,7 +399,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 					if (deployment != null) {
 
 						String name = deployment.getName();
-						logger.info(String.format("Choosing automatically deployment '%s", name));
 						desc.setDeploymentName(name);
 						// use add role
 						desc.setAddToExistingDeployment(true);
@@ -433,7 +428,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			desc.setSize(size);
 			desc.setStorageAccountName(storageAccountName);
 			desc.setUserName(userName);
-			desc.setIpAddresses(this.getIpAddressesList(this.template.getOptions()));
+			desc.setIpAddresses(this.getIpAddressesList(this.template.getCustom()));
 			desc.setSubnetName("subnet-" + networkName); // TODO to be enhance once the driver supports network
 
 			logger.info("Launching a new virtual machine");
@@ -925,12 +920,12 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		// TODO Auto-generated method stub
 	}
 
-	private List<String> getIpAddressesList(Map<String, Object> templateOptions) {
+	private List<String> getIpAddressesList(Map<String, Object> map) {
 		List<String> ipAddressesList = null;
 
-		if (templateOptions != null && !templateOptions.isEmpty()) {
-			if (templateOptions.get(VM_IP_ADDRESSES) != null) {
-				String ipAddressesString = (String) templateOptions.get(VM_IP_ADDRESSES);
+		if (map != null && !map.isEmpty()) {
+			if (map.get(VM_IP_ADDRESSES) != null) {
+				String ipAddressesString = (String) map.get(VM_IP_ADDRESSES);
 				if (ipAddressesString != null && !ipAddressesString.trim().isEmpty()) {
 					String[] split = ipAddressesString.split(",");
 					ipAddressesList = Arrays.asList(split);

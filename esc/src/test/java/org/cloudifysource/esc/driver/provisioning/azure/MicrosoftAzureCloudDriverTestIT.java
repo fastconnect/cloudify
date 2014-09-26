@@ -26,8 +26,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 				String cloudServiceCode = cloudProperties.get("cloudServiceCode");
 
 				// Cloud Service : {codeCountry}{codeEnv}{codeCloudService}XXX
-				String cloudServiceName = String.format("%s%s%s001", codeCountry, codeEnvironment,
-						cloudServiceCode);
+				String cloudServiceName = String.format("%s%s%s001", codeCountry, codeEnvironment, cloudServiceCode);
 
 				// Machine Name : {codeCountry}{codeEnv}{serviceName}XXX
 				String machineName = String.format("%s%s" + MicrosoftAzureCloudDriver.CLOUDIFY_MANAGER_NAME + "1",
@@ -36,7 +35,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 				MicrosoftAzureRestClient client = AzureTestUtils.createMicrosoftAzureRestClient();
 
 				// Check Cloud service name
-				Deployment deployment = client.getDeploymentByDeploymentName("vk14adm001", "vk14adm001");
+				Deployment deployment = client.getDeploymentByDeploymentName(cloudServiceName, cloudServiceName);
 				Assert.assertEquals("Cloud service name is not correct", cloudServiceName,
 						deployment.getHostedServiceName());
 

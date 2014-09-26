@@ -486,8 +486,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			hostAddress = machineDetails.getPrivateAddress();
 		}
 
-		remoteExecutor.execute(hostAddress, details, COMMAND_ACTIVATE_SHARING,
-				DEFAULT_COMMAND_TIMEOUT);
+		remoteExecutor.execute(hostAddress, details, COMMAND_ACTIVATE_SHARING, DEFAULT_COMMAND_TIMEOUT);
 
 		// Remote command to target : open all defined ports
 		String cmd = "";

@@ -237,7 +237,6 @@ public class MicrosoftAzureRequestBodyBuilder {
 		osVirtualHardDisk.setSourceImageName(imageName);
 
 		StringBuilder mediaLinkBuilder = new StringBuilder();
-
 		mediaLinkBuilder.append("https://");
 		mediaLinkBuilder.append(storageAccountName);
 		mediaLinkBuilder.append(".blob.core.windows.net/vhds/");
@@ -248,11 +247,6 @@ public class MicrosoftAzureRequestBodyBuilder {
 		mediaLinkBuilder.append(generateRandomUUID(7));
 		mediaLinkBuilder.append(".vhd");
 		osVirtualHardDisk.setMediaLink(mediaLinkBuilder.toString());
-
-		// String mediaLink = "https://" + storageAccountName
-		// + ".blob.core.windows.net/vhds/" + deploymentName + ".vhd";
-		// osVirtualHardDisk.setMediaLink(mediaLink);
-
 		role.setOSVirtualHardDisk(osVirtualHardDisk);
 
 		ConfigurationSets configurationSets = new ConfigurationSets();

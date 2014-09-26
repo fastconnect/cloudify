@@ -103,7 +103,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String AZURE_NETOWRK_ADDRESS_SPACE = "azure.address.space";
 
 	private static final String AZURE_CLOUD_SERVICE_CODE = "azure.cloud.service.code";
-	private static final String AZURE_AVAILABILITY_CODE = "azure.availability.code";
 
 	private static String cloudServicePrefix = "cloudifycloudservice";
 
@@ -185,16 +184,10 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		this.stopManagementMachinesTimeoutInMinutes = Utils.getInteger(cloud.getCustom().get(CloudifyConstants
 				.STOP_MANAGEMENT_TIMEOUT_IN_MINUTES), DEFAULT_STOP_MANAGEMENT_TIMEOUT);
 
-		// cdis custom /
 		// null value for code causes problem while deploying, therefore it is set to an empty string if it's the case
-		String availabilityCode = (String) this.cloud.getCustom().get(AZURE_AVAILABILITY_CODE);
-		if (availabilityCode == null || availabilityCode.trim().isEmpty()) {
-			availabilityCode = "";
-		}
-
 		String availability = (String) this.template.getCustom().get(AZURE_AVAILABILITY_SET);
-		if (availability != null && !availability.trim().isEmpty()) {
-			this.availabilitySet = availabilityCode + (String) this.template.getCustom().get(AZURE_AVAILABILITY_SET);
+		if (StringUtils.isNotBlank(availability)) {
+			this.availabilitySet = ((String) this.template.getCustom().get(AZURE_AVAILABILITY_SET)).trim();
 		}
 
 		this.deploymentSlot = (String) this.template.getCustom().get(AZURE_DEPLOYMENT_SLOT);
@@ -386,7 +379,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 			// verify availability set and avoid name concatenation if itsn't
 			String availabilitySetName = null;
-			if (availabilitySet != null && !availabilitySet.trim().isEmpty()) {
+			if (StringUtils.isNotBlank(availabilitySet)) {
 				availabilitySetName = this.cloud.getProvider().getManagementGroup() + availabilitySet +
 						String.format("%03d", availabilitySetCounter.getAndIncrement());
 			}
@@ -551,6 +544,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			Subnet subnet = networkConfiguration.getSubnets().get(0);
 			azureClient.createVirtualNetworkSite(addressSpace, affinityGroup, networkName, subnet.getName(),
 					subnet.getRange(), endTime);
+
 			azureClient.createStorageAccount(affinityGroup, storageAccountName, endTime);
 		} catch (final Exception e) {
 			logger.warning("Failed creating management services : " + e.getMessage());

@@ -395,10 +395,8 @@ public class MicrosoftAzureRestClient {
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
 	 */
-	public void createAffinityGroup(final String affinityGroup,
-			final String location, final long endTime)
-			throws MicrosoftAzureException, TimeoutException,
-			InterruptedException {
+	public void createAffinityGroup(final String affinityGroup, final String location, final long endTime)
+			throws MicrosoftAzureException, TimeoutException, InterruptedException {
 
 		CreateAffinityGroup createAffinityGroup = requestBodyBuilder
 				.buildCreateAffinity(affinityGroup, location);
@@ -1365,8 +1363,7 @@ public class MicrosoftAzureRestClient {
 					.getEntity(String.class));
 			String errorMessage = error.getMessage();
 			String errorCode = error.getCode();
-			throw new MicrosoftAzureException(errorCode,
-					errorMessage);
+			throw new MicrosoftAzureException(errorCode, errorMessage);
 		}
 	}
 

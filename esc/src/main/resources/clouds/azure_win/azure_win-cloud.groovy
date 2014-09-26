@@ -146,9 +146,15 @@ cloud {
 				//javaUrl "https://s3-eu-west-1.amazonaws.com/cloudify-eu/TODO"
 
 				custom ([
-
-					// Optional. each availability set represents a different fault domain.
-					"azure.availability.set" : "MAS",
+          /********************************************************************
+           * Optional. Each availability set represents a different fault domain.
+           * Availability set code
+           * The code will be append to the machineNamePrefix/managementGroup.
+           * The cloud service name will resulting to be something like :
+           *   ${machineNamePrefix}${availabilityCode}XXX
+           * where XXX is an incremental index
+          *********************************************************************/
+          "azure.availability.set" : "MAS",
 
 					// Choose whether do deploy this instance in Staging or Production environment. defaults to Staging
 					"azure.deployment.slot": "Production",
@@ -293,15 +299,6 @@ cloud {
      * where XXX is an incremental index
     *********************************************************************/
 		"azure.cloud.service.code" : cloudServiceCode,
-
-    /********************************************************************
-     * Availability set code
-     * The code will be append to the machineNamePrefix/managementGroup.
-     * The cloud service name will resulting to be something like :
-     *   ${machineNamePrefix}${availabilityCode}XXX
-     * where XXX is an incremental index
-    *********************************************************************/
-		"azure.availability.code" : availabilityCode,
 
     // Enable/Disable Cloud Requests Logging.
     "azure.wireLog": "false",

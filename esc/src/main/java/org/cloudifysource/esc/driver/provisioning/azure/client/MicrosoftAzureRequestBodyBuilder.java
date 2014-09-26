@@ -94,25 +94,38 @@ public class MicrosoftAzureRequestBodyBuilder {
 	 * 
 	 * @param affinityGroup
 	 *            - the affinity group to be associated with the cloud service
+	 * @param cloudServiceNameOverride
 	 * @return - an object representing a body of the create cloud service request. <br>
 	 *         see <a href= "http://msdn.microsoft.com/en-us/library/windowsazure/gg441304.aspx" >Create Hosted
 	 *         Service</a>
 	 */
-	public CreateHostedService buildCreateCloudService(final String affinityGroup) {
+	public CreateHostedService buildCreateCloudService(final String affinityGroup, String cloudServiceNameOverride) {
 
 		CreateHostedService hostedService = new CreateHostedService();
 		hostedService.setAffinityGroup(affinityGroup);
 
-		String counterWithPadding = String.format("%03d", cloudServiceAtomicInteger.getAndIncrement());
+		String name = null;
+		String padding = null;
+
+		// name will be generated
+		if (cloudServiceNameOverride == null) {
+			padding = String.format("%03d", cloudServiceAtomicInteger.getAndIncrement());
+			name = cloudServicePrefix;
+
+			// exact service name
+		} else {
+			padding = "";
+			name = cloudServiceNameOverride;
+		}
 
 		try {
-			hostedService.setLabel(new String(Base64.encode(cloudServicePrefix +
-					counterWithPadding), UTF_8));
+			hostedService.setLabel(new String(Base64.encode(name + padding), UTF_8));
+
 		} catch (UnsupportedEncodingException e) {
 			// ignore
 		}
 
-		hostedService.setServiceName(cloudServicePrefix + counterWithPadding);
+		hostedService.setServiceName(name + padding);
 		return hostedService;
 	}
 
@@ -223,9 +236,22 @@ public class MicrosoftAzureRequestBodyBuilder {
 		OSVirtualHardDisk osVirtualHardDisk = new OSVirtualHardDisk();
 		osVirtualHardDisk.setSourceImageName(imageName);
 
-		String mediaLink = "https://" + storageAccountName
-				+ ".blob.core.windows.net/vhds/" + deploymentName + ".vhd";
-		osVirtualHardDisk.setMediaLink(mediaLink);
+		StringBuilder mediaLinkBuilder = new StringBuilder();
+
+		mediaLinkBuilder.append("https://");
+		mediaLinkBuilder.append(storageAccountName);
+		mediaLinkBuilder.append(".blob.core.windows.net/vhds/");
+		mediaLinkBuilder.append(desc.getHostedServiceName());
+		mediaLinkBuilder.append("-");
+		mediaLinkBuilder.append(role.getRoleName());
+		mediaLinkBuilder.append("-");
+		mediaLinkBuilder.append(generateRandomUUID(7));
+		mediaLinkBuilder.append(".vhd");
+		osVirtualHardDisk.setMediaLink(mediaLinkBuilder.toString());
+
+		// String mediaLink = "https://" + storageAccountName
+		// + ".blob.core.windows.net/vhds/" + deploymentName + ".vhd";
+		// osVirtualHardDisk.setMediaLink(mediaLink);
 
 		role.setOSVirtualHardDisk(osVirtualHardDisk);
 
@@ -332,28 +358,18 @@ public class MicrosoftAzureRequestBodyBuilder {
 		return UUIDHelper.generateRandomUUID(length);
 	}
 
-	// TODO using new hd for os (randomize a suffix) ?
-	PersistentVMRole buildPersistentVMRole(CreatePersistentVMRoleDeploymentDescriptor deplyomentDesc, boolean isWindows) {
+	/**
+	 * Build a PersistentVMRole from the deploymentDescriptor
+	 * 
+	 * @param deplyomentDesc
+	 * @param isWindows
+	 * @return PersistentVMRole
+	 */
+	public PersistentVMRole buildPersistentVMRole(CreatePersistentVMRoleDeploymentDescriptor deplyomentDesc,
+			boolean isWindows) {
+
 		Deployment deployment = this.buildDeployment(deplyomentDesc, isWindows);
 		Role role = deployment.getRoleList().getRoles().get(0);
-
-		// override medialink, otherwise it will use the deployment name
-		String storageAccountName = deplyomentDesc.getStorageAccountName();
-		StringBuilder mediaLinkBuilder = new StringBuilder();
-
-		mediaLinkBuilder.append("https://");
-		mediaLinkBuilder.append(storageAccountName);
-		mediaLinkBuilder.append(".blob.core.windows.net/vhds/");
-		mediaLinkBuilder.append(deplyomentDesc.getHostedServiceName());
-		mediaLinkBuilder.append("-");
-		mediaLinkBuilder.append(role.getRoleName());
-		mediaLinkBuilder.append("-");
-		mediaLinkBuilder.append(generateRandomUUID(7));
-		mediaLinkBuilder.append(".vhd");
-		role.getOsVirtualHardDisk().setMediaLink(mediaLinkBuilder.toString());
-
-		// let azure generate a name ($cloudservice-$rolename-random ) for os disk name
-		role.getOsVirtualHardDisk().setName(null);
 
 		PersistentVMRole persistentVMRole = new PersistentVMRole();
 		persistentVMRole.setAvailabilitySetName(role.getAvailabilitySetName());

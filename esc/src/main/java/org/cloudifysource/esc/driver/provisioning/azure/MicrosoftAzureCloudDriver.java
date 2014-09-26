@@ -419,6 +419,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 					// at this point a cs/deployment will be created
 					logger.warning(String.format("The cloud service '%s' doesn't exist on azure. "
 							+ "A new cloud service creation will be requested.", hostedCloudService));
+					desc.setAppendCloudServiceName(false);
 				}
 			}
 

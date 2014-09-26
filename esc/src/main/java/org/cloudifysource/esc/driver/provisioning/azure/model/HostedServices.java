@@ -29,7 +29,9 @@ public class HostedServices implements Iterable<HostedService> {
 		this.hostedServices = hostedServices;
 	}
 
-	/* (non-Javadoc)
+	/*
+	 * (non-Javadoc)
+	 * 
 	 * @see java.lang.Iterable#iterator()
 	 */
 	@Override
@@ -39,11 +41,12 @@ public class HostedServices implements Iterable<HostedService> {
 
 	/**
 	 * 
-	 * @param storageServiceName .
+	 * @param storageServiceName
+	 *            .
 	 * @return .
 	 */
 	public boolean contains(final String cloudServiceName) {
-		
+
 		for (HostedService service : hostedServices) {
 			if (service.getServiceName().equals(cloudServiceName)) {
 				return true;
@@ -51,6 +54,24 @@ public class HostedServices implements Iterable<HostedService> {
 		}
 		return false;
 	}
-	
-	
+
+	/**
+	 * Get a hosted service by its name
+	 * 
+	 * @param cloudServiceName
+	 * @return hosted service object, null otherwise
+	 */
+	public HostedService geHostedServiceByName(String cloudServiceName) {
+
+		if (this.hostedServices != null && !this.hostedServices.isEmpty()) {
+
+			for (HostedService hs : hostedServices) {
+				if (hs.getServiceName().equals(cloudServiceName)) {
+					return hs;
+				}
+			}
+		}
+		return null;
+	}
+
 }

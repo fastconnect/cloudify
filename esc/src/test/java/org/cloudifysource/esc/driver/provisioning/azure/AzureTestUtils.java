@@ -78,6 +78,20 @@ public class AzureTestUtils {
 		return computeTemplateHolder;
 	}
 
+	public static MicrosoftAzureRestClient createMicrosoftAzureRestClient(String cloudServicePrefix,
+			String affinityPrefix) throws MalformedURLException {
+		File configFile = new File(getCredentialsFolder(), getCredentialFilename());
+		ConfigObject config = new ConfigSlurper().parse(configFile.toURI().toURL());
+
+		String subscriptionId = (String) config.getProperty("subscriptionId");
+		String pfxFile = (String) config.getProperty("pfxFile");
+		String pathToPfx = getCredentialsFolder() + "/upload/" + pfxFile;
+		String pfxPassword = (String) config.getProperty("pfxPassword");
+
+		return new MicrosoftAzureRestClient(subscriptionId, pathToPfx, pfxPassword, affinityPrefix,
+				cloudServicePrefix, CLOUDIFY_STORAGE_ACCOUNT_PREFIX);
+	}
+
 	public static MicrosoftAzureRestClient createMicrosoftAzureRestClient() throws MalformedURLException {
 		File configFile = new File(getCredentialsFolder(), getCredentialFilename());
 		ConfigObject config = new ConfigSlurper().parse(configFile.toURI().toURL());

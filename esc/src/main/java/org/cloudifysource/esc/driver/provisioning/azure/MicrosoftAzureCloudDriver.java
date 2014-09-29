@@ -71,7 +71,6 @@ import org.cloudifysource.esc.util.Utils;
  * 
  * @author elip
  ***************************************************************************************/
-
 public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	// TODO set dynamic value for manager name if necessary
@@ -181,6 +180,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	public void setConfig(ComputeDriverConfiguration configuration) throws CloudProvisioningException {
 		super.setConfig(configuration);
 
+		this.verifyManagementNetworkConfiguration(configuration.getCloud());
+
 		this.stopManagementMachinesTimeoutInMinutes = Utils.getInteger(cloud.getCustom().get(CloudifyConstants
 				.STOP_MANAGEMENT_TIMEOUT_IN_MINUTES), DEFAULT_STOP_MANAGEMENT_TIMEOUT);
 
@@ -283,6 +284,23 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			this.serverNamePrefix = this.cloud.getProvider().getMachineNamePrefix() + fullServiceName.getServiceName();
 		}
 
+	}
+
+	private void verifyManagementNetworkConfiguration(Cloud cloud) throws CloudProvisioningException {
+		if (cloud.getCloudNetwork() != null || cloud.getCloudNetwork().getManagement() != null) {
+			NetworkConfiguration netConfig = cloud.getCloudNetwork().getManagement().getNetworkConfiguration();
+			if (netConfig.getSubnets() != null && !netConfig.getSubnets().isEmpty()) {
+				if (netConfig.getSubnets().size() != 1) {
+					logger.warning("Management network can only be configured with 1 subnet");
+				} else {
+					return;
+				}
+			} else {
+				throw new CloudProvisioningException("Management network missing subnet configuration");
+			}
+		} else {
+			throw new CloudProvisioningException("Missing management network configuration");
+		}
 	}
 
 	@Override

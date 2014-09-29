@@ -29,4 +29,20 @@ public class InputEndpoints {
 	public void setInputEndpoints(final List<InputEndpoint> inputEndpoints) {
 		this.inputEndpoints = inputEndpoints;
 	}
+
+	/**
+	 * Get an endPoint by public port
+	 * 
+	 * @param publicPort
+	 *            .
+	 * @return InputEndpoint object, null when not found
+	 */
+	public InputEndpoint getInputEndpointByPort(final int publicPort) {
+		for (InputEndpoint iep : inputEndpoints) {
+			if (iep.getPort() == publicPort) {
+				return iep;
+			}
+		}
+		return null;
+	}
 }

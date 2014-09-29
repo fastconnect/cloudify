@@ -1,5 +1,5 @@
 [
-	ubuntu1410_cloudservice : computeTemplate {
+	ubuntu1410_endpoints : computeTemplate {
 		imageId "b39f27a8b8c64d52b05eac6a62ebad85__Ubuntu-14_04_1-LTS-amd64-server-20140909-en-us-30GB"
 		machineMemoryMB 3500
 		hardwareId "Medium"
@@ -14,11 +14,15 @@
       "azure.deployment.slot": "Production",
       "azure.pfx.file": pfxFile,
       "azure.pfx.password" : pfxPassword,
-      "azure.cloud.service" : "cfytestitcloudservice",
+      "azure.cloud.service" : "cfytestitendpoints",
 	  
 	  "azure.endpoints" : [
 		  [name:"HTTP", protocol:"TCP", localPort: "80", port:"81"],
-		  [name:"SSH", protocol:"TCP", localPort: "22", port:"5000"]
+		  [name:"SSH", protocol:"TCP", localPort: "22", port:"5000"],
+		 
+		   // private port missing, endPoint will be skipped
+		  [name:"NOT_VALID_ENDPOINT", protocol:"TCP", port:"5555"]
+		  
 	  ],
   
     ])

@@ -858,12 +858,13 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	}
 
-	private InputEndpoints createInputEndPoints() {
+	private InputEndpoints createInputEndPoints() throws MicrosoftAzureException {
 
 		InputEndpoints inputEndpoints = new InputEndpoints();
 
 		// Add End Point for each port
 		if (this.endpoints != null) {
+			System.out.println();
 			for (Map<String, String> endpointMap : this.endpoints) {
 				String name = endpointMap.get("name");
 				String protocol = endpointMap.get("protocol");
@@ -884,7 +885,15 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 					endpoint.setName(name);
 					endpoint.setProtocol(protocol);
 					inputEndpoints.getInputEndpoints().add(endpoint);
+
+				} else {
+					String endPointValuesError = String.format("Failed provisioning VM, please check"
+							+ " endPoint required elements in compute template '%s' : [name: '%s'], [protocol: '%s'], "
+							+ "[localPort: '%s']", this.configuration.getCloudTemplate(), name, protocol, localPortStr);
+					logger.severe(endPointValuesError);
+					throw new MicrosoftAzureException(endPointValuesError);
 				}
+
 			}
 		}
 

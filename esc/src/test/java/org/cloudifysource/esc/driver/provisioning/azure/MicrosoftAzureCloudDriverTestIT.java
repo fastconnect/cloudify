@@ -8,6 +8,8 @@ import org.cloudifysource.esc.driver.provisioning.MachineDetails;
 import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureRestClient;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
 import org.cloudifysource.esc.driver.provisioning.azure.model.HostedServices;
+import org.cloudifysource.esc.driver.provisioning.azure.model.NetworkConfigurationSet;
+import org.cloudifysource.esc.driver.provisioning.azure.model.Role;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleInstanceList;
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -139,6 +141,62 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 					// TODO make dynamic roleName
 					String roleName = String.format("%sCFYM1", cloud.getProvider().getManagementGroup());
 					Assert.assertNotNull(deployment.getRoleInstanceList().getInstanceRoleByRoleName(roleName));
+				} catch (Exception e) {
+					Assert.fail(e.getMessage());
+				}
+			};
+		});
+	}
+
+	@Test
+	public void testStartUbuntuManagementMachineEndPoints() throws Exception {
+
+		final long endTime = 10000000;
+
+		String computeTemplateName = "ubuntu1410_endpoints";
+		cloud = AzureTestUtils.createCloud("./src/main/resources/clouds", "azure_win", null, computeTemplateName);
+
+		// Retrieve the cloud service name
+		final ComputeTemplate computeTemplate = cloud.getCloudCompute().getTemplates().get(computeTemplateName);
+		final String cloudServiceName = (String) computeTemplate.getCustom().get("azure.cloud.service");
+		String affinityPrefix = (String) cloud.getCustom().get("azure.affinity.group");
+		String location = (String) cloud.getCustom().get("azure.affinity.location");
+
+		final MicrosoftAzureRestClient azureRestClient =
+				AzureTestUtils.createMicrosoftAzureRestClient(cloudServiceName, affinityPrefix);
+
+		// Created resources should be released by the stop management
+		azureRestClient.createAffinityGroup(affinityPrefix, location, endTime);
+		azureRestClient.createCloudService(affinityPrefix, cloudServiceName, endTime);
+
+		this.startAndStopManagementMachine(computeTemplateName, new MachineDetailsAssertion() {
+			@Override
+			public void additionalAssertions(MachineDetails md) {
+				try {
+					HostedServices cloudServices = azureRestClient.listHostedServices();
+					Assert.assertTrue(cloudServices.contains(cloudServiceName));
+					String deploymentSlot = (String) computeTemplate.getCustom().get("azure.deployment.slot");
+					Deployment deployment = azureRestClient.listDeploymentsBySlot(cloudServiceName, deploymentSlot,
+							endTime);
+
+					Assert.assertNotNull(deployment);
+
+					// TODO make dynamic roleName
+					String roleName = String.format("%sCFYM1", cloud.getProvider().getManagementGroup());
+					Role role = deployment.getRoleList().getRoleByName(roleName);
+					Assert.assertNotNull(role);
+
+					NetworkConfigurationSet networkConfigurationSet = role.getConfigurationSets().
+							getNetworkConfigurationSet();
+					networkConfigurationSet.getInputEndpoints();
+
+					// valid ports
+					Assert.assertNotNull(networkConfigurationSet.getInputEndpoints().getInputEndpointByPort(5000));
+					Assert.assertNotNull(networkConfigurationSet.getInputEndpoints().getInputEndpointByPort(81));
+
+					// not valid port (missing localPort), must not be in endPoints
+					Assert.assertNull(networkConfigurationSet.getInputEndpoints().getInputEndpointByPort(5555));
+
 				} catch (Exception e) {
 					Assert.fail(e.getMessage());
 				}

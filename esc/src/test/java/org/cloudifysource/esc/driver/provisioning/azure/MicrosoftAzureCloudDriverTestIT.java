@@ -194,9 +194,6 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 					Assert.assertNotNull(networkConfigurationSet.getInputEndpoints().getInputEndpointByPort(5000));
 					Assert.assertNotNull(networkConfigurationSet.getInputEndpoints().getInputEndpointByPort(81));
 
-					// not valid port (missing localPort), must not be in endPoints
-					Assert.assertNull(networkConfigurationSet.getInputEndpoints().getInputEndpointByPort(5555));
-
 				} catch (Exception e) {
 					Assert.fail(e.getMessage());
 				}

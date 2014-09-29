@@ -19,10 +19,7 @@
 	  "azure.endpoints" : [
 		  [name:"HTTP", protocol:"TCP", localPort: "80", port:"81"],
 		  [name:"SSH", protocol:"TCP", localPort: "22", port:"5000"],
-		 
-		   // private port missing, endPoint will be skipped
-		  [name:"NOT_VALID_ENDPOINT", protocol:"TCP", port:"5555"]
-		  
+	 
 	  ],
   
     ])

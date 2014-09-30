@@ -119,7 +119,12 @@ cloud {
 					"azure.pfx.file": pfxFile,
 
 					// Password that was used to create the certificate
-					"azure.pfx.password" : pfxPassword
+					"azure.pfx.password" : pfxPassword,
+
+          // Endpoints definition
+          "azure.endpoints" : [
+            [name:"SSH", protocol:"TCP", localPort: "22", port:"22"]
+          ]
 				])
 			},
 
@@ -188,11 +193,11 @@ cloud {
 
 					// Endpoints definition
 					"azure.endpoints" : [
-						[name:"REMOTE_DESKTOP", protocol:"TCP", port:"3389"],
-						[name:"CIFS_SMB", protocol:"TCP", port:"445"],
-						[name:"WINRM", protocol:"TCP", port:"5985"],
-						[name:"WINRM_SSL", protocol:"TCP", port:"5986"],
-						[name:"HTTP", protocol:"TCP", port:"80"],
+						[name:"REMOTE_DESKTOP", protocol:"TCP", localPort:"3389", port:"3389"],
+						[name:"CIFS_SMB", protocol:"TCP", localPort:"445", port:"445"],
+						[name:"WINRM", protocol:"TCP", localPort:"5985", port:"5985"],
+						[name:"WINRM_SSL", protocol:"TCP", localPort:"5986", port:"5986"],
+						[name:"HTTP", protocol:"TCP", localPort:"80", port:"80"]
 					],
 
 					// Firewall port to open (winrm port 5985 should be opened by default on the image)
@@ -245,16 +250,16 @@ cloud {
 
 					// Endpoints definition
 					"azure.endpoints" : [
-						[name:"CIFS_SMB", protocol:"TCP", port:"445"],
-						[name:"WINRM", protocol:"TCP", port:"5985"],
-						[name:"WINRM_SSL", protocol:"TCP", port:"5986"],
-						[name:"HTTP", protocol:"TCP", port:"80"]
+            [name:"CIFS_SMB", protocol:"TCP", localPort:"445", port:"445"],
+            [name:"WINRM", protocol:"TCP", localPort:"5985", port:"5985"],
+            [name:"WINRM_SSL", protocol:"TCP", localPort:"5986", port:"5986"],
+            [name:"HTTP", protocol:"TCP", localPort:"80", port:"80"]
 					],
 
 					// Firewall port to open (winrm port 5985 should be opened by default on the image)
 					"azure.firewall.ports" : [
-						  [name:"CLOUDIFY_GUI", protocol:"TCP", port:"8099"],
-						  [name:"CLOUDIFY_REST", protocol:"TCP", port:"8100"]
+					  [name:"CLOUDIFY_GUI", protocol:"TCP", port:"8099"],
+					  [name:"CLOUDIFY_REST", protocol:"TCP", port:"8100"]
 					]
 				])
 			}

@@ -7,11 +7,11 @@ import javax.xml.bind.annotation.XmlType;
 /**
  * 
  * @author mourouvi (fastconnect)
- *
+ * 
  */
 
 @XmlType(propOrder = { "type", "configurationSetType", "computerName", "adminPassword", "domainJoin", "winRM",
-		"adminUsername" })
+		"adminUsername", "customData" })
 public class WindowsProvisioningConfigurationSet extends ConfigurationSet {
 
 	private String configurationSetType = ConfigurationSet.WINDOWS_PROVISIONING_CONFIGURATION;
@@ -20,6 +20,7 @@ public class WindowsProvisioningConfigurationSet extends ConfigurationSet {
 	private String computerName;
 	private DomainJoin domainJoin;
 	private WinRM winRM;
+	private String customData;
 
 	@XmlAttribute(name = "type")
 	public String getType() {
@@ -27,7 +28,6 @@ public class WindowsProvisioningConfigurationSet extends ConfigurationSet {
 	}
 
 	public void setType(String type) {
-
 	}
 
 	@XmlElement(name = "ConfigurationSetType")
@@ -79,4 +79,14 @@ public class WindowsProvisioningConfigurationSet extends ConfigurationSet {
 	public void setDomainJoin(DomainJoin domainJoin) {
 		this.domainJoin = domainJoin;
 	}
+
+	@XmlElement(name = "CustomData")
+	public String getCustomData() {
+		return customData;
+	}
+
+	public void setCustomData(String customData) {
+		this.customData = customData;
+	}
+
 }

@@ -15,13 +15,10 @@
       "azure.pfx.file": pfxFile,
       "azure.pfx.password" : pfxPassword,
       "azure.cloud.service" : "cfytestitendpoints",
-	  
-	  "azure.endpoints" : [
-		  [name:"HTTP", protocol:"TCP", localPort: "80", port:"81"],
-		  [name:"SSH", protocol:"TCP", localPort: "22", port:"5000"],
-	 
-	  ],
-  
+  	  "azure.endpoints" : [
+  		  [name:"HTTP", protocol:"TCP", localPort: "80", port:"81"],
+  		  [name:"SSH", protocol:"TCP", localPort: "22", port:"5000"],
+  	  ],
     ])
   }
 ]

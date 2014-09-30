@@ -1,6 +1,8 @@
 package org.cloudifysource.esc.driver.provisioning.azure;
 
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.logging.Logger;
 
 import org.cloudifysource.domain.cloud.compute.ComputeTemplate;
@@ -11,6 +13,7 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.HostedServices;
 import org.cloudifysource.esc.driver.provisioning.azure.model.NetworkConfigurationSet;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Role;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleInstanceList;
+import org.cloudifysource.esc.util.Utils;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -207,6 +210,44 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 	public void testStartWindowsManagementMachineJoinDomain() throws Exception {
 		String computeTemplateName = "win2012_joindomain";
 		this.startAndStopManagementMachine(computeTemplateName);
+	}
 
+	public void testCustomDataUbuntu() throws Exception {
+
+		this.startAndStopManagementMachine("ubuntu1410_customdata", new MachineDetailsAssertion() {
+			@Override
+			public void additionalAssertions(MachineDetails md) throws TimeoutException {
+				try {
+					Utils.executeSSHCommand(md.getPublicAddress(),
+							"ls -l /home/administrateur/hello.txt",
+							md.getRemoteUsername(),
+							md.getRemotePassword(),
+							null,
+							30L, TimeUnit.SECONDS);
+				} catch (Exception e) {
+					Assert.fail("Failed to find the file '/home/administrateur/hello.txt' which should have been created by the custom data.");
+				}
+			}
+		});
+
+	}
+
+	@Test
+	@Ignore("Custom Data not working on Windows (content issue?)")
+	public void testCustomDataWindows() throws Exception {
+
+		this.startAndStopManagementMachine("win2012_customdata", new MachineDetailsAssertion() {
+			@Override
+			public void additionalAssertions(MachineDetails md) throws TimeoutException {
+				logger.warning("TODO assert that created file does exist.");
+			}
+		});
+
+	}
+
+	@Test
+	@Ignore
+	public void testCustomDataAgent() throws Exception {
+		this.startAndStopMachine("ubuntu1410_customdata", new MachineDetailsAssertion());
 	}
 }

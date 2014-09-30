@@ -94,6 +94,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	// Custom cloud DSL properties
 	private static final String AZURE_WIRE_LOG = "azure.wireLog";
 	private static final String AZURE_DEPLOYMENT_SLOT = "azure.deployment.slot";
+	private static final String AZURE_DEPLOYMENT_CUSTOMDATA = "azure.deployment.customdata";
 	private static final String AZURE_AFFINITY_LOCATION = "azure.affinity.location";
 	private static final String AZURE_AFFINITY_GROUP = "azure.affinity.group";
 	private static final String AZURE_STORAGE_ACCOUNT = "azure.storage.account";
@@ -125,6 +126,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	// Arguments per template
 	private String deploymentSlot;
+	private String deploymentCustomData;
 	private String imageName;
 	private String userName;
 	private String password;
@@ -199,6 +201,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		}
 
 		this.deploymentSlot = (String) this.template.getCustom().get(AZURE_DEPLOYMENT_SLOT);
+		this.deploymentCustomData = (String) this.template.getCustom().get(AZURE_DEPLOYMENT_CUSTOMDATA);
 		if (StringUtils.isBlank(deploymentSlot)) {
 			deploymentSlot = "Staging";
 		} else {
@@ -240,16 +243,17 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 				boolean cloudifyWebuiPort = false;
 				boolean cloudifyRestApiPort = false;
 				String port;
-				for (Map<String, String> firewallPort : firewallPorts) {
-					port = firewallPort.get("port");
-					if (!port.contains("-")) {
-						int p = Integer.parseInt(port);
-						if (p == WEBUI_PORT)
-							cloudifyWebuiPort = true;
-						if (p == REST_PORT)
-							cloudifyRestApiPort = true;
+				if (firewallPorts != null) {
+					for (Map<String, String> firewallPort : firewallPorts) {
+						port = firewallPort.get("port");
+						if (!port.contains("-")) {
+							int p = Integer.parseInt(port);
+							if (p == WEBUI_PORT)
+								cloudifyWebuiPort = true;
+							if (p == REST_PORT)
+								cloudifyRestApiPort = true;
+						}
 					}
-
 				}
 				if (firewallPorts == null || !(cloudifyWebuiPort && cloudifyRestApiPort)) {
 					throw new IllegalArgumentException("Custom field '"
@@ -448,6 +452,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			}
 
 			desc.setAffinityGroup(affinityGroup);
+			desc.setCustomData(deploymentCustomData);
 
 			InputEndpoints inputEndpoints = createInputEndPoints();
 
@@ -960,37 +965,30 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		return ipAddressesList;
 	}
 
-	// windows only
 	@SuppressWarnings("unchecked")
 	private DomainJoin getDomainJoin() {
 
 		DomainJoin domainJoin = null;
 
-		try {
+		Map<String, String> domainJoinMap = (Map<String, String>) this.template.getCustom().get(AZURE_DOMAIN_JOIN);
+		if (domainJoinMap != null && !domainJoinMap.isEmpty()) {
+			String domain = domainJoinMap.get(DOMAIN);
+			String userName = domainJoinMap.get(DOMAIN_USERNAME);
+			String password = domainJoinMap.get(DOMAIN_PASSWORD);
+			String joinDomain = domainJoinMap.get(JOIN_DOMAIN);
 
-			Map<String, String> domainJoinMap = (Map<String, String>) this.template.getCustom().get(AZURE_DOMAIN_JOIN);
-			if (domainJoinMap != null && !domainJoinMap.isEmpty()) {
-				String domain = domainJoinMap.get(DOMAIN);
-				String userName = domainJoinMap.get(DOMAIN_USERNAME);
-				String password = domainJoinMap.get(DOMAIN_PASSWORD);
-				String joinDomain = domainJoinMap.get(JOIN_DOMAIN);
+			if (StringUtils.isNotBlank(domain) && StringUtils.isNotBlank(userName)
+					&& StringUtils.isNotBlank(password) && StringUtils.isNotBlank(joinDomain)) {
 
-				if (StringUtils.isNotBlank(domain) && StringUtils.isNotBlank(userName)
-						&& StringUtils.isNotBlank(password)
-						&& StringUtils.isNotBlank(joinDomain)) {
+				JoinCredentials jc = new JoinCredentials();
+				jc.setDomain(domain);
+				jc.setUserNamer(userName);
+				jc.setPassword(password);
 
-					JoinCredentials jc = new JoinCredentials();
-					jc.setDomain(domain);
-					jc.setUserNamer(userName);
-					jc.setPassword(password);
-
-					domainJoin = new DomainJoin();
-					domainJoin.setCredentials(jc);
-					domainJoin.setJoinDomain(joinDomain);
-				}
+				domainJoin = new DomainJoin();
+				domainJoin.setCredentials(jc);
+				domainJoin.setJoinDomain(joinDomain);
 			}
-		} catch (Exception e) {
-			// TODO: handle exception
 		}
 		return domainJoin;
 	}

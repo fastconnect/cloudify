@@ -15,6 +15,7 @@
 			"azure.deployment.slot": "Staging",
 			"azure.pfx.file": pfxFile,
 			"azure.pfx.password" : pfxPassword,
+      "azure.endpoints" : [[name:"SSH", protocol:"TCP", localPort: "22", port:"22"]],
       "azure.deployment.customdata" : "#!/bin/sh\r\necho 'hello world' > /home/administrateur/hello.txt"
 		])
   }

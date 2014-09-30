@@ -9,6 +9,8 @@ import org.cloudifysource.domain.cloud.compute.ComputeTemplate;
 import org.cloudifysource.esc.driver.provisioning.MachineDetails;
 import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureRestClient;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
+import org.cloudifysource.esc.driver.provisioning.azure.model.Disk;
+import org.cloudifysource.esc.driver.provisioning.azure.model.Disks;
 import org.cloudifysource.esc.driver.provisioning.azure.model.HostedServices;
 import org.cloudifysource.esc.driver.provisioning.azure.model.NetworkConfigurationSet;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Role;
@@ -242,5 +244,25 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 	@Ignore
 	public void testCustomDataAgent() throws Exception {
 		this.startAndStopMachine("ubuntu1410_customdata", new MachineDetailsAssertion());
+	}
+
+	@Test
+	public void testUbuntuComputeTemplateStorage() throws Exception {
+		this.startAndStopManagementMachine("ubuntu1410_storage", new MachineDetailsAssertion() {
+			@Override
+			public void additionalAssertions(MachineDetails md) throws Exception {
+				MicrosoftAzureRestClient client = AzureTestUtils.createMicrosoftAzureRestClient();
+				String roleName = String.format("%sCFYM1", cloud.getProvider().getManagementGroup());
+				boolean vmLinkedToExpectedStorageAccount = false;
+				Disks disks = client.listOSDisks();
+				for (Disk disk : disks.getDisks()) {
+					if (disk.getMediaLink().contains("specificstorage")) {
+						Assert.assertEquals(roleName, disk.getAttachedTo().getRoleName());
+						vmLinkedToExpectedStorageAccount = true;
+					}
+				}
+				Assert.assertTrue(vmLinkedToExpectedStorageAccount);
+			}
+		});
 	}
 }

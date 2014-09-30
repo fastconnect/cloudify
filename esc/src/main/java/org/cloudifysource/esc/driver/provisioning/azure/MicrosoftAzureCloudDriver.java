@@ -264,7 +264,12 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		if (affinityGroup == null) {
 			throw new IllegalArgumentException("Custom field '" + AZURE_AFFINITY_GROUP + "' must be set");
 		}
+
 		this.storageAccountName = (String) this.cloud.getCustom().get(AZURE_STORAGE_ACCOUNT);
+		String computeTemplateStorageAccountName = (String) this.template.getCustom().get(AZURE_STORAGE_ACCOUNT);
+		if (StringUtils.isNotBlank(computeTemplateStorageAccountName)) {
+			this.storageAccountName = computeTemplateStorageAccountName;
+		}
 		if (storageAccountName == null) {
 			throw new IllegalArgumentException("Custom field '" + AZURE_STORAGE_ACCOUNT + "' must be set");
 		}

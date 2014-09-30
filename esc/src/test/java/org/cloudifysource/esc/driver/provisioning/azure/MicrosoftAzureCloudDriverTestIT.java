@@ -205,7 +205,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 	}
 
 	@Test
-	public void testCustomData() throws Exception {
+	public void testCustomDataUbuntu() throws Exception {
 
 		this.startAndStopManagementMachine("ubuntu1410_customdata", new MachineDetailsAssertion() {
 			@Override
@@ -220,6 +220,19 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 				} catch (Exception e) {
 					Assert.fail("Failed to find the file '/home/administrateur/hello.txt' which should have been created by the custom data.");
 				}
+			}
+		});
+
+	}
+
+	@Test
+	@Ignore("Custom Data not working on Windows (content issue?)")
+	public void testCustomDataWindows() throws Exception {
+
+		this.startAndStopManagementMachine("win2012_customdata", new MachineDetailsAssertion() {
+			@Override
+			public void additionalAssertions(MachineDetails md) throws TimeoutException {
+				logger.warning("TODO assert that created file does exist.");
 			}
 		});
 

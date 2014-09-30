@@ -235,16 +235,17 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 				boolean cloudifyWebuiPort = false;
 				boolean cloudifyRestApiPort = false;
 				String port;
-				for (Map<String, String> firewallPort : firewallPorts) {
-					port = firewallPort.get("port");
-					if (!port.contains("-")) {
-						int p = Integer.parseInt(port);
-						if (p == WEBUI_PORT)
-							cloudifyWebuiPort = true;
-						if (p == REST_PORT)
-							cloudifyRestApiPort = true;
+				if (firewallPorts != null) {
+					for (Map<String, String> firewallPort : firewallPorts) {
+						port = firewallPort.get("port");
+						if (!port.contains("-")) {
+							int p = Integer.parseInt(port);
+							if (p == WEBUI_PORT)
+								cloudifyWebuiPort = true;
+							if (p == REST_PORT)
+								cloudifyRestApiPort = true;
+						}
 					}
-
 				}
 				if (firewallPorts == null || !(cloudifyWebuiPort && cloudifyRestApiPort)) {
 					throw new IllegalArgumentException("Custom field '"

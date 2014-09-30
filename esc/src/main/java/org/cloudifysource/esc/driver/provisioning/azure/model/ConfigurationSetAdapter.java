@@ -139,7 +139,7 @@ public class ConfigurationSetAdapter
 		@XmlElement(name = "AdminPassword")
 		private String adminPassword;
 
-		@XmlElement(name = "domainJoin")
+		@XmlElement(name = "DomainJoin")
 		private DomainJoin domainJoin;
 
 		@XmlElement(name = "WinRM")

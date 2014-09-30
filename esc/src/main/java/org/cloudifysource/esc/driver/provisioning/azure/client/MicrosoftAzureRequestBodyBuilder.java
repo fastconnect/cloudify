@@ -259,13 +259,11 @@ public class MicrosoftAzureRequestBodyBuilder {
 					(computerNameArray.length > 1 ? computerNameArray[2] : computerNameArray[0]).toUpperCase();
 
 			WindowsProvisioningConfigurationSet windowsProvisioningSet = new WindowsProvisioningConfigurationSet();
-			// windowsProvisioningSet.setDisableSshPasswordAuthentication(true);
-			// windowsProvisioningSet.setHostName(roleName);
-			// windowsProvisioningSet.setUserName(userName);
-			// windowsProvisioningSet.setUserPassword(password);
 			windowsProvisioningSet.setAdminUsername(userName);
 			windowsProvisioningSet.setAdminPassword(password);
 			windowsProvisioningSet.setComputerName(computerName); // (not optional) Windows ComputerName
+			// domain join
+			windowsProvisioningSet.setDomainJoin(desc.getDomainJoin());
 			configurationSets.getConfigurationSets().add(windowsProvisioningSet);
 
 			// Set WinRM : HTTP without Certificate
@@ -279,6 +277,7 @@ public class MicrosoftAzureRequestBodyBuilder {
 
 			winRM.setListeners(listeners);
 			windowsProvisioningSet.setWinRM(winRM);
+
 		}
 		else {
 			LinuxProvisioningConfigurationSet linuxProvisioningSet = new LinuxProvisioningConfigurationSet();

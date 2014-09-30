@@ -5,6 +5,7 @@ package org.cloudifysource.esc.driver.provisioning.azure.client;
 
 import java.util.List;
 
+import org.cloudifysource.esc.driver.provisioning.azure.model.DomainJoin;
 import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoints;
 
 /************************************************************************************************
@@ -32,6 +33,7 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 	private String subnetName;
 	private boolean addToExistingDeployment = false;
 	private boolean appendCloudServiceName = true;
+	private DomainJoin domainJoin;
 
 	public String getHostedServiceName() {
 		return hostedServiceName;
@@ -189,6 +191,14 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 
 	public void setAppendCloudServiceName(boolean appendCloudServiceName) {
 		this.appendCloudServiceName = appendCloudServiceName;
+	}
+
+	public DomainJoin getDomainJoin() {
+		return domainJoin;
+	}
+
+	public void setDomainJoin(DomainJoin domainJoin) {
+		this.domainJoin = domainJoin;
 	}
 
 }

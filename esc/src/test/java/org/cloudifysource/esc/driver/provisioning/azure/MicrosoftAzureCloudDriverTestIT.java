@@ -200,4 +200,13 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 			};
 		});
 	}
+
+	@Test
+	@Ignore
+	// TODO enhance test ( verification )
+	public void testStartWindowsManagementMachineJoinDomain() throws Exception {
+		String computeTemplateName = "win2012_joindomain";
+		this.startAndStopManagementMachine(computeTemplateName);
+
+	}
 }

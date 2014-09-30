@@ -3,7 +3,7 @@ package org.cloudifysource.esc.driver.provisioning.azure.model;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 
-@XmlType(name = "Credentials", propOrder = { "domain", "domainUserNamer", "domainUserPassword" })
+@XmlType(name = "Credentials", propOrder = { "domain", "userNamer", "password" })
 public class JoinCredentials {
 
 	private String domain;

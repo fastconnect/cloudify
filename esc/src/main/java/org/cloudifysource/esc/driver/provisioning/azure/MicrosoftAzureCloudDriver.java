@@ -56,10 +56,12 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.AttachedTo;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Disk;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Disks;
+import org.cloudifysource.esc.driver.provisioning.azure.model.DomainJoin;
 import org.cloudifysource.esc.driver.provisioning.azure.model.HostedService;
 import org.cloudifysource.esc.driver.provisioning.azure.model.HostedServices;
 import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoint;
 import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoints;
+import org.cloudifysource.esc.driver.provisioning.azure.model.JoinCredentials;
 import org.cloudifysource.esc.installer.InstallationDetails;
 import org.cloudifysource.esc.installer.InstallerException;
 import org.cloudifysource.esc.installer.remoteExec.RemoteExecutor;
@@ -87,6 +89,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	private static final String AZURE_CLOUD_SERVICE = "azure.cloud.service";
 	private static final String VM_IP_ADDRESSES = "azure.network.ipAddresses";
+	private static final String AZURE_DOMAIN_JOIN = "azure.domain.join";
 
 	// Custom cloud DSL properties
 	private static final String AZURE_WIRE_LOG = "azure.wireLog";
@@ -138,6 +141,11 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	private static final int WEBUI_PORT = 8099;
 	private static final int REST_PORT = 8100;
+
+	private static final String DOMAIN = "domain";
+	private static final String DOMAIN_USERNAME = "userName";
+	private static final String DOMAIN_PASSWORD = "password";
+	private static final String JOIN_DOMAIN = "joinDomain";
 
 	// Commands template
 	String COMMAND_OPEN_FIREWALL_PORT = "netsh firewall set portopening";
@@ -457,6 +465,10 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 			logger.info("Launching a new virtual machine");
 			boolean isWindows = isWindowsVM();
+			if (isWindows) {
+				// domain join, support for windows at this moment
+				desc.setDomainJoin(getDomainJoin());
+			}
 
 			roleAddressDetails = azureClient.createVirtualMachineDeployment(desc, isWindows, endTime);
 
@@ -474,8 +486,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			machineDetails.setScriptLangeuage(this.scriptLanguage);
 
 			if (isWindows) {
-				// Open firewall ports needed for the template
 				// TODO remove this/ use other way to open firewall bootstrap ? customdata ?
+				// Open firewall ports needed for the template
 				openFirewallPorts(machineDetails);
 			}
 
@@ -864,7 +876,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 		// Add End Point for each port
 		if (this.endpoints != null) {
-			System.out.println();
 			for (Map<String, String> endpointMap : this.endpoints) {
 				String name = endpointMap.get("name");
 				String protocol = endpointMap.get("protocol");
@@ -888,8 +899,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 				} else {
 					String endPointValuesError = String.format("Failed provisioning VM, please check"
-							+ " endPoint required elements in compute template '%s' : [name: '%s'], [protocol: '%s'], "
-							+ "[localPort: '%s']", this.configuration.getCloudTemplate(), name, protocol, localPortStr);
+							+ " endPoint required elements in compute template '%s' : [name: '%s', protocol: '%s', "
+							+ "localPort: '%s']", this.configuration.getCloudTemplate(), name, protocol, localPortStr);
 					logger.severe(endPointValuesError);
 					throw new MicrosoftAzureException(endPointValuesError);
 				}
@@ -948,4 +959,40 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		}
 		return ipAddressesList;
 	}
+
+	// windows only
+	@SuppressWarnings("unchecked")
+	private DomainJoin getDomainJoin() {
+
+		DomainJoin domainJoin = null;
+
+		try {
+
+			Map<String, String> domainJoinMap = (Map<String, String>) this.template.getCustom().get(AZURE_DOMAIN_JOIN);
+			if (domainJoinMap != null && !domainJoinMap.isEmpty()) {
+				String domain = domainJoinMap.get(DOMAIN);
+				String userName = domainJoinMap.get(DOMAIN_USERNAME);
+				String password = domainJoinMap.get(DOMAIN_PASSWORD);
+				String joinDomain = domainJoinMap.get(JOIN_DOMAIN);
+
+				if (StringUtils.isNotBlank(domain) && StringUtils.isNotBlank(userName)
+						&& StringUtils.isNotBlank(password)
+						&& StringUtils.isNotBlank(joinDomain)) {
+
+					JoinCredentials jc = new JoinCredentials();
+					jc.setDomain(domain);
+					jc.setUserNamer(userName);
+					jc.setPassword(password);
+
+					domainJoin = new DomainJoin();
+					domainJoin.setCredentials(jc);
+					domainJoin.setJoinDomain(joinDomain);
+				}
+			}
+		} catch (Exception e) {
+			// TODO: handle exception
+		}
+		return domainJoin;
+	}
+
 }

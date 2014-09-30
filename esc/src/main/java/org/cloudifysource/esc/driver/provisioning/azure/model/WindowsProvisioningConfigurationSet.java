@@ -7,78 +7,85 @@ import javax.xml.bind.annotation.XmlType;
 /**
  * 
  * @author mourouvi (fastconnect)
- *
+ * 
  */
 
-@XmlType(propOrder = { "type", "configurationSetType", "computerName", "adminPassword", "winRM", "adminUsername"})
+@XmlType(propOrder = { "type", "configurationSetType", "computerName", "adminPassword", "winRM", "adminUsername",
+		"customData" })
 public class WindowsProvisioningConfigurationSet extends ConfigurationSet {
 
 	private String configurationSetType = ConfigurationSet.WINDOWS_PROVISIONING_CONFIGURATION;
 	private String hostName;
-//	private String userName;
-//	private String userPassword;
-    private String adminUsername;
+	// private String userName;
+	// private String userPassword;
+	private String adminUsername;
 	private String adminPassword;
 	private String computerName;
 	private WinRM winRM;
-//	private boolean disableSshPasswordAuthentication;
+	private String customData;
 
-    @XmlAttribute(name="type")
-    public String getType(){
-        return "WindowsProvisioningConfigurationSet";
-    }
+	// private boolean disableSshPasswordAuthentication;
 
-    public void setType(String type){}
-//	@XmlElement(name = "HostName")
-//	public String getHostName() {
-//		return hostName;
-//	}
-//
-//	public void setHostName(final String hostName) {
-//		this.hostName = hostName;
-//	}
-//
-//	@XmlElement(name = "UserName")
-//	public String getUserName() {
-//		return userName;
-//	}
-//
-//	public void setUserName(final String userName) {
-//		this.userName = userName;
-//	}
-//
-//	@XmlElement(name = "UserPassword")
-//	public String getUserPassword() {
-//		return userPassword;
-//	}
-//
-//	public void setUserPassword(final String userPassword) {
-//		this.userPassword = userPassword;
-//	}
+	@XmlAttribute(name = "type")
+	public String getType() {
+		return "WindowsProvisioningConfigurationSet";
+	}
 
-//	@XmlElement(name = "DisableSshPasswordAuthentication")
-//	public boolean isDisableSshPasswordAuthentication() {
-//		return disableSshPasswordAuthentication;
-//	}
-//
-//	public void setDisableSshPasswordAuthentication(
-//			final boolean disableSshPasswordAuthentication) {
-//		this.disableSshPasswordAuthentication = disableSshPasswordAuthentication;
-//	}
+	public void setType(String type) {
+	}
+
+	// @XmlElement(name = "HostName")
+	// public String getHostName() {
+	// return hostName;
+	// }
+	//
+	// public void setHostName(final String hostName) {
+	// this.hostName = hostName;
+	// }
+	//
+	// @XmlElement(name = "UserName")
+	// public String getUserName() {
+	// return userName;
+	// }
+	//
+	// public void setUserName(final String userName) {
+	// this.userName = userName;
+	// }
+	//
+	// @XmlElement(name = "UserPassword")
+	// public String getUserPassword() {
+	// return userPassword;
+	// }
+	//
+	// public void setUserPassword(final String userPassword) {
+	// this.userPassword = userPassword;
+	// }
+
+	// @XmlElement(name = "DisableSshPasswordAuthentication")
+	// public boolean isDisableSshPasswordAuthentication() {
+	// return disableSshPasswordAuthentication;
+	// }
+	//
+	// public void setDisableSshPasswordAuthentication(
+	// final boolean disableSshPasswordAuthentication) {
+	// this.disableSshPasswordAuthentication = disableSshPasswordAuthentication;
+	// }
 
 	@XmlElement(name = "ConfigurationSetType")
 	public String getConfigurationSetType() {
 		return configurationSetType;
 	}
 
-    @XmlElement(name = "AdminUsername")
-    public String getAdminUsername() {
-        return adminUsername;
-    }
+	@XmlElement(name = "AdminUsername")
+	public String getAdminUsername() {
+		return adminUsername;
+	}
 
-    public void setAdminUsername(final String adminUsername) { this.adminUsername = adminUsername; }
+	public void setAdminUsername(final String adminUsername) {
+		this.adminUsername = adminUsername;
+	}
 
-	@XmlElement(name="AdminPassword")
+	@XmlElement(name = "AdminPassword")
 	public String getAdminPassword() {
 		return adminPassword;
 	}
@@ -87,7 +94,7 @@ public class WindowsProvisioningConfigurationSet extends ConfigurationSet {
 		this.adminPassword = adminPassword;
 	}
 
-	@XmlElement(name="ComputerName")
+	@XmlElement(name = "ComputerName")
 	public String getComputerName() {
 		return computerName;
 	}
@@ -96,7 +103,7 @@ public class WindowsProvisioningConfigurationSet extends ConfigurationSet {
 		this.computerName = computerName;
 	}
 
-	@XmlElement(name="WinRM")
+	@XmlElement(name = "WinRM")
 	public WinRM getWinRM() {
 		return winRM;
 	}
@@ -104,4 +111,14 @@ public class WindowsProvisioningConfigurationSet extends ConfigurationSet {
 	public void setWinRM(WinRM winRM) {
 		this.winRM = winRM;
 	}
+
+	@XmlElement(name = "CustomData")
+	public String getCustomData() {
+		return customData;
+	}
+
+	public void setCustomData(String customData) {
+		this.customData = customData;
+	}
+
 }

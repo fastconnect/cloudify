@@ -91,6 +91,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	// Custom cloud DSL properties
 	private static final String AZURE_WIRE_LOG = "azure.wireLog";
 	private static final String AZURE_DEPLOYMENT_SLOT = "azure.deployment.slot";
+	private static final String AZURE_DEPLOYMENT_CUSTOMDATA = "azure.deployment.customdata";
 	private static final String AZURE_AFFINITY_LOCATION = "azure.affinity.location";
 	private static final String AZURE_AFFINITY_GROUP = "azure.affinity.group";
 	private static final String AZURE_STORAGE_ACCOUNT = "azure.storage.account";
@@ -122,6 +123,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	// Arguments per template
 	private String deploymentSlot;
+	private String deploymentCustomData;
 	private String imageName;
 	private String userName;
 	private String password;
@@ -191,6 +193,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		}
 
 		this.deploymentSlot = (String) this.template.getCustom().get(AZURE_DEPLOYMENT_SLOT);
+		this.deploymentCustomData = (String) this.template.getCustom().get(AZURE_DEPLOYMENT_CUSTOMDATA);
 		if (StringUtils.isBlank(deploymentSlot)) {
 			deploymentSlot = "Staging";
 		} else {
@@ -440,6 +443,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			}
 
 			desc.setAffinityGroup(affinityGroup);
+			desc.setCustomData(deploymentCustomData);
 
 			InputEndpoints inputEndpoints = createInputEndPoints();
 

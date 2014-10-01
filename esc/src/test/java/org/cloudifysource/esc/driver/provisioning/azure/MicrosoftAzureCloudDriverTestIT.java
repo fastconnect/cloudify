@@ -55,7 +55,14 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 				RoleInstanceList roleInstanceList = deployment.getRoleInstanceList();
 				Assert.assertNotNull("Couldn't find VM " + machineName,
 						roleInstanceList.getInstanceRoleByRoleName(machineName));
+
+				// Check availabilitySet
+				String availabilitySet = deployment.getRoleList().getRoleByName(machineName).getAvailabilitySetName();
+				Assert.assertNotNull(availabilitySet);
+				Assert.assertTrue(availabilitySet.startsWith(codeCountry + codeEnvironment + "AVITTEST"));
+
 			}
+
 		});
 	}
 
@@ -209,6 +216,13 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 	}
 
 	@Test
+	@Ignore
+	// TODO enhance test ( verification )
+	public void testStartWindowsManagementMachineJoinDomain() throws Exception {
+		String computeTemplateName = "win2012_joindomain";
+		this.startAndStopManagementMachine(computeTemplateName);
+	}
+
 	public void testCustomDataUbuntu() throws Exception {
 
 		this.startAndStopManagementMachine("ubuntu1410_customdata", new MachineDetailsAssertion() {

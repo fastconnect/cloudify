@@ -5,6 +5,7 @@ package org.cloudifysource.esc.driver.provisioning.azure.client;
 
 import java.util.List;
 
+import org.cloudifysource.esc.driver.provisioning.azure.model.DomainJoin;
 import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoints;
 
 /************************************************************************************************
@@ -32,6 +33,8 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 	private String subnetName;
 	private boolean addToExistingDeployment = false;
 	private boolean appendCloudServiceName = true;
+	private String cloudServiceName;
+	private DomainJoin domainJoin;
 	private String customData;
 	private Integer dataDiskSize;
 
@@ -207,6 +210,22 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 
 	public void setDataDiskSize(int dataDiskSize) {
 		this.dataDiskSize = dataDiskSize;
+	}
+
+	public DomainJoin getDomainJoin() {
+		return domainJoin;
+	}
+
+	public void setDomainJoin(DomainJoin domainJoin) {
+		this.domainJoin = domainJoin;
+	}
+
+	public String getCloudServiceName() {
+		return cloudServiceName;
+	}
+
+	public void setCloudServiceName(String cloudServiceName) {
+		this.cloudServiceName = cloudServiceName;
 	}
 
 }

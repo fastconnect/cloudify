@@ -34,30 +34,20 @@ public class ConfigurationSetAdapter
 					new LinuxProvisioningConfigurationSet();
 			linuxProvisioningConfigurationSet
 					.setDisableSshPasswordAuthentication(adaptedConfigurationSet.disableSshPasswordAuthentication);
-			linuxProvisioningConfigurationSet
-					.setHostName(adaptedConfigurationSet.hostName);
-			linuxProvisioningConfigurationSet
-					.setUserName(adaptedConfigurationSet.userName);
-			linuxProvisioningConfigurationSet
-					.setUserPassword(adaptedConfigurationSet.userPassword);
+			linuxProvisioningConfigurationSet.setHostName(adaptedConfigurationSet.hostName);
+			linuxProvisioningConfigurationSet.setUserName(adaptedConfigurationSet.userName);
+			linuxProvisioningConfigurationSet.setUserPassword(adaptedConfigurationSet.userPassword);
 
 		} else if (ConfigurationSet.WINDOWS_PROVISIONING_CONFIGURATION
 				.equals(adaptedConfigurationSet.configurationSetType)) {
 			WindowsProvisioningConfigurationSet windowsProvisioningConfigurationSet =
 					new WindowsProvisioningConfigurationSet();
-			// windowsProvisioningConfigurationSet
-			// .setDisableSshPasswordAuthentication(adaptedConfigurationSet.disableSshPasswordAuthentication);
-			// windowsProvisioningConfigurationSet
-			// .setHostName(adaptedConfigurationSet.hostName);
-			// windowsProvisioningConfigurationSet
-			// .setUserName(adaptedConfigurationSet.userName);
-			// windowsProvisioningConfigurationSet
-			// .setUserPassword(adaptedConfigurationSet.userPassword);
 
 			windowsProvisioningConfigurationSet.setComputerName(adaptedConfigurationSet.computerName);
 			windowsProvisioningConfigurationSet.setAdminUsername(adaptedConfigurationSet.adminUsername);
 			windowsProvisioningConfigurationSet.setAdminPassword(adaptedConfigurationSet.adminPassword);
 			windowsProvisioningConfigurationSet.setWinRM(adaptedConfigurationSet.winRM);
+			windowsProvisioningConfigurationSet.setDomainJoin(adaptedConfigurationSet.domainJoin);
 
 		} else {// NetworkConfiguration
 			NetworkConfigurationSet networkConfigurationSet = new NetworkConfigurationSet();
@@ -107,15 +97,13 @@ public class ConfigurationSetAdapter
 			adaptedConfigurationSet.type = WindowsProvisioningConfigurationSet.getType();
 			adaptedConfigurationSet.configurationSetType =
 					WindowsProvisioningConfigurationSet.getConfigurationSetType();
-			// adaptedConfigurationSet.disableSshPasswordAuthentication =
-			// WindowsProvisioningConfigurationSet.isDisableSshPasswordAuthentication();
-			// adaptedConfigurationSet.hostName = WindowsProvisioningConfigurationSet.getHostName();
-			// adaptedConfigurationSet.userName = WindowsProvisioningConfigurationSet.getUserName();
-			// adaptedConfigurationSet.userPassword = WindowsProvisioningConfigurationSet.getUserPassword();
 			adaptedConfigurationSet.adminUsername = WindowsProvisioningConfigurationSet.getAdminUsername();
 			adaptedConfigurationSet.adminPassword = WindowsProvisioningConfigurationSet.getAdminPassword();
 			adaptedConfigurationSet.computerName = WindowsProvisioningConfigurationSet.getComputerName();
 			adaptedConfigurationSet.winRM = WindowsProvisioningConfigurationSet.getWinRM();
+
+			adaptedConfigurationSet.domainJoin = WindowsProvisioningConfigurationSet.getDomainJoin();
+
 			adaptedConfigurationSet.customData = WindowsProvisioningConfigurationSet.getCustomData();
 
 		} else {
@@ -149,6 +137,9 @@ public class ConfigurationSetAdapter
 
 		@XmlElement(name = "AdminPassword")
 		private String adminPassword;
+
+		@XmlElement(name = "DomainJoin")
+		private DomainJoin domainJoin;
 
 		@XmlElement(name = "WinRM")
 		private WinRM winRM;

@@ -10,21 +10,17 @@ import javax.xml.bind.annotation.XmlType;
  * 
  */
 
-@XmlType(propOrder = { "type", "configurationSetType", "computerName", "adminPassword", "winRM", "adminUsername",
-		"customData" })
+@XmlType(propOrder = { "type", "configurationSetType", "computerName", "adminPassword", "domainJoin", "winRM",
+		"adminUsername", "customData" })
 public class WindowsProvisioningConfigurationSet extends ConfigurationSet {
 
 	private String configurationSetType = ConfigurationSet.WINDOWS_PROVISIONING_CONFIGURATION;
-	private String hostName;
-	// private String userName;
-	// private String userPassword;
 	private String adminUsername;
 	private String adminPassword;
 	private String computerName;
+	private DomainJoin domainJoin;
 	private WinRM winRM;
 	private String customData;
-
-	// private boolean disableSshPasswordAuthentication;
 
 	@XmlAttribute(name = "type")
 	public String getType() {
@@ -33,43 +29,6 @@ public class WindowsProvisioningConfigurationSet extends ConfigurationSet {
 
 	public void setType(String type) {
 	}
-
-	// @XmlElement(name = "HostName")
-	// public String getHostName() {
-	// return hostName;
-	// }
-	//
-	// public void setHostName(final String hostName) {
-	// this.hostName = hostName;
-	// }
-	//
-	// @XmlElement(name = "UserName")
-	// public String getUserName() {
-	// return userName;
-	// }
-	//
-	// public void setUserName(final String userName) {
-	// this.userName = userName;
-	// }
-	//
-	// @XmlElement(name = "UserPassword")
-	// public String getUserPassword() {
-	// return userPassword;
-	// }
-	//
-	// public void setUserPassword(final String userPassword) {
-	// this.userPassword = userPassword;
-	// }
-
-	// @XmlElement(name = "DisableSshPasswordAuthentication")
-	// public boolean isDisableSshPasswordAuthentication() {
-	// return disableSshPasswordAuthentication;
-	// }
-	//
-	// public void setDisableSshPasswordAuthentication(
-	// final boolean disableSshPasswordAuthentication) {
-	// this.disableSshPasswordAuthentication = disableSshPasswordAuthentication;
-	// }
 
 	@XmlElement(name = "ConfigurationSetType")
 	public String getConfigurationSetType() {
@@ -110,6 +69,15 @@ public class WindowsProvisioningConfigurationSet extends ConfigurationSet {
 
 	public void setWinRM(WinRM winRM) {
 		this.winRM = winRM;
+	}
+
+	@XmlElement(name = "DomainJoin")
+	public DomainJoin getDomainJoin() {
+		return domainJoin;
+	}
+
+	public void setDomainJoin(DomainJoin domainJoin) {
+		this.domainJoin = domainJoin;
 	}
 
 	@XmlElement(name = "CustomData")

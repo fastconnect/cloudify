@@ -261,10 +261,6 @@ public class MicrosoftAzureRequestBodyBuilder {
 					(computerNameArray.length > 1 ? computerNameArray[2] : computerNameArray[0]).toUpperCase();
 
 			WindowsProvisioningConfigurationSet windowsProvisioningSet = new WindowsProvisioningConfigurationSet();
-			// windowsProvisioningSet.setDisableSshPasswordAuthentication(true);
-			// windowsProvisioningSet.setHostName(roleName);
-			// windowsProvisioningSet.setUserName(userName);
-			// windowsProvisioningSet.setUserPassword(password);
 			windowsProvisioningSet.setAdminUsername(userName);
 			windowsProvisioningSet.setAdminPassword(password);
 			windowsProvisioningSet.setComputerName(computerName); // (not optional) Windows ComputerName
@@ -281,14 +277,17 @@ public class MicrosoftAzureRequestBodyBuilder {
 
 			winRM.setListeners(listeners);
 			windowsProvisioningSet.setWinRM(winRM);
+
 			if (StringUtils.isNotBlank(customData)) {
 				try {
 					windowsProvisioningSet.setCustomData(new String(Base64.encode(customData), UTF_8));
 				} catch (UnsupportedEncodingException e) {
 					// ignore
 				}
-
 			}
+
+			// domain join (windows only)
+			windowsProvisioningSet.setDomainJoin(desc.getDomainJoin());
 		}
 		else {
 			LinuxProvisioningConfigurationSet linuxProvisioningSet = new LinuxProvisioningConfigurationSet();

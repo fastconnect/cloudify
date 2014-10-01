@@ -416,7 +416,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 			desc.setAvailabilitySetName(availabilitySetName);
 
-			// verify whether hosted service is set or not
+			// verify whether hosted service is set or not in the compute template
 			String hostedCloudService = (String) template.getCustom().get(AZURE_CLOUD_SERVICE);
 			if (hostedCloudService != null && !hostedCloudService.trim().isEmpty()) {
 
@@ -436,7 +436,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 						// use add role
 						desc.setAddToExistingDeployment(true);
 
-						// create a new one
+						// create a new deployment
 					} else {
 						desc.setDeploymentName(hostedCloudService);
 					}
@@ -444,11 +444,16 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 					desc.setHostedServiceName(hostedCloudService);
 
 				} else {
-					// at this point a cs/deployment will be created
+					// a cs/deployment will be created with specified name
 					logger.warning(String.format("The cloud service '%s' doesn't exist on azure. "
-							+ "A new cloud service creation will be requested.", hostedCloudService));
+							+ "It will be created.", hostedCloudService));
 					desc.setAppendCloudServiceName(false);
+					desc.setCloudServiceName(hostedCloudService);
 				}
+			} else {
+				// a cs will be created with a generated name
+				logger.fine(String.format("No cloud service was specified in compute '%s'. "
+						+ "It will be created with a generic name.", this.cloudTemplateName));
 			}
 
 			desc.setAffinityGroup(affinityGroup);

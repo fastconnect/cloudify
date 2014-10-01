@@ -468,7 +468,7 @@ public class MicrosoftAzureRestClient {
 						// create a cloud service with the specified name in compute template
 					} else {
 						serviceName = createCloudService(deploymentDesc.getAffinityGroup(),
-								deploymentDesc.getHostedServiceName(), endTime);
+								deploymentDesc.getCloudServiceName(), endTime);
 					}
 
 					deploymentDesc.setHostedServiceName(serviceName);
@@ -479,7 +479,7 @@ public class MicrosoftAzureRestClient {
 				}
 
 				// check static IP(s) availability
-				// this will be skipped if no private ip was defined in the current compute template
+				// which is skipped if no private ip was defined in the current compute template
 				if (deploymentDesc.getIpAddresses() != null) {
 					String availableIp = setAvailableIpIfExist(deploymentDesc.getIpAddresses(),
 							deploymentDesc.getNetworkName(), deploymentDesc.getSubnetName(), endTime);

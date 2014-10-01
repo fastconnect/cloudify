@@ -33,6 +33,7 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 	private String subnetName;
 	private boolean addToExistingDeployment = false;
 	private boolean appendCloudServiceName = true;
+	private String cloudServiceName;
 	private DomainJoin domainJoin;
 	private String customData;
 
@@ -208,6 +209,14 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 
 	public void setDomainJoin(DomainJoin domainJoin) {
 		this.domainJoin = domainJoin;
+	}
+
+	public String getCloudServiceName() {
+		return cloudServiceName;
+	}
+
+	public void setCloudServiceName(String cloudServiceName) {
+		this.cloudServiceName = cloudServiceName;
 	}
 
 }

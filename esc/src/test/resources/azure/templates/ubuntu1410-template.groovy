@@ -14,7 +14,8 @@
 		custom ([
 			"azure.deployment.slot": "Staging",
 			"azure.pfx.file": pfxFile,
-			"azure.pfx.password" : pfxPassword
+			"azure.pfx.password" : pfxPassword,
+			"azure.availability.set" : "AVITTEST"
 		])
   }
 ]

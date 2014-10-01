@@ -51,7 +51,14 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 				RoleInstanceList roleInstanceList = deployment.getRoleInstanceList();
 				Assert.assertNotNull("Couldn't find VM " + machineName,
 						roleInstanceList.getInstanceRoleByRoleName(machineName));
+
+				// Check availabilitySet
+				String availabilitySet = deployment.getRoleList().getRoleByName(machineName).getAvailabilitySetName();
+				Assert.assertNotNull(availabilitySet);
+				Assert.assertTrue(availabilitySet.startsWith(codeCountry + codeEnvironment + "AVITTEST"));
+
 			}
+
 		});
 	}
 

@@ -7,9 +7,9 @@ import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 
 /**
- *
+ * 
  * @author elip
- *
+ * 
  */
 public final class ModelContextFactory {
 
@@ -66,6 +66,7 @@ public final class ModelContextFactory {
 		CLASSES.add(Disk.class);
 		CLASSES.add(Disks.class);
 		CLASSES.add(PersistentVMRole.class);
+		CLASSES.add(DataVirtualHardDisk.class);
 	}
 
 	private static Class<?>[] getClasses() {
@@ -75,7 +76,7 @@ public final class ModelContextFactory {
 	}
 
 	/**
-	 *
+	 * 
 	 * @return - a {@link JAXBContext} to be used for marshaling and unmarshalling objects
 	 */
 	public static synchronized JAXBContext createInstance() {

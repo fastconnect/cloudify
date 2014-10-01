@@ -10,6 +10,7 @@
 
 package org.cloudifysource.esc.driver.provisioning.azure.client;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -31,6 +32,7 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.ConfigurationSets;
 import org.cloudifysource.esc.driver.provisioning.azure.model.CreateAffinityGroup;
 import org.cloudifysource.esc.driver.provisioning.azure.model.CreateHostedService;
 import org.cloudifysource.esc.driver.provisioning.azure.model.CreateStorageServiceInput;
+import org.cloudifysource.esc.driver.provisioning.azure.model.DataVirtualHardDisk;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Deployments;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Disk;
@@ -39,6 +41,7 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.Error;
 import org.cloudifysource.esc.driver.provisioning.azure.model.GlobalNetworkConfiguration;
 import org.cloudifysource.esc.driver.provisioning.azure.model.HostedService;
 import org.cloudifysource.esc.driver.provisioning.azure.model.HostedServices;
+import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoints;
 import org.cloudifysource.esc.driver.provisioning.azure.model.NetworkConfigurationSet;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Operation;
 import org.cloudifysource.esc.driver.provisioning.azure.model.PersistentVMRole;
@@ -576,6 +579,15 @@ public class MicrosoftAzureRestClient {
 			throw new MicrosoftAzureException(e);
 		}
 
+		// ***************************************
+		// Add a data disk when creating a new VM
+		if (deploymentDesc.getDataDiskSize() != null) {
+			this.addDataDiskToVM(deploymentDesc.getHostedServiceName(), deploymentDesc.getDeploymentName(),
+					deploymentDesc.getRoleName(), deploymentDesc.getStorageAccountName(),
+					deploymentDesc.getDataDiskSize(), endTime);
+		}
+		// ***************************************
+
 		RoleDetails roleAddressDetails = new RoleDetails();
 
 		String privateIp = null;
@@ -599,8 +611,12 @@ public class MicrosoftAzureRestClient {
 		for (ConfigurationSet configurationSet : configurationSets) {
 			if (configurationSet instanceof NetworkConfigurationSet) {
 				NetworkConfigurationSet networkConfigurationSet = (NetworkConfigurationSet) configurationSet;
-				publicIp = networkConfigurationSet.getInputEndpoints()
-						.getInputEndpoints().get(0).getvIp();
+				if (networkConfigurationSet.getInputEndpoints() != null) {
+					// TODO if no endpoint has been defined, the VM will note have a public IP
+					// Should retrieve the public ip in the cloud service.
+					publicIp = networkConfigurationSet.getInputEndpoints()
+							.getInputEndpoints().get(0).getvIp();
+				}
 			}
 		}
 
@@ -839,12 +855,11 @@ public class MicrosoftAzureRestClient {
 			final String cloudServiceName, final String deploymentName, final long endTime)
 			throws TimeoutException, MicrosoftAzureException, InterruptedException {
 
-		String diskName = null;
 		String roleName = null;
-		Disk disk = getDiskByAttachedCloudService(cloudServiceName);
-		if (disk != null) {
-			diskName = disk.getName();
-			roleName = disk.getAttachedTo().getRoleName();
+		// Disk disk = getDiskByAttachedCloudService(cloudServiceName);
+		List<Disk> disks = getDisksByAttachedCloudService(cloudServiceName);
+		if (disks != null && !disks.isEmpty()) {
+			roleName = disks.get(0).getAttachedTo().getRoleName();
 		} else {
 			throw new IllegalStateException("Disk cannot be null for an existing deployment " + deploymentName
 					+ " in cloud service " + cloudServiceName);
@@ -853,14 +868,17 @@ public class MicrosoftAzureRestClient {
 		logger.info("Deleting Virtual Machine " + roleName);
 		deleteDeployment(cloudServiceName, deploymentName, endTime);
 
-		logger.fine("Deleting cloud service : " + cloudServiceName
-				+ " that was dedicated for virtual machine " + roleName);
+		logger.fine("Deleting cloud service : " + cloudServiceName + " that was dedicated for virtual machine "
+				+ roleName);
 		deleteCloudService(cloudServiceName, endTime);
 
-		logger.fine("Waiting for OS Disk " + diskName + " to detach from role " + roleName);
-		waitForDiskToDetach(diskName, roleName, endTime);
-		logger.info("Deleting OS Disk : " + diskName);
-		deleteOSDisk(diskName, endTime);
+		for (Disk disk : disks) {
+			String diskName = disk.getName();
+			logger.fine("Waiting for OS or Data Disk " + diskName + " to detach from role " + roleName);
+			waitForDiskToDetach(diskName, roleName, endTime);
+			logger.info("Deleting OS or Data Disk : " + diskName);
+			deleteOSDisk(diskName, endTime);
+		}
 	}
 
 	private Disk getDiskByAttachedCloudService(final String cloudServiceName)
@@ -874,6 +892,19 @@ public class MicrosoftAzureRestClient {
 			}
 		}
 		return null;
+	}
+
+	private List<Disk> getDisksByAttachedCloudService(final String cloudServiceName)
+			throws MicrosoftAzureException, TimeoutException {
+		List<Disk> cloudServiceDisks = new ArrayList<Disk>();
+		Disks disks = listOSDisks();
+		for (Disk disk : disks) {
+			AttachedTo attachedTo = disk.getAttachedTo();
+			if ((attachedTo != null) && (attachedTo.getHostedServiceName().equals(cloudServiceName))) {
+				cloudServiceDisks.add(disk);
+			}
+		}
+		return cloudServiceDisks;
 	}
 
 	private void waitForDiskToDetach(final String diskName, final String roleName, long endTime)
@@ -1486,12 +1517,14 @@ public class MicrosoftAzureRestClient {
 		for (ConfigurationSet configurationSet : configurationSets) {
 			if (configurationSet instanceof NetworkConfigurationSet) {
 				NetworkConfigurationSet networkConfigurationSet = (NetworkConfigurationSet) configurationSet;
-				publicIp = networkConfigurationSet.getInputEndpoints()
-						.getInputEndpoints().get(0).getvIp();
+				// FIXME No endpoints = no public IP !!!
+				InputEndpoints inputEndpoints = networkConfigurationSet.getInputEndpoints();
+				if (inputEndpoints != null) {
+					publicIp = inputEndpoints.getInputEndpoints().get(0).getvIp();
+				}
 			}
 		}
 		return publicIp;
-
 	}
 
 	private String getPrivateIpFromDeployment(final Deployment deployment) {
@@ -1568,6 +1601,35 @@ public class MicrosoftAzureRestClient {
 		}
 
 		return deployment;
+	}
+
+	public void addDataDiskToVM(String serviceName, String deploymentName, String roleName, String storageAccountName,
+			int diskSize, long endTime) throws MicrosoftAzureException, TimeoutException, InterruptedException {
+		// https://management.core.windows.net/<subscription-id>/services/hostedservices/<service-name>/deployments/<deployment-name>/roles/<role-name>/DataDisks
+
+		StringBuilder dataMediaLinkBuilder = new StringBuilder();
+		dataMediaLinkBuilder.append("https://");
+		dataMediaLinkBuilder.append(storageAccountName);
+		dataMediaLinkBuilder.append(".blob.core.windows.net/vhds/");
+		dataMediaLinkBuilder.append(serviceName);
+		dataMediaLinkBuilder.append("-");
+		dataMediaLinkBuilder.append(roleName);
+		dataMediaLinkBuilder.append("-data-");
+		dataMediaLinkBuilder.append(UUIDHelper.generateRandomUUID(4));
+		dataMediaLinkBuilder.append(".vhd");
+		DataVirtualHardDisk dataVirtualHardDisk = new DataVirtualHardDisk();
+		dataVirtualHardDisk.setLogicalDiskSizeInGB(10);
+		dataVirtualHardDisk.setMediaLink(dataMediaLinkBuilder.toString());
+		dataVirtualHardDisk.setDiskLabel("Data");
+		dataVirtualHardDisk.setLun(0);
+
+		String xmlRequest = MicrosoftAzureModelUtils.marshall(dataVirtualHardDisk, false);
+		String url = String.format("/services/hostedservices/%s/deployments/%s/roles/%s/DataDisks",
+				serviceName, deploymentName, roleName);
+		ClientResponse response = doPost(url, xmlRequest);
+		String requestId = extractRequestId(response);
+		waitForRequestToFinish(requestId, endTime);
+		logger.fine("Added a data disk to " + roleName);
 	}
 
 }

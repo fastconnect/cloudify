@@ -10,12 +10,13 @@
 		fileTransfer "SCP"
 		remoteExecution "SSH"
 		scriptLanguage "LINUX_SHELL"
-		javaUrl "https://s3-eu-west-1.amazonaws.com/cloudify-eu/jdk-6u32-linux-x64.bin"
 		custom ([
-			"azure.deployment.slot": "Staging",
+      //"azure.cloud.service" : "vk14admSOLR001",
+			"azure.deployment.slot": "Production",
 			"azure.pfx.file": pfxFile,
 			"azure.pfx.password" : pfxPassword,
-      "azure.storage.account" : "specificstorage"
+      "azure.storage.account" : "specificstorage",
+      "azure.storage.datadisk.size" : 10
 		])
   }
 ]

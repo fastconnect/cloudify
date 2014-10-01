@@ -1,5 +1,6 @@
 package org.cloudifysource.esc.driver.provisioning.azure;
 
+import java.net.MalformedURLException;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -7,6 +8,7 @@ import java.util.logging.Logger;
 
 import org.cloudifysource.domain.cloud.compute.ComputeTemplate;
 import org.cloudifysource.esc.driver.provisioning.MachineDetails;
+import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureException;
 import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureRestClient;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Disk;
@@ -241,28 +243,59 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 	}
 
 	@Test
-	@Ignore
-	public void testCustomDataAgent() throws Exception {
-		this.startAndStopMachine("ubuntu1410_customdata", new MachineDetailsAssertion());
+	public void testUbuntuComputeTemplateStorage() throws Exception {
+		String computeTemplate = "ubuntu1410_storage";
+
+		MicrosoftAzureCloudDriver driver = createDriver(computeTemplate, true);
+		try {
+			this.startManagementMachine(driver, new StorageAssertion("CFYM1", "specificstorage", true));
+			this.startAndStopMachine(computeTemplate,
+					new StorageAssertion(DEFAULT_SERVICE_NAME + "001", "specificstorage", false));
+		} finally {
+			stopManagementMachines(driver);
+		}
+
 	}
 
-	@Test
-	public void testUbuntuComputeTemplateStorage() throws Exception {
-		this.startAndStopManagementMachine("ubuntu1410_storage", new MachineDetailsAssertion() {
-			@Override
-			public void additionalAssertions(MachineDetails md) throws Exception {
-				MicrosoftAzureRestClient client = AzureTestUtils.createMicrosoftAzureRestClient();
-				String roleName = String.format("%sCFYM1", cloud.getProvider().getManagementGroup());
-				boolean vmLinkedToExpectedStorageAccount = false;
-				Disks disks = client.listOSDisks();
-				for (Disk disk : disks.getDisks()) {
-					if (disk.getMediaLink().contains("specificstorage")) {
-						Assert.assertEquals(roleName, disk.getAttachedTo().getRoleName());
-						vmLinkedToExpectedStorageAccount = true;
-					}
-				}
-				Assert.assertTrue(vmLinkedToExpectedStorageAccount);
+	class StorageAssertion extends MachineDetailsAssertion {
+		private String roleSuffix;
+		private String storageName;
+		private boolean checkPublicAddress;
+
+		public StorageAssertion(String roleSuffix, String storageName, boolean checkPublicAddress) {
+			this.roleSuffix = roleSuffix;
+			this.storageName = storageName;
+			this.checkPublicAddress = checkPublicAddress;
+		}
+
+		@Override
+		public void assertMachineDetails(MachineDetails md) throws Exception {
+			Assert.assertNotNull("MachineDetails is null", md);
+			Assert.assertNotNull("machineId is null", md.getMachineId());
+			String privateAddress = md.getPrivateAddress();
+			String publicAddress = md.getPublicAddress();
+			logger.info("private ip=" + privateAddress);
+			if (checkPublicAddress) {
+				logger.info("public ip=" + publicAddress);
+				Assert.assertNotNull("public address is null", publicAddress);
 			}
-		});
+			Assert.assertNotNull("private address is null", privateAddress);
+			additionalAssertions(md);
+		}
+
+		public void assertNbDataDisk() throws MalformedURLException,
+				MicrosoftAzureException, TimeoutException {
+			MicrosoftAzureRestClient client = AzureTestUtils.createMicrosoftAzureRestClient();
+			String roleName = String.format("%s%s", cloud.getProvider().getManagementGroup(), roleSuffix);
+			int nbDiskAttachedToVM = 0;
+			Disks disks = client.listOSDisks();
+			for (Disk disk : disks.getDisks()) {
+				if (disk.getMediaLink().contains(storageName)) {
+					Assert.assertEquals(roleName, disk.getAttachedTo().getRoleName());
+					nbDiskAttachedToVM++;
+				}
+			}
+			Assert.assertEquals(2, nbDiskAttachedToVM);
+		}
 	}
 }

@@ -72,4 +72,14 @@ public class MicrosoftAzureRestClientTestIT {
 			}
 		}
 	}
+
+	@Test
+	@Ignore
+	public void testAddDataDiskToVM() throws Exception {
+		String serviceName = "vk14adm001";
+		String deploymentName = serviceName;
+		String roleName = "vk14CFYM1";
+		String storageAccountName = "specificstorage";
+		client.addDataDiskToVM(serviceName, deploymentName, roleName, storageAccountName, 10, createDefaultEndTime());
+	}
 }

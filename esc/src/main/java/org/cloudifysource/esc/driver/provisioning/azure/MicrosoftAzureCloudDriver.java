@@ -15,8 +15,10 @@ package org.cloudifysource.esc.driver.provisioning.azure;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -95,6 +97,12 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String AZURE_AFFINITY_LOCATION = "azure.affinity.location";
 	private static final String AZURE_AFFINITY_GROUP = "azure.affinity.group";
 	private static final String AZURE_STORAGE_ACCOUNT = "azure.storage.account";
+
+	/**
+	 * Optional. If set, the driver will create and attack a data disk with the defined size to the new VM.
+	 */
+	private static final String AZURE_STORAGE_DATADISK_SIZE = "azure.storage.datadisk.size";
+
 	private static final String AZURE_AVAILABILITY_SET = "azure.availability.set";
 	private static final String AZURE_CLEANUP_ON_TEARDOWN = "azure.cleanup.on.teardown";
 
@@ -131,6 +139,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private String pathToPfxFile;
 	private String pfxPassword;
 	private String availabilitySet;
+	private Integer dataDiskSize;
+
 	private FileTransferModes fileTransferMode;
 	private RemoteExecutionModes remoteExecutionMode;
 	private ScriptLanguages scriptLanguage;
@@ -274,6 +284,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			throw new IllegalArgumentException("Custom field '" + AZURE_STORAGE_ACCOUNT + "' must be set");
 		}
 
+		// Data disk size
+		this.dataDiskSize = (Integer) this.template.getCustom().get(AZURE_STORAGE_DATADISK_SIZE);
+
 		// Network
 		Map<String, String> networkCustom = this.cloud.getCloudNetwork().getCustom();
 		this.networkName = (String) networkCustom.get(AZURE_NETWORK_NAME);
@@ -385,6 +398,13 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	public MachineDetails startMachine(ProvisioningContext context, long duration, TimeUnit unit)
 			throws TimeoutException, CloudProvisioningException {
 		long endTime = System.currentTimeMillis() + unit.toMillis(duration);
+
+		try {
+			azureClient.createStorageAccount(affinityGroup, storageAccountName, endTime);
+		} catch (Exception e) {
+			throw new CloudProvisioningException(e);
+		}
+
 		// underscore character in hostname might cause deployment to fail
 		String serverName = this.serverNamePrefix + String.format("%03d", serviceCounter.getAndIncrement());
 		final ComputeTemplate computeTemplate = this.cloud.getCloudCompute().getTemplates().get(this.cloudTemplateName);
@@ -450,6 +470,11 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 			desc.setAffinityGroup(affinityGroup);
 			desc.setCustomData(deploymentCustomData);
+
+			// Data disk configuration
+			if (this.dataDiskSize != null) {
+				desc.setDataDiskSize(dataDiskSize);
+			}
 
 			InputEndpoints inputEndpoints = createInputEndPoints();
 
@@ -752,17 +777,22 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		} catch (MicrosoftAzureException e1) {
 			throw new CloudProvisioningException(e1);
 		}
+
+		// Create a set of proceeded because now a VM can have multiple attached disks
+		Set<String> proceeded = new HashSet<String>();
 		for (Disk disk : disks) {
 			AttachedTo attachedTo = disk.getAttachedTo();
 			if (attachedTo != null) { // protect against zombie disks
 				String roleName = attachedTo.getRoleName();
 				if (roleName.startsWith(this.serverNamePrefix)) {
-					final String diskName = disk.getName();
 					final String deploymentName = attachedTo.getDeploymentName();
 					final String hostedServiceName = attachedTo.getHostedServiceName();
-					StopManagementMachineCallable task = new StopManagementMachineCallable(
-							deploymentName, hostedServiceName, diskName, endTime);
-					futures.add(service.submit(task));
+					if (!proceeded.contains(hostedServiceName + deploymentName)) {
+						StopManagementMachineCallable task =
+								new StopManagementMachineCallable(deploymentName, hostedServiceName, endTime);
+						futures.add(service.submit(task));
+						proceeded.add(hostedServiceName + deploymentName);
+					}
 				}
 			} else {
 				if (disk.getName().contains(serverNamePrefix)) {
@@ -824,41 +854,28 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	 * 
 	 */
 	private class StopManagementMachineCallable implements Callable<Boolean> {
-
 		private final String deploymentName;
 		private final String hostedServiceName;
 		private final long endTime;
 
 		public StopManagementMachineCallable(final String deploymentName,
-				final String hostedServiceName, final String diskName,
-				final long endTime) {
+				final String hostedServiceName, final long endTime) {
 			this.deploymentName = deploymentName;
 			this.hostedServiceName = hostedServiceName;
 			this.endTime = endTime;
 		}
 
-		/*
-		 * (non-Javadoc)
-		 * 
-		 * @see java.lang.Runnable#run()
-		 */
 		@Override
-		public Boolean call() throws CloudProvisioningException,
-				TimeoutException {
-
-			return stopManagementMachine(hostedServiceName, deploymentName,
-					endTime);
-
+		public Boolean call() throws CloudProvisioningException, TimeoutException {
+			return stopManagementMachine(hostedServiceName, deploymentName, endTime);
 		}
 	}
 
 	private boolean stopManagementMachine(final String hostedServiceName,
 			final String deploymentName, final long endTime)
 			throws CloudProvisioningException, TimeoutException {
-
 		try {
-			azureClient.deleteVirtualMachineByDeploymentName(hostedServiceName,
-					deploymentName, endTime);
+			azureClient.deleteVirtualMachineByDeploymentName(hostedServiceName, deploymentName, endTime);
 			return true;
 		} catch (MicrosoftAzureException e) {
 			throw new CloudProvisioningException(e);

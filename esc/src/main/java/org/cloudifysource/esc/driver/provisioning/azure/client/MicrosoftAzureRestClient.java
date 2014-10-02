@@ -796,15 +796,33 @@ public class MicrosoftAzureRestClient {
 	 * @throws TimeoutException .
 	 * @throws InterruptedException .
 	 */
-	public boolean deleteCloudService(final String cloudServiceName, final long endTime)
+	public void deleteCloudService(final String cloudServiceName, final long endTime)
 			throws MicrosoftAzureException, TimeoutException, InterruptedException {
 
 		if (!cloudServiceExists(cloudServiceName)) {
 			logger.info("Cloud service " + cloudServiceName + " does not exist.");
-			return true;
+			return;
 		}
 
 		logger.fine("Deleting cloud service : " + cloudServiceName);
+		String deploymentSlot = null;
+		try {
+			// TODO get deploymentSlot dynamically
+			boolean containsDeploymment = false;
+
+			deploymentSlot = "Production";
+			Deployment productionDeployment = listDeploymentsBySlot(cloudServiceName, deploymentSlot, endTime);
+
+			// no deployment in slot production, check also staging slot.
+			if (productionDeployment == null) {
+
+				deploymentSlot = "Staging";
+				Deployment stagingDeployment = listDeploymentsBySlot(cloudServiceName, deploymentSlot, endTime);
+
+				// no deployment in staging slot
+				if (stagingDeployment == null) {
+
+					// Delete cloud service
 		ClientResponse response = doDelete("/services/hostedservices/" + cloudServiceName);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
@@ -1215,10 +1233,11 @@ public class MicrosoftAzureRestClient {
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
 	 */
+	@Deprecated
+	// TODO this can't identify the target vm. many vms might have the same ip.
 	public Deployment getDeploymentByIp(final String machineIp,
 			final boolean isPrivateIp) throws MicrosoftAzureException,
 			TimeoutException {
-
 		Deployment deployment = null;
 		HostedServices cloudServices = listHostedServices();
 		for (HostedService hostedService : cloudServices) {

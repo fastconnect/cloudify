@@ -826,7 +826,24 @@ public class MicrosoftAzureRestClient {
 		ClientResponse response = doDelete("/services/hostedservices/" + cloudServiceName);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
-		return true;
+
+				} else {
+					containsDeploymment = true;
+				}
+
+			} else {
+				containsDeploymment = true;
+			}
+
+			if (containsDeploymment) {
+				logger.warning(String.format("Can't remove cloud service '%s', it still contains deployment in"
+						+ " slot '%s'", cloudServiceName, deploymentSlot));
+			}
+
+		} catch (Exception e) {
+			logger.warning(String.format("Failed to remove cloud service '%s'", cloudServiceName));
+
+		}
 	}
 
 	/**

@@ -160,9 +160,10 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String JOIN_DOMAIN = "joinDomain";
 
 	// Commands template
-	String COMMAND_OPEN_FIREWALL_PORT = "netsh firewall set portopening";
-	String COMMAND_ACTIVATE_SHARING =
-			"netsh advfirewall firewall set rule group=\\\"File and Printer Sharing\\\" new enable=yes";
+	private static final String COMMAND_OPEN_FIREWALL_PORT = "netsh advfirewall firewall"
+			+ " add rule name=\"%s\" dir=in action=allow protocol=%s localport=%d";
+	private static final String COMMAND_ACTIVATE_SHARING = "netsh advfirewall firewall"
+			+ " set rule group=\\\"File and Printer Sharing\\\" new enable=yes";
 	private static final long DEFAULT_COMMAND_TIMEOUT = 15 * 60 * 1000; // 2 minutes
 
 	private static final int DEFAULT_STOP_MANAGEMENT_TIMEOUT = 15;
@@ -581,9 +582,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 					if (portsRange.length == 2 && portStart <= portEnd) {
 						// Opening from port portStart -> portEnd (with +1 increment)
 						for (int i = portStart; i <= portEnd; i++) {
-							cmd = COMMAND_OPEN_FIREWALL_PORT + " " + protocol + " " + i + " " + (name + i);
-							remoteExecutor.execute(hostAddress, details, cmd,
-									DEFAULT_COMMAND_TIMEOUT);
+							cmd = String.format(COMMAND_OPEN_FIREWALL_PORT, name + i, protocol, i);
+							remoteExecutor.execute(hostAddress, details, cmd, DEFAULT_COMMAND_TIMEOUT);
 						}
 					}
 				}
@@ -591,9 +591,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 					// No port defined : skip
 					if (!"".equals(port)) {
 						int portNumber = Integer.parseInt(port);
-						cmd = COMMAND_OPEN_FIREWALL_PORT + " " + protocol + " " + portNumber + " " + name;
-						remoteExecutor
-								.execute(hostAddress, details, cmd, DEFAULT_COMMAND_TIMEOUT);
+						cmd = String.format(COMMAND_OPEN_FIREWALL_PORT, name, protocol, portNumber);
+						remoteExecutor.execute(hostAddress, details, cmd, DEFAULT_COMMAND_TIMEOUT);
 					}
 				}
 			}

@@ -312,4 +312,31 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 			Assert.assertEquals(2, nbDiskAttachedToVM);
 		}
 	}
+
+	/**
+	 * Deploy a manager and a machine in an specific CS. Stopping the machine shouldn't remove the CS
+	 * 
+	 * @throws Exception
+	 */
+	@Test
+	@Ignore("Need implementation of deleting specific role in a deployment")
+	public void testStartUbuntuManagementAndKeepCS() throws Exception {
+		MicrosoftAzureCloudDriver driver = createDriver("ubuntu1410_keepcloudservice", true);
+
+		try {
+			this.startManagementMachine(driver, new MachineDetailsAssertion() {
+				@Override
+				public void additionalAssertions(MachineDetails md) {
+				}
+			});
+
+			this.startAndStopMachine("ubuntu1410_keepcloudservice", new MachineDetailsAssertion() {
+				@Override
+				public void additionalAssertions(MachineDetails md) {
+				}
+			});
+		} finally {
+			stopManagementMachines(driver);
+		}
+	}
 }

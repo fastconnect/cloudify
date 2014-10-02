@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<assembly
+	xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.0 http://maven.apache.org/xsd/assembly-1.1.0.xsd">
+	<id>cloudify-azure</id>
+	<formats>
+		<format>zip</format>
+	</formats>
+	<includeBaseDirectory>false</includeBaseDirectory>
+	<fileSets>
+		<fileSet>
+			<directory>${project.build.outputDirectory}/clouds/azure_win</directory>
+			<outputDirectory>/clouds/azure_win/</outputDirectory>
+			<lineEnding>keep</lineEnding>
+			<fileMode>0640</fileMode>
+			<directoryMode>0755</directoryMode>
+			<!-- <excludes>
+				<exclude>azure_win-cloud.properties</exclude>
+			</excludes> -->
+		</fileSet>
+	</fileSets>
+	<files>
+		<file>
+			<source>${project.build.directory}/esc.jar</source>
+			<outputDirectory>/clouds/azure_win/upload/cloudify-overrides/lib/platform/esm</outputDirectory>
+			<lineEnding>keep</lineEnding>
+			<fileMode>0640</fileMode>
+		</file>
+		<file>
+			<source>${project.build.directory}/esc.jar</source>
+			<outputDirectory>/clouds/azure_win/upload-windows/cloudify-overrides/lib/platform/esm</outputDirectory>
+			<lineEnding>keep</lineEnding>
+			<fileMode>0640</fileMode>
+		</file>
+		<file>
+			<source>${project.build.directory}/esc.jar</source>
+			<outputDirectory>/lib/platform/esm</outputDirectory>
+			<fileMode>0640</fileMode>
+		</file>
+	</files>
+	<!-- <dependencySets>
+		<dependencySet>
+			<includes>
+				<include>*:*:jar::</include>
+			</includes>
+			<scope>runtime</scope>
+			<fileMode>0440</fileMode>
+			<directoryMode>0755</directoryMode>
+			<outputDirectory>/clouds/azure_win/upload/cloudify-overrides/lib/platform/esm</outputDirectory>
+		</dependencySet>
+	</dependencySets> -->
+</assembly>

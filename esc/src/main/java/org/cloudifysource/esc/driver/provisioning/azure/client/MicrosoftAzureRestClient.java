@@ -798,52 +798,35 @@ public class MicrosoftAzureRestClient {
 	 */
 	public void deleteCloudService(final String cloudServiceName, final long endTime)
 			throws MicrosoftAzureException, TimeoutException, InterruptedException {
-
 		if (!cloudServiceExists(cloudServiceName)) {
 			logger.info("Cloud service " + cloudServiceName + " does not exist.");
 			return;
 		}
 
 		logger.fine("Deleting cloud service : " + cloudServiceName);
-		String deploymentSlot = null;
-		try {
-			// TODO get deploymentSlot dynamically
-			boolean containsDeploymment = false;
-
-			deploymentSlot = "Production";
-			Deployment productionDeployment = listDeploymentsBySlot(cloudServiceName, deploymentSlot, endTime);
-
-			// no deployment in slot production, check also staging slot.
-			if (productionDeployment == null) {
-
-				deploymentSlot = "Staging";
-				Deployment stagingDeployment = listDeploymentsBySlot(cloudServiceName, deploymentSlot, endTime);
-
-				// no deployment in staging slot
-				if (stagingDeployment == null) {
-
-					// Delete cloud service
-		ClientResponse response = doDelete("/services/hostedservices/" + cloudServiceName);
-		String requestId = extractRequestId(response);
-		waitForRequestToFinish(requestId, endTime);
-
-				} else {
-					containsDeploymment = true;
-				}
-
-			} else {
-				containsDeploymment = true;
-			}
-
-			if (containsDeploymment) {
-				logger.warning(String.format("Can't remove cloud service '%s', it still contains deployment in"
-						+ " slot '%s'", cloudServiceName, deploymentSlot));
-			}
-
-		} catch (Exception e) {
-			logger.warning(String.format("Failed to remove cloud service '%s'", cloudServiceName));
-
+		if (!doesCloudServiceContainsDeployments(cloudServiceName, endTime)) {
+			// Delete cloud service
+			ClientResponse response = doDelete("/services/hostedservices/" + cloudServiceName);
+			String requestId = extractRequestId(response);
+			waitForRequestToFinish(requestId, endTime);
+		} else {
+			logger.warning(String.format("Can't remove cloud service '%s', it still contains deployment(s)",
+					cloudServiceName));
 		}
+	}
+
+	private boolean doesCloudServiceContainsDeployments(final String cloudServiceName, final long endTime)
+			throws MicrosoftAzureException, TimeoutException, InterruptedException {
+		String[] slots = { "Production", "Staging" };
+		for (String slot : slots) {
+			Deployment deployment = listDeploymentsBySlot(cloudServiceName, slot, endTime);
+			if (deployment != null) {
+				logger.fine(String.format("Existing deployment in cloud service '%s' in slot '%s'",
+						cloudServiceName, slot));
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/**

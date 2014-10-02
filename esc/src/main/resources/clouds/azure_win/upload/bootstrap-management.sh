@@ -23,7 +23,7 @@
 # args:
 # $1 the error code of the last command (should be explicitly passed)
 # $2 the message to print in case of an error
-# 
+#
 # an error message is printed and the script exists with the provided error code
 function error_exit {
 	echo "$2 : error code: $1"
@@ -32,7 +32,7 @@ function error_exit {
 
 # args:
 # $1 the error code of the last command (should be explicitly passed)
-# $2 the message to print in case of an error 
+# $2 the message to print in case of an error
 # $3 the threshold to exit on
 #
 # if (last_error_code [$1]) >= (threshold [$3]) the provided message[$2] is printed and the script
@@ -84,35 +84,35 @@ if [ -z "$GIGASPACES_AGENT_ENV_JAVA_URL" ]; then
 		export GIGASPACES_AGENT_ENV_JAVA_URL=$JAVA_32_URL
 	elif [ "$ARCH" = "x86_64" ]; then
 		export GIGASPACES_AGENT_ENV_JAVA_URL=$JAVA_64_URL
-	else 
+	else
 		echo Unknown architecture -- $ARCH -- defaulting to 32 bit JDK
 		export GIGASPACES_AGENT_ENV_JAVA_URL=$JAVA_32_URL
 	fi
-	
-fi  
+
+fi
 
 if [ "$GIGASPACES_AGENT_ENV_JAVA_URL" = "NO_INSTALL" ]; then
 	echo "JDK will not be installed"
 else
-	echo Previous JAVA_HOME value -- $JAVA_HOME 
+	echo Previous JAVA_HOME value -- $JAVA_HOME
 	export GIGASPACES_ORIGINAL_JAVA_HOME=$JAVA_HOME
 
-	echo Downloading JDK from $GIGASPACES_AGENT_ENV_JAVA_URL    
+	echo Downloading JDK from $GIGASPACES_AGENT_ENV_JAVA_URL
 	wget -q -O $WORKING_HOME_DIRECTORY/java.bin $GIGASPACES_AGENT_ENV_JAVA_URL || error_exit $? "Failed downloading Java installation from $GIGASPACES_AGENT_ENV_JAVA_URL"
 	chmod +x $WORKING_HOME_DIRECTORY/java.bin
 	echo -e "\n" > $WORKING_HOME_DIRECTORY/input.txt
 	rm -rf ~/java || error_exit $? "Failed removing old java installation directory"
 	mkdir ~/java
 	cd ~/java
-	
+
 	echo Installing JDK
 	$WORKING_HOME_DIRECTORY/java.bin < $WORKING_HOME_DIRECTORY/input.txt > /dev/null
 	mv ~/java/*/* ~/java || error_exit $? "Failed moving JDK installation"
 	rm -f $WORKING_HOME_DIRECTORY/input.txt
     export JAVA_HOME=~/java
-fi  
+fi
 
-export EXT_JAVA_OPTIONS="-Dcom.gs.multicast.enabled=false"
+export EXT_JAVA_OPTIONS="-Dcom.gs.multicast.enabled=false -Dsecurerandom.source=file:/dev/urandom"
 
 if [ ! -z "$GIGASPACES_LINK" ]; then
 	echo Downloading cloudify installation from $GIGASPACES_LINK.tar.gz
@@ -128,18 +128,18 @@ fi
 if [ ! -d "~/gigaspaces" -o $WORKING_HOME_DIRECTORY/gigaspaces.tar.gz -nt ~/gigaspaces ]; then
 	rm -rf ~/gigaspaces || error_exit $? "Failed removing old gigaspaces directory"
 	mkdir ~/gigaspaces || error_exit $? "Failed creating gigaspaces directory"
-	
+
 	# 2 is the error level threshold. 1 means only warnings
-	# this is needed for testing purposes on zip files created on the windows platform 
-	tar xfz $WORKING_HOME_DIRECTORY/gigaspaces.tar.gz -C ~/gigaspaces || error_exit_on_level $? "Failed extracting cloudify installation" 2 
+	# this is needed for testing purposes on zip files created on the windows platform
+	tar xfz $WORKING_HOME_DIRECTORY/gigaspaces.tar.gz -C ~/gigaspaces || error_exit_on_level $? "Failed extracting cloudify installation" 2
 
 	# Todo: consider removing this line
 	chmod -R 777 ~/gigaspaces || error_exit $? "Failed changing permissions in cloudify installion"
 	mv ~/gigaspaces/*/* ~/gigaspaces || error_exit $? "Failed moving cloudify installation"
-	
+
 	if [ ! -z "$GIGASPACES_OVERRIDES_LINK" ]; then
 		echo Copying overrides into cloudify distribution
-		tar xfz $WORKING_HOME_DIRECTORY/gigaspaces_overrides.tar.gz -C ~/gigaspaces || error_exit_on_level $? "Failed extracting cloudify overrides" 2 		
+		tar xfz $WORKING_HOME_DIRECTORY/gigaspaces_overrides.tar.gz -C ~/gigaspaces || error_exit_on_level $? "Failed extracting cloudify overrides" 2
 	fi
 fi
 
@@ -168,8 +168,8 @@ if [ "$GIGASPACES_AGENT_ENV_PRIVILEGED" = "true" ]; then
 	else
 		sudo -n ls > /dev/null || error_exit_on_level $? "Current user is not a sudoer, or requires a password for sudo" 1
 	fi
-	
-	# now modify sudoers configuration to allow execution without tty	
+
+	# now modify sudoers configuration to allow execution without tty
 	grep -i ubuntu /proc/version > /dev/null
 	if [ "$?" -eq "0" ]; then
 			# ubuntu
@@ -211,14 +211,14 @@ if [ -f nohup.out ]; then
 fi
 
 
-START_COMMAND_ARGS="-timeout 30 --verbose -auto-shutdown"
+START_COMMAND_ARGS="-timeout 30 --verbose"
 if [ "$GSA_MODE" = "agent" ]; then
 	ERRMSG="Failed starting agent"
 	START_COMMAND="start-agent"
 	# Check if there any zones to start the agent with
 	if [ ! -z "$MACHINE_ZONES" ]; then
 		START_COMMAND_ARGS="${START_COMMAND_ARGS} -zone ${MACHINE_ZONES}"
-	fi	
+	fi
 else
 	ERRMSG="Failed starting management services"
 	START_COMMAND="start-management"
@@ -226,7 +226,7 @@ else
 	if [ "$NO_WEB_SERVICES" = "true" ]; then
 		START_COMMAND_ARGS="${START_COMMAND_ARGS} -no-web-services -no-management-space"
 	fi
-fi	
+fi
 
 nohup ./cloudify.sh $START_COMMAND $START_COMMAND_ARGS
 

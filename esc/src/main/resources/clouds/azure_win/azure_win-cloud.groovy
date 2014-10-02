@@ -250,6 +250,7 @@ cloud {
 
 					// Endpoints definition
 					"azure.endpoints" : [
+            [name:"REMOTE_DESKTOP", protocol:"TCP", localPort:"3389", port:"3389"],
             [name:"CIFS_SMB", protocol:"TCP", localPort:"445", port:"445"],
             [name:"WINRM", protocol:"TCP", localPort:"5985", port:"5985"],
             [name:"WINRM_SSL", protocol:"TCP", localPort:"5986", port:"5986"],

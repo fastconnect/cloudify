@@ -102,7 +102,7 @@ $javaDir = "$parentDirectory\java"
 
 
 # Multicast is off by default in Cloudify
-$Env:EXT_JAVA_OPTIONS="-Dcom.gs.multicast.enabled=false"
+$Env:EXT_JAVA_OPTIONS="-Dcom.gs.multicast.enabled=false -Dsecurerandom.source=file:/dev/urandom"
 
 # Download Java
 # Download Java

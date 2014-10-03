@@ -823,10 +823,10 @@ public class MicrosoftAzureRestClient {
 			if (deployment != null) {
 				logger.fine(String.format("Existing deployment in cloud service '%s' in slot '%s'",
 						cloudServiceName, slot));
-				return false;
+				return true;
 			}
 		}
-		return true;
+		return false;
 	}
 
 	/**

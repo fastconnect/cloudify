@@ -15,6 +15,7 @@ package org.cloudifysource.esc.driver.provisioning.azure;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -148,7 +149,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private RemoteExecutionModes remoteExecutionMode;
 	private ScriptLanguages scriptLanguage;
 
-	private List<Map<String, String>> endpoints;
 	private List<Map<String, String>> firewallPorts;
 
 	private static final int WEBUI_PORT = 8099;
@@ -230,25 +230,10 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		this.remoteExecutionMode = this.template.getRemoteExecution();
 		this.scriptLanguage = this.template.getScriptLanguage();
 
-		// Test endpoints / firewall port for winrm at least 5985
-		this.endpoints = (List<Map<String, String>>) this.template.getCustom().get(AZURE_ENDPOINTS);
-		boolean isWindowsVM = isWindowsVM();
+		this.ensureEndpointForManagementMachine();
 
-		if (isWindowsVM) {
-			boolean winRMEndpoint = false;
-			for (Map<String, String> endpointMap : endpoints) {
-				String endPointPort = endpointMap.get("port");
-				if (!endPointPort.contains("-")
-						&& RemoteExecutionModes.WINRM.getDefaultPort() == Integer.parseInt(endPointPort))
-					winRMEndpoint = true;
-			}
-			if (endpoints == null || !winRMEndpoint) {
-				throw new IllegalArgumentException("Custom field '"
-						+ AZURE_ENDPOINTS + "' must be set at least with WinRM port "
-						+ RemoteExecutionModes.WINRM.getDefaultPort());
-			}
-
-			// handeling firewall ports for manager machine (8100 & 8099)
+		if (isWindowsVM()) {
+			// [Windows] Handling firewall ports for manager machine (8100 & 8099)
 			if (this.management) {
 				this.firewallPorts = (List<Map<String, String>>) this.template.getCustom().get(AZURE_FIREWALL_PORTS);
 				boolean cloudifyWebuiPort = false;
@@ -315,6 +300,68 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			this.serverNamePrefix = this.cloud.getProvider().getMachineNamePrefix() + fullServiceName.getServiceName();
 		}
 
+	}
+
+	/**
+	 * Add configuration for FileTransfer endpoint (22/445) or winrm endpoint (22/445) if doesn't exist.
+	 * 
+	 * @throws CloudProvisioningException
+	 */
+	private void ensureEndpointForManagementMachine() throws CloudProvisioningException {
+		if (management) {
+			final String managementMachineTemplate = this.cloud.getConfiguration().getManagementMachineTemplate();
+			final ComputeTemplate template = this.cloud.getCloudCompute().getTemplates().get(managementMachineTemplate);
+			final FileTransferModes fileTransfer = template.getFileTransfer();
+			RemoteExecutionModes remoteExecution = template.getRemoteExecution();
+
+			// Ensure that WinRM endpoint exists.
+			Object objects = this.template.getCustom().get(AZURE_ENDPOINTS);
+			@SuppressWarnings("unchecked")
+			List<Map<String, String>> endpoints = (List<Map<String, String>>) objects;
+			if (endpoints == null) {
+				endpoints = new ArrayList<Map<String, String>>(1);
+				this.template.getCustom().put(AZURE_ENDPOINTS, endpoints);
+			}
+
+			if (endpoints != null) {
+				if (!doesEndpointsContainsPort(endpoints, fileTransfer.getDefaultPort())) {
+					logger.warning("Missing file transfert endpoint, the drive will create one.");
+					String portStr = Integer.toString(fileTransfer.getDefaultPort());
+					HashMap<String, String> newEndpoint = new HashMap<String, String>();
+					newEndpoint.put("name", fileTransfer.name());
+					newEndpoint.put("protocol", "TCP");
+					newEndpoint.put("localPort", portStr);
+					newEndpoint.put("port", portStr);
+					endpoints.add(newEndpoint);
+				}
+				if (!doesEndpointsContainsPort(endpoints, remoteExecution.getDefaultPort())) {
+					logger.warning("Missing remote execution endpoint, the drive will create one.");
+					String portStr = Integer.toString(remoteExecution.getDefaultPort());
+					HashMap<String, String> newEndpoint = new HashMap<String, String>();
+					newEndpoint.put("name", remoteExecution.name());
+					newEndpoint.put("protocol", "TCP");
+					newEndpoint.put("localPort", portStr);
+					newEndpoint.put("port", portStr);
+					endpoints.add(newEndpoint);
+				}
+			}
+		}
+	}
+
+	private boolean doesEndpointsContainsPort(List<Map<String, String>> endpoints, int port2check)
+			throws CloudProvisioningException {
+		for (Map<String, String> endpointMap : endpoints) {
+			String port = endpointMap.get("port");
+			String localPort = endpointMap.get("localPort");
+			if (port2check == Integer.parseInt(localPort)) {
+				if (!localPort.equals(port)) {
+					throw new CloudProvisioningException("The endpoint '" + endpointMap.get("name")
+							+ "' should have the same value on localPort and port");
+				}
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private void verifyManagementNetworkConfiguration(Cloud cloud) throws CloudProvisioningException {
@@ -906,8 +953,10 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		InputEndpoints inputEndpoints = new InputEndpoints();
 
 		// Add End Point for each port
-		if (this.endpoints != null) {
-			for (Map<String, String> endpointMap : this.endpoints) {
+		Object objects = this.template.getCustom().get(AZURE_ENDPOINTS);
+		List<Map<String, String>> endpoints = (List<Map<String, String>>) objects;
+		if (endpoints != null) {
+			for (Map<String, String> endpointMap : endpoints) {
 				String name = endpointMap.get("name");
 				String protocol = endpointMap.get("protocol");
 				String portStr = endpointMap.get("port");

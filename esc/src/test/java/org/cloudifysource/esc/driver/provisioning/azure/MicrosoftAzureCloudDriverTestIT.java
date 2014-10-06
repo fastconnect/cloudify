@@ -14,6 +14,8 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Disk;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Disks;
 import org.cloudifysource.esc.driver.provisioning.azure.model.HostedServices;
+import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoint;
+import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoints;
 import org.cloudifysource.esc.driver.provisioning.azure.model.NetworkConfigurationSet;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Role;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleInstanceList;
@@ -200,18 +202,22 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 					Role role = deployment.getRoleList().getRoleByName(roleName);
 					Assert.assertNotNull(role);
 
-					NetworkConfigurationSet networkConfigurationSet = role.getConfigurationSets().
-							getNetworkConfigurationSet();
-					networkConfigurationSet.getInputEndpoints();
+					NetworkConfigurationSet netConfigSet = role.getConfigurationSets().getNetworkConfigurationSet();
+					InputEndpoints inputEndpoints = netConfigSet.getInputEndpoints();
 
-					// valid ports
-					Assert.assertNotNull(networkConfigurationSet.getInputEndpoints().getInputEndpointByPort(5000));
-					Assert.assertNotNull(networkConfigurationSet.getInputEndpoints().getInputEndpointByPort(81));
+					// Valid ports
+					InputEndpoint httpEndpoint = inputEndpoints.getInputEndpointByName("HTTP");
+					Assert.assertNotNull("Missing HTTP endpoint", httpEndpoint);
+					Assert.assertEquals(8080, httpEndpoint.getPort());
 
+					InputEndpoint sshEndpoint = inputEndpoints.getInputEndpointByName("SSH");
+					Assert.assertNotNull("Missing SHH endpoint", sshEndpoint);
+					Assert.assertEquals(22, sshEndpoint.getPort());
 				} catch (Exception e) {
 					Assert.fail(e.getMessage());
 				}
-			};
+			}
+
 		});
 	}
 

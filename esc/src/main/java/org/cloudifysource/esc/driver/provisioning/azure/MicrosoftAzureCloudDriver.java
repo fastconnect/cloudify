@@ -312,7 +312,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			final String managementMachineTemplate = this.cloud.getConfiguration().getManagementMachineTemplate();
 			final ComputeTemplate template = this.cloud.getCloudCompute().getTemplates().get(managementMachineTemplate);
 			final FileTransferModes fileTransfer = template.getFileTransfer();
-			RemoteExecutionModes remoteExecution = template.getRemoteExecution();
+			final RemoteExecutionModes remoteExecution = template.getRemoteExecution();
 
 			// Ensure that WinRM endpoint exists.
 			Object objects = this.template.getCustom().get(AZURE_ENDPOINTS);
@@ -324,21 +324,21 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			}
 
 			if (endpoints != null) {
-				if (!doesEndpointsContainsPort(endpoints, fileTransfer.getDefaultPort())) {
-					logger.warning("Missing file transfert endpoint, the drive will create one.");
-					String portStr = Integer.toString(fileTransfer.getDefaultPort());
-					HashMap<String, String> newEndpoint = new HashMap<String, String>();
-					newEndpoint.put("name", fileTransfer.name());
-					newEndpoint.put("protocol", "TCP");
-					newEndpoint.put("localPort", portStr);
-					newEndpoint.put("port", portStr);
-					endpoints.add(newEndpoint);
-				}
 				if (!doesEndpointsContainsPort(endpoints, remoteExecution.getDefaultPort())) {
 					logger.warning("Missing remote execution endpoint, the drive will create one.");
 					String portStr = Integer.toString(remoteExecution.getDefaultPort());
 					HashMap<String, String> newEndpoint = new HashMap<String, String>();
 					newEndpoint.put("name", remoteExecution.name());
+					newEndpoint.put("protocol", "TCP");
+					newEndpoint.put("localPort", portStr);
+					newEndpoint.put("port", portStr);
+					endpoints.add(newEndpoint);
+				}
+				if (!doesEndpointsContainsPort(endpoints, fileTransfer.getDefaultPort())) {
+					logger.warning("Missing file transfert endpoint, the drive will create one.");
+					String portStr = Integer.toString(fileTransfer.getDefaultPort());
+					HashMap<String, String> newEndpoint = new HashMap<String, String>();
+					newEndpoint.put("name", fileTransfer.name());
 					newEndpoint.put("protocol", "TCP");
 					newEndpoint.put("localPort", portStr);
 					newEndpoint.put("port", portStr);

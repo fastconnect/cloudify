@@ -13,13 +13,13 @@ import javax.xml.bind.annotation.XmlType;
  */
 
 @XmlRootElement(name = "HostedService")
-@XmlType(propOrder = {"url" , "serviceName" , "deployments" })
+@XmlType(propOrder = { "url", "serviceName", "deployments" })
 public class HostedService {
 
 	private String url;
 	private String serviceName;
 	private Deployments deployments;
-	
+
 	@XmlElement(name = "Deployments")
 	public Deployments getDeployments() {
 		return deployments;
@@ -33,20 +33,34 @@ public class HostedService {
 	public String getUrl() {
 		return url;
 	}
-	
+
 	public void setUrl(final String url) {
 		this.url = url;
 	}
-	
+
 	@XmlElement(name = "ServiceName")
 	public String getServiceName() {
 		return serviceName;
 	}
-	
+
 	public void setServiceName(final String serviceName) {
 		this.serviceName = serviceName;
 	}
-	
-	
-	
+
+	/**
+	 * Find a deployment identified by a label
+	 * 
+	 * @param deploymentLabel
+	 * @return Deployment object if found, null otherwise.
+	 */
+	public Deployment getDeploymentByLabel(String deploymentLabel) {
+
+		for (Deployment d : deployments) {
+			if (d.getLabel().equals(deploymentLabel)) {
+				return d;
+			}
+		}
+		return null;
+	}
+
 }

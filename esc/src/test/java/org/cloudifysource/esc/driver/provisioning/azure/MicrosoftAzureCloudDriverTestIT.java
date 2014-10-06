@@ -339,4 +339,39 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 			stopManagementMachines(driver);
 		}
 	}
+
+	@Test
+	public void testDeleteRoleUbuntuManagementFromDeployment() throws Exception {
+
+		String computeTemplateName = "ubuntu1410_deleterole";
+		ComputeTemplate computeTemplate = cloud.getCloudCompute().getTemplates().get(computeTemplateName);
+		final String cloudServiceName = (String) computeTemplate.getCustom().get("azure.cloud.service");
+
+		MicrosoftAzureCloudDriver driver = createDriver(computeTemplateName, true);
+
+		Map<String, String> cloudProperties = AzureTestUtils.getCloudProperties();
+		String affinityPrefix = cloudProperties.get("affinityGroup");
+		final MicrosoftAzureRestClient azureRestClient =
+				AzureTestUtils.createMicrosoftAzureRestClient(cloudServiceName, affinityPrefix);
+
+		try {
+			final DeleteRoleAssertion deleteRoleAssertion = new DeleteRoleAssertion(azureRestClient,
+					computeTemplateName, computeTemplate);
+
+			this.startManagementMachine(driver, deleteRoleAssertion);
+
+			final String deploymentLabel = deleteRoleAssertion.getDeploymentLabel();
+			Assert.assertNotNull(deploymentLabel);
+
+			this.startAndStopMachine(computeTemplateName, new MachineDetailsAssertion() {
+				@Override
+				public void additionalAssertions(MachineDetails md) throws MicrosoftAzureException, TimeoutException {
+					deleteRoleAssertion.assertCloudSeviceAndDeploymentExists(deploymentLabel);
+				}
+			});
+
+		} finally {
+			stopManagementMachines(driver);
+		}
+	}
 }

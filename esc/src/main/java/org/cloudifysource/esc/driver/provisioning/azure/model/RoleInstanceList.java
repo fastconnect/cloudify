@@ -31,16 +31,34 @@ public class RoleInstanceList implements Iterable<RoleInstance> {
 	}
 
 	/**
-	 * Get a RoleInstance by its roleName
+	 * Get a RoleInstance by name (roleName)
 	 * 
 	 * @param roleName
-	 * @return Role object, null otherwise
+	 * @return Role object if found, null otherwise
 	 */
 	public RoleInstance getInstanceRoleByRoleName(String roleName) {
 
 		if (roleInstances != null && !roleInstances.isEmpty()) {
 			for (RoleInstance ri : roleInstances) {
 				if (ri.getRoleName().equals(roleName)) {
+					return ri;
+				}
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Get a RoleInstance by ip address
+	 * 
+	 * @param ipAddress
+	 * @return Role object if found, null otherwise
+	 */
+	public RoleInstance getRoleInstanceByIpAddress(String ipAddress) {
+
+		if (roleInstances != null && !roleInstances.isEmpty()) {
+			for (RoleInstance ri : roleInstances) {
+				if (ri.getIpAddress().equals(ipAddress)) {
 					return ri;
 				}
 			}

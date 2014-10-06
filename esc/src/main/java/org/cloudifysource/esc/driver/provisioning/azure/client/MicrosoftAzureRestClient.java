@@ -21,6 +21,7 @@ import java.util.logging.Logger;
 
 import javax.net.ssl.SSLContext;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.esc.driver.provisioning.azure.model.AddressAvailability;
@@ -46,6 +47,7 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.NetworkConfigurati
 import org.cloudifysource.esc.driver.provisioning.azure.model.Operation;
 import org.cloudifysource.esc.driver.provisioning.azure.model.PersistentVMRole;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RestartRoleOperation;
+import org.cloudifysource.esc.driver.provisioning.azure.model.Role;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleInstance;
 import org.cloudifysource.esc.driver.provisioning.azure.model.StorageServices;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Subnet;
@@ -113,6 +115,7 @@ public class MicrosoftAzureRestClient {
 	private String subscriptionId;
 
 	private MicrosoftAzureSSLHelper sslHelper;
+	private String virtualNetwork;
 
 	private Logger logger = Logger.getLogger(this.getClass().getName());
 
@@ -804,11 +807,21 @@ public class MicrosoftAzureRestClient {
 		}
 
 		logger.fine("Deleting cloud service : " + cloudServiceName);
+
+		Deployments deployments = getHostedService(cloudServiceName, true).getDeployments();
+		if (deployments.getDeployments().isEmpty()) {
+			// Delete cloud service
+			ClientResponse response = doDelete("/services/hostedservices/" + cloudServiceName);
+			String requestId = extractRequestId(response);
+			waitForRequestToFinish(requestId, endTime);
+		}
+
 		if (!doesCloudServiceContainsDeployments(cloudServiceName, endTime)) {
 			// Delete cloud service
 			ClientResponse response = doDelete("/services/hostedservices/" + cloudServiceName);
 			String requestId = extractRequestId(response);
 			waitForRequestToFinish(requestId, endTime);
+
 		} else {
 			logger.warning(String.format("Can't remove cloud service '%s', it still contains deployment(s)",
 					cloudServiceName));
@@ -847,11 +860,16 @@ public class MicrosoftAzureRestClient {
 
 		Deployment deployment = getDeploymentByIp(machineIp, isPrivateIp);
 		if (deployment == null) {
-			throw new MicrosoftAzureException("Could not find a Virtual Machine with IP " + machineIp);
+			throw new MicrosoftAzureException("Could not find a deployment for Virtual Machine with IP " + machineIp);
 		}
-		logger.fine("Deployment name for Virtual Machine with IP " + machineIp + " is " + deployment.getName());
-		deleteVirtualMachineByDeploymentName(deployment.getHostedServiceName(),
-				deployment.getName(), endTime);
+
+		// get rolename for the current VM
+		String roleName = this.getRoleNameByIpAddress(machineIp, deployment);
+		this.deleteRoleFromDeployment(roleName, deployment, endTime);
+
+		// logger.fine("Deployment name for Virtual Machine with IP " + machineIp + " is " + deployment.getName());
+		// deleteVirtualMachineByDeploymentName(deployment.getHostedServiceName(),
+		// deployment.getName(), endTime);
 
 	}
 
@@ -1067,6 +1085,52 @@ public class MicrosoftAzureRestClient {
 
 	}
 
+	// TODO : refactoring with other methods that use the same process lock>->request->response->unlock
+	public boolean deleteRoleFromDeployment(final String roleName,
+			final Deployment deployment, final long endTime) throws InterruptedException, MicrosoftAzureException,
+			TimeoutException {
+
+		long currentTimeInMillis = System.currentTimeMillis();
+		long lockTimeout = endTime - currentTimeInMillis;
+
+		logger.fine(getThreadIdentity() + "Waiting for pending request lock...");
+		boolean lockAcquired = pendingRequest.tryLock(lockTimeout, TimeUnit.MILLISECONDS);
+
+		if (lockAcquired) {
+			try {
+
+				// https://management.core.windows.net/<subscription-id>/services/hostedservices/<cloudservice-name>/deployments/<deployment-name>/roles/<role-name>
+
+				ClientResponse response = doDelete("/services/hostedservices/" + deployment.getHostedServiceName()
+						+ "/deployments/" + deployment.getDeploymentName() + "/roles/" + roleName);
+
+				String requestId = extractRequestId(response);
+				waitForRequestToFinish(requestId, endTime);
+				pendingRequest.unlock();
+				logger.fine(getThreadIdentity() + "Lock unlcoked");
+
+			} catch (final Exception e) {
+				logger.fine(getThreadIdentity() + "About to release lock " + pendingRequest.hashCode());
+				pendingRequest.unlock();
+
+				if (e instanceof MicrosoftAzureException) {
+					throw (MicrosoftAzureException) e;
+				}
+				if (e instanceof TimeoutException) {
+					throw (TimeoutException) e;
+				}
+				if (e instanceof InterruptedException) {
+					throw (InterruptedException) e;
+				}
+			}
+		} else {
+			throw new TimeoutException("Failed to acquire lock for deleteRoleFromDeployment request after + "
+					+ lockTimeout + " milliseconds");
+		}
+
+		return true;
+	}
+
 	/**
 	 * 
 	 * @return .
@@ -1090,6 +1154,7 @@ public class MicrosoftAzureRestClient {
 	 */
 	public AffinityGroups listAffinityGroups() throws MicrosoftAzureException,
 			TimeoutException {
+
 		ClientResponse response = doGet("/affinitygroups");
 		checkForError(response);
 		String responseBody = response.getEntity(String.class);
@@ -1233,31 +1298,33 @@ public class MicrosoftAzureRestClient {
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
 	 */
-	@Deprecated
-	// TODO this can't identify the target vm. many vms might have the same ip.
 	public Deployment getDeploymentByIp(final String machineIp,
 			final boolean isPrivateIp) throws MicrosoftAzureException,
 			TimeoutException {
-		Deployment deployment = null;
+
 		HostedServices cloudServices = listHostedServices();
 		for (HostedService hostedService : cloudServices) {
 			String cloudServiceName = hostedService.getServiceName();
 			Deployments deployments = getHostedService(cloudServiceName, true).getDeployments();
+
 			// skip empty cloud services
 			if (!deployments.getDeployments().isEmpty()) {
-				deployment = deployments.getDeployments().get(0);
-				String deploymentName = deployment.getName();
-				deployment = getDeploymentByDeploymentName(cloudServiceName, deploymentName);
-				String publicIp = getPublicIpFromDeployment(deployment);
-				String privateIp = getPrivateIpFromDeployment(deployment);
-				String ip = isPrivateIp ? privateIp : publicIp;
-				if (machineIp.equals(ip)) {
-					deployment.setHostedServiceName(cloudServiceName);
-					return deployment;
+				for (Deployment deployment : deployments) {
+
+					// ignore other networks
+					if (this.virtualNetwork.equals(deployment.getVirtualNetworkName())) {
+						String publicIp = getPublicIpFromDeployment(deployment);
+						String privateIp = getPrivateIpFromDeployment(deployment);
+						String ip = isPrivateIp ? privateIp : publicIp;
+						if (machineIp.equals(ip)) {
+							deployment.setHostedServiceName(cloudServiceName);
+							return deployment;
+						}
+					}
 				}
 			}
 		}
-		logger.info("Could not find any roles with ip :" + machineIp);
+		logger.info("Could not find roles with ip :" + machineIp);
 		return null;
 
 	}
@@ -1649,6 +1716,28 @@ public class MicrosoftAzureRestClient {
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
 		logger.fine("Added a data disk to " + roleName);
+	}
+
+	public String getVirtualNetwork() {
+		return virtualNetwork;
+	}
+
+	public void setVirtualNetwork(String virtualNetwork) {
+		this.virtualNetwork = virtualNetwork;
+	}
+
+	private String getRoleNameByIpAddress(String ipAddress, Deployment deployment)
+			throws MicrosoftAzureException, TimeoutException {
+
+		String roleName = null;
+		try {
+
+			RoleInstance roleInstance = deployment.getRoleInstanceList().getRoleInstanceByIpAddress(ipAddress);
+			roleName = roleInstance.getRoleName();
+		} catch (Exception e) {
+			logger.warning(String.format("Can't find role for machine with ip address '%s'", ipAddress));
+		}
+		return roleName;
 	}
 
 }

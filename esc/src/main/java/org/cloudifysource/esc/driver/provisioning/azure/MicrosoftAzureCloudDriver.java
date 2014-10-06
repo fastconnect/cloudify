@@ -421,6 +421,12 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		}
 
 		initRestClient(this.subscriptionId, this.pathToPfxFile, this.pfxPassword, enableWireLog);
+
+		// set virtual network name for rest client
+		if (this.management) {
+			azureClient.setVirtualNetwork(cloud.getCloudNetwork().getManagement().getNetworkConfiguration().getName());
+		}
+
 	}
 
 	@Override

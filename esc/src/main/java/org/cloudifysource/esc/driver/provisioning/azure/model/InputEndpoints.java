@@ -9,7 +9,7 @@ import javax.xml.bind.annotation.XmlType;
 /**
  * 
  * @author elip
- *
+ * 
  */
 @XmlType
 public class InputEndpoints {
@@ -40,6 +40,22 @@ public class InputEndpoints {
 	public InputEndpoint getInputEndpointByPort(final int publicPort) {
 		for (InputEndpoint iep : inputEndpoints) {
 			if (iep.getPort() == publicPort) {
+				return iep;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Get an endpoint by name.
+	 * 
+	 * @param name
+	 *            The name of the endpoint.
+	 * @return The endpoint if exists or null.
+	 */
+	public InputEndpoint getInputEndpointByName(final String name) {
+		for (InputEndpoint iep : inputEndpoints) {
+			if (iep.getName() == name) {
 				return iep;
 			}
 		}

@@ -16,8 +16,9 @@
       "azure.pfx.password" : pfxPassword,
       "azure.cloud.service" : "cfytestitendpoints",
   	  "azure.endpoints" : [
-  		  [name:"HTTP", protocol:"TCP", localPort: "80", port:"81"],
-  		  [name:"SSH", protocol:"TCP", localPort: "22", port:"5000"],
+  		  [name:"HTTP", protocol:"TCP", localPort: "80", port:"8080"],
+        // SSH should be automatically generated for manager
+  		  //[name:"SSH", protocol:"TCP", localPort: "22", port:"22"],
   	  ],
     ])
   }

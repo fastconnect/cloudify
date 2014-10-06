@@ -1,0 +1,63 @@
+package org.cloudifysource.esc.driver.provisioning.azure;
+
+import java.util.concurrent.TimeoutException;
+
+import junit.framework.Assert;
+
+import org.cloudifysource.domain.cloud.compute.ComputeTemplate;
+import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureException;
+import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureRestClient;
+import org.cloudifysource.esc.driver.provisioning.azure.model.HostedService;
+
+public class BaseAssertion extends MachineDetailsAssertion {
+
+	protected String computeTemplateName;
+	protected ComputeTemplate computeTemplate;
+	protected MicrosoftAzureRestClient azureRestClient;
+	protected long endTime = 1000000;
+	protected String deploymentSlot;
+	protected String cloudServiceName;
+
+	public BaseAssertion() {
+	}
+
+	public BaseAssertion(MicrosoftAzureRestClient azureRestClient, String cloudTemplateName,
+			ComputeTemplate computeTemplate) {
+		this.setComputeTemplateName(cloudTemplateName);
+		this.azureRestClient = azureRestClient;
+		this.computeTemplate = computeTemplate;
+		this.cloudServiceName = (String) computeTemplate.getCustom().get("azure.cloud.service");
+		this.deploymentSlot = (String) computeTemplate.getCustom().get("azure.deployment.slot");
+	}
+
+	/**
+	 * Checks deployment existence, this checks also the hosted service
+	 * 
+	 * @param deploymentLabel
+	 * @throws MicrosoftAzureException
+	 * @throws TimeoutException
+	 */
+	public void assertCloudSeviceAndDeploymentExists(String deploymentLabel) throws MicrosoftAzureException,
+			TimeoutException {
+		HostedService hostedService = azureRestClient.getHostedService(cloudServiceName, true);
+		Assert.assertNotNull(hostedService);
+		Assert.assertNotNull(hostedService.getDeploymentByLabel(deploymentLabel));
+	}
+
+	public String getComputeTemplateName() {
+		return computeTemplateName;
+	}
+
+	public void setComputeTemplateName(String computeTemplateName) {
+		this.computeTemplateName = computeTemplateName;
+	}
+
+	public String getDeploymentSlot() {
+		return deploymentSlot;
+	}
+
+	public void setDeploymentSlot(String deploymentSlot) {
+		this.deploymentSlot = deploymentSlot;
+	}
+
+}

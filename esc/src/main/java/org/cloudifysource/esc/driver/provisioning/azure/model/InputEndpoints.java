@@ -55,7 +55,7 @@ public class InputEndpoints {
 	 */
 	public InputEndpoint getInputEndpointByName(final String name) {
 		for (InputEndpoint iep : inputEndpoints) {
-			if (iep.getName() == name) {
+			if (iep.getName().equals(name)) {
 				return iep;
 			}
 		}

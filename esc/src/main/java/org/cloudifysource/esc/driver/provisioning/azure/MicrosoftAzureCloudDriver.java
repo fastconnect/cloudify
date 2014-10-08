@@ -112,7 +112,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	// Networks properties
 	private static final String AZURE_NETWORK_NAME = "azure.networksite.name";
-	private static final String AZURE_NETOWRK_ADDRESS_SPACE = "azure.address.space";
+	private static final String AZURE_NETWORK_ADDRESS_SPACE = "azure.address.space";
+	private static final String AZURE_DNS_SERVERS = "azure.dns.servers";
 
 	private static final String AZURE_CLOUD_SERVICE_CODE = "azure.cloud.service.code";
 
@@ -132,6 +133,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private String networkName;
 	private String affinityGroup;
 	private String storageAccountName;
+	private Map<String, String> dnsServers;
 
 	// Arguments per template
 	private String deploymentSlot;
@@ -283,16 +285,13 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 		// Network
 		Map<String, String> networkCustom = this.cloud.getCloudNetwork().getCustom();
-
-		// networkName is set in initDeployer
-		if (networkName == null) {
-			throw new IllegalArgumentException("Custom field '" + AZURE_NETWORK_NAME + "' must be set");
-		}
-
-		this.addressSpace = (String) networkCustom.get(AZURE_NETOWRK_ADDRESS_SPACE);
+		this.addressSpace = (String) networkCustom.get(AZURE_NETWORK_ADDRESS_SPACE);
 		if (addressSpace == null) {
-			throw new IllegalArgumentException("Custom field '" + AZURE_NETOWRK_ADDRESS_SPACE + "' must be set");
+			throw new IllegalArgumentException("Custom field '" + AZURE_NETWORK_ADDRESS_SPACE + "' must be set");
 		}
+
+		String dnsServer = networkCustom.get(AZURE_DNS_SERVERS);
+		dnsServers = MicrosoftAzureUtils.parseDnsServersStringToMap(dnsServer);
 
 		// Prefixes
 		if (this.management) {
@@ -425,6 +424,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 		// set virtual network name for rest client
 		this.networkName = (String) cloud.getCloudNetwork().getCustom().get(AZURE_NETWORK_NAME);
+		if (networkName == null) {
+			throw new IllegalArgumentException("Custom field '" + AZURE_NETWORK_NAME + "' must be set");
+		}
 		azureClient.setVirtualNetwork(this.networkName);
 	}
 
@@ -469,7 +471,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 		// Add a subnet for the service instance if required
 		CloudNetwork cloudNetwork = cloud.getCloudNetwork();
-		if (cloudNetwork != null) {
+		if (this.configuration.getNetwork() != null) {
 			String networkTemplate = this.configuration.getNetwork().getTemplate();
 			NetworkConfiguration networkConfiguration = cloudNetwork.getTemplates().get(networkTemplate);
 			List<Subnet> subnets = networkConfiguration.getSubnets();
@@ -697,7 +699,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			NetworkConfiguration networkConfiguration = cloudNetwork.getManagement().getNetworkConfiguration();
 			Subnet subnet = networkConfiguration.getSubnets().get(0);
 			azureClient.createVirtualNetworkSite(addressSpace, affinityGroup, networkName, subnet.getName(),
-					subnet.getRange(), endTime);
+					subnet.getRange(), dnsServers, endTime);
 
 			azureClient.createStorageAccount(affinityGroup, storageAccountName, endTime);
 		} catch (final Exception e) {

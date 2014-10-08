@@ -229,6 +229,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 		this.startAndStopManagementMachine(computeTemplateName);
 	}
 
+	@Test
 	public void testCustomDataUbuntu() throws Exception {
 
 		this.startAndStopManagementMachine("ubuntu1410_customdata", new MachineDetailsAssertion() {

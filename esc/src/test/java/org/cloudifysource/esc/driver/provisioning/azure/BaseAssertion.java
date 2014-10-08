@@ -16,6 +16,7 @@ public class BaseAssertion extends MachineDetailsAssertion {
 	protected long endTime = 1000000;
 	protected String deploymentSlot;
 	protected String cloudServiceName;
+	protected String managementGroup;
 
 	public BaseAssertion() {
 	}
@@ -47,6 +48,14 @@ public class BaseAssertion extends MachineDetailsAssertion {
 
 	public void setDeploymentSlot(String deploymentSlot) {
 		this.deploymentSlot = deploymentSlot;
+	}
+
+	public String getManagementGroup() {
+		return managementGroup;
+	}
+
+	public void setManagementGroup(String managementGroup) {
+		this.managementGroup = managementGroup;
 	}
 
 }

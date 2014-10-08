@@ -930,7 +930,7 @@ public class MicrosoftAzureRestClient {
 			this.deleteDisk(osVhdName, endTime);
 		} catch (Exception e) {
 			logger.warning(String.format("Failed deleting OS disk '%s' for the role '%s'", osVhdName,
-					role.getRoleName()));
+					roleName));
 		}
 
 		for (DataVirtualHardDisk disk : role.getDataVirtualHardDisks().getDataVirtualHardDisks()) {
@@ -938,7 +938,7 @@ public class MicrosoftAzureRestClient {
 				this.deleteDisk(disk.getDiskName(), endTime);
 			} catch (Exception e) {
 				logger.warning(String.format("Failed delete disk '%s' for the role '%s'", disk.getDiskName(),
-						role.getRoleName()));
+						roleName));
 			}
 
 		}

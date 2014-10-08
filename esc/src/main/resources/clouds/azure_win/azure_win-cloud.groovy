@@ -79,6 +79,26 @@ cloud {
         ])
       }
     }
+    templates ([
+      "ADM_NET" : networkConfiguration {
+        name null // this property is unused with azure
+        subnets {
+          subnet {
+            name "admin_subnet"
+            range "10.0.1.0/24"
+          }
+        }
+      },
+      "DATA_NET" :  networkConfiguration {
+        name null // this property is unused with azure
+        subnets {
+          subnet {
+            name "data_subnet"
+            range "10.0.2.0/23"
+          }
+        }
+      }
+    ])
   }
 
 	cloudCompute {
@@ -295,7 +315,7 @@ cloud {
 		 * If set to 'true', the storage account, affinity group, and network specified above will be deleted upon teardown.	 *
 		 * NOTE : if you are using pre exsisting services and you dont want them to be deleted, please set this value to 'false' *
 		**************************************************************************************************************************/
-		"azure.cleanup.on.teardown" : "true",
+		"azure.cleanup.on.teardown" : "false",
 
     /********************************************************************
 		 * Cloud service code

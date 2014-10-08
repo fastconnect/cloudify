@@ -6,6 +6,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Logger;
 
+import org.cloudifysource.domain.ServiceNetwork;
 import org.cloudifysource.domain.cloud.compute.ComputeTemplate;
 import org.cloudifysource.esc.driver.provisioning.MachineDetails;
 import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureException;
@@ -19,6 +20,8 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoints;
 import org.cloudifysource.esc.driver.provisioning.azure.model.NetworkConfigurationSet;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Role;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleInstanceList;
+import org.cloudifysource.esc.driver.provisioning.azure.model.VirtualNetworkConfiguration;
+import org.cloudifysource.esc.driver.provisioning.azure.model.VirtualNetworkSite;
 import org.cloudifysource.esc.util.Utils;
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -345,5 +348,60 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 		} finally {
 			stopManagementMachines(driver);
 		}
+	}
+
+	@Test
+	public void testNetworkAndSubnets() throws Exception {
+		final MicrosoftAzureRestClient restClient = AzureTestUtils.createMicrosoftAzureRestClient();
+		final String dataSubnetName = "data_subnet";
+
+		Map<String, String> cloudProperties = AzureTestUtils.getCloudProperties();
+		final String networkSite = cloudProperties.get("netWorksite");
+
+		MicrosoftAzureCloudDriver mngDriver = createDriver("ubuntu1410", true);
+
+		try {
+			// Start the manager machine without creating the service subnet
+			this.startManagementMachine(mngDriver, new MachineDetailsAssertion() {
+				@Override
+				public void additionalAssertions(MachineDetails md) throws Exception {
+					Map<String, String> cloudProperties = AzureTestUtils.getCloudProperties();
+					String networkSite = cloudProperties.get("netWorksite");
+					VirtualNetworkConfiguration vnetConfig = restClient.getVirtualNetworkConfiguration();
+					VirtualNetworkSite virtualNetworkSite =
+							vnetConfig.getVirtualNetworkSites().getVirtualNetworkSite(networkSite);
+					Assert.assertNull("Doesn't expect existing subnet '" + dataSubnetName + "'",
+							virtualNetworkSite.getSubnets().getSubnet(dataSubnetName));
+				}
+			});
+
+			// Starting the agent machine should create the subnet
+			ServiceNetwork serviceNetwork = new ServiceNetwork();
+			serviceNetwork.setTemplate("DATA_NET");
+			MicrosoftAzureCloudDriver serviceDriver =
+					this.startAndStopMachine("ubuntu1410", serviceNetwork, new MachineDetailsAssertion() {
+						@Override
+						public void additionalAssertions(MachineDetails md) throws Exception {
+							VirtualNetworkConfiguration vnetConfig = restClient.getVirtualNetworkConfiguration();
+							VirtualNetworkSite virtualNetworkSite =
+									vnetConfig.getVirtualNetworkSites().getVirtualNetworkSite(networkSite);
+							Assert.assertNotNull("Expecting subnet '" + dataSubnetName + "'",
+									virtualNetworkSite.getSubnets().getSubnet(dataSubnetName));
+						}
+					});
+
+			// Test deletion of the subnet
+			serviceDriver.onServiceUninstalled(30, TimeUnit.MINUTES);
+			VirtualNetworkConfiguration vnetConfig = restClient.getVirtualNetworkConfiguration();
+			VirtualNetworkSite virtualNetworkSite =
+					vnetConfig.getVirtualNetworkSites().getVirtualNetworkSite(networkSite);
+			Assert.assertNull("Expected subnet '" + dataSubnetName + "' to be deleted",
+					virtualNetworkSite.getSubnets().getSubnet(dataSubnetName));
+
+		} finally {
+			stopManagementMachines(mngDriver);
+			restClient.removeSubnetByName(networkSite, dataSubnetName, System.currentTimeMillis() + TIMEOUT);
+		}
+
 	}
 }

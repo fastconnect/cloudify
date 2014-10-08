@@ -5,6 +5,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.cloudifysource.domain.ServiceNetwork;
 import org.cloudifysource.domain.cloud.Cloud;
 import org.cloudifysource.domain.cloud.compute.ComputeTemplate;
 import org.cloudifysource.dsl.internal.DSLException;
@@ -28,16 +29,21 @@ public class BaseDriverTestIT {
 
 	protected MicrosoftAzureCloudDriver createDriver(String computeTemplate, boolean isManagement)
 			throws IOException, DSLException, CloudProvisioningException {
-		return this.createDriver(computeTemplate, null, isManagement, CLOUD_RESOURCES_FOLDER, AZURE_WIN);
+		return this.createDriver(computeTemplate, null, isManagement, CLOUD_RESOURCES_FOLDER, AZURE_WIN, null);
 	}
 
 	protected MicrosoftAzureCloudDriver createDriver(String computeTemplate, String overridesDir, boolean isManagement)
 			throws IOException, DSLException, CloudProvisioningException {
-		return this.createDriver(computeTemplate, overridesDir, isManagement, CLOUD_RESOURCES_FOLDER, AZURE_WIN);
+		return this.createDriver(computeTemplate, overridesDir, isManagement, CLOUD_RESOURCES_FOLDER, AZURE_WIN, null);
+	}
+
+	private MicrosoftAzureCloudDriver createDriver(String computeTemplate, ServiceNetwork serviceNetwork)
+			throws IOException, DSLException, CloudProvisioningException {
+		return this.createDriver(computeTemplate, null, false, CLOUD_RESOURCES_FOLDER, AZURE_WIN, serviceNetwork);
 	}
 
 	protected MicrosoftAzureCloudDriver createDriver(String computeTemplate, String overridesDir,
-			boolean isManagement, String cloudFolder, String cloudName)
+			boolean isManagement, String cloudFolder, String cloudName, ServiceNetwork serviceNetwork)
 			throws IOException, DSLException, CloudProvisioningException {
 
 		cloud = AzureTestUtils.createCloud(cloudFolder, cloudName, overridesDir, computeTemplate);
@@ -54,6 +60,9 @@ public class BaseDriverTestIT {
 		configuration.setCloud(cloud);
 		configuration.setCloudTemplate(computeTemplate);
 		configuration.setManagement(isManagement);
+		if (serviceNetwork != null) {
+			configuration.setNetwork(serviceNetwork);
+		}
 
 		if (!isManagement) {
 			configuration.setServiceName("default." + DEFAULT_SERVICE_NAME);
@@ -100,6 +109,21 @@ public class BaseDriverTestIT {
 				driver.stopMachine(md.getPrivateAddress(), TIMEOUT, TimeUnit.MILLISECONDS);
 			}
 		}
+	}
+
+	protected MicrosoftAzureCloudDriver startAndStopMachine(String computeTemplate, ServiceNetwork serviceNetwork,
+			MachineDetailsAssertion machineDetailsAssertion) throws Exception {
+		MicrosoftAzureCloudDriver driver = this.createDriver(computeTemplate, serviceNetwork);
+		MachineDetails md = null;
+		try {
+			md = driver.startMachine(null, TIMEOUT, TimeUnit.MILLISECONDS);
+			machineDetailsAssertion.assertMachineDetails(md);
+		} finally {
+			if (md != null) {
+				driver.stopMachine(md.getPrivateAddress(), TIMEOUT, TimeUnit.MILLISECONDS);
+			}
+		}
+		return driver;
 	}
 
 	protected MachineDetails[] startManagementMachine(MicrosoftAzureCloudDriver driver,

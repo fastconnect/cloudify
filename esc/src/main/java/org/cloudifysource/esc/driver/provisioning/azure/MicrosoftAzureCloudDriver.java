@@ -455,10 +455,32 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			throws TimeoutException, CloudProvisioningException {
 		long endTime = System.currentTimeMillis() + unit.toMillis(duration);
 
+		// Create storage if required
 		try {
 			azureClient.createStorageAccount(affinityGroup, storageAccountName, endTime);
 		} catch (Exception e) {
 			throw new CloudProvisioningException(e);
+		}
+
+		// Add a subnet for the service instance if required
+		CloudNetwork cloudNetwork = cloud.getCloudNetwork();
+		if (cloudNetwork != null) {
+			String networkTemplate = this.configuration.getNetwork().getTemplate();
+			NetworkConfiguration networkConfiguration = cloudNetwork.getTemplates().get(networkTemplate);
+			List<Subnet> subnets = networkConfiguration.getSubnets();
+			Subnet subnet = subnets.get(0);
+			if (subnets.isEmpty()) {
+				throw new CloudProvisioningException("No subnet configured for template network '" + networkTemplate
+						+ "'");
+			}
+			try {
+				String networkName = cloud.getCloudNetwork().getCustom().get(AZURE_NETWORK_NAME);
+				String subnetName = subnet.getName();
+				String subnetRange = subnet.getRange();
+				azureClient.addSubnetToVirtualNetwork(networkName, subnetName, subnetRange, endTime);
+			} catch (Exception e) {
+				throw new CloudProvisioningException(e);
+			}
 		}
 
 		// underscore character in hostname might cause deployment to fail
@@ -540,7 +562,17 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			InputEndpoints inputEndpoints = createInputEndPoints();
 
 			CloudNetwork cloudNetwork = this.cloud.getCloudNetwork();
-			String subnetName = cloudNetwork.getManagement().getNetworkConfiguration().getSubnets().get(0).getName();
+
+			String subnetName = null;
+			if (this.configuration.getNetwork() != null) {
+				// Use service's subnet
+				String networkTemplate = this.configuration.getNetwork().getTemplate();
+				NetworkConfiguration networkConfiguration = cloudNetwork.getTemplates().get(networkTemplate);
+				subnetName = networkConfiguration.getSubnets().get(0).getName();
+			} else {
+				// use management's subnet
+				subnetName = cloudNetwork.getManagement().getNetworkConfiguration().getSubnets().get(0).getName();
+			}
 
 			desc.setInputEndpoints(inputEndpoints);
 			desc.setPassword(password);
@@ -1021,7 +1053,23 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	@Override
 	public void onServiceUninstalled(long duration, TimeUnit unit) {
-		// TODO Auto-generated method stub
+		final long endTime = System.currentTimeMillis() + CLEANUP_TIMEOUT;
+
+		// Remove subnet
+		if (this.configuration.getNetwork() != null) {
+			CloudNetwork cloudNetwork = cloud.getCloudNetwork();
+			String networkTemplate = this.configuration.getNetwork().getTemplate();
+			NetworkConfiguration networkConfiguration = cloudNetwork.getTemplates().get(networkTemplate);
+			List<Subnet> subnets = networkConfiguration.getSubnets();
+			Subnet subnet = subnets.get(0);
+			try {
+				logger.info("Delete the subnet '" + subnet.getName() + "' from network '" + this.networkName + "'");
+				azureClient.removeSubnetByName(this.networkName, subnet.getName(), endTime);
+			} catch (Exception e) {
+				logger.log(Level.WARNING, "Couldn't remove subnet '" + subnet.getName() + "' from network '"
+						+ this.networkName + "'", e);
+			}
+		}
 	}
 
 	private List<String> getIpAddressesList(Map<String, Object> map) {

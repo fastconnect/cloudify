@@ -11,6 +11,7 @@
 package org.cloudifysource.esc.driver.provisioning.azure.client;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -382,6 +383,55 @@ public class MicrosoftAzureRestClient {
 			logger.fine("Using existing virtual network site configuration: " + networkSiteName);
 		}
 
+	}
+
+	public void addSubnetToVirtualNetwork(String networkSiteName, String subnetName, String subnetAddr, long endTime)
+			throws MicrosoftAzureException, TimeoutException, InterruptedException {
+
+		VirtualNetworkConfiguration virtualNetworkConfiguration = this.getVirtualNetworkConfiguration();
+		VirtualNetworkSites virtualNetworkSites = virtualNetworkConfiguration.getVirtualNetworkSites();
+
+		if (!virtualNetworkSites.contains(networkSiteName)) {
+			throw new IllegalStateException("Missing network '" + networkSiteName + "' in Microsoft Azure");
+		}
+
+		VirtualNetworkSite virtualNetworkSite = virtualNetworkSites.getVirtualNetworkSite(networkSiteName);
+		if (virtualNetworkSite.getSubnets().contains(subnetName)) {
+			// The subnet already exist
+			logger.info("Subnet '" + subnetName + "' already exist");
+		} else {
+			logger.info("Creating the subnet: " + subnetName);
+			Subnet subnet = new Subnet();
+			subnet.setName(subnetName);
+			subnet.getAddressPrefix().add(subnetAddr);
+			virtualNetworkSite.getSubnets().getSubnets().add(subnet);
+			this.setNetworkConfiguration(endTime, virtualNetworkConfiguration);
+			logger.fine("Updated virtual network site : " + networkSiteName);
+		}
+	}
+
+	public void removeSubnetByName(String networkSiteName, String subnetName, long endTime)
+			throws MicrosoftAzureException, TimeoutException, InterruptedException {
+		VirtualNetworkConfiguration virtualNetworkConfiguration = this.getVirtualNetworkConfiguration();
+		VirtualNetworkSites virtualNetworkSites = virtualNetworkConfiguration.getVirtualNetworkSites();
+		VirtualNetworkSite virtualNetworkSite = virtualNetworkSites.getVirtualNetworkSite(networkSiteName);
+		Subnets subnets = virtualNetworkSite.getSubnets();
+		Iterator<Subnet> iterator = subnets.getSubnets().iterator();
+
+		boolean shouldUpdate = false;
+		while (iterator.hasNext()) {
+			Subnet next = iterator.next();
+			if (next.getName().equals(subnetName)) {
+				iterator.remove();
+				shouldUpdate = true;
+				break;
+			}
+		}
+		if (shouldUpdate) {
+			this.setNetworkConfiguration(endTime, virtualNetworkConfiguration);
+		} else {
+			logger.warning("Subnet '" + subnetName + "' not found in network '" + networkSiteName + "'");
+		}
 	}
 
 	/**
@@ -1650,5 +1700,4 @@ public class MicrosoftAzureRestClient {
 		waitForRequestToFinish(requestId, endTime);
 		logger.fine("Added a data disk to " + roleName);
 	}
-
 }

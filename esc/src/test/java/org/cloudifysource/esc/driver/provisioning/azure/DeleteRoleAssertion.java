@@ -17,7 +17,7 @@ public class DeleteRoleAssertion extends BaseAssertion {
 
 	public DeleteRoleAssertion(MicrosoftAzureRestClient azureRestClient, String cloudTemplateName,
 			ComputeTemplate computeTemplate) {
-		super(azureRestClient, cloudTemplateName, computeTemplate);
+		super(azureRestClient, computeTemplate);
 	}
 
 	@Override

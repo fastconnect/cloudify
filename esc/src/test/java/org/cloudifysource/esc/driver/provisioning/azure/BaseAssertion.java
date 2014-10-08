@@ -11,7 +11,6 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.HostedService;
 
 public class BaseAssertion extends MachineDetailsAssertion {
 
-	protected String computeTemplateName;
 	protected ComputeTemplate computeTemplate;
 	protected MicrosoftAzureRestClient azureRestClient;
 	protected long endTime = 1000000;
@@ -21,9 +20,7 @@ public class BaseAssertion extends MachineDetailsAssertion {
 	public BaseAssertion() {
 	}
 
-	public BaseAssertion(MicrosoftAzureRestClient azureRestClient, String cloudTemplateName,
-			ComputeTemplate computeTemplate) {
-		this.setComputeTemplateName(cloudTemplateName);
+	public BaseAssertion(MicrosoftAzureRestClient azureRestClient, ComputeTemplate computeTemplate) {
 		this.azureRestClient = azureRestClient;
 		this.computeTemplate = computeTemplate;
 		this.cloudServiceName = (String) computeTemplate.getCustom().get("azure.cloud.service");
@@ -37,19 +34,11 @@ public class BaseAssertion extends MachineDetailsAssertion {
 	 * @throws MicrosoftAzureException
 	 * @throws TimeoutException
 	 */
-	public void assertCloudSeviceAndDeploymentExists(String deploymentLabel) throws MicrosoftAzureException,
+	public void assertCloudSeviceAndDeploymentExist(String deploymentLabel) throws MicrosoftAzureException,
 			TimeoutException {
 		HostedService hostedService = azureRestClient.getHostedService(cloudServiceName, true);
 		Assert.assertNotNull(hostedService);
 		Assert.assertNotNull(hostedService.getDeploymentByLabel(deploymentLabel));
-	}
-
-	public String getComputeTemplateName() {
-		return computeTemplateName;
-	}
-
-	public void setComputeTemplateName(String computeTemplateName) {
-		this.computeTemplateName = computeTemplateName;
 	}
 
 	public String getDeploymentSlot() {

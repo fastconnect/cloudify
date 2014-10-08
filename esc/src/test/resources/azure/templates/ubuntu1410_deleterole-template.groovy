@@ -15,6 +15,7 @@
 	      "azure.pfx.file": pfxFile,
 	      "azure.pfx.password" : pfxPassword,
 	      "azure.cloud.service" : "deleterolecloudservice",
+		  "azure.storage.datadisk.size" : 10
 //	  	  "azure.endpoints" : [
 //	  		  [name:"HTTP", protocol:"TCP", localPort: "80", port:"81"],
 //	  		  [name:"SSH", protocol:"TCP", localPort: "22", port:"5000"]

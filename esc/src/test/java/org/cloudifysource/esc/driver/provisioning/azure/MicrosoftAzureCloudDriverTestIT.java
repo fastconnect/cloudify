@@ -308,7 +308,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 			MicrosoftAzureRestClient client = AzureTestUtils.createMicrosoftAzureRestClient();
 			String roleName = String.format("%s%s", cloud.getProvider().getManagementGroup(), roleSuffix);
 			int nbDiskAttachedToVM = 0;
-			Disks disks = client.listOSDisks();
+			Disks disks = client.listDisks();
 			for (Disk disk : disks.getDisks()) {
 				if (disk.getMediaLink().contains(storageName)) {
 					Assert.assertEquals(roleName, disk.getAttachedTo().getRoleName());
@@ -350,8 +350,10 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 	public void testDeleteRoleUbuntuManagementFromDeployment() throws Exception {
 
 		String computeTemplateName = "ubuntu1410_deleterole";
+		cloud = AzureTestUtils.createCloud("./src/main/resources/clouds", "azure_win", null, computeTemplateName);
 		ComputeTemplate computeTemplate = cloud.getCloudCompute().getTemplates().get(computeTemplateName);
 		final String cloudServiceName = (String) computeTemplate.getCustom().get("azure.cloud.service");
+		final String networkName = cloud.getCloudNetwork().getCustom().get("azure.networksite.name");
 
 		MicrosoftAzureCloudDriver driver = createDriver(computeTemplateName, true);
 
@@ -359,8 +361,10 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 		String affinityPrefix = cloudProperties.get("affinityGroup");
 		final MicrosoftAzureRestClient azureRestClient =
 				AzureTestUtils.createMicrosoftAzureRestClient(cloudServiceName, affinityPrefix);
+		azureRestClient.setVirtualNetwork(networkName);
 
 		try {
+
 			final DeleteRoleAssertion deleteRoleAssertion = new DeleteRoleAssertion(azureRestClient,
 					computeTemplateName, computeTemplate);
 
@@ -369,12 +373,9 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 			final String deploymentLabel = deleteRoleAssertion.getDeploymentLabel();
 			Assert.assertNotNull(deploymentLabel);
 
-			this.startAndStopMachine(computeTemplateName, new MachineDetailsAssertion() {
-				@Override
-				public void additionalAssertions(MachineDetails md) throws MicrosoftAzureException, TimeoutException {
-					deleteRoleAssertion.assertCloudSeviceAndDeploymentExists(deploymentLabel);
-				}
-			});
+			this.startAndStopMachine(computeTemplateName, new MachineDetailsAssertion());
+
+			deleteRoleAssertion.assertCloudSeviceAndDeploymentExist(deploymentLabel);
 
 		} finally {
 			stopManagementMachines(driver);

@@ -13,7 +13,6 @@ import org.cloudifysource.esc.driver.provisioning.ComputeDriverConfiguration;
 import org.cloudifysource.esc.driver.provisioning.MachineDetails;
 import org.cloudifysource.esc.driver.provisioning.ProvisioningContextAccess;
 import org.cloudifysource.esc.driver.provisioning.ProvisioningContextImpl;
-import org.junit.Assert;
 
 public class BaseDriverTestIT {
 

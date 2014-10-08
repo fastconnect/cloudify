@@ -808,14 +808,6 @@ public class MicrosoftAzureRestClient {
 
 		logger.fine("Deleting cloud service : " + cloudServiceName);
 
-		Deployments deployments = getHostedService(cloudServiceName, true).getDeployments();
-		if (deployments.getDeployments().isEmpty()) {
-			// Delete cloud service
-			ClientResponse response = doDelete("/services/hostedservices/" + cloudServiceName);
-			String requestId = extractRequestId(response);
-			waitForRequestToFinish(requestId, endTime);
-		}
-
 		if (!doesCloudServiceContainsDeployments(cloudServiceName, endTime)) {
 			// Delete cloud service
 			ClientResponse response = doDelete("/services/hostedservices/" + cloudServiceName);
@@ -823,7 +815,7 @@ public class MicrosoftAzureRestClient {
 			waitForRequestToFinish(requestId, endTime);
 
 		} else {
-			logger.warning(String.format("Can't remove cloud service '%s', it still contains deployment(s)",
+			logger.warning(String.format("Can't delete cloud service '%s', it still contains deployment(s)",
 					cloudServiceName));
 		}
 	}
@@ -1653,11 +1645,6 @@ public class MicrosoftAzureRestClient {
 			}
 		}
 		return publicIp;
-	}
-
-	private String getPrivateIpFromDeployment(final Deployment deployment) {
-		return deployment.getRoleInstanceList().getRoleInstances().get(0)
-				.getIpAddress();
 	}
 
 	private String getThreadIdentity() {

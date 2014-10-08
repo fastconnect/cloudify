@@ -497,44 +497,45 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 			desc.setAvailabilitySetName(availabilitySetName);
 
-			// verify whether hosted service is set or not in the compute template
-			String hostedCloudService = (String) template.getCustom().get(AZURE_CLOUD_SERVICE);
-			if (hostedCloudService != null && !hostedCloudService.trim().isEmpty()) {
+			// verify whether a CS is set or not in the compute template
+			String cloudServiceInCompute = (String) template.getCustom().get(AZURE_CLOUD_SERVICE);
+			if (cloudServiceInCompute != null && !cloudServiceInCompute.trim().isEmpty()) {
 
 				HostedServices hostedServices = azureClient.listHostedServices();
 
 				// is specified hosted service exist on azure ?
-				if (hostedServices.contains(hostedCloudService)) {
+				if (hostedServices.contains(cloudServiceInCompute)) {
 
-					Deployment deployment = azureClient.listDeploymentsBySlot(hostedCloudService,
+					Deployment deployment = azureClient.listDeploymentsBySlot(cloudServiceInCompute,
 							deploymentSlot, endTime);
 
-					// is there any deployment in the selected cloud service/slot
+					// is there any deployment in the existing CS/slot
 					if (deployment != null) {
-
-						String name = deployment.getName();
-						desc.setDeploymentName(name);
+						desc.setDeploymentName(deployment.getName());
 						// use add role
 						desc.setAddToExistingDeployment(true);
 
-						// create a new deployment
+						// create a new deployment with the already existing CS
 					} else {
-						desc.setDeploymentName(hostedCloudService);
+						desc.setDeploymentName(cloudServiceInCompute);
 					}
 
-					desc.setHostedServiceName(hostedCloudService);
+					desc.setHostedServiceName(cloudServiceInCompute);
 
 				} else {
 					// a cs/deployment will be created with specified name
 					logger.warning(String.format("The cloud service '%s' doesn't exist on azure. "
-							+ "It will be created.", hostedCloudService));
-					desc.setAppendCloudServiceName(false);
-					desc.setCloudServiceName(hostedCloudService);
+							+ "It will be created.", cloudServiceInCompute));
+					desc.setGenerateCloudServiceName(false);
+					desc.setAddToExistingDeployment(false);
+					desc.setCloudServiceName(cloudServiceInCompute);
 				}
 			} else {
 				// a cs will be created with a generated name
 				logger.fine(String.format("No cloud service was specified in compute '%s'. "
 						+ "It will be created with a generic name.", this.cloudTemplateName));
+				desc.setAddToExistingDeployment(false);
+				desc.setGenerateCloudServiceName(true);
 			}
 
 			desc.setAffinityGroup(affinityGroup);

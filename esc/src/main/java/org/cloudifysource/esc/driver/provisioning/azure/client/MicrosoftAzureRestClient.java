@@ -464,11 +464,11 @@ public class MicrosoftAzureRestClient {
 
 			try {
 
-				// create a new cloud service
+				// is there a hosted service to use ?
 				if (deploymentDesc.getHostedServiceName() == null) {
 
 					// final cloud service name with extra characters (count)
-					if (deploymentDesc.isAppendCloudServiceName()) {
+					if (deploymentDesc.isGenerateCloudServiceName()) {
 						serviceName = createCloudService(deploymentDesc.getAffinityGroup(), null, endTime);
 
 						// create a cloud service with the specified name in compute template

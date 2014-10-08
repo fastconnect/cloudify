@@ -250,7 +250,7 @@ public class MicrosoftAzureRequestBodyBuilder {
 		mediaLinkBuilder.append(generateRandomUUID(7));
 		mediaLinkBuilder.append(".vhd");
 		osVirtualHardDisk.setMediaLink(mediaLinkBuilder.toString());
-		role.setOSVirtualHardDisk(osVirtualHardDisk);
+		role.setOsVirtualHardDisk(osVirtualHardDisk);
 
 		ConfigurationSets configurationSets = new ConfigurationSets();
 
@@ -384,7 +384,7 @@ public class MicrosoftAzureRequestBodyBuilder {
 		PersistentVMRole persistentVMRole = new PersistentVMRole();
 		persistentVMRole.setAvailabilitySetName(role.getAvailabilitySetName());
 		persistentVMRole.setConfigurationSets(role.getConfigurationSets());
-		persistentVMRole.setOSVirtualHardDisk(role.getOsVirtualHardDisk());
+		persistentVMRole.setOsVirtualHardDisk(role.getOsVirtualHardDisk());
 
 		persistentVMRole.setRoleName(role.getRoleName());
 		persistentVMRole.setRoleSize(role.getRoleSize());

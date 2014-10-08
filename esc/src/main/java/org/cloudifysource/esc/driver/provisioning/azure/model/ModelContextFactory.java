@@ -69,6 +69,7 @@ public final class ModelContextFactory {
 		CLASSES.add(DataVirtualHardDisk.class);
 		CLASSES.add(DomainJoin.class);
 		CLASSES.add(JoinCredentials.class);
+		CLASSES.add(DataVirtualHardDisks.class);
 	}
 
 	private static Class<?>[] getClasses() {

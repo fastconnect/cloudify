@@ -31,12 +31,13 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 	private List<String> ipAddresses;
 	private String availableIp = null;
 	private String subnetName;
-	private boolean addToExistingDeployment = false;
-	private boolean appendCloudServiceName = true;
 	private String cloudServiceName;
 	private DomainJoin domainJoin;
 	private String customData;
 	private Integer dataDiskSize;
+
+	private boolean addToExistingDeployment = false;
+	private boolean generateCloudServiceName = false;
 
 	public String getHostedServiceName() {
 		return hostedServiceName;
@@ -188,14 +189,6 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 		this.addToExistingDeployment = addToExistingDeployment;
 	}
 
-	public boolean isAppendCloudServiceName() {
-		return appendCloudServiceName;
-	}
-
-	public void setAppendCloudServiceName(boolean appendCloudServiceName) {
-		this.appendCloudServiceName = appendCloudServiceName;
-	}
-
 	public void setCustomData(String customData) {
 		this.customData = customData;
 	}
@@ -226,6 +219,14 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 
 	public void setCloudServiceName(String cloudServiceName) {
 		this.cloudServiceName = cloudServiceName;
+	}
+
+	public boolean isGenerateCloudServiceName() {
+		return generateCloudServiceName;
+	}
+
+	public void setGenerateCloudServiceName(boolean generateCloudServiceName) {
+		this.generateCloudServiceName = generateCloudServiceName;
 	}
 
 }

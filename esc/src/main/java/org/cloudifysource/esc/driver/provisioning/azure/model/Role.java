@@ -9,14 +9,15 @@ import javax.xml.bind.annotation.XmlType;
  * 
  */
 @XmlType(name = "Role", propOrder = {
-		"roleName", "roleType", "configurationSets", "availabilitySetName", "osVirtualHardDisk",
-		"roleSize", "provisionGuestAgent" })
+		"roleName", "roleType", "configurationSets", "availabilitySetName", "dataVirtualHardDisks",
+		"osVirtualHardDisk", "roleSize", "provisionGuestAgent" })
 public class Role {
 
 	private String roleName;
 	private String roleType;
 	private ConfigurationSets configurationSets;
 	private String availabilitySetName;
+	private DataVirtualHardDisks dataVirtualHardDisks;
 	private OSVirtualHardDisk osVirtualHardDisk;
 	private String roleSize;
 	private Boolean provisionGuestAgent;
@@ -53,7 +54,7 @@ public class Role {
 		return osVirtualHardDisk;
 	}
 
-	public void setOSVirtualHardDisk(final OSVirtualHardDisk osVirtualHardDisk) {
+	public void setOsVirtualHardDisk(OSVirtualHardDisk osVirtualHardDisk) {
 		this.osVirtualHardDisk = osVirtualHardDisk;
 	}
 
@@ -82,6 +83,15 @@ public class Role {
 
 	public void setProvisionGuestAgent(Boolean provisionGuestAgent) {
 		this.provisionGuestAgent = provisionGuestAgent;
+	}
+
+	@XmlElement(name = "DataVirtualHardDisks")
+	public DataVirtualHardDisks getDataVirtualHardDisks() {
+		return dataVirtualHardDisks;
+	}
+
+	public void setDataVirtualHardDisks(DataVirtualHardDisks dataVirtualHardDisks) {
+		this.dataVirtualHardDisks = dataVirtualHardDisks;
 	}
 
 }

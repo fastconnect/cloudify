@@ -1,6 +1,5 @@
 package org.cloudifysource.esc.driver.provisioning.azure;
 
-import java.net.MalformedURLException;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -9,11 +8,8 @@ import java.util.logging.Logger;
 import org.cloudifysource.domain.ServiceNetwork;
 import org.cloudifysource.domain.cloud.compute.ComputeTemplate;
 import org.cloudifysource.esc.driver.provisioning.MachineDetails;
-import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureException;
 import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureRestClient;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
-import org.cloudifysource.esc.driver.provisioning.azure.model.Disk;
-import org.cloudifysource.esc.driver.provisioning.azure.model.Disks;
 import org.cloudifysource.esc.driver.provisioning.azure.model.HostedServices;
 import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoint;
 import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoints;
@@ -225,8 +221,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 	}
 
 	@Test
-	@Ignore
-	// TODO enhance test ( verification )
+	@Ignore("Need to check what happens if the same computer name is added into AD")
 	public void testStartWindowsManagementMachineJoinDomain() throws Exception {
 		String computeTemplateName = "win2012_joindomain";
 		this.startAndStopManagementMachine(computeTemplateName);
@@ -272,79 +267,50 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 
 		MicrosoftAzureCloudDriver driver = createDriver(computeTemplate, true);
 		try {
-			this.startManagementMachine(driver, new StorageAssertion("CFYM1", "specificstorage", true));
-			this.startAndStopMachine(computeTemplate,
-					new StorageAssertion(DEFAULT_SERVICE_NAME + "001", "specificstorage", false));
+			StorageAssertion storageAssertionManagement = new StorageAssertion("CFYM1", "specificstorage", true);
+			storageAssertionManagement.setManagementGroup(this.cloud.getProvider().getManagementGroup());
+			this.startManagementMachine(driver, storageAssertionManagement);
+
+			final String roleSuffix = DEFAULT_SERVICE_NAME + "001";
+			StorageAssertion storageAssertionMachine = new StorageAssertion(roleSuffix, "specificstorage", false);
+			this.startAndStopMachine(computeTemplate, storageAssertionMachine);
 		} finally {
 			stopManagementMachines(driver);
 		}
 
 	}
 
-	class StorageAssertion extends MachineDetailsAssertion {
-		private String roleSuffix;
-		private String storageName;
-		private boolean checkPublicAddress;
-
-		public StorageAssertion(String roleSuffix, String storageName, boolean checkPublicAddress) {
-			this.roleSuffix = roleSuffix;
-			this.storageName = storageName;
-			this.checkPublicAddress = checkPublicAddress;
-		}
-
-		@Override
-		public void assertMachineDetails(MachineDetails md) throws Exception {
-			Assert.assertNotNull("MachineDetails is null", md);
-			Assert.assertNotNull("machineId is null", md.getMachineId());
-			String privateAddress = md.getPrivateAddress();
-			String publicAddress = md.getPublicAddress();
-			logger.info("private ip=" + privateAddress);
-			if (checkPublicAddress) {
-				logger.info("public ip=" + publicAddress);
-				Assert.assertNotNull("public address is null", publicAddress);
-			}
-			Assert.assertNotNull("private address is null", privateAddress);
-			additionalAssertions(md);
-		}
-
-		public void assertNbDataDisk() throws MalformedURLException,
-				MicrosoftAzureException, TimeoutException {
-			MicrosoftAzureRestClient client = AzureTestUtils.createMicrosoftAzureRestClient();
-			String roleName = String.format("%s%s", cloud.getProvider().getManagementGroup(), roleSuffix);
-			int nbDiskAttachedToVM = 0;
-			Disks disks = client.listOSDisks();
-			for (Disk disk : disks.getDisks()) {
-				if (disk.getMediaLink().contains(storageName)) {
-					Assert.assertEquals(roleName, disk.getAttachedTo().getRoleName());
-					nbDiskAttachedToVM++;
-				}
-			}
-			Assert.assertEquals(2, nbDiskAttachedToVM);
-		}
-	}
-
-	/**
-	 * Deploy a manager and a machine in an specific CS. Stopping the machine shouldn't remove the CS
-	 * 
-	 * @throws Exception
-	 */
 	@Test
-	@Ignore("Need implementation of deleting specific role in a deployment")
-	public void testStartUbuntuManagementAndKeepCS() throws Exception {
-		MicrosoftAzureCloudDriver driver = createDriver("ubuntu1410_keepcloudservice", true);
+	public void testDeleteRoleUbuntuManagementFromDeployment() throws Exception {
+
+		String computeTemplateName = "ubuntu1410_deleterole";
+		cloud = AzureTestUtils.createCloud("./src/main/resources/clouds", "azure_win", null, computeTemplateName);
+		ComputeTemplate computeTemplate = cloud.getCloudCompute().getTemplates().get(computeTemplateName);
+		final String cloudServiceName = (String) computeTemplate.getCustom().get("azure.cloud.service");
+		final String networkName = cloud.getCloudNetwork().getCustom().get("azure.networksite.name");
+
+		MicrosoftAzureCloudDriver driver = createDriver(computeTemplateName, true);
+
+		Map<String, String> cloudProperties = AzureTestUtils.getCloudProperties();
+		String affinityPrefix = cloudProperties.get("affinityGroup");
+		final MicrosoftAzureRestClient azureRestClient =
+				AzureTestUtils.createMicrosoftAzureRestClient(cloudServiceName, affinityPrefix);
+		azureRestClient.setVirtualNetwork(networkName);
 
 		try {
-			this.startManagementMachine(driver, new MachineDetailsAssertion() {
-				@Override
-				public void additionalAssertions(MachineDetails md) {
-				}
-			});
 
-			this.startAndStopMachine("ubuntu1410_keepcloudservice", new MachineDetailsAssertion() {
-				@Override
-				public void additionalAssertions(MachineDetails md) {
-				}
-			});
+			final DeleteRoleAssertion deleteRoleAssertion = new DeleteRoleAssertion(azureRestClient,
+					computeTemplateName, computeTemplate);
+
+			this.startManagementMachine(driver, deleteRoleAssertion);
+
+			final String deploymentLabel = deleteRoleAssertion.getDeploymentLabel();
+			Assert.assertNotNull(deploymentLabel);
+
+			this.startAndStopMachine(computeTemplateName, new MachineDetailsAssertion());
+
+			deleteRoleAssertion.assertCloudSeviceAndDeploymentExist(deploymentLabel);
+
 		} finally {
 			stopManagementMachines(driver);
 		}

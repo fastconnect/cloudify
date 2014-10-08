@@ -281,7 +281,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 	}
 
 	@Test
-	public void testDeleteRoleUbuntuManagementFromDeployment() throws Exception {
+	public void testDeleteRoleUbuntuMachineFromDeployment() throws Exception {
 
 		String computeTemplateName = "ubuntu1410_deleterole";
 		cloud = AzureTestUtils.createCloud("./src/main/resources/clouds", "azure_win", null, computeTemplateName);

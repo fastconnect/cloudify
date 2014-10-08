@@ -842,6 +842,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		}
 	}
 
+	@Deprecated
+	// TODO methods searches all hosted services/deployment, it should look for only ones that are managed/newly
+	// deployed, prefixes ?
 	private void scanLeakingNodes() {
 		try {
 			HostedServices hostedServices = azureClient.listHostedServices();

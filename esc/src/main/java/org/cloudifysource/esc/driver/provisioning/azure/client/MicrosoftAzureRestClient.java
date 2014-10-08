@@ -911,14 +911,17 @@ public class MicrosoftAzureRestClient {
 
 		String roleName = role.getRoleName();
 
-		// delete role if number of roles in current deployment is greater than 1
-		if (deployment.getRoleList().getRoles().size() > 1) {
+		// delete role if the current deployment has at least 2 roles.
+		if (deployment.hasAtLeastTwoRoles()) {
 			this.deleteRoleFromDeployment(roleName, deployment, endTime);
 
 			// otherwise delete deployment
 		} else {
 			this.deleteDeployment(deployment.getHostedServiceName(), deployment.getName(), endTime);
 		}
+
+		// delete cloud service, verification for possible deployments is done inside this method
+		this.deleteCloudService(deployment.getHostedServiceName(), endTime);
 
 		logger.fine(String.format("Cleaning resources for role '%s' [%s]", roleName, machineIp));
 
@@ -1259,7 +1262,7 @@ public class MicrosoftAzureRestClient {
 	 * ClientResponse response = doGet("/services/networking/media"); if (response.getStatus() == HTTP_NOT_FOUND) {
 	 * return null; } String responseBody = response.getEntity(String.class); if (responseBody.charAt(0) == BAD_CHAR) {
 	 * responseBody = responseBody.substring(1); }
-	 *
+	 * 
 	 * GlobalNetworkConfiguration globalNetowrkConfiguration = (GlobalNetworkConfiguration) MicrosoftAzureModelUtils
 	 * .unmarshall(responseBody); return globalNetowrkConfiguration.getVirtualNetworkConfiguration()
 	 * .getVirtualNetworkSites(); }

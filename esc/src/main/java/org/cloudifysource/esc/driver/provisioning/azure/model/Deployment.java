@@ -11,7 +11,7 @@ import javax.xml.bind.annotation.XmlType;
  */
 @XmlRootElement(name = "Deployment")
 @XmlType(propOrder = { "name", "deploymentSlot", "deploymentName", "privateId", "status",
-		"label" , "roleInstanceList" , "roleList", "virtualNetworkName" , "hostedServiceName" })
+		"label", "roleInstanceList", "roleList", "virtualNetworkName", "hostedServiceName" })
 public class Deployment {
 
 	private String name;
@@ -23,7 +23,7 @@ public class Deployment {
 	private RoleInstanceList roleInstanceList;
 	private RoleList roleList;
 	private String virtualNetworkName;
-	
+
 	// not azure model
 	private String hostedServiceName;
 
@@ -43,7 +43,7 @@ public class Deployment {
 	public void setRoleInstanceList(final RoleInstanceList roleInstanceList) {
 		this.roleInstanceList = roleInstanceList;
 	}
-	
+
 	@XmlElement(name = "VirtualNetworkName")
 	public String getVirtualNetworkName() {
 		return virtualNetworkName;
@@ -70,16 +70,16 @@ public class Deployment {
 	public void setDeploymentSlot(final String slot) {
 		this.deploymentSlot = slot;
 	}
-	
+
 	@XmlElement(name = "DeploymentName")
 	public String getDeploymentName() {
 		return deploymentName;
 	}
-	
+
 	public void setDeploymentName(String deploymentName) {
 		this.deploymentName = deploymentName;
 	}
-	
+
 	@XmlElement(name = "PrivateID")
 	public String getPrivateId() {
 		return privateId;
@@ -88,7 +88,6 @@ public class Deployment {
 	public void setPrivateId(final String privateId) {
 		this.privateId = privateId;
 	}
-
 
 	@XmlElement(name = "Status")
 	public String getStatus() {
@@ -115,5 +114,25 @@ public class Deployment {
 
 	public void setRoleList(final RoleList roleList) {
 		this.roleList = roleList;
+	}
+
+	/**
+	 * 
+	 * Checks if there's at least two roles in the current deployment <br />
+	 * 
+	 * @return true if is there at least one role, false otherwise
+	 */
+	public boolean hasAtLeastTwoRoles() {
+		if (this.getRoleList() != null && this.getRoleList().getRoles() != null) {
+
+			if (!this.getRoleList().getRoles().isEmpty()) {
+
+				// at least 2 roles
+				if (this.getRoleList().getRoles().size() > 1) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 }

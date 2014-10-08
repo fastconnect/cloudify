@@ -470,21 +470,27 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		// Add a subnet for the service instance if required
 		CloudNetwork cloudNetwork = cloud.getCloudNetwork();
 		if (cloudNetwork != null) {
-			String networkTemplate = this.configuration.getNetwork().getTemplate();
-			NetworkConfiguration networkConfiguration = cloudNetwork.getTemplates().get(networkTemplate);
-			List<Subnet> subnets = networkConfiguration.getSubnets();
-			Subnet subnet = subnets.get(0);
-			if (subnets.isEmpty()) {
-				throw new CloudProvisioningException("No subnet configured for template network '" + networkTemplate
-						+ "'");
-			}
-			try {
-				String networkName = cloud.getCloudNetwork().getCustom().get(AZURE_NETWORK_NAME);
-				String subnetName = subnet.getName();
-				String subnetRange = subnet.getRange();
-				azureClient.addSubnetToVirtualNetwork(networkName, subnetName, subnetRange, endTime);
-			} catch (Exception e) {
-				throw new CloudProvisioningException(e);
+
+			// check network configuration
+			if (this.configuration.getNetwork() != null) {
+				String networkTemplate = this.configuration.getNetwork().getTemplate();
+				NetworkConfiguration networkConfiguration = cloudNetwork.getTemplates().get(networkTemplate);
+				List<Subnet> subnets = networkConfiguration.getSubnets();
+				Subnet subnet = subnets.get(0);
+				if (subnets.isEmpty()) {
+					throw new CloudProvisioningException("No subnet configured for template network '"
+							+ networkTemplate
+							+ "'");
+				}
+
+				try {
+					String networkName = cloud.getCloudNetwork().getCustom().get(AZURE_NETWORK_NAME);
+					String subnetName = subnet.getName();
+					String subnetRange = subnet.getRange();
+					azureClient.addSubnetToVirtualNetwork(networkName, subnetName, subnetRange, endTime);
+				} catch (Exception e) {
+					throw new CloudProvisioningException(e);
+				}
 			}
 		}
 

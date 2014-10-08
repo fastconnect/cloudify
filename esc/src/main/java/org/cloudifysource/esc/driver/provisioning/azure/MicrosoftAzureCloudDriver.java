@@ -528,7 +528,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 				HostedServices hostedServices = azureClient.listHostedServices();
 
-				// is specified hosted service exist on azure ?
+				// is specified cs exist on azure ?
 				if (hostedServices.contains(cloudServiceInCompute)) {
 
 					Deployment deployment = azureClient.listDeploymentsBySlot(cloudServiceInCompute,
@@ -596,6 +596,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			desc.setIpAddresses(this.getIpAddressesList(this.template.getCustom()));
 
 			logger.info("Launching a new virtual machine");
+
 			boolean isWindows = isWindowsVM();
 			if (isWindows) {
 				// domain join, support for windows at this moment

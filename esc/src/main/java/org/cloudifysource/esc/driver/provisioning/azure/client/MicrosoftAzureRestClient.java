@@ -22,7 +22,6 @@ import java.util.logging.Logger;
 
 import javax.net.ssl.SSLContext;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.esc.driver.provisioning.azure.model.AddressAvailability;
@@ -1390,7 +1389,7 @@ public class MicrosoftAzureRestClient {
 					// skip other networks
 					if (this.virtualNetwork.equals(deployment.getVirtualNetworkName())) {
 
-						// cheking with
+						// TODO checking with privateIp, checks also with publicIp
 						for (RoleInstance ri : deployment.getRoleInstanceList()) {
 							if (machineIp.equals(ri.getIpAddress())) {
 								deployment.setHostedServiceName(cloudServiceName);
@@ -1745,7 +1744,6 @@ public class MicrosoftAzureRestClient {
 		}
 	}
 
-	// TODO need improvement / refactoring with similar method
 	public Deployment listDeploymentsBySlot(String cloudService, String deploymentSlot, long endTime)
 			throws MicrosoftAzureException,
 			TimeoutException, InterruptedException {

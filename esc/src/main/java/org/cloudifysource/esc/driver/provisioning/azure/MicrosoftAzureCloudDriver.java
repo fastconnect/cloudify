@@ -283,10 +283,12 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 		// Network
 		Map<String, String> networkCustom = this.cloud.getCloudNetwork().getCustom();
-		this.networkName = (String) networkCustom.get(AZURE_NETWORK_NAME);
+
+		// networkName is set in initDeployer
 		if (networkName == null) {
 			throw new IllegalArgumentException("Custom field '" + AZURE_NETWORK_NAME + "' must be set");
 		}
+
 		this.addressSpace = (String) networkCustom.get(AZURE_NETOWRK_ADDRESS_SPACE);
 		if (addressSpace == null) {
 			throw new IllegalArgumentException("Custom field '" + AZURE_NETOWRK_ADDRESS_SPACE + "' must be set");
@@ -407,7 +409,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		// reset cloudserviceName
 		// null value for code causes problem while deploying, therefore it is set to an empty string if it's the case
 		String cloudServiceCode = (String) this.cloud.getCustom().get(AZURE_CLOUD_SERVICE_CODE);
-
 		if (cloudServiceCode == null || cloudServiceCode.trim().isEmpty()) {
 			cloudServiceCode = "";
 		}
@@ -424,7 +425,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 		// set virtual network name for rest client
 		if (this.management) {
-			azureClient.setVirtualNetwork(cloud.getCloudNetwork().getManagement().getNetworkConfiguration().getName());
+			this.networkName = (String) cloud.getCloudNetwork().getCustom().get(AZURE_NETWORK_NAME);
+			azureClient.setVirtualNetwork(this.networkName);
 		}
 
 	}
@@ -842,7 +844,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 		Disks disks;
 		try {
-			disks = azureClient.listOSDisks();
+			disks = azureClient.listDisks();
 		} catch (MicrosoftAzureException e1) {
 			throw new CloudProvisioningException(e1);
 		}
@@ -867,7 +869,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 				if (disk.getName().contains(serverNamePrefix)) {
 					try {
 						logger.info("Detected a zombie OS Disk with name " + disk.getName() + ", Deleting it.");
-						azureClient.deleteOSDisk(disk.getName(), endTime);
+						azureClient.deleteDisk(disk.getName(), endTime);
 					} catch (final Exception e) {
 						throw new CloudProvisioningException(e);
 					}

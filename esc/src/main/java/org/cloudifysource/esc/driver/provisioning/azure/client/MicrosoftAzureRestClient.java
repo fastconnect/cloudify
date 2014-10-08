@@ -854,8 +854,7 @@ public class MicrosoftAzureRestClient {
 	 * @throws MicrosoftAzureException .
 	 * @throws InterruptedException .
 	 */
-	public void deleteVirtualMachineByIp(final String machineIp,
-			final boolean isPrivateIp, final long endTime)
+	public void deleteVirtualMachineByIp(final String machineIp, final boolean isPrivateIp, final long endTime)
 			throws TimeoutException, MicrosoftAzureException, InterruptedException {
 
 		Deployment deployment = getDeploymentByIp(machineIp, isPrivateIp);
@@ -863,9 +862,43 @@ public class MicrosoftAzureRestClient {
 			throw new MicrosoftAzureException("Could not find a deployment for Virtual Machine with IP " + machineIp);
 		}
 
-		// get rolename for the current VM
-		String roleName = this.getRoleNameByIpAddress(machineIp, deployment);
-		this.deleteRoleFromDeployment(roleName, deployment, endTime);
+		Role role = this.getRoleByIpAddress(machineIp, deployment);
+		if (role == null) {
+			throw new MicrosoftAzureException("Could not role for Virtual Machine with IP " + machineIp);
+		}
+
+		String roleName = role.getRoleName();
+
+		// delete role if number of roles in current deployment is greater than 1
+		if (deployment.getRoleList().getRoles().size() > 1) {
+			this.deleteRoleFromDeployment(roleName, deployment, endTime);
+
+			// otherwise delete deployment
+		} else {
+			this.deleteDeployment(deployment.getHostedServiceName(), deployment.getName(), endTime);
+		}
+
+		logger.fine(String.format("Cleaning resources for role '%s' [%s]", roleName, machineIp));
+
+		String osVhdName = role.getOsVirtualHardDisk().getName();
+		try {
+			this.deleteDisk(osVhdName, endTime);
+		} catch (Exception e) {
+			logger.warning(String.format("Failed deleting OS disk '%s' for the role '%s'", osVhdName,
+					role.getRoleName()));
+		}
+
+		for (DataVirtualHardDisk disk : role.getDataVirtualHardDisks().getDataVirtualHardDisks()) {
+			try {
+				this.deleteDisk(disk.getDiskName(), endTime);
+			} catch (Exception e) {
+				logger.warning(String.format("Failed delete disk '%s' for the role '%s'", disk.getDiskName(),
+						role.getRoleName()));
+			}
+
+		}
+
+		logger.fine(String.format("Role '%s' resources cleaned with success", roleName));
 
 		// logger.fine("Deployment name for Virtual Machine with IP " + machineIp + " is " + deployment.getName());
 		// deleteVirtualMachineByDeploymentName(deployment.getHostedServiceName(),
@@ -913,14 +946,14 @@ public class MicrosoftAzureRestClient {
 			logger.fine("Waiting for OS or Data Disk " + diskName + " to detach from role " + roleName);
 			waitForDiskToDetach(diskName, roleName, endTime);
 			logger.info("Deleting OS or Data Disk : " + diskName);
-			deleteOSDisk(diskName, endTime);
+			deleteDisk(diskName, endTime);
 		}
 	}
 
 	private Disk getDiskByAttachedCloudService(final String cloudServiceName)
 			throws MicrosoftAzureException, TimeoutException {
 
-		Disks disks = listOSDisks();
+		Disks disks = listDisks();
 		for (Disk disk : disks) {
 			AttachedTo attachedTo = disk.getAttachedTo();
 			if ((attachedTo != null) && (attachedTo.getHostedServiceName().equals(cloudServiceName))) {
@@ -933,7 +966,7 @@ public class MicrosoftAzureRestClient {
 	private List<Disk> getDisksByAttachedCloudService(final String cloudServiceName)
 			throws MicrosoftAzureException, TimeoutException {
 		List<Disk> cloudServiceDisks = new ArrayList<Disk>();
-		Disks disks = listOSDisks();
+		Disks disks = listDisks();
 		for (Disk disk : disks) {
 			AttachedTo attachedTo = disk.getAttachedTo();
 			if ((attachedTo != null) && (attachedTo.getHostedServiceName().equals(cloudServiceName))) {
@@ -947,7 +980,7 @@ public class MicrosoftAzureRestClient {
 			throws TimeoutException, MicrosoftAzureException, InterruptedException {
 
 		while (true) {
-			Disks disks = listOSDisks();
+			Disks disks = listDisks();
 			Disk osDisk = null;
 			for (Disk disk : disks) {
 				if (disk.getName().equals(diskName)) {
@@ -983,7 +1016,7 @@ public class MicrosoftAzureRestClient {
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
 	 */
-	public Disks listOSDisks() throws MicrosoftAzureException, TimeoutException {
+	public Disks listDisks() throws MicrosoftAzureException, TimeoutException {
 		ClientResponse response = doGet("/services/disks");
 		checkForError(response);
 		String responseBody = response.getEntity(String.class);
@@ -991,7 +1024,7 @@ public class MicrosoftAzureRestClient {
 	}
 
 	/**
-	 * This method deletes an OS disk with the specified name. or does nothing if the disk does not exist.
+	 * This method deletes a disk with the specified name. or does nothing if the disk does not exist.
 	 * 
 	 * @param diskName
 	 *            .
@@ -1002,12 +1035,11 @@ public class MicrosoftAzureRestClient {
 	 * @throws TimeoutException .
 	 * @throws InterruptedException .
 	 */
-	public boolean deleteOSDisk(final String diskName, final long endTime)
+	public boolean deleteDisk(final String diskName, final long endTime)
 			throws MicrosoftAzureException, TimeoutException,
 			InterruptedException {
-
-		if (!osDiskExists(diskName)) {
-			logger.info("OS Disk " + diskName + " does not exist");
+		if (!isDiskExists(diskName)) {
+			logger.info("Disk " + diskName + " does not exist");
 			return true;
 		}
 
@@ -1102,7 +1134,7 @@ public class MicrosoftAzureRestClient {
 				// https://management.core.windows.net/<subscription-id>/services/hostedservices/<cloudservice-name>/deployments/<deployment-name>/roles/<role-name>
 
 				ClientResponse response = doDelete("/services/hostedservices/" + deployment.getHostedServiceName()
-						+ "/deployments/" + deployment.getDeploymentName() + "/roles/" + roleName);
+						+ "/deployments/" + deployment.getName() + "/roles/" + roleName);
 
 				String requestId = extractRequestId(response);
 				waitForRequestToFinish(requestId, endTime);
@@ -1298,9 +1330,8 @@ public class MicrosoftAzureRestClient {
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
 	 */
-	public Deployment getDeploymentByIp(final String machineIp,
-			final boolean isPrivateIp) throws MicrosoftAzureException,
-			TimeoutException {
+	public Deployment getDeploymentByIp(final String machineIp, final boolean isPrivateIp)
+			throws MicrosoftAzureException, TimeoutException {
 
 		HostedServices cloudServices = listHostedServices();
 		for (HostedService hostedService : cloudServices) {
@@ -1308,19 +1339,30 @@ public class MicrosoftAzureRestClient {
 			Deployments deployments = getHostedService(cloudServiceName, true).getDeployments();
 
 			// skip empty cloud services
-			if (!deployments.getDeployments().isEmpty()) {
+			if (deployments != null && !deployments.getDeployments().isEmpty()) {
 				for (Deployment deployment : deployments) {
 
-					// ignore other networks
+					// skip other networks
 					if (this.virtualNetwork.equals(deployment.getVirtualNetworkName())) {
-						String publicIp = getPublicIpFromDeployment(deployment);
-						String privateIp = getPrivateIpFromDeployment(deployment);
-						String ip = isPrivateIp ? privateIp : publicIp;
-						if (machineIp.equals(ip)) {
-							deployment.setHostedServiceName(cloudServiceName);
-							return deployment;
+
+						// cheking with
+						for (RoleInstance ri : deployment.getRoleInstanceList()) {
+							if (machineIp.equals(ri.getIpAddress())) {
+								deployment.setHostedServiceName(cloudServiceName);
+								return deployment;
+							}
+
 						}
+						// TODO check with public ip when implemented
+						// String publicIp = getPublicIpFromDeployment(deployment);
+						// String privateIp = getPrivateIpFromDeployment(deployment);
+						// String ip = isPrivateIp ? privateIp : publicIp;
+						// if (machineIp.equals(ip)) {
+						// deployment.setHostedServiceName(cloudServiceName);
+						// return deployment;
+						// }
 					}
+
 				}
 			}
 		}
@@ -1458,9 +1500,9 @@ public class MicrosoftAzureRestClient {
 		return (storageServices.contains(storageAccouhtName));
 	}
 
-	private boolean osDiskExists(final String osDiskName)
+	private boolean isDiskExists(final String osDiskName)
 			throws MicrosoftAzureException, TimeoutException {
-		Disks disks = listOSDisks();
+		Disks disks = listDisks();
 		return (disks.contains(osDiskName));
 	}
 
@@ -1726,18 +1768,21 @@ public class MicrosoftAzureRestClient {
 		this.virtualNetwork = virtualNetwork;
 	}
 
-	private String getRoleNameByIpAddress(String ipAddress, Deployment deployment)
+	private Role getRoleByIpAddress(String ipAddress, Deployment deployment)
 			throws MicrosoftAzureException, TimeoutException {
 
-		String roleName = null;
+		Role role = null;
 		try {
 
 			RoleInstance roleInstance = deployment.getRoleInstanceList().getRoleInstanceByIpAddress(ipAddress);
-			roleName = roleInstance.getRoleName();
+			if (roleInstance != null) {
+				role = deployment.getRoleList().getRoleByName(roleInstance.getRoleName());
+			}
+
 		} catch (Exception e) {
 			logger.warning(String.format("Can't find role for machine with ip address '%s'", ipAddress));
 		}
-		return roleName;
+		return role;
 	}
 
 }

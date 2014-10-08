@@ -10,8 +10,8 @@ import javax.xml.bind.annotation.XmlType;
  */
 @XmlType(name = "OSVirtualHardDisk")
 public class OSVirtualHardDisk {
-	
-	private String mediaLink;	
+
+	private String mediaLink;
 	private String sourceImageName;
 	private String name;
 

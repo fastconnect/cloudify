@@ -1,11 +1,11 @@
 /*******************************************************************************
  * Copyright (c) 2012 GigaSpaces Technologies Ltd. All rights reserved
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
@@ -73,7 +73,7 @@ import org.cloudifysource.esc.util.Utils;
 
 /***************************************************************************************
  * A custom Cloud Driver implementation for provisioning machines on Azure.
- * 
+ *
  * @author elip
  ***************************************************************************************/
 public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
@@ -305,7 +305,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	/**
 	 * Add configuration for FileTransfer endpoint (22/445) or winrm endpoint (22/445) if doesn't exist.
-	 * 
+	 *
 	 * @throws CloudProvisioningException
 	 */
 	private void ensureEndpointForManagementMachine() throws CloudProvisioningException {
@@ -524,7 +524,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 				HostedServices hostedServices = azureClient.listHostedServices();
 
-				// is specified hosted service exist on azure ?
+				// is specified cs exist on azure ?
 				if (hostedServices.contains(cloudServiceInCompute)) {
 
 					Deployment deployment = azureClient.listDeploymentsBySlot(cloudServiceInCompute,
@@ -592,6 +592,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			desc.setIpAddresses(this.getIpAddressesList(this.template.getCustom()));
 
 			logger.info("Launching a new virtual machine");
+
 			boolean isWindows = isWindowsVM();
 			if (isWindows) {
 				// domain join, support for windows at this moment
@@ -770,7 +771,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	/*********
 	 * Checks if a stop request for this machine was already requested recently.
-	 * 
+	 *
 	 * @param ip
 	 *            the IP address of the machine.
 	 * @return true if there was a recent request, false otherwise.
@@ -838,6 +839,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		}
 	}
 
+	@Deprecated
+	// TODO methods searches all hosted services/deployment, it should look for only ones that are managed/newly
+	// deployed, prefixes ?
 	private void scanLeakingNodes() {
 		try {
 			HostedServices hostedServices = azureClient.listHostedServices();
@@ -952,9 +956,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	}
 
 	/**
-	 * 
+	 *
 	 * @author elip
-	 * 
+	 *
 	 */
 	private class StopManagementMachineCallable implements Callable<Boolean> {
 		private final String deploymentName;

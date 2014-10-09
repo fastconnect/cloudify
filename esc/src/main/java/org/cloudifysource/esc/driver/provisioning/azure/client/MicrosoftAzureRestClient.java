@@ -944,10 +944,6 @@ public class MicrosoftAzureRestClient {
 
 		logger.fine(String.format("Role '%s' resources cleaned with success", roleName));
 
-		// logger.fine("Deployment name for Virtual Machine with IP " + machineIp + " is " + deployment.getName());
-		// deleteVirtualMachineByDeploymentName(deployment.getHostedServiceName(),
-		// deployment.getName(), endTime);
-
 	}
 
 	/**

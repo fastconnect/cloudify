@@ -6,10 +6,17 @@ import java.util.concurrent.TimeoutException;
 import java.util.logging.Logger;
 
 import org.cloudifysource.domain.ServiceNetwork;
+import org.cloudifysource.domain.cloud.Cloud;
 import org.cloudifysource.domain.cloud.compute.ComputeTemplate;
+import org.cloudifysource.domain.cloud.network.CloudNetwork;
+import org.cloudifysource.esc.driver.provisioning.ComputeDriverConfiguration;
 import org.cloudifysource.esc.driver.provisioning.MachineDetails;
 import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureRestClient;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
+import org.cloudifysource.esc.driver.provisioning.azure.model.Dns;
+import org.cloudifysource.esc.driver.provisioning.azure.model.DnsServer;
+import org.cloudifysource.esc.driver.provisioning.azure.model.DnsServers;
+import org.cloudifysource.esc.driver.provisioning.azure.model.DnsServersRef;
 import org.cloudifysource.esc.driver.provisioning.azure.model.HostedServices;
 import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoint;
 import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoints;
@@ -101,7 +108,8 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 
 	@Test
 	public void testStartUbuntuMachinesMultipleStaticIPs() throws Exception {
-		MicrosoftAzureCloudDriver driver = createDriver("ubuntu1410_multipleFixedIPs", true);
+		AzureDriverTestBuilder driverBuilder = new AzureDriverTestBuilder();
+		MicrosoftAzureCloudDriver driver = driverBuilder.createDriverAndSetConfig("ubuntu1410_multipleFixedIPs");
 		try {
 			this.startManagementMachine(driver, new MachineDetailsAssertion() {
 				@Override
@@ -127,7 +135,8 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 		final long endTime = 10000000;
 
 		String computeTemplateName = "ubuntu1410_cloudservice";
-		cloud = AzureTestUtils.createCloud("./src/main/resources/clouds", "azure_win", null, computeTemplateName);
+		final Cloud cloud =
+				AzureTestUtils.createCloud("./src/main/resources/clouds", "azure_win", null, computeTemplateName);
 
 		// Retrieve the cloud service name
 		final ComputeTemplate computeTemplate = cloud.getCloudCompute().getTemplates().get(computeTemplateName);
@@ -169,7 +178,8 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 		final long endTime = 10000000;
 
 		String computeTemplateName = "ubuntu1410_endpoints";
-		cloud = AzureTestUtils.createCloud("./src/main/resources/clouds", "azure_win", null, computeTemplateName);
+		final Cloud cloud =
+				AzureTestUtils.createCloud("./src/main/resources/clouds", "azure_win", null, computeTemplateName);
 
 		// Retrieve the cloud service name
 		final ComputeTemplate computeTemplate = cloud.getCloudCompute().getTemplates().get(computeTemplateName);
@@ -265,13 +275,15 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 	public void testUbuntuComputeTemplateStorage() throws Exception {
 		String computeTemplate = "ubuntu1410_storage";
 
-		MicrosoftAzureCloudDriver driver = createDriver(computeTemplate, true);
+		AzureDriverTestBuilder driverBuilder = new AzureDriverTestBuilder();
+		MicrosoftAzureCloudDriver driver = driverBuilder.createDriverAndSetConfig(computeTemplate);
+		Cloud cloud = driverBuilder.getConfiguration().getCloud();
 		try {
 			StorageAssertion storageAssertionManagement = new StorageAssertion("CFYM1", "specificstorage", true);
-			storageAssertionManagement.setManagementGroup(this.cloud.getProvider().getManagementGroup());
+			storageAssertionManagement.setManagementGroup(cloud.getProvider().getManagementGroup());
 			this.startManagementMachine(driver, storageAssertionManagement);
 
-			final String roleSuffix = DEFAULT_SERVICE_NAME + "001";
+			final String roleSuffix = driverBuilder.getServiceName() + "001";
 			StorageAssertion storageAssertionMachine = new StorageAssertion(roleSuffix, "specificstorage", false);
 			this.startAndStopMachine(computeTemplate, storageAssertionMachine);
 		} finally {
@@ -284,12 +296,13 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 	public void testDeleteRoleUbuntuMachineFromDeployment() throws Exception {
 
 		String computeTemplateName = "ubuntu1410_deleterole";
-		cloud = AzureTestUtils.createCloud("./src/main/resources/clouds", "azure_win", null, computeTemplateName);
+		Cloud cloud = AzureTestUtils.createCloud("./src/main/resources/clouds", "azure_win", null, computeTemplateName);
 		ComputeTemplate computeTemplate = cloud.getCloudCompute().getTemplates().get(computeTemplateName);
 		final String cloudServiceName = (String) computeTemplate.getCustom().get("azure.cloud.service");
 		final String networkName = cloud.getCloudNetwork().getCustom().get("azure.networksite.name");
 
-		MicrosoftAzureCloudDriver driver = createDriver(computeTemplateName, true);
+		AzureDriverTestBuilder driverBuilder = new AzureDriverTestBuilder();
+		MicrosoftAzureCloudDriver driver = driverBuilder.createDriverAndSetConfig(computeTemplateName);
 
 		Map<String, String> cloudProperties = AzureTestUtils.getCloudProperties();
 		String affinityPrefix = cloudProperties.get("affinityGroup");
@@ -324,7 +337,8 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 		Map<String, String> cloudProperties = AzureTestUtils.getCloudProperties();
 		final String networkSite = cloudProperties.get("netWorksite");
 
-		MicrosoftAzureCloudDriver mngDriver = createDriver("ubuntu1410", true);
+		AzureDriverTestBuilder driverBuilder = new AzureDriverTestBuilder();
+		MicrosoftAzureCloudDriver mngDriver = driverBuilder.createDriverAndSetConfig("ubuntu1410");
 
 		try {
 			// Start the manager machine without creating the service subnet
@@ -370,4 +384,39 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 		}
 
 	}
+
+	@Test
+	public void testDnsServers() throws Exception {
+		Map<String, String> cloudProperties = AzureTestUtils.getCloudProperties();
+		String networkName = cloudProperties.get("netWorksite");
+		String dnsname = "myDNS";
+		String dnsIpAddress = "10.0.0.4";
+
+		AzureDriverTestBuilder driverBuilder = new AzureDriverTestBuilder();
+		MicrosoftAzureCloudDriver driver = driverBuilder.createDriver("ubuntu1410");
+		ComputeDriverConfiguration configuration = driverBuilder.getConfiguration();
+		CloudNetwork cloudNetwork = configuration.getCloud().getCloudNetwork();
+		cloudNetwork.getCustom().put("azure.dns.servers", dnsname + ":" + dnsIpAddress);
+		driver.setConfig(configuration);
+		try {
+			this.startManagementMachine(driver);
+			MicrosoftAzureRestClient azureClient = AzureTestUtils.createMicrosoftAzureRestClient();
+			VirtualNetworkConfiguration vnetConfig = azureClient.getVirtualNetworkConfiguration();
+			Dns dns = vnetConfig.getDns();
+			Assert.assertNotNull(dns);
+			DnsServers dnsServers = dns.getDnsServers();
+			Assert.assertNotNull(dnsServers);
+			DnsServer dnsServer = dnsServers.getDnsServerByName(dnsname);
+			Assert.assertNotNull(dnsServer);
+			Assert.assertEquals(dnsIpAddress, dnsServer.getIpAddress());
+
+			VirtualNetworkSite vnetsite = vnetConfig.getVirtualNetworkSiteConfigurationByName(networkName);
+			DnsServersRef dnsServersRef = vnetsite.getDnsServersRef();
+			Assert.assertNotNull(dnsServersRef);
+			Assert.assertTrue(dnsServersRef.containsDnsName(dnsname));
+		} finally {
+			this.stopManagementMachines(driver);
+		}
+	}
+
 }

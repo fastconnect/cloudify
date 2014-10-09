@@ -20,4 +20,21 @@ public class DnsServers {
 		this.dnsServers = dnsServers;
 	}
 
+	public boolean containsDnsServerByName(String name) {
+		for (DnsServer dnsServer : dnsServers) {
+			if (dnsServer.getName().equals(name)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public DnsServer getDnsServerByName(String name) {
+		for (DnsServer dnsServer : dnsServers) {
+			if (dnsServer.getName().equals(name)) {
+				return dnsServer;
+			}
+		}
+		return null;
+	}
 }

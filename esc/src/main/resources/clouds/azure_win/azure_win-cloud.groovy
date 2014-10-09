@@ -66,7 +66,16 @@ cloud {
        * All VM's will be assigned a private ip from this address space.                     *
       ***************************************************************************************/
       "azure.address.space"    : netAddress,
+
+
+      /***************************************************************************************
+       * Set DNS servers.                                                                    *
+      ***************************************************************************************/
+      /*
+       "azure.dns.servers" : "dnsName1:ipAdress1,dnsName2:ipAdress2"
+      */
     ])
+
     management {
       networkConfiguration {
         subnets ([
@@ -315,7 +324,7 @@ cloud {
 		 * If set to 'true', the storage account, affinity group, and network specified above will be deleted upon teardown.	 *
 		 * NOTE : if you are using pre exsisting services and you dont want them to be deleted, please set this value to 'false' *
 		**************************************************************************************************************************/
-		"azure.cleanup.on.teardown" : "false",
+		"azure.cleanup.on.teardown" : "true",
 
     /********************************************************************
 		 * Cloud service code

@@ -13,6 +13,8 @@ package org.cloudifysource.esc.driver.provisioning.azure.client;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
@@ -38,15 +40,18 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Deployments;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Disk;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Disks;
+import org.cloudifysource.esc.driver.provisioning.azure.model.Dns;
+import org.cloudifysource.esc.driver.provisioning.azure.model.DnsServer;
+import org.cloudifysource.esc.driver.provisioning.azure.model.DnsServerRef;
+import org.cloudifysource.esc.driver.provisioning.azure.model.DnsServers;
+import org.cloudifysource.esc.driver.provisioning.azure.model.DnsServersRef;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Error;
 import org.cloudifysource.esc.driver.provisioning.azure.model.GlobalNetworkConfiguration;
 import org.cloudifysource.esc.driver.provisioning.azure.model.HostedService;
 import org.cloudifysource.esc.driver.provisioning.azure.model.HostedServices;
-import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoints;
 import org.cloudifysource.esc.driver.provisioning.azure.model.NetworkConfigurationSet;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Operation;
 import org.cloudifysource.esc.driver.provisioning.azure.model.PersistentVMRole;
-import org.cloudifysource.esc.driver.provisioning.azure.model.RestartRoleOperation;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Role;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleInstance;
 import org.cloudifysource.esc.driver.provisioning.azure.model.StorageServices;
@@ -331,7 +336,8 @@ public class MicrosoftAzureRestClient {
 	}
 
 	public void createVirtualNetworkSite(String addressSpace, String affinityGroup, String networkSiteName,
-			String subnetName, String subnetAddr, long endTime) throws MicrosoftAzureException, TimeoutException,
+			String subnetName, String subnetAddr, Map<String, String> dnsServers, long endTime)
+			throws MicrosoftAzureException, TimeoutException,
 			InterruptedException {
 
 		VirtualNetworkConfiguration virtualNetworkConfiguration = getVirtualNetworkConfiguration();
@@ -376,6 +382,39 @@ public class MicrosoftAzureRestClient {
 		} else {
 			logger.info("Using an already existing subnet '" + subnetName + "' from virtual network site '"
 					+ networkSiteName + "'");
+		}
+
+		if (!dnsServers.isEmpty()) {
+			shouldUpdateOrCreate = true;
+
+			if (virtualNetworkConfiguration.getDns() == null) {
+				Dns dns = new Dns();
+				dns.setDnsServers(new DnsServers());
+				virtualNetworkConfiguration.setDns(new Dns());
+			}
+
+			DnsServers dnssv = virtualNetworkConfiguration.getDns().getDnsServers();
+			for (Entry<String, String> entry : dnsServers.entrySet()) {
+				String dnsName = entry.getKey();
+
+				if (!dnssv.containsDnsServerByName(dnsName)) {
+					DnsServer dnsServer = new DnsServer();
+					dnsServer.setName(dnsName);
+					dnsServer.setIpAddress(entry.getValue());
+					dnssv.getDnsServers().add(dnsServer);
+				}
+
+				if (virtualNetworkSite.getDnsServersRef() == null) {
+					virtualNetworkSite.setDnsServersRef(new DnsServersRef());
+				}
+
+				DnsServersRef dnsServersRef = virtualNetworkSite.getDnsServersRef();
+				if (!dnsServersRef.containsDnsName(dnsName)) {
+					DnsServerRef element = new DnsServerRef();
+					element.setName(dnsName);
+					dnsServersRef.getDnsServersRef().add(element);
+				}
+			}
 		}
 
 		if (shouldUpdateOrCreate) {
@@ -990,19 +1029,6 @@ public class MicrosoftAzureRestClient {
 		}
 	}
 
-	private Disk getDiskByAttachedCloudService(final String cloudServiceName)
-			throws MicrosoftAzureException, TimeoutException {
-
-		Disks disks = listDisks();
-		for (Disk disk : disks) {
-			AttachedTo attachedTo = disk.getAttachedTo();
-			if ((attachedTo != null) && (attachedTo.getHostedServiceName().equals(cloudServiceName))) {
-				return disk;
-			}
-		}
-		return null;
-	}
-
 	private List<Disk> getDisksByAttachedCloudService(final String cloudServiceName)
 			throws MicrosoftAzureException, TimeoutException {
 		List<Disk> cloudServiceDisks = new ArrayList<Disk>();
@@ -1257,7 +1283,7 @@ public class MicrosoftAzureRestClient {
 	 * ClientResponse response = doGet("/services/networking/media"); if (response.getStatus() == HTTP_NOT_FOUND) {
 	 * return null; } String responseBody = response.getEntity(String.class); if (responseBody.charAt(0) == BAD_CHAR) {
 	 * responseBody = responseBody.substring(1); }
-	 * 
+	 *
 	 * GlobalNetworkConfiguration globalNetowrkConfiguration = (GlobalNetworkConfiguration) MicrosoftAzureModelUtils
 	 * .unmarshall(responseBody); return globalNetowrkConfiguration.getVirtualNetworkConfiguration()
 	 * .getVirtualNetworkSites(); }
@@ -1678,66 +1704,10 @@ public class MicrosoftAzureRestClient {
 				.unmarshall(response.getEntity(String.class));
 	}
 
-	private String getPublicIpFromDeployment(final Deployment deployment) {
-		ConfigurationSets configurationSets = deployment.getRoleList()
-				.getRoles().get(0).getConfigurationSets();
-		String publicIp = null;
-		for (ConfigurationSet configurationSet : configurationSets) {
-			if (configurationSet instanceof NetworkConfigurationSet) {
-				NetworkConfigurationSet networkConfigurationSet = (NetworkConfigurationSet) configurationSet;
-				// FIXME No endpoints = no public IP !!!
-				InputEndpoints inputEndpoints = networkConfigurationSet.getInputEndpoints();
-				if (inputEndpoints != null) {
-					publicIp = inputEndpoints.getInputEndpoints().get(0).getvIp();
-				}
-			}
-		}
-		return publicIp;
-	}
-
 	private String getThreadIdentity() {
 		String threadName = Thread.currentThread().getName();
 		long threadId = Thread.currentThread().getId();
 		return "[" + threadName + "]" + "[" + threadId + "] - ";
-	}
-
-	public void rebootVirtualMachine(long endTime) throws MicrosoftAzureException, TimeoutException,
-			InterruptedException {
-
-		// https://management.core.windows.net/<subscription-id>/services/hostedservices/<cloudservice-name>/deploymentslots/<deployment-slot>/roleinstances/<role-instance-name>
-		// https://management.core.windows.net/828d8ef4-292e-45b0-b029-50b9442e105a/services/hostedservices/fastubuntu1404/deployments/ubuntu/roleinstances/ubuntu-test/Operations
-
-		String cloudServiceName = "fastubuntu1404";
-		String deploymentSlot = "Production";
-		String deploymentName = "ubuntu";
-		String roleInstanceName = "ubuntu-test";
-		String url = String.format("/services/hostedservices/%s/deployments/%s/roleinstances/%s/Operations",
-				cloudServiceName, deploymentName, roleInstanceName);
-
-		RestartRoleOperation restartRoleOperation = requestBodyBuilder.buildRestartRoleOperation();
-		String xmlRequest = MicrosoftAzureModelUtils.marshall(restartRoleOperation, false);
-		ClientResponse response = doPost(url, xmlRequest);
-		String requestId = extractRequestId(response);
-		this.waitForRequestToFinish(requestId, endTime);
-
-		try {
-			this.waitForDeploymentStatus("Running", cloudServiceName, deploymentSlot, endTime);
-			this.waitForRoleInstanceStatus("ReadyRole", cloudServiceName, deploymentSlot, endTime);
-		} catch (final Exception e) {
-			logger.fine("Error while waiting for VM status : " + e.getMessage());
-			// the VM was created but with a bad status
-			deleteVirtualMachineByDeploymentName(cloudServiceName, roleInstanceName, endTime);
-			if (e instanceof MicrosoftAzureException) {
-				throw (MicrosoftAzureException) e;
-			}
-			if (e instanceof TimeoutException) {
-				throw (TimeoutException) e;
-			}
-			if (e instanceof InterruptedException) {
-				throw (InterruptedException) e;
-			}
-			throw new MicrosoftAzureException(e);
-		}
 	}
 
 	public Deployment listDeploymentsBySlot(String cloudService, String deploymentSlot, long endTime)

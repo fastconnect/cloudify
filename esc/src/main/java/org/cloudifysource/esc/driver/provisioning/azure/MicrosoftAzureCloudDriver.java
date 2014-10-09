@@ -1,11 +1,11 @@
 /*******************************************************************************
  * Copyright (c) 2012 GigaSpaces Technologies Ltd. All rights reserved
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
@@ -73,7 +73,7 @@ import org.cloudifysource.esc.util.Utils;
 
 /***************************************************************************************
  * A custom Cloud Driver implementation for provisioning machines on Azure.
- * 
+ *
  * @author elip
  ***************************************************************************************/
 public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
@@ -112,7 +112,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	// Networks properties
 	private static final String AZURE_NETWORK_NAME = "azure.networksite.name";
-	private static final String AZURE_NETOWRK_ADDRESS_SPACE = "azure.address.space";
+	private static final String AZURE_NETWORK_ADDRESS_SPACE = "azure.address.space";
+	private static final String AZURE_DNS_SERVERS = "azure.dns.servers";
 
 	private static final String AZURE_CLOUD_SERVICE_CODE = "azure.cloud.service.code";
 
@@ -132,6 +133,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private String networkName;
 	private String affinityGroup;
 	private String storageAccountName;
+	private Map<String, String> dnsServers;
 
 	// Arguments per template
 	private String deploymentSlot;
@@ -283,16 +285,13 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 		// Network
 		Map<String, String> networkCustom = this.cloud.getCloudNetwork().getCustom();
-
-		// networkName is set in initDeployer
-		if (networkName == null) {
-			throw new IllegalArgumentException("Custom field '" + AZURE_NETWORK_NAME + "' must be set");
-		}
-
-		this.addressSpace = (String) networkCustom.get(AZURE_NETOWRK_ADDRESS_SPACE);
+		this.addressSpace = (String) networkCustom.get(AZURE_NETWORK_ADDRESS_SPACE);
 		if (addressSpace == null) {
-			throw new IllegalArgumentException("Custom field '" + AZURE_NETOWRK_ADDRESS_SPACE + "' must be set");
+			throw new IllegalArgumentException("Custom field '" + AZURE_NETWORK_ADDRESS_SPACE + "' must be set");
 		}
+
+		String dnsServer = networkCustom.get(AZURE_DNS_SERVERS);
+		dnsServers = MicrosoftAzureUtils.parseDnsServersStringToMap(dnsServer);
 
 		// Prefixes
 		if (this.management) {
@@ -306,7 +305,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	/**
 	 * Add configuration for FileTransfer endpoint (22/445) or winrm endpoint (22/445) if doesn't exist.
-	 * 
+	 *
 	 * @throws CloudProvisioningException
 	 */
 	private void ensureEndpointForManagementMachine() throws CloudProvisioningException {
@@ -425,6 +424,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 		// set virtual network name for rest client
 		this.networkName = (String) cloud.getCloudNetwork().getCustom().get(AZURE_NETWORK_NAME);
+		if (networkName == null) {
+			throw new IllegalArgumentException("Custom field '" + AZURE_NETWORK_NAME + "' must be set");
+		}
 		azureClient.setVirtualNetwork(this.networkName);
 	}
 
@@ -469,28 +471,22 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 		// Add a subnet for the service instance if required
 		CloudNetwork cloudNetwork = cloud.getCloudNetwork();
-		if (cloudNetwork != null) {
-
-			// check network configuration
-			if (this.configuration.getNetwork() != null) {
-				String networkTemplate = this.configuration.getNetwork().getTemplate();
-				NetworkConfiguration networkConfiguration = cloudNetwork.getTemplates().get(networkTemplate);
-				List<Subnet> subnets = networkConfiguration.getSubnets();
-				Subnet subnet = subnets.get(0);
-				if (subnets.isEmpty()) {
-					throw new CloudProvisioningException("No subnet configured for template network '"
-							+ networkTemplate
-							+ "'");
-				}
-
-				try {
-					String networkName = cloud.getCloudNetwork().getCustom().get(AZURE_NETWORK_NAME);
-					String subnetName = subnet.getName();
-					String subnetRange = subnet.getRange();
-					azureClient.addSubnetToVirtualNetwork(networkName, subnetName, subnetRange, endTime);
-				} catch (Exception e) {
-					throw new CloudProvisioningException(e);
-				}
+		if (this.configuration.getNetwork() != null) {
+			String networkTemplate = this.configuration.getNetwork().getTemplate();
+			NetworkConfiguration networkConfiguration = cloudNetwork.getTemplates().get(networkTemplate);
+			List<Subnet> subnets = networkConfiguration.getSubnets();
+			Subnet subnet = subnets.get(0);
+			if (subnets.isEmpty()) {
+				throw new CloudProvisioningException("No subnet configured for template network '" + networkTemplate
+						+ "'");
+			}
+			try {
+				String networkName = cloud.getCloudNetwork().getCustom().get(AZURE_NETWORK_NAME);
+				String subnetName = subnet.getName();
+				String subnetRange = subnet.getRange();
+				azureClient.addSubnetToVirtualNetwork(networkName, subnetName, subnetRange, endTime);
+			} catch (Exception e) {
+				throw new CloudProvisioningException(e);
 			}
 		}
 
@@ -704,7 +700,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			NetworkConfiguration networkConfiguration = cloudNetwork.getManagement().getNetworkConfiguration();
 			Subnet subnet = networkConfiguration.getSubnets().get(0);
 			azureClient.createVirtualNetworkSite(addressSpace, affinityGroup, networkName, subnet.getName(),
-					subnet.getRange(), endTime);
+					subnet.getRange(), dnsServers, endTime);
 
 			azureClient.createStorageAccount(affinityGroup, storageAccountName, endTime);
 		} catch (final Exception e) {
@@ -775,7 +771,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	/*********
 	 * Checks if a stop request for this machine was already requested recently.
-	 * 
+	 *
 	 * @param ip
 	 *            the IP address of the machine.
 	 * @return true if there was a recent request, false otherwise.
@@ -960,9 +956,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	}
 
 	/**
-	 * 
+	 *
 	 * @author elip
-	 * 
+	 *
 	 */
 	private class StopManagementMachineCallable implements Callable<Boolean> {
 		private final String deploymentName;

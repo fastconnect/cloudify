@@ -1,7 +1,6 @@
 package org.cloudifysource.esc.driver.provisioning.azure.client;
 
 import java.net.MalformedURLException;
-import java.util.Date;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Logger;
 
@@ -11,7 +10,6 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.StorageServices;
 import org.cloudifysource.esc.driver.provisioning.azure.model.VirtualNetworkConfiguration;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class MicrosoftAzureRestClientTestIT {
@@ -34,14 +32,6 @@ public class MicrosoftAzureRestClientTestIT {
 	public void testListVirtualNetworkSites() throws MalformedURLException, MicrosoftAzureException, TimeoutException {
 		VirtualNetworkConfiguration listVirtualNetworkConfiguration = client.getVirtualNetworkConfiguration();
 		System.out.println(listVirtualNetworkConfiguration);
-	}
-
-	@Test
-	@Ignore
-	public void testRebootVirtualMachine() throws Exception {
-		long timeout = 60L * 1000L * 20L;
-		client.rebootVirtualMachine(new Date().getTime() + timeout);
-		System.out.println("rebooted");
 	}
 
 	@Test
@@ -73,13 +63,4 @@ public class MicrosoftAzureRestClientTestIT {
 		}
 	}
 
-	@Test
-	@Ignore
-	public void testAddDataDiskToVM() throws Exception {
-		String serviceName = "vk14adm001";
-		String deploymentName = serviceName;
-		String roleName = "vk14CFYM1";
-		String storageAccountName = "specificstorage";
-		client.addDataDiskToVM(serviceName, deploymentName, roleName, storageAccountName, 10, createDefaultEndTime());
-	}
 }

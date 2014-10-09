@@ -26,4 +26,12 @@ public class DnsServersRef implements Iterable<DnsServerRef> {
 		return dnsServersRef.iterator();
 	}
 
+	public boolean containsDnsName(String dnsName) {
+		for (DnsServerRef dns : dnsServersRef) {
+			if (dns.getName().equals(dnsName)) {
+				return true;
+			}
+		}
+		return false;
+	}
 }

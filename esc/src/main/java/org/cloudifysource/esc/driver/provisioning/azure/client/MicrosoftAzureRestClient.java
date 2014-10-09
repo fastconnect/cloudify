@@ -965,7 +965,7 @@ public class MicrosoftAzureRestClient {
 
 		String osVhdName = role.getOsVirtualHardDisk().getName();
 		try {
-			this.deleteDisk(osVhdName, endTime);
+			this.deleteDisk(osVhdName, true, endTime);
 		} catch (Exception e) {
 			logger.warning(String.format("Failed deleting OS disk '%s' for the role '%s'", osVhdName,
 					roleName));
@@ -973,7 +973,7 @@ public class MicrosoftAzureRestClient {
 
 		for (DataVirtualHardDisk disk : role.getDataVirtualHardDisks().getDataVirtualHardDisks()) {
 			try {
-				this.deleteDisk(disk.getDiskName(), endTime);
+				this.deleteDisk(disk.getDiskName(), true, endTime);
 			} catch (Exception e) {
 				logger.warning(String.format("Failed delete disk '%s' for the role '%s'", disk.getDiskName(),
 						roleName));
@@ -1025,7 +1025,7 @@ public class MicrosoftAzureRestClient {
 			logger.fine("Waiting for OS or Data Disk " + diskName + " to detach from role " + roleName);
 			waitForDiskToDetach(diskName, roleName, endTime);
 			logger.info("Deleting OS or Data Disk : " + diskName);
-			deleteDisk(diskName, endTime);
+			deleteDisk(diskName, true, endTime);
 		}
 	}
 
@@ -1090,10 +1090,13 @@ public class MicrosoftAzureRestClient {
 	}
 
 	/**
-	 * This method deletes a disk with the specified name. or does nothing if the disk does not exist.
+	 * This method deletes a disk with the specified name. or does nothing if the disk does not exist. if the parameter
+	 * deleteVhd is true, this will delete also the .vhd file
 	 *
 	 * @param diskName
-	 *            .
+	 * 
+	 * @param deleteVhd
+	 * 
 	 * @param endTime
 	 *            .
 	 * @return - true if the operation was successful, throws otherwise.
@@ -1101,7 +1104,7 @@ public class MicrosoftAzureRestClient {
 	 * @throws TimeoutException .
 	 * @throws InterruptedException .
 	 */
-	public boolean deleteDisk(final String diskName, final long endTime)
+	public boolean deleteDisk(final String diskName, final boolean deleteVhd, final long endTime)
 			throws MicrosoftAzureException, TimeoutException,
 			InterruptedException {
 		if (!isDiskExists(diskName)) {
@@ -1109,7 +1112,12 @@ public class MicrosoftAzureRestClient {
 			return true;
 		}
 
-		ClientResponse response = doDelete("/services/disks/" + diskName);
+		String url = "/services/disks/" + diskName;
+
+		if (deleteVhd) {
+			url = url + "?comp=media";
+		}
+		ClientResponse response = doDelete(url);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
 		return true;
@@ -1283,7 +1291,7 @@ public class MicrosoftAzureRestClient {
 	 * ClientResponse response = doGet("/services/networking/media"); if (response.getStatus() == HTTP_NOT_FOUND) {
 	 * return null; } String responseBody = response.getEntity(String.class); if (responseBody.charAt(0) == BAD_CHAR) {
 	 * responseBody = responseBody.substring(1); }
-	 *
+	 * 
 	 * GlobalNetworkConfiguration globalNetowrkConfiguration = (GlobalNetworkConfiguration) MicrosoftAzureModelUtils
 	 * .unmarshall(responseBody); return globalNetowrkConfiguration.getVirtualNetworkConfiguration()
 	 * .getVirtualNetworkSites(); }

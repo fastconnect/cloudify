@@ -905,7 +905,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 				if (disk.getName().contains(serverNamePrefix)) {
 					try {
 						logger.info("Detected a zombie OS Disk with name " + disk.getName() + ", Deleting it.");
-						azureClient.deleteDisk(disk.getName(), endTime);
+						azureClient.deleteDisk(disk.getName(), true, endTime);
 					} catch (final Exception e) {
 						throw new CloudProvisioningException(e);
 					}

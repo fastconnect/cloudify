@@ -331,7 +331,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 
 	@Test
 	public void testNetworkAndSubnets() throws Exception {
-		final MicrosoftAzureRestClient restClient = AzureTestUtils.createMicrosoftAzureRestClient();
+		final MicrosoftAzureRestClient azureClient = AzureTestUtils.createMicrosoftAzureRestClient();
 		final String dataSubnetName = "data_subnet";
 
 		Map<String, String> cloudProperties = AzureTestUtils.getCloudProperties();
@@ -347,7 +347,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 				public void additionalAssertions(MachineDetails md) throws Exception {
 					Map<String, String> cloudProperties = AzureTestUtils.getCloudProperties();
 					String networkSite = cloudProperties.get("netWorksite");
-					VirtualNetworkConfiguration vnetConfig = restClient.getVirtualNetworkConfiguration();
+					VirtualNetworkConfiguration vnetConfig = azureClient.getVirtualNetworkConfiguration();
 					VirtualNetworkSite virtualNetworkSite =
 							vnetConfig.getVirtualNetworkSites().getVirtualNetworkSite(networkSite);
 					Assert.assertNull("Doesn't expect existing subnet '" + dataSubnetName + "'",
@@ -362,7 +362,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 					this.startAndStopMachine("ubuntu1410", serviceNetwork, new MachineDetailsAssertion() {
 						@Override
 						public void additionalAssertions(MachineDetails md) throws Exception {
-							VirtualNetworkConfiguration vnetConfig = restClient.getVirtualNetworkConfiguration();
+							VirtualNetworkConfiguration vnetConfig = azureClient.getVirtualNetworkConfiguration();
 							VirtualNetworkSite virtualNetworkSite =
 									vnetConfig.getVirtualNetworkSites().getVirtualNetworkSite(networkSite);
 							Assert.assertNotNull("Expecting subnet '" + dataSubnetName + "'",
@@ -370,9 +370,12 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 						}
 					});
 
+			// FIXME ugly temporary fix...
+			Thread.sleep(20000L);
+
 			// Test deletion of the subnet
 			serviceDriver.onServiceUninstalled(30, TimeUnit.MINUTES);
-			VirtualNetworkConfiguration vnetConfig = restClient.getVirtualNetworkConfiguration();
+			VirtualNetworkConfiguration vnetConfig = azureClient.getVirtualNetworkConfiguration();
 			VirtualNetworkSite virtualNetworkSite =
 					vnetConfig.getVirtualNetworkSites().getVirtualNetworkSite(networkSite);
 			Assert.assertNull("Expected subnet '" + dataSubnetName + "' to be deleted",
@@ -380,7 +383,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 
 		} finally {
 			stopManagementMachines(mngDriver);
-			restClient.removeSubnetByName(networkSite, dataSubnetName, System.currentTimeMillis() + TIMEOUT);
+			azureClient.removeSubnetByName(networkSite, dataSubnetName, System.currentTimeMillis() + TIMEOUT);
 		}
 
 	}

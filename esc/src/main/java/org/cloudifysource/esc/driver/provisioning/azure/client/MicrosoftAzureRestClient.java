@@ -456,22 +456,27 @@ public class MicrosoftAzureRestClient {
 		VirtualNetworkConfiguration virtualNetworkConfiguration = this.getVirtualNetworkConfiguration();
 		VirtualNetworkSites virtualNetworkSites = virtualNetworkConfiguration.getVirtualNetworkSites();
 		VirtualNetworkSite virtualNetworkSite = virtualNetworkSites.getVirtualNetworkSite(networkSiteName);
-		Subnets subnets = virtualNetworkSite.getSubnets();
-		Iterator<Subnet> iterator = subnets.getSubnets().iterator();
+		if (virtualNetworkSite != null) {
+			Subnets subnets = virtualNetworkSite.getSubnets();
+			Iterator<Subnet> iterator = subnets.getSubnets().iterator();
 
-		boolean shouldUpdate = false;
-		while (iterator.hasNext()) {
-			Subnet next = iterator.next();
-			if (next.getName().equals(subnetName)) {
-				iterator.remove();
-				shouldUpdate = true;
-				break;
+			boolean shouldUpdate = false;
+			while (iterator.hasNext()) {
+				Subnet next = iterator.next();
+				if (next.getName().equals(subnetName)) {
+					iterator.remove();
+					shouldUpdate = true;
+					break;
+				}
 			}
-		}
-		if (shouldUpdate) {
-			this.setNetworkConfiguration(endTime, virtualNetworkConfiguration);
+			if (shouldUpdate) {
+				this.setNetworkConfiguration(endTime, virtualNetworkConfiguration);
+			} else {
+				logger.warning("Couln't delete subnet '" + subnetName + "'. Not found in network '" + networkSiteName
+						+ "'");
+			}
 		} else {
-			logger.warning("Subnet '" + subnetName + "' not found in network '" + networkSiteName + "'");
+			logger.warning("Couldn't delete network '" + networkSiteName + "' because it does not exist");
 		}
 	}
 
@@ -1094,9 +1099,9 @@ public class MicrosoftAzureRestClient {
 	 * deleteVhd is true, this will delete also the .vhd file
 	 *
 	 * @param diskName
-	 * 
+	 *
 	 * @param deleteVhd
-	 * 
+	 *
 	 * @param endTime
 	 *            .
 	 * @return - true if the operation was successful, throws otherwise.
@@ -1291,7 +1296,7 @@ public class MicrosoftAzureRestClient {
 	 * ClientResponse response = doGet("/services/networking/media"); if (response.getStatus() == HTTP_NOT_FOUND) {
 	 * return null; } String responseBody = response.getEntity(String.class); if (responseBody.charAt(0) == BAD_CHAR) {
 	 * responseBody = responseBody.substring(1); }
-	 * 
+	 *
 	 * GlobalNetworkConfiguration globalNetowrkConfiguration = (GlobalNetworkConfiguration) MicrosoftAzureModelUtils
 	 * .unmarshall(responseBody); return globalNetowrkConfiguration.getVirtualNetworkConfiguration()
 	 * .getVirtualNetworkSites(); }

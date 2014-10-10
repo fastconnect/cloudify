@@ -1,5 +1,7 @@
 package org.cloudifysource.esc.driver.provisioning.azure;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -9,10 +11,14 @@ import org.cloudifysource.domain.ServiceNetwork;
 import org.cloudifysource.domain.cloud.Cloud;
 import org.cloudifysource.domain.cloud.compute.ComputeTemplate;
 import org.cloudifysource.domain.cloud.network.CloudNetwork;
+import org.cloudifysource.dsl.internal.DSLException;
+import org.cloudifysource.esc.driver.provisioning.CloudProvisioningException;
 import org.cloudifysource.esc.driver.provisioning.ComputeDriverConfiguration;
 import org.cloudifysource.esc.driver.provisioning.MachineDetails;
+import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureException;
 import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureRestClient;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
+import org.cloudifysource.esc.driver.provisioning.azure.model.Disks;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Dns;
 import org.cloudifysource.esc.driver.provisioning.azure.model.DnsServer;
 import org.cloudifysource.esc.driver.provisioning.azure.model.DnsServers;
@@ -259,7 +265,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 	}
 
 	@Test
-	@Ignore("Custom Data not working on Windows (content issue?)")
+	// @Ignore("Custom Data not working on Windows (content issue?)")
 	public void testCustomDataWindows() throws Exception {
 
 		this.startAndStopManagementMachine("win2012_customdata", new MachineDetailsAssertion() {

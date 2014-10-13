@@ -9,24 +9,17 @@ import javax.xml.bind.annotation.XmlType;
  * 
  */
 @XmlType(name = "InputEndpoint", propOrder = { "loadBalancedEndpointSetName",
-		"localPort", "name", "port", "protocol" , "vIp" })
+		"localPort", "name", "port", "loadBalancerProbe", "protocol", "vIp" })
 public class InputEndpoint {
-
-	@Override
-	public String toString() {
-		return "InputEndpoint [loadBalancedEndpointSetName="
-				+ loadBalancedEndpointSetName + ", localPort=" + localPort
-				+ ", name=" + name + ", port=" + port + ", protocol="
-				+ protocol + ", vIp=" + vIp + "]";
-	}
 
 	private String loadBalancedEndpointSetName;
 	private int localPort;
 	private String name;
 	private int port;
+	private LoadBalancerProbe loadBalancerProbe;
 	private String protocol;
 	private String vIp;
-	
+
 	/**
 	 * 
 	 * @return - Public IP for this endpoint.
@@ -36,10 +29,6 @@ public class InputEndpoint {
 		return vIp;
 	}
 
-	/**
-	 * 
-	 * @param vIp .
-	 */
 	public void setvIp(final String vIp) {
 		this.vIp = vIp;
 	}
@@ -88,5 +77,22 @@ public class InputEndpoint {
 
 	public void setProtocol(final String protocol) {
 		this.protocol = protocol;
+	}
+
+	@XmlElement(name = "LoadBalancerProbe")
+	public LoadBalancerProbe getLoadBalancerProbe() {
+		return loadBalancerProbe;
+	}
+
+	public void setLoadBalancerProbe(LoadBalancerProbe loadBalancerProbe) {
+		this.loadBalancerProbe = loadBalancerProbe;
+	}
+
+	@Override
+	public String toString() {
+		return "InputEndpoint [loadBalancedEndpointSetName="
+				+ loadBalancedEndpointSetName + ", localPort=" + localPort
+				+ ", name=" + name + ", port=" + port + ", protocol="
+				+ protocol + ", vIp=" + vIp + "]";
 	}
 }

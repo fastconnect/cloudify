@@ -65,6 +65,7 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.HostedServices;
 import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoint;
 import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoints;
 import org.cloudifysource.esc.driver.provisioning.azure.model.JoinCredentials;
+import org.cloudifysource.esc.driver.provisioning.azure.model.LoadBalancerProbe;
 import org.cloudifysource.esc.installer.InstallationDetails;
 import org.cloudifysource.esc.installer.InstallerException;
 import org.cloudifysource.esc.installer.remoteExec.RemoteExecutor;
@@ -160,6 +161,15 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String DOMAIN_USERNAME = "userName";
 	private static final String DOMAIN_PASSWORD = "password";
 	private static final String JOIN_DOMAIN = "joinDomain";
+
+	private static final String ENDPOINT_NAME = "name";
+	private static final String ENDPOINT_LOCALPORT = "localPort";
+	private static final String ENDPOINT_PORT = "port";
+	private static final String ENDPOINT_PROTOCOL = "protocol";
+
+	private static final String ENDPOINT_LOADBALANCEDSET = "loadBalancedSet";
+	private static final String ENDPOINT_PROBE_PORT = "probePort";
+	private static final String ENDPOINT_PROBE_PROTOCOL = "probeProtocol";
 
 	// Commands template
 	private static final String COMMAND_OPEN_FIREWALL_PORT = "netsh advfirewall firewall"
@@ -567,6 +577,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 				desc.setDataDiskSize(dataDiskSize);
 			}
 
+			System.out.println();
 			InputEndpoints inputEndpoints = createInputEndPoints();
 
 			CloudNetwork cloudNetwork = this.cloud.getCloudNetwork();
@@ -1001,10 +1012,10 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		List<Map<String, String>> endpoints = (List<Map<String, String>>) objects;
 		if (endpoints != null) {
 			for (Map<String, String> endpointMap : endpoints) {
-				String name = endpointMap.get("name");
-				String protocol = endpointMap.get("protocol");
-				String portStr = endpointMap.get("port");
-				String localPortStr = endpointMap.get("localPort");
+				String name = endpointMap.get(ENDPOINT_NAME);
+				String protocol = endpointMap.get(ENDPOINT_PROTOCOL);
+				String portStr = endpointMap.get(ENDPOINT_PORT);
+				String localPortStr = endpointMap.get(ENDPOINT_LOCALPORT);
 
 				// skip endPoint, strict verification
 				if (StringUtils.isNotBlank(localPortStr) && StringUtils.isNotBlank(protocol)
@@ -1019,6 +1030,32 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 					endpoint.setLocalPort(Integer.parseInt(localPortStr));
 					endpoint.setName(name);
 					endpoint.setProtocol(protocol);
+
+					// manage load balancer,
+					// protocol, port probe are required
+					String loadBalancedSet = endpointMap.get(ENDPOINT_LOADBALANCEDSET);
+					String probePort = endpointMap.get(ENDPOINT_PROBE_PORT);
+					String probeProtocol = endpointMap.get(ENDPOINT_PROBE_PROTOCOL);
+
+					if (StringUtils.isNotBlank(loadBalancedSet) && StringUtils.isNotBlank(probePort)
+							&& StringUtils.isNotBlank(probeProtocol)) {
+
+						if (loadBalancedSet.trim().length() > 15 || loadBalancedSet.trim().length() < 3) {
+							String loadbanacedNameLenghtError =
+									String.format(
+											"Failed provisioning VM,"
+													+ " please check load balancer name lenght in compute template '%s'. It should be"
+													+ " between 3 and 15 characters",
+											this.configuration.getCloudTemplate(), name, protocol, localPortStr);
+							logger.severe(loadbanacedNameLenghtError);
+							throw new MicrosoftAzureException(loadbanacedNameLenghtError);
+						}
+
+						LoadBalancerProbe lbp = new LoadBalancerProbe(probePort.trim(), probeProtocol.trim());
+						endpoint.setLoadBalancedEndpointSetName(loadBalancedSet);
+						endpoint.setLoadBalancerProbe(lbp);
+					}
+
 					inputEndpoints.getInputEndpoints().add(endpoint);
 
 				} else {

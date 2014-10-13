@@ -1,7 +1,5 @@
 package org.cloudifysource.esc.driver.provisioning.azure;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -11,14 +9,10 @@ import org.cloudifysource.domain.ServiceNetwork;
 import org.cloudifysource.domain.cloud.Cloud;
 import org.cloudifysource.domain.cloud.compute.ComputeTemplate;
 import org.cloudifysource.domain.cloud.network.CloudNetwork;
-import org.cloudifysource.dsl.internal.DSLException;
-import org.cloudifysource.esc.driver.provisioning.CloudProvisioningException;
 import org.cloudifysource.esc.driver.provisioning.ComputeDriverConfiguration;
 import org.cloudifysource.esc.driver.provisioning.MachineDetails;
-import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureException;
 import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureRestClient;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
-import org.cloudifysource.esc.driver.provisioning.azure.model.Disks;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Dns;
 import org.cloudifysource.esc.driver.provisioning.azure.model.DnsServer;
 import org.cloudifysource.esc.driver.provisioning.azure.model.DnsServers;
@@ -26,6 +20,7 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.DnsServersRef;
 import org.cloudifysource.esc.driver.provisioning.azure.model.HostedServices;
 import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoint;
 import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoints;
+import org.cloudifysource.esc.driver.provisioning.azure.model.LoadBalancerProbe;
 import org.cloudifysource.esc.driver.provisioning.azure.model.NetworkConfigurationSet;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Role;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleInstanceList;
@@ -428,4 +423,79 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 		}
 	}
 
+	@Test
+	public void testEndPointWithLB() throws Exception {
+
+		String computeTemplateName = "ubuntu1410_lb";
+		Cloud cloud = AzureTestUtils.createCloud("./src/main/resources/clouds", "azure_win", null, computeTemplateName);
+		ComputeTemplate computeTemplate = cloud.getCloudCompute().getTemplates().get(computeTemplateName);
+		final String cloudServiceName = (String) computeTemplate.getCustom().get("azure.cloud.service");
+		final String deploymentSlot = (String) computeTemplate.getCustom().get("azure.deployment.slot");
+		// final String networkName = cloud.getCloudNetwork().getCustom().get("azure.networksite.name");
+
+		// AzureDriverTestBuilder driverBuilder = new AzureDriverTestBuilder();
+		// MicrosoftAzureCloudDriver driver = driverBuilder.createDriverAndSetConfig(computeTemplateName);
+
+		Map<String, String> cloudProperties = AzureTestUtils.getCloudProperties();
+		String affinityPrefix = cloudProperties.get("affinityGroup");
+		final MicrosoftAzureRestClient azureRestClient =
+				AzureTestUtils.createMicrosoftAzureRestClient(cloudServiceName, affinityPrefix);
+		azureRestClient.setLoggingFilter(logger);
+
+		// String xmlRequest = FileUtils.readFileToString(new File("./src/test/resources/cfy_response.xml"));
+		//
+		// ClientResponse response = azureRestClient.doPost("/services/hostedservices/"
+		// + "cloud-service-no-deployment" + "/deployments", xmlRequest);
+
+		this.startAndStopManagementMachine(computeTemplateName, new MachineDetailsAssertion() {
+
+			@Override
+			public void additionalAssertions(MachineDetails md) throws TimeoutException {
+				try {
+
+					Deployment deployment = azureRestClient.getDeploymentByDeploymentSlot(
+							cloudServiceName, deploymentSlot);
+
+					Assert.assertNotNull(deployment);
+					// deployment should have one role (resources should be cleaned)
+					Role role = deployment.getRoleList().getRoles().get(0);
+					NetworkConfigurationSet networkCs = role.getConfigurationSets().getNetworkConfigurationSet();
+					Assert.assertNotNull(networkCs);
+					InputEndpoint inputEndpoint = networkCs.getInputEndpoints().getInputEndpointByName("HTTP_LB");
+					Assert.assertNotNull(inputEndpoint);
+
+					LoadBalancerProbe loadBalancerProbe = inputEndpoint.getLoadBalancerProbe();
+
+					Assert.assertNotNull(loadBalancerProbe);
+					Assert.assertArrayEquals(
+							new String[] { "lbSetTest", "80" },
+							new String[] { inputEndpoint.getLoadBalancedEndpointSetName(), loadBalancerProbe.getPort() });
+
+				} catch (Exception e) {
+					Assert.fail(e.getMessage());
+				}
+			}
+
+		});
+
+		// AzureDriverTestBuilder driverBuilder = new AzureDriverTestBuilder();
+		// MicrosoftAzureCloudDriver driver = driverBuilder.createDriverAndSetConfig("ubuntu1410_lb");
+		// try {
+		// this.startManagementMachine(driver, new MachineDetailsAssertion() {
+		// @Override
+		// public void additionalAssertions(MachineDetails md) {
+		// Assert.assertEquals("10.0.0.12", md.getPrivateAddress());
+		// }
+		// });
+		//
+		// this.startAndStopMachine("ubuntu1410_lb", new MachineDetailsAssertion() {
+		// @Override
+		// public void additionalAssertions(MachineDetails md) {
+		// Assert.assertEquals("10.0.0.13", md.getPrivateAddress());
+		// }
+		// });
+		// } finally {
+		// stopManagementMachines(driver);
+		// }
+	}
 }

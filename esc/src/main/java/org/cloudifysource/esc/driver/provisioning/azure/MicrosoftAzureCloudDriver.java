@@ -577,7 +577,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 				desc.setDataDiskSize(dataDiskSize);
 			}
 
-			System.out.println();
 			InputEndpoints inputEndpoints = createInputEndPoints();
 
 			CloudNetwork cloudNetwork = this.cloud.getCloudNetwork();

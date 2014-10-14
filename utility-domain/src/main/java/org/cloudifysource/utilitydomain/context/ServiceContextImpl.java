@@ -1,11 +1,11 @@
 /*******************************************************************************
  * Copyright (c) 2011 GigaSpaces Technologies Ltd. All rights reserved
- *
+ * 
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
- *
+ * 
  * http://www.apache.org/licenses/LICENSE-2.0
- *
+ * 
  * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
@@ -21,7 +21,9 @@ import org.cloudifysource.domain.context.ServiceContext;
 import org.cloudifysource.domain.context.blockstorage.StorageFacade;
 import org.cloudifysource.domain.context.kvstorage.AttributesFacade;
 import org.cloudifysource.domain.context.network.NetworkFacade;
+import org.cloudifysource.domain.context.storage.AzureStorageFacade;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
+import org.cloudifysource.dsl.internal.context.AzureRemoteStorageProvisioningDriver;
 import org.cloudifysource.dsl.internal.context.RemoteNetworkProvisioningDriver;
 import org.cloudifysource.dsl.internal.context.RemoteStorageProvisioningDriver;
 import org.cloudifysource.dsl.utils.ServiceUtils;
@@ -30,6 +32,7 @@ import org.cloudifysource.utilitydomain.admin.TimedAdmin;
 import org.cloudifysource.utilitydomain.context.blockstorage.StorageFacadeImpl;
 import org.cloudifysource.utilitydomain.context.kvstore.AttributesFacadeImpl;
 import org.cloudifysource.utilitydomain.context.network.NetworkFacadeImpl;
+import org.cloudifysource.utilitydomain.context.storage.AzureStorageFacadeImpl;
 import org.openspaces.admin.Admin;
 import org.openspaces.admin.AdminException;
 import org.openspaces.admin.AdminFactory;
@@ -38,11 +41,9 @@ import org.openspaces.admin.internal.esm.InternalElasticServiceManager;
 import org.openspaces.admin.pu.ProcessingUnit;
 import org.openspaces.core.cluster.ClusterInfo;
 
-
-
 /**
- *
- *
+ * 
+ * 
  * @author barakme
  * @since 1.0
  */
@@ -60,6 +61,7 @@ public class ServiceContextImpl implements ServiceContext {
 
 	private String applicationName;
 
+	private AzureStorageFacade azureStorageFacade;
 	private StorageFacade storageFacade;
 	private NetworkFacade networkDriver;
 	private AttributesFacade attributesFacade;
@@ -71,12 +73,12 @@ public class ServiceContextImpl implements ServiceContext {
 
 	/*************
 	 * Constructor.
-	 *
+	 * 
 	 * @param clusterInfo
 	 *            the cluster info.
 	 * @param serviceDirectory
 	 *            the service directory.
-	 *
+	 * 
 	 */
 	public ServiceContextImpl(final ClusterInfo clusterInfo,
 			final String serviceDirectory) {
@@ -97,7 +99,7 @@ public class ServiceContextImpl implements ServiceContext {
 
 	/**********
 	 * Late object initialization.
-	 *
+	 * 
 	 * @param service
 	 *            .
 	 * @param admin
@@ -142,8 +144,7 @@ public class ServiceContextImpl implements ServiceContext {
 			elasticServiceManager = timedAdmin.waitForElasticServiceManager();
 			String puName = ServiceUtils.getAbsolutePUName(applicationName, serviceName);
 			Object remoteApi = null;
-			remoteApi = ((InternalElasticServiceManager) elasticServiceManager)
-					.getRemoteApi(puName, apiName);
+			remoteApi = ((InternalElasticServiceManager) elasticServiceManager).getRemoteApi(puName, apiName);
 
 			if (logger.isLoggable(Level.FINE)) {
 				if (remoteApi == null) {
@@ -152,10 +153,15 @@ public class ServiceContextImpl implements ServiceContext {
 					logger.fine(apiName + " successfully located for pu name: " + puName);
 				}
 			}
+
+			logger.finest("Requested remote api name '" + apiName + "' got: " + remoteApi);
+
 			if (CloudifyConstants.STORAGE_REMOTE_API_KEY.equals(apiName)) {
 				return new StorageFacadeImpl(this, (RemoteStorageProvisioningDriver) remoteApi);
 			} else if (CloudifyConstants.NETWORK_REMOTE_API_KEY.equals(apiName)) {
 				return new NetworkFacadeImpl((RemoteNetworkProvisioningDriver) remoteApi);
+			} else if (CloudifyConstants.AZURE_REMOTE_API_KEY.equals(apiName)) {
+				return new AzureStorageFacadeImpl((AzureRemoteStorageProvisioningDriver) remoteApi);
 			}
 		}
 		return null;
@@ -163,7 +169,7 @@ public class ServiceContextImpl implements ServiceContext {
 
 	/************
 	 * Late initializer, used in the integrated container (i.e. test-recipe)
-	 *
+	 * 
 	 * @param service
 	 *            .
 	 */
@@ -193,7 +199,7 @@ public class ServiceContextImpl implements ServiceContext {
 
 	/*
 	 * (non-Javadoc)
-	 *
+	 * 
 	 * @see org.cloudifysource.dsl.context.IServiceContext#getInstanceId()
 	 */
 	@Override
@@ -205,7 +211,7 @@ public class ServiceContextImpl implements ServiceContext {
 
 	/*
 	 * (non-Javadoc)
-	 *
+	 * 
 	 * @see org.cloudifysource.dsl.context.IServiceContext#waitForService(java.lang .String, int,
 	 * java.util.concurrent.TimeUnit)
 	 */
@@ -257,7 +263,7 @@ public class ServiceContextImpl implements ServiceContext {
 
 	/*
 	 * (non-Javadoc)
-	 *
+	 * 
 	 * @see org.cloudifysource.dsl.context.IServiceContext#getServiceDirectory()
 	 */
 	@Override
@@ -269,7 +275,7 @@ public class ServiceContextImpl implements ServiceContext {
 	/**
 	 * Returns the Admin Object the underlies the Service Context. Note: this is intended as a debugging aid, and should
 	 * not be used by most application. Only power users, familiar with the details of the Admin API, should use it.
-	 *
+	 * 
 	 * @return the admin.
 	 */
 	public Admin getAdmin() {
@@ -277,7 +283,7 @@ public class ServiceContextImpl implements ServiceContext {
 				+ " timing mechanism and might hinder performace");
 		return getOpenAdmin();
 	}
-	
+
 	private synchronized Admin getOpenAdmin() {
 		if (openAdmin != null) {
 			logger.info("using a cached un-timed Admin");
@@ -288,18 +294,18 @@ public class ServiceContextImpl implements ServiceContext {
 		final AdminFactory factory = new AdminFactory();
 		factory.useDaemonThreads(true);
 		factory.discoverUnmanagedSpaces();
-		
-		openAdmin = factory.createAdmin();		
+
+		openAdmin = factory.createAdmin();
 		openAdmin.setStatisticsHistorySize(0);
 
-		logger.info("Created a new un-timed Admin object with groups: " + Arrays.toString(timedAdmin.getAdminGroups()) 
+		logger.info("Created a new un-timed Admin object with groups: " + Arrays.toString(timedAdmin.getAdminGroups())
 				+ " and Locators: " + Arrays.toString(timedAdmin.getAdminLocators()));
-		
+
 		return openAdmin;
 	}
 
 	/**
-	 *
+	 * 
 	 * @param service
 	 */
 	void setService(final Service service) {
@@ -312,7 +318,7 @@ public class ServiceContextImpl implements ServiceContext {
 
 	/*
 	 * (non-Javadoc)
-	 *
+	 * 
 	 * @see org.cloudifysource.dsl.context.IServiceContext#getServiceName()
 	 */
 	@Override
@@ -322,7 +328,7 @@ public class ServiceContextImpl implements ServiceContext {
 
 	/*
 	 * (non-Javadoc)
-	 *
+	 * 
 	 * @see org.cloudifysource.dsl.context.IServiceContext#getApplicationName()
 	 */
 	@Override
@@ -332,7 +338,7 @@ public class ServiceContextImpl implements ServiceContext {
 
 	/*
 	 * (non-Javadoc)
-	 *
+	 * 
 	 * @see org.cloudifysource.dsl.context.IServiceContext#getAttributes()
 	 */
 	@Override
@@ -362,7 +368,7 @@ public class ServiceContextImpl implements ServiceContext {
 	@Override
 	public boolean isLocalCloud() {
 		String isLocalCloudStr = System.getenv(CloudifyConstants.GIGASPACES_CLOUD_MACHINE_ID);
-    	return LOCALCLOUD.equalsIgnoreCase(isLocalCloudStr);
+		return LOCALCLOUD.equalsIgnoreCase(isLocalCloudStr);
 	}
 
 	@Override
@@ -422,6 +428,16 @@ public class ServiceContextImpl implements ServiceContext {
 	}
 
 	@Override
+	public AzureStorageFacade getAzureStorage() {
+
+		if (azureStorageFacade == null) {
+			this.azureStorageFacade = (AzureStorageFacade) getRemoteApi(CloudifyConstants.AZURE_REMOTE_API_KEY);
+			logger.finest("got azure storage: " + azureStorageFacade);
+		}
+		return this.azureStorageFacade;
+	}
+
+	@Override
 	public boolean isPrivileged() {
 		final String envVar = System.getenv(CloudifyConstants.GIGASPACES_AGENT_ENV_PRIVILEGED);
 		return Boolean.valueOf(envVar);
@@ -431,7 +447,7 @@ public class ServiceContextImpl implements ServiceContext {
 	public String getBindAddress() {
 		return System.getenv(CloudifyConstants.CLOUDIFY_CLOUD_MACHINE_IP_ADDRESS_ENV);
 	}
-	
+
 	@Override
 	public String getAttributesStoreDiscoveryTimeout() {
 		return System.getenv(CloudifyConstants.USM_ATTRIBUTES_STORE_DISCOVERY_TIMEOUT_ENV_VAR);
@@ -439,16 +455,16 @@ public class ServiceContextImpl implements ServiceContext {
 
 	@Override
 	public void stopMaintenanceMode() {
-    	InternalElasticServiceManager esm = (InternalElasticServiceManager) timedAdmin.waitForElasticServiceManager();
-    	String absolutePUName = ServiceUtils.getAbsolutePUName(getApplicationName(), getServiceName());
-    	esm.enableAgentFailureDetection(absolutePUName);
+		InternalElasticServiceManager esm = (InternalElasticServiceManager) timedAdmin.waitForElasticServiceManager();
+		String absolutePUName = ServiceUtils.getAbsolutePUName(getApplicationName(), getServiceName());
+		esm.enableAgentFailureDetection(absolutePUName);
 	}
 
 	@Override
 	public void startMaintenanceMode(final long timeout,
 			final TimeUnit unit) {
-    	InternalElasticServiceManager esm = (InternalElasticServiceManager) timedAdmin.waitForElasticServiceManager();
-    	String absolutePUName = ServiceUtils.getAbsolutePUName(getApplicationName(), getServiceName());
+		InternalElasticServiceManager esm = (InternalElasticServiceManager) timedAdmin.waitForElasticServiceManager();
+		String absolutePUName = ServiceUtils.getAbsolutePUName(getApplicationName(), getServiceName());
 		esm.disableAgentFailureDetection(absolutePUName, timeout, unit);
 	}
 

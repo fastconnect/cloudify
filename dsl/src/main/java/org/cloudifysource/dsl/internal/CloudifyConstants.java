@@ -49,6 +49,7 @@ public final class CloudifyConstants {
 
     }
     
+    public static final String AZURE_REMOTE_API_KEY = "org.cloudifysource.dsl.internal.context.AzureRemoteStorageProvisioningDriver";
 	public static final String STORAGE_REMOTE_API_KEY = "org.cloudifysource.dsl.internal.context.RemoteStorageProvisioningDriver";
 	public static final String NETWORK_REMOTE_API_KEY = "org.cloudifysource.domain.context.network.RemoteNetworkProvisioningDriver";
 

@@ -7,7 +7,8 @@ cloud {
 
 		// Mandatory - Azure IaaS cloud driver.
 		className "org.cloudifysource.esc.driver.provisioning.azure.MicrosoftAzureCloudDriver"
-		storageClassName "org.cloudifysource.esc.driver.provisioning.storage.azure.MicrosoftAzureStorageDriver"
+    storageClassName "org.cloudifysource.esc.driver.provisioning.storage.azure.MicrosoftAzureStorageDriver"
+    azureStorageClassName "org.cloudifysource.esc.driver.provisioning.storage.azure.AzureStorageProvisioningDriverImpl"
 
 		// Optional. The template name for the management machines. Defaults to the first template in the templates section below.
 		managementMachineTemplate "MEDIUM_WIN2012"

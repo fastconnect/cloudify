@@ -1,11 +1,11 @@
 /*******************************************************************************
  * Copyright (c) 2011 GigaSpaces Technologies Ltd. All rights reserved
- *
+ * 
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
- *
+ * 
  * http://www.apache.org/licenses/LICENSE-2.0
- *
+ * 
  * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
@@ -16,18 +16,18 @@ import org.cloudifysource.domain.internal.CloudifyDSLEntity;
 
 /***********
  * Domain POJO for the cloud configuration.
- *
+ * 
  * @author barakme, adaml
  * @since 2.0.0
- *
+ * 
  */
 @CloudifyDSLEntity(name = "configuration", clazz = CloudConfiguration.class, allowInternalNode = true,
 		allowRootNode = false, parent = "cloud")
 public class CloudConfiguration {
 
-    //admin object loading time (in seconds), defaults to 60 seconds.
+	// admin object loading time (in seconds), defaults to 60 seconds.
 	private short adminLoadingTimeInSeconds = 60;
-	
+
 	/*******
 	 * The default cloud driver name.
 	 */
@@ -35,13 +35,13 @@ public class CloudConfiguration {
 			"org.cloudifysource.esc.driver.provisioning.jclouds.DefaultProvisioningDriver";
 	private String className = DEFAULT_CLOUD_DRIVER_CLASS_NAME;
 	private String storageClassName;
+	private String azureStorageClassName;
 	private String networkDriverClassName;
 	private String nicAddress;
 	private String lookupGroups;
 	private String lookupLocators;
 	private String managementMachineTemplate;
 	private String managementStorageTemplate;
-
 
 	private boolean bootstrapManagementOnPublicIp = true;
 	private boolean connectToPrivateIp = true;
@@ -75,9 +75,9 @@ public class CloudConfiguration {
 	/*********
 	 * Full name of the class that implements the cloud driver for this cloud configuration. Class must implement the
 	 * <i>org.cloudifysource.esc.driver.provisioning.ProvisioningDriver</i> interface.
-	 *
+	 * 
 	 * Defaults to the value of the DEFAULT_CLOUD_DRIVER_CLASS_NAME constant.
-	 *
+	 * 
 	 * @see org.cloudifysource.esc.driver.provisioning.ProvisioningDriver
 	 * @return the cloud driver class name.
 	 */
@@ -137,12 +137,21 @@ public class CloudConfiguration {
 	public void setPersistentStoragePath(final String persistentStoragePath) {
 		this.persistentStoragePath = persistentStoragePath;
 	}
+
 	public String getStorageClassName() {
 		return storageClassName;
 	}
 
 	public void setStorageClassName(final String storageClassName) {
 		this.storageClassName = storageClassName;
+	}
+
+	public String getAzureStorageClassName() {
+		return azureStorageClassName;
+	}
+
+	public void setAzureStorageClassName(String azureStorageClassName) {
+		this.azureStorageClassName = azureStorageClassName;
 	}
 
 	public String getManagementStorageTemplate() {
@@ -152,7 +161,7 @@ public class CloudConfiguration {
 	public void setManagementStorageTemplate(final String managementStorageTemplate) {
 		this.managementStorageTemplate = managementStorageTemplate;
 	}
-	
+
 	public short getAdminLoadingTimeInSeconds() {
 		return adminLoadingTimeInSeconds;
 	}

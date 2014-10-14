@@ -1,17 +1,14 @@
 /*******************************************************************************
  * Copyright (c) 2013 GigaSpaces Technologies Ltd. All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *       http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ * 
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  *******************************************************************************/
 package org.cloudifysource.domain.context;
 
@@ -21,28 +18,29 @@ import org.cloudifysource.domain.Service;
 import org.cloudifysource.domain.context.blockstorage.StorageFacade;
 import org.cloudifysource.domain.context.kvstorage.AttributesFacade;
 import org.cloudifysource.domain.context.network.NetworkFacade;
+import org.cloudifysource.domain.context.storage.AzureStorageFacade;
 
 /**
  * Base service context for services running in localcloud.
  * 
  * @author adaml
- *
+ * 
  */
 public class BaseServiceContext implements ServiceContext {
 
 	private Service service;
 	private String serviceDirectory;
-	
+
 	/**
 	 * init the base service context
-	 *  
+	 * 
 	 * @param service
-	 * 		The installed service
+	 *            The installed service
 	 */
 	public void init(final Service service) {
 		this.service = service;
 	}
-	
+
 	public BaseServiceContext(final String serviceDirectory) {
 		this.serviceDirectory = serviceDirectory;
 	}
@@ -53,9 +51,9 @@ public class BaseServiceContext implements ServiceContext {
 	}
 
 	@Override
-	public org.cloudifysource.domain.context.Service waitForService(final String name, 
-																final int timeout, 
-																final TimeUnit unit) {
+	public org.cloudifysource.domain.context.Service waitForService(final String name,
+			final int timeout,
+			final TimeUnit unit) {
 		unsupported();
 		return null;
 	}
@@ -84,7 +82,7 @@ public class BaseServiceContext implements ServiceContext {
 
 	@Override
 	public boolean isLocalCloud() {
-		// TODO: this should throw an unsupported exception. 
+		// TODO: this should throw an unsupported exception.
 		return true;
 	}
 
@@ -137,6 +135,12 @@ public class BaseServiceContext implements ServiceContext {
 	}
 
 	@Override
+	public AzureStorageFacade getAzureStorage() {
+		unsupported();
+		return null;
+	}
+
+	@Override
 	public boolean isPrivileged() {
 		unsupported();
 		return false;
@@ -169,9 +173,9 @@ public class BaseServiceContext implements ServiceContext {
 		unsupported();
 		return null;
 	}
-	
+
 	private void unsupported() {
-		throw new UnsupportedOperationException("context method is not supported for" 
+		throw new UnsupportedOperationException("context method is not supported for"
 				+ " services running outside a GSC.");
 	}
 

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<assembly xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.0 http://maven.apache.org/xsd/assembly-1.1.0.xsd">
+	<id>cloudify-azure</id>
+	<formats>
+		<format>zip</format>
+	</formats>
+	<includeBaseDirectory>false</includeBaseDirectory>
+	<dependencySets>
+		<dependencySet>
+			<includes>
+				<include>org.cloudifysource:esc:jar::</include>
+			</includes>
+			<scope>runtime</scope>
+			<fileMode>0440</fileMode>
+			<directoryMode>0755</directoryMode>
+			<outputDirectory>/clouds/azure/upload/cloudify-overrides/lib/platform/esm</outputDirectory>
+			<outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
+		</dependencySet>
+		<dependencySet>
+			<includes>
+				<include>org.cloudifysource:domain:jar::</include>
+				<include>org.cloudifysource:utility-domain:jar::</include>
+				<include>org.cloudifysource:dsl:jar::</include>
+				<include>org.cloudifysource:dsl-backwards:jar::</include>
+			</includes>
+			<scope>runtime</scope>
+			<fileMode>0440</fileMode>
+			<directoryMode>0755</directoryMode>
+			<outputDirectory>/clouds/azure/upload/cloudify-overrides/lib/platform/cloudify</outputDirectory>
+			<outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
+		</dependencySet>
+	</dependencySets>
+</assembly>

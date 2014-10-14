@@ -1,0 +1,70 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<artifactId>assembly</artifactId>
+	<packaging>pom</packaging>
+	<name>assembly</name>
+	<!-- <version>2.7.1-6300-RELEASE-Azure-s3</version> -->
+
+	<parent>
+		<groupId>org.cloudifysource</groupId>
+		<artifactId>cloudify</artifactId>
+		<version>2.7.1-6300-RELEASE-azure-storage</version>
+		<relativePath>../cloudify</relativePath>
+	</parent>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.cloudifysource</groupId>
+			<artifactId>esc</artifactId>
+			<version>${project.parent.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.cloudifysource</groupId>
+			<artifactId>dsl</artifactId>
+			<version>${project.parent.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.cloudifysource</groupId>
+			<artifactId>dsl-backwards</artifactId>
+			<version>${project.parent.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.cloudifysource</groupId>
+			<artifactId>utility-domain</artifactId>
+			<version>${project.parent.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.cloudifysource</groupId>
+			<artifactId>domain</artifactId>
+			<version>${project.parent.version}</version>
+		</dependency>
+	</dependencies>
+
+
+	<build>
+		<finalName>assembly</finalName>
+		<plugins>
+			<plugin>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<version>2.2.1</version>
+				<executions>
+					<execution>
+						<id>package-zip-azure-win</id>
+						<phase>package</phase>
+						<goals>
+							<goal>single</goal>
+						</goals>
+						<configuration>
+							<finalName>cloudify-${project.version}-${maven.build.timestamp}</finalName>
+							<appendAssemblyId>false</appendAssemblyId>
+							<descriptors>
+								<descriptor>assembly-azure-win.xml</descriptor>
+							</descriptors>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+</project>

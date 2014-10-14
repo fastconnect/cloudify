@@ -37,13 +37,7 @@
 				[name:"WINRM_SSL", protocol:"TCP", port:"5986"],
 				[name:"HTTP", protocol:"TCP", port:"80"]
 			],
-
-			// Firewall port to open (winrm port 5985 should be opened by default on the image)
-			"azure.firewall.ports" : [
-				  [name:"CLOUDIFY_GUI", protocol:"TCP", port:"8099"],
-				  [name:"CLOUDIFY_REST", protocol:"TCP", port:"8100"]
-			],
-      "azure.network.ipAddresses" : "10.0.0.12"
+			"azure.network.ipAddresses" : "10.0.0.12"
 		])
 	}
 ]

@@ -20,11 +20,8 @@
         [name:"WINRM_SSL", protocol:"TCP", port:"5986", localPort:"5986"],
         [name:"MSTSC", protocol:"TCP", port:"3389", localPort:"3389"]
       ],
-      "azure.firewall.ports" : [
-        [name:"CLOUDIFY_GUI", protocol:"TCP", port:"8099"],
-        [name:"CLOUDIFY_REST", protocol:"TCP", port:"8100"]
-      ],
-      "azure.deployment.customdata" : "C:\\Windows\\System32\\netsh.exe advfirewall set allprofiles state off"
+  
+     // "azure.deployment.customdata" : "C:\\Windows\\System32\\netsh.exe advfirewall set allprofiles state off"
     ])
   }
 ]

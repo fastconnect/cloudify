@@ -29,13 +29,6 @@
 				[name:"RemoteDesktop", protocol:"TCP", localPort:"3389", port:"3389"]
 			],
 
-			// Firewall port to open (winrm port 5985 should be opened by default on the image)
-			"azure.firewall.ports" : [
-				[name:"CLOUDIFY_GUI", protocol:"TCP", port:"8099"],
-				[name:"CLOUDIFY_REST", protocol:"TCP", port:"8100"],
-				[name:"RemoteDesktop", protocol:"TCP", port:"3389"]
-			],
-		
 			// join a domain
 			"azure.domain.join" : 	[domain:"victor", userName:"administrateur", password: "Azerty@01", joinDomain: "victor.local" ]		
 		])

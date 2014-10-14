@@ -11,6 +11,7 @@ import org.cloudifysource.domain.cloud.compute.ComputeTemplate;
 import org.cloudifysource.domain.cloud.network.CloudNetwork;
 import org.cloudifysource.esc.driver.provisioning.ComputeDriverConfiguration;
 import org.cloudifysource.esc.driver.provisioning.MachineDetails;
+import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureException;
 import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureRestClient;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Dns;
@@ -384,7 +385,6 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 
 		} finally {
 			stopManagementMachines(mngDriver);
-			azureClient.removeSubnetByName(networkSite, dataSubnetName, System.currentTimeMillis() + TIMEOUT);
 		}
 
 	}
@@ -428,74 +428,66 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 
 		String computeTemplateName = "ubuntu1410_lb";
 		Cloud cloud = AzureTestUtils.createCloud("./src/main/resources/clouds", "azure_win", null, computeTemplateName);
-		ComputeTemplate computeTemplate = cloud.getCloudCompute().getTemplates().get(computeTemplateName);
+		final ComputeTemplate computeTemplate = cloud.getCloudCompute().getTemplates().get(computeTemplateName);
 		final String cloudServiceName = (String) computeTemplate.getCustom().get("azure.cloud.service");
 		final String deploymentSlot = (String) computeTemplate.getCustom().get("azure.deployment.slot");
 		// final String networkName = cloud.getCloudNetwork().getCustom().get("azure.networksite.name");
 
-		// AzureDriverTestBuilder driverBuilder = new AzureDriverTestBuilder();
-		// MicrosoftAzureCloudDriver driver = driverBuilder.createDriverAndSetConfig(computeTemplateName);
+		final AzureDriverTestBuilder driverBuilder = new AzureDriverTestBuilder();
+		final MicrosoftAzureCloudDriver driver = driverBuilder.createDriverAndSetConfig(computeTemplateName);
 
 		Map<String, String> cloudProperties = AzureTestUtils.getCloudProperties();
 		String affinityPrefix = cloudProperties.get("affinityGroup");
 		final MicrosoftAzureRestClient azureRestClient =
 				AzureTestUtils.createMicrosoftAzureRestClient(cloudServiceName, affinityPrefix);
-		azureRestClient.setLoggingFilter(logger);
+		try {
 
-		// String xmlRequest = FileUtils.readFileToString(new File("./src/test/resources/cfy_response.xml"));
-		//
-		// ClientResponse response = azureRestClient.doPost("/services/hostedservices/"
-		// + "cloud-service-no-deployment" + "/deployments", xmlRequest);
+			this.startManagementMachine(driver, new MachineDetailsAssertion() {
 
-		this.startAndStopManagementMachine(computeTemplateName, new MachineDetailsAssertion() {
+				@Override
+				public void additionalAssertions(MachineDetails md) throws TimeoutException {
+					try {
 
-			@Override
-			public void additionalAssertions(MachineDetails md) throws TimeoutException {
-				try {
+						Deployment deployment = azureRestClient.getDeploymentByDeploymentSlot(
+								cloudServiceName, deploymentSlot);
+						Assert.assertNotNull(deployment);
+
+					} catch (Exception e) {
+						Assert.fail(e.getMessage());
+					}
+				}
+
+			});
+
+			final String managementGroup = cloud.getProvider().getManagementGroup();
+
+			this.startAndStopMachine("ubuntu1410_lb2", new MachineDetailsAssertion() {
+
+				@Override
+				public void additionalAssertions(MachineDetails md) throws TimeoutException, MicrosoftAzureException {
 
 					Deployment deployment = azureRestClient.getDeploymentByDeploymentSlot(
 							cloudServiceName, deploymentSlot);
 
 					Assert.assertNotNull(deployment);
 					// deployment should have one role (resources should be cleaned)
-					Role role = deployment.getRoleList().getRoles().get(0);
+					String roleName = managementGroup + driverBuilder.getServiceName() + "001";
+					Role role = deployment.getRoleList().getRoleByName(roleName);
 					NetworkConfigurationSet networkCs = role.getConfigurationSets().getNetworkConfigurationSet();
 					Assert.assertNotNull(networkCs);
 					InputEndpoint inputEndpoint = networkCs.getInputEndpoints().getInputEndpointByName("HTTP_LB");
 					Assert.assertNotNull(inputEndpoint);
 
 					LoadBalancerProbe loadBalancerProbe = inputEndpoint.getLoadBalancerProbe();
-
 					Assert.assertNotNull(loadBalancerProbe);
 					Assert.assertArrayEquals(
 							new String[] { "lbSetTest", "80" },
 							new String[] { inputEndpoint.getLoadBalancedEndpointSetName(), loadBalancerProbe.getPort() });
-
-				} catch (Exception e) {
-					Assert.fail(e.getMessage());
 				}
-			}
+			});
 
-		});
-
-		// AzureDriverTestBuilder driverBuilder = new AzureDriverTestBuilder();
-		// MicrosoftAzureCloudDriver driver = driverBuilder.createDriverAndSetConfig("ubuntu1410_lb");
-		// try {
-		// this.startManagementMachine(driver, new MachineDetailsAssertion() {
-		// @Override
-		// public void additionalAssertions(MachineDetails md) {
-		// Assert.assertEquals("10.0.0.12", md.getPrivateAddress());
-		// }
-		// });
-		//
-		// this.startAndStopMachine("ubuntu1410_lb", new MachineDetailsAssertion() {
-		// @Override
-		// public void additionalAssertions(MachineDetails md) {
-		// Assert.assertEquals("10.0.0.13", md.getPrivateAddress());
-		// }
-		// });
-		// } finally {
-		// stopManagementMachines(driver);
-		// }
+		} finally {
+			stopManagementMachines(driver);
+		}
 	}
 }

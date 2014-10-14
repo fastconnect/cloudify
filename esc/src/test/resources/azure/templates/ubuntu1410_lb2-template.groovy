@@ -1,5 +1,5 @@
 [
-	ubuntu1410_lb : computeTemplate {
+	ubuntu1410_lb2 : computeTemplate {
 		imageId "b39f27a8b8c64d52b05eac6a62ebad85__Ubuntu-14_04_1-LTS-amd64-server-20140909-en-us-30GB"
 		machineMemoryMB 3500
 		hardwareId "Medium"
@@ -17,8 +17,6 @@
 			"azure.cloud.service" : "cfytestitloadblancer",
 			"azure.endpoints" : [
 				[name:"HTTP_LB", protocol:"TCP", localPort: "80", port:"80", loadBalancedSet: "lbSetTest", probePort : "80", probeProtocol:"TCP"],
-				// SSH should be automatically generated for manager
-				[name:"SSH", protocol:"TCP", localPort: "22", port:"22"],
 			],
 		])
 	}

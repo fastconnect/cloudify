@@ -85,6 +85,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String CLOUDIFY_AFFINITY_PREFIX = "cloudifyaffinity";
 	private static final String CLOUDIFY_STORAGE_ACCOUNT_PREFIX = "cloudifystorage";
 
+	private static final String CLOUDIFY_REST_PORT_NAME = "CLOUDIFY_REST";
+	private static final String CLOUDIFY_WEBUI_PORT_NAME = "CLOUDIFY_GUI";
+
 	// Custom template DSL properties
 	private static final String AZURE_PFX_FILE = "azure.pfx.file";
 	private static final String AZURE_PFX_PASSWORD = "azure.pfx.password";
@@ -244,31 +247,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 		this.ensureEndpointForManagementMachine();
 
-		if (isWindowsVM()) {
-			// [Windows] Handling firewall ports for manager machine (8100 & 8099)
-			if (this.management) {
-				this.firewallPorts = (List<Map<String, String>>) this.template.getCustom().get(AZURE_FIREWALL_PORTS);
-				boolean cloudifyWebuiPort = false;
-				boolean cloudifyRestApiPort = false;
-				String port;
-				if (firewallPorts != null) {
-					for (Map<String, String> firewallPort : firewallPorts) {
-						port = firewallPort.get("port");
-						if (!port.contains("-")) {
-							int p = Integer.parseInt(port);
-							if (p == WEBUI_PORT)
-								cloudifyWebuiPort = true;
-							if (p == REST_PORT)
-								cloudifyRestApiPort = true;
-						}
-					}
-				}
-				if (firewallPorts == null || !(cloudifyWebuiPort && cloudifyRestApiPort)) {
-					throw new IllegalArgumentException("Custom field '"
-							+ AZURE_FIREWALL_PORTS + "' must be set at least with " + WEBUI_PORT + " and " + REST_PORT);
-				}
-			}
-		}
+		this.firewallPorts = (List<Map<String, String>>) this.template.getCustom().get(AZURE_FIREWALL_PORTS);
 
 		this.cleanup = Boolean.parseBoolean((String) this.cloud.getCustom().get(AZURE_CLEANUP_ON_TEARDOWN));
 
@@ -664,6 +643,16 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		remoteExecutor.execute(hostAddress, details, COMMAND_ACTIVATE_SHARING, DEFAULT_COMMAND_TIMEOUT);
 
 		// Remote command to target : open all defined ports
+
+		// automatically open ports for cloudify REST and WEBUI
+		Integer restPort = this.cloud.getConfiguration().getComponents().getRest().getPort();
+		String cmdFireWall = String.format(COMMAND_OPEN_FIREWALL_PORT, CLOUDIFY_REST_PORT_NAME, "TCP", restPort);
+		remoteExecutor.execute(hostAddress, details, cmdFireWall, DEFAULT_COMMAND_TIMEOUT);
+
+		Integer webuiPort = this.cloud.getConfiguration().getComponents().getWebui().getPort();
+		cmdFireWall = String.format(COMMAND_OPEN_FIREWALL_PORT, CLOUDIFY_WEBUI_PORT_NAME, "TCP", webuiPort);
+		remoteExecutor.execute(hostAddress, details, cmdFireWall, DEFAULT_COMMAND_TIMEOUT);
+
 		String cmd = "";
 		if (this.firewallPorts != null) {
 			for (Map<String, String> firewallPortsMap : this.firewallPorts) {
@@ -1008,6 +997,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 		// Add End Point for each port
 		Object objects = this.template.getCustom().get(AZURE_ENDPOINTS);
+		@SuppressWarnings("unchecked")
 		List<Map<String, String>> endpoints = (List<Map<String, String>>) objects;
 		if (endpoints != null) {
 			for (Map<String, String> endpointMap : endpoints) {

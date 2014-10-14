@@ -1,0 +1,7 @@
+println("starting")
+def env = System.getenv()
+println(env['USM_INSTANCE_ID'])
+println(env['USM_CLUSTER_NAME'])
+println(env['USM_NUMBER_OF_INSTANCES'])
+println(env['USM_SERVICE_FILE_NAME'])
+println("started")

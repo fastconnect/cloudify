@@ -261,7 +261,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 	}
 
 	@Test
-	// @Ignore("Custom Data not working on Windows (content issue?)")
+	@Ignore("Custom Data not working on Windows (content issue?)")
 	public void testCustomDataWindows() throws Exception {
 
 		this.startAndStopManagementMachine("win2012_customdata", new MachineDetailsAssertion() {
@@ -431,7 +431,6 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 		final ComputeTemplate computeTemplate = cloud.getCloudCompute().getTemplates().get(computeTemplateName);
 		final String cloudServiceName = (String) computeTemplate.getCustom().get("azure.cloud.service");
 		final String deploymentSlot = (String) computeTemplate.getCustom().get("azure.deployment.slot");
-		// final String networkName = cloud.getCloudNetwork().getCustom().get("azure.networksite.name");
 
 		final AzureDriverTestBuilder driverBuilder = new AzureDriverTestBuilder();
 		final MicrosoftAzureCloudDriver driver = driverBuilder.createDriverAndSetConfig(computeTemplateName);
@@ -490,4 +489,5 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 			stopManagementMachines(driver);
 		}
 	}
+
 }

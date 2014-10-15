@@ -55,17 +55,25 @@ import org.cloudifysource.esc.driver.provisioning.azure.client.CreatePersistentV
 import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureException;
 import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureRestClient;
 import org.cloudifysource.esc.driver.provisioning.azure.client.RoleDetails;
+import org.cloudifysource.esc.driver.provisioning.azure.model.AddressSpace;
 import org.cloudifysource.esc.driver.provisioning.azure.model.AttachedTo;
+import org.cloudifysource.esc.driver.provisioning.azure.model.Connection;
+import org.cloudifysource.esc.driver.provisioning.azure.model.ConnectionsToLocalNetwork;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Disk;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Disks;
 import org.cloudifysource.esc.driver.provisioning.azure.model.DomainJoin;
+import org.cloudifysource.esc.driver.provisioning.azure.model.Gateway;
 import org.cloudifysource.esc.driver.provisioning.azure.model.HostedService;
 import org.cloudifysource.esc.driver.provisioning.azure.model.HostedServices;
 import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoint;
 import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoints;
 import org.cloudifysource.esc.driver.provisioning.azure.model.JoinCredentials;
 import org.cloudifysource.esc.driver.provisioning.azure.model.LoadBalancerProbe;
+import org.cloudifysource.esc.driver.provisioning.azure.model.LocalNetworkSite;
+import org.cloudifysource.esc.driver.provisioning.azure.model.LocalNetworkSiteRef;
+import org.cloudifysource.esc.driver.provisioning.azure.model.LocalNetworkSites;
+import org.cloudifysource.esc.driver.provisioning.azure.model.VpnConfiguration;
 import org.cloudifysource.esc.installer.InstallationDetails;
 import org.cloudifysource.esc.installer.InstallerException;
 import org.cloudifysource.esc.installer.remoteExec.RemoteExecutor;
@@ -118,6 +126,12 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String AZURE_NETWORK_NAME = "azure.networksite.name";
 	private static final String AZURE_NETWORK_ADDRESS_SPACE = "azure.address.space";
 	private static final String AZURE_DNS_SERVERS = "azure.dns.servers";
+
+	private static final String AZURE_VPN_LOCALSITE_NAME = "azure.vpn.localsite.name";
+	private static final String AZURE_VPN_GATEWAY_ADDRESS = "azure.vpn.gateway.address";
+	private static final String AZURE_VPN_ADDRESS_SPACE = "azure.vpn.address.space";
+	private static final String AZURE_VPN_SUBNET_ADDRESS_PREFIX = "azure.vpn.subnet.address.prefix";
+	private static final String AZURE_VPN_SUBNET_NAME = "GatewaySubnet";
 
 	private static final String AZURE_CLOUD_SERVICE_CODE = "azure.cloud.service.code";
 
@@ -698,8 +712,10 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			CloudNetwork cloudNetwork = this.cloud.getCloudNetwork();
 			NetworkConfiguration networkConfiguration = cloudNetwork.getManagement().getNetworkConfiguration();
 			Subnet subnet = networkConfiguration.getSubnets().get(0);
+
+			VpnConfiguration vpnConfiguration = this.getVpnConfiguration(cloudNetwork);
 			azureClient.createVirtualNetworkSite(addressSpace, affinityGroup, networkName, subnet.getName(),
-					subnet.getRange(), dnsServers, endTime);
+					subnet.getRange(), dnsServers, vpnConfiguration, endTime);
 
 			azureClient.createStorageAccount(affinityGroup, storageAccountName, endTime);
 		} catch (final Exception e) {
@@ -721,6 +737,56 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		int numberOfManagementMachines = this.cloud.getProvider().getNumberOfManagementMachines();
 		return doStartManagementMachines(endTime, numberOfManagementMachines);
 
+	}
+
+	/**
+	 * 
+	 * TODO remove fields strict verification and make them optional like it's mentioned in azure api site <br />
+	 * Supports only one local site
+	 * 
+	 */
+	private VpnConfiguration getVpnConfiguration(CloudNetwork cloudNetwork) {
+
+		VpnConfiguration vpnConfiguration = null;
+
+		String localSiteName = cloudNetwork.getCustom().get(AZURE_VPN_LOCALSITE_NAME);
+		String vpnGatewayAddress = cloudNetwork.getCustom().get(AZURE_VPN_GATEWAY_ADDRESS);
+		String addressSpacesString = cloudNetwork.getCustom().get(AZURE_VPN_ADDRESS_SPACE);
+		String vpnSubnetAddressPrefix = cloudNetwork.getCustom().get(AZURE_VPN_SUBNET_ADDRESS_PREFIX);
+		List<String> addressSpacesList = this.getAddressSpaces(addressSpacesString);
+
+		if (StringUtils.isNotBlank(vpnGatewayAddress) && StringUtils.isNotBlank(vpnSubnetAddressPrefix)
+				&& addressSpacesList != null && !addressSpacesList.isEmpty()) {
+			LocalNetworkSites localNetworkSites = new LocalNetworkSites();
+			LocalNetworkSite localNetworkSite = new LocalNetworkSite(localSiteName, vpnGatewayAddress,
+					new AddressSpace(addressSpacesList));
+
+			localNetworkSites.getLocalNetworkSites().add(localNetworkSite);
+			org.cloudifysource.esc.driver.provisioning.azure.model.Subnet subnet =
+					new org.cloudifysource.esc.driver.provisioning.azure.model.Subnet();
+			subnet.setName(AZURE_VPN_SUBNET_NAME);
+			subnet.setAddressPrefix(Arrays.asList(vpnSubnetAddressPrefix));
+
+			// gateway configuration
+			ConnectionsToLocalNetwork connectionsToLocalNetwork = new ConnectionsToLocalNetwork();
+			LocalNetworkSiteRef siteRef = new LocalNetworkSiteRef(localSiteName, new Connection());
+			connectionsToLocalNetwork.setLocalNetworkSiteRefs(Arrays.asList(siteRef));
+
+			Gateway gateway = new Gateway(connectionsToLocalNetwork);
+			vpnConfiguration = new VpnConfiguration(localNetworkSites, subnet, gateway);
+		}
+
+		return vpnConfiguration;
+	}
+
+	// TODO refactor/ see getIpAddressesList
+	private List<String> getAddressSpaces(String addressSpacesString) {
+		List<String> addressSpaces = null;
+		if (StringUtils.isNotBlank(addressSpacesString)) {
+			String[] split = addressSpacesString.split(",");
+			addressSpaces = Arrays.asList(split);
+		}
+		return addressSpaces;
 	}
 
 	private void cleanup() throws CloudProvisioningException {

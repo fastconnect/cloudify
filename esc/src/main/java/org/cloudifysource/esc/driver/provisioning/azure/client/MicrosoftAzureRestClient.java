@@ -49,6 +49,8 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.Error;
 import org.cloudifysource.esc.driver.provisioning.azure.model.GlobalNetworkConfiguration;
 import org.cloudifysource.esc.driver.provisioning.azure.model.HostedService;
 import org.cloudifysource.esc.driver.provisioning.azure.model.HostedServices;
+import org.cloudifysource.esc.driver.provisioning.azure.model.LocalNetworkSite;
+import org.cloudifysource.esc.driver.provisioning.azure.model.LocalNetworkSites;
 import org.cloudifysource.esc.driver.provisioning.azure.model.NetworkConfigurationSet;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Operation;
 import org.cloudifysource.esc.driver.provisioning.azure.model.PersistentVMRole;
@@ -60,6 +62,7 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.Subnets;
 import org.cloudifysource.esc.driver.provisioning.azure.model.VirtualNetworkConfiguration;
 import org.cloudifysource.esc.driver.provisioning.azure.model.VirtualNetworkSite;
 import org.cloudifysource.esc.driver.provisioning.azure.model.VirtualNetworkSites;
+import org.cloudifysource.esc.driver.provisioning.azure.model.VpnConfiguration;
 
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientHandlerException;
@@ -300,7 +303,7 @@ public class MicrosoftAzureRestClient {
 	 * @throws TimeoutException .
 	 */
 	public void createVirtualNetworkSite(final String addressSpace, final String affinityGroup,
-			final String networkSiteName, final long endTime)
+			final String networkSiteName, final String vpnGatewayAddress, final String addressSpaces, final long endTime)
 			throws MicrosoftAzureException, TimeoutException, InterruptedException {
 
 		VirtualNetworkConfiguration virtualNetworkConfiguration = getVirtualNetworkConfiguration();
@@ -336,9 +339,8 @@ public class MicrosoftAzureRestClient {
 	}
 
 	public void createVirtualNetworkSite(String addressSpace, String affinityGroup, String networkSiteName,
-			String subnetName, String subnetAddr, Map<String, String> dnsServers, long endTime)
-			throws MicrosoftAzureException, TimeoutException,
-			InterruptedException {
+			String subnetName, String subnetAddr, Map<String, String> dnsServers, VpnConfiguration vpnConfiguration,
+			long endTime) throws MicrosoftAzureException, TimeoutException, InterruptedException {
 
 		VirtualNetworkConfiguration virtualNetworkConfiguration = getVirtualNetworkConfiguration();
 		VirtualNetworkSites virtualNetworkSites = virtualNetworkConfiguration.getVirtualNetworkSites();
@@ -356,6 +358,7 @@ public class MicrosoftAzureRestClient {
 			newSite.setAddressSpace(address);
 			newSite.setAffinityGroup(affinityGroup);
 			newSite.setName(networkSiteName);
+
 			virtualNetworkSites.getVirtualNetworkSites().add(newSite);
 		} else {
 			logger.info("Using an already existing virtual network site : " + networkSiteName);
@@ -363,17 +366,14 @@ public class MicrosoftAzureRestClient {
 
 		virtualNetworkSite = virtualNetworkSites.getVirtualNetworkSite(networkSiteName);
 		if (virtualNetworkSite.getSubnets() == null) {
-			virtualNetworkSite.setSubnets(new Subnets());
-		} else {
 			logger.info("Creating subnets for virtual network site : " + networkSiteName);
+			virtualNetworkSite.setSubnets(new Subnets());
+			System.out.println();
 		}
 
 		boolean shouldUpdateOrCreate = false;
 		if (!virtualNetworkSite.getSubnets().contains(subnetName)) {
 			logger.info("Creating the subnet: " + subnetName);
-			if (virtualNetworkSite.getSubnets() == null) {
-				virtualNetworkSite.setSubnets(new Subnets());
-			}
 			Subnet subnet = new Subnet();
 			subnet.setName(subnetName);
 			subnet.getAddressPrefix().add(subnetAddr);
@@ -382,6 +382,45 @@ public class MicrosoftAzureRestClient {
 		} else {
 			logger.info("Using an already existing subnet '" + subnetName + "' from virtual network site '"
 					+ networkSiteName + "'");
+		}
+
+		// VPN configuration
+		if (vpnConfiguration != null) {
+
+			// no local network sites list is empty, so we create a new one
+			if (virtualNetworkConfiguration.getLocalNetworkSites() == null) {
+				virtualNetworkConfiguration.setLocalNetworkSites(vpnConfiguration.getLocalNetworkSites());
+
+			} else {
+
+				// at the moment VPN support is for one local network site
+				LocalNetworkSite newLocalNetworkSite = vpnConfiguration.getLocalNetworkSites().getLocalNetworkSites().
+						get(0);
+
+				// add the localNetworkSite into localNetworkSites
+				if (virtualNetworkConfiguration.getLocalNetworkSiteConfigurationByName(newLocalNetworkSite.getName()) == null) {
+					virtualNetworkConfiguration.getLocalNetworkSites().getLocalNetworkSites().add(newLocalNetworkSite);
+					shouldUpdateOrCreate = true;
+				}
+			}
+
+			// add subnet for vpn gateway
+			String gatewaySubnetName = vpnConfiguration.getSubnet().getName();
+			if (!virtualNetworkSite.getSubnets().contains(gatewaySubnetName)) {
+				logger.info("Creating the gateway subnet: " + gatewaySubnetName);
+				Subnet subnet = new Subnet();
+				subnet.setName(gatewaySubnetName);
+				subnet.getAddressPrefix().add(vpnConfiguration.getSubnet().getAddressPrefix().get(0));
+				virtualNetworkSite.getSubnets().getSubnets().add(subnet);
+				shouldUpdateOrCreate = true;
+			}
+
+			// add gateway
+			// check whether the network is already referenced in the gateway section or not
+			if (virtualNetworkSite.getLocalNetworkSiteRef(networkSiteName) == null) {
+				virtualNetworkSite.setGateway(vpnConfiguration.getGateway());
+				shouldUpdateOrCreate = true;
+			}
 		}
 
 		if (!dnsServers.isEmpty()) {
@@ -1296,7 +1335,7 @@ public class MicrosoftAzureRestClient {
 	 * ClientResponse response = doGet("/services/networking/media"); if (response.getStatus() == HTTP_NOT_FOUND) {
 	 * return null; } String responseBody = response.getEntity(String.class); if (responseBody.charAt(0) == BAD_CHAR) {
 	 * responseBody = responseBody.substring(1); }
-	 *
+	 * 
 	 * GlobalNetworkConfiguration globalNetowrkConfiguration = (GlobalNetworkConfiguration) MicrosoftAzureModelUtils
 	 * .unmarshall(responseBody); return globalNetowrkConfiguration.getVirtualNetworkConfiguration()
 	 * .getVirtualNetworkSites(); }

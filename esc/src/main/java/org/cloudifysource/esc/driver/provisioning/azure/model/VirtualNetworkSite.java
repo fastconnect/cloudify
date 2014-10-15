@@ -9,7 +9,7 @@ import javax.xml.bind.annotation.XmlType;
  * @author elip
  * 
  */
-@XmlType(name = "VirtualNetworkSite", propOrder = { "addressSpace", "subnets", "dnsServersRef" })
+@XmlType(name = "VirtualNetworkSite", propOrder = { "addressSpace", "subnets", "dnsServersRef", "gateway" })
 public class VirtualNetworkSite {
 
 	private String location;
@@ -18,6 +18,7 @@ public class VirtualNetworkSite {
 	private AddressSpace addressSpace;
 	private Subnets subnets;
 	private DnsServersRef dnsServersRef;
+	private Gateway gateway;
 
 	@XmlAttribute(name = "Location")
 	public String getLocation() {
@@ -73,6 +74,15 @@ public class VirtualNetworkSite {
 		this.dnsServersRef = dnsServersRef;
 	}
 
+	@XmlElement(name = "Gateway")
+	public Gateway getGateway() {
+		return gateway;
+	}
+
+	public void setGateway(Gateway gateway) {
+		this.gateway = gateway;
+	}
+
 	/**
 	 * Tests whether a subnet exist in a virtual network site
 	 * 
@@ -87,6 +97,30 @@ public class VirtualNetworkSite {
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * Finds a LocalNetworkSiteRef by reference
+	 * 
+	 * @param networkReference
+	 * @return LocalNetworkSiteRef object if found, null otherwise
+	 */
+	public LocalNetworkSiteRef getLocalNetworkSiteRef(String networkReference) {
+
+		LocalNetworkSiteRef localNetworkSiteRef = null;
+
+		if (this.gateway != null) {
+			ConnectionsToLocalNetwork connectionsToLocalNetwork = gateway.getConnectionsToLocalNetwork();
+			if (connectionsToLocalNetwork != null && connectionsToLocalNetwork.getLocalNetworkSiteRefs() != null) {
+				for (LocalNetworkSiteRef siteRef : connectionsToLocalNetwork.getLocalNetworkSiteRefs()) {
+					if (siteRef.getName().equals(networkReference)) {
+						return localNetworkSiteRef;
+					}
+				}
+			}
+		}
+
+		return null;
 	}
 
 }

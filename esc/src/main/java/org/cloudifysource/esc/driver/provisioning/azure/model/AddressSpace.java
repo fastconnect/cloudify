@@ -16,6 +16,13 @@ public class AddressSpace {
 
 	private List<String> addressPrefix = new ArrayList<String>();
 
+	public AddressSpace() {
+	}
+
+	public AddressSpace(List<String> addressPrefix) {
+		this.addressPrefix = addressPrefix;
+	}
+
 	@XmlElement(name = "AddressPrefix")
 	public List<String> getAddressPrefix() {
 		return addressPrefix;

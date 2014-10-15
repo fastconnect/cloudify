@@ -72,6 +72,10 @@ public final class ModelContextFactory {
 		CLASSES.add(DataVirtualHardDisks.class);
 		CLASSES.add(LocalNetworkSite.class);
 		CLASSES.add(LocalNetworkSites.class);
+		CLASSES.add(Gateway.class);
+		CLASSES.add(LocalNetworkSites.class);
+		CLASSES.add(Connection.class);
+		CLASSES.add(ConnectionsToLocalNetwork.class);
 
 	}
 

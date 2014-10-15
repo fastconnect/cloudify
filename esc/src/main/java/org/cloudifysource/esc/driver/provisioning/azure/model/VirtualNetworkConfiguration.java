@@ -61,4 +61,23 @@ public class VirtualNetworkConfiguration {
 
 		return virtualNetworkSite;
 	}
+
+	/**
+	 * Get the local network site configuration specified with networkName
+	 * 
+	 * @param localNetworkSiteName
+	 * @return LocalNetworkSite object if found, null otherwise.
+	 */
+	public LocalNetworkSite getLocalNetworkSiteConfigurationByName(String localNetworkSiteName) {
+
+		LocalNetworkSite localNetworkSite = null;
+
+		for (LocalNetworkSite lns : this.getLocalNetworkSites()) {
+			if (lns.getName().equals(localNetworkSiteName)) {
+				return localNetworkSite = lns;
+			}
+		}
+
+		return localNetworkSite;
+	}
 }

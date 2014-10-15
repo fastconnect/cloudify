@@ -970,18 +970,25 @@ public class MicrosoftAzureRestClient {
 
 		String osVhdName = role.getOsVirtualHardDisk().getName();
 		try {
+			logger.fine("Waiting for OS Disk " + osVhdName + " to detach from role " + roleName);
+			waitForDiskToDetach(osVhdName, roleName, endTime);
+			logger.info("Deleting OS Disk : " + osVhdName);
 			this.deleteDisk(osVhdName, true, endTime);
 		} catch (Exception e) {
-			logger.warning(String.format("Failed deleting OS disk '%s' for the role '%s'", osVhdName,
-					roleName));
+			logger.log(Level.WARNING, String.format("Failed deleting OS disk '%s' for the role '%s'", osVhdName,
+					roleName), e);
 		}
 
 		for (DataVirtualHardDisk disk : role.getDataVirtualHardDisks().getDataVirtualHardDisks()) {
+			String diskName = disk.getDiskName();
 			try {
-				this.deleteDisk(disk.getDiskName(), true, endTime);
+				logger.fine("Waiting for Data Disk " + diskName + " to detach from role " + roleName);
+				waitForDiskToDetach(diskName, roleName, endTime);
+				logger.info("Deleting Data Disk : " + diskName);
+				this.deleteDisk(diskName, true, endTime);
 			} catch (Exception e) {
-				logger.warning(String.format("Failed delete disk '%s' for the role '%s'", disk.getDiskName(),
-						roleName));
+				logger.log(Level.WARNING,
+						String.format("Failed delete disk '%s' for the role '%s'", diskName, roleName), e);
 			}
 
 		}
@@ -1126,24 +1133,7 @@ public class MicrosoftAzureRestClient {
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
 
-		waitForDiskToBeDeleted(diskName, endTime);
 		return true;
-	}
-
-	private void waitForDiskToBeDeleted(String diskName, long endTime) throws MicrosoftAzureException,
-			TimeoutException, InterruptedException {
-		while (true) {
-			Disks listDisks = listDisks();
-			if (!listDisks.contains(diskName)) {
-				break;
-			}
-
-			Thread.sleep(DEFAULT_POLLING_INTERVAL);
-
-			if (System.currentTimeMillis() > endTime) {
-				throw new TimeoutException("Timed out waiting for disk '" + diskName + "' to be delete");
-			}
-		}
 	}
 
 	/**

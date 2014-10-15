@@ -231,6 +231,9 @@ public class MicrosoftAzureRestClient {
 			String requestId = extractRequestId(response);
 			waitForRequestToFinish(requestId, endTime);
 			serviceName = createHostedService.getServiceName();
+
+			this.waitUntilCloudServiceIsCreated(serviceName, endTime);
+
 			logger.info("Cloud service created : " + serviceName);
 		} catch (final Exception e) {
 			logger.warning("Failed to create cloud service : " + e.getMessage());
@@ -245,6 +248,42 @@ public class MicrosoftAzureRestClient {
 			}
 		}
 		return serviceName;
+	}
+
+	private void waitUntilCloudServiceIsCreated(String cloudServiceName, long endTime) throws MicrosoftAzureException,
+			TimeoutException, InterruptedException {
+		logger.fine("Waiting cloud service '" + cloudServiceName + "' to be created");
+		while (true) {
+			HostedService hostedService = this.getCloudServiceByName(cloudServiceName);
+			if (hostedService != null) {
+				if (hostedService.getHostedServiceProperties() != null
+						&& "Created".equals(hostedService.getHostedServiceProperties().getStatus())) {
+					return;
+				} else if (hostedService.getHostedServiceProperties() != null) {
+					logger.info("Cloud service '" + cloudServiceName
+							+ "' has not reach Created status yet (current status="
+							+ hostedService.getHostedServiceProperties().getStatus() + ")");
+				} else {
+					throw new MicrosoftAzureException("Cloudn't retrieve cloud service properties '" + cloudServiceName
+							+ "'");
+				}
+			}
+
+			Thread.sleep(DEFAULT_POLLING_INTERVAL);
+
+			if (System.currentTimeMillis() > endTime) {
+				throw new TimeoutException(
+						"Timed out waiting the creation of cloud service " + cloudServiceName);
+			}
+		}
+
+	}
+
+	public HostedService getCloudServiceByName(String cloudServiceName) throws MicrosoftAzureException,
+			TimeoutException {
+		ClientResponse response = this.doGet("/services/hostedservices/" + cloudServiceName);
+		String responseBody = response.getEntity(String.class);
+		return (HostedService) MicrosoftAzureModelUtils.unmarshall(responseBody);
 	}
 
 	/**

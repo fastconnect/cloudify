@@ -93,6 +93,7 @@ public class MicrosoftAzureRestClient {
 	private String storagePrefix;
 
 	private Lock pendingRequest = new ReentrantLock(true);
+	private Lock pendingNetworkRequest = new ReentrantLock(true);
 
 	private MicrosoftAzureRequestBodyBuilder requestBodyBuilder;
 
@@ -1713,14 +1714,33 @@ public class MicrosoftAzureRestClient {
 			final VirtualNetworkConfiguration virtualNetworkConfiguration)
 			throws MicrosoftAzureException, TimeoutException,
 			InterruptedException {
-		GlobalNetworkConfiguration networkConfiguration =
-				requestBodyBuilder.buildGlobalNetworkConfiguration(virtualNetworkConfiguration);
 
-		String xmlRequest = MicrosoftAzureModelUtils.marshall(networkConfiguration, true);
+		long currentTimeInMillis = System.currentTimeMillis();
+		long lockTimeout = endTime - currentTimeInMillis;
+		if (lockTimeout < 0) {
+			throw new MicrosoftAzureException("Timeout. Abord request to update network configuration");
+		}
+		logger.fine(getThreadIdentity() + "Waiting for pending network request lock for lock "
+				+ pendingRequest.hashCode());
+		boolean lockAcquired = pendingNetworkRequest.tryLock(lockTimeout, TimeUnit.MILLISECONDS);
 
-		ClientResponse response = doPut("/services/networking/media", xmlRequest, "text/plain");
-		String requestId = extractRequestId(response);
-		waitForRequestToFinish(requestId, endTime);
+		if (lockAcquired) {
+			try {
+				GlobalNetworkConfiguration networkConfiguration =
+						requestBodyBuilder.buildGlobalNetworkConfiguration(virtualNetworkConfiguration);
+
+				String xmlRequest = MicrosoftAzureModelUtils.marshall(networkConfiguration, true);
+
+				ClientResponse response = doPut("/services/networking/media", xmlRequest, "text/plain");
+				String requestId = extractRequestId(response);
+				waitForRequestToFinish(requestId, endTime);
+			} finally {
+				pendingNetworkRequest.unlock();
+			}
+		} else {
+			throw new TimeoutException("Failed to acquire lock to set network request after + "
+					+ lockTimeout + " milliseconds");
+		}
 	}
 
 	private void waitForRequestToFinish(final String requestId,

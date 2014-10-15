@@ -369,9 +369,6 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 						}
 					});
 
-			// FIXME ugly temporary fix...
-			Thread.sleep(20000L);
-
 			// Test deletion of the subnet
 			serviceDriver.onServiceUninstalled(30, TimeUnit.MINUTES);
 			VirtualNetworkConfiguration vnetConfig = azureClient.getVirtualNetworkConfiguration();

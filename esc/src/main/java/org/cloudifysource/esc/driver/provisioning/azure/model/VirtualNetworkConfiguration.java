@@ -9,10 +9,11 @@ import javax.xml.bind.annotation.XmlType;
  * 
  */
 
-@XmlType(name = "VirtualNetworkConfiguration", propOrder = { "dns", "virtualNetworkSites" })
+@XmlType(name = "VirtualNetworkConfiguration", propOrder = { "dns", "localNetworkSites", "virtualNetworkSites" })
 public class VirtualNetworkConfiguration {
 
 	private Dns dns;
+	private LocalNetworkSites localNetworkSites;
 	private VirtualNetworkSites virtualNetworkSites;
 
 	@XmlElement(name = "Dns")
@@ -31,6 +32,15 @@ public class VirtualNetworkConfiguration {
 
 	public void setVirtualNetworkSites(final VirtualNetworkSites virtualNetworkSites) {
 		this.virtualNetworkSites = virtualNetworkSites;
+	}
+
+	@XmlElement(name = "LocalNetworkSites")
+	public LocalNetworkSites getLocalNetworkSites() {
+		return localNetworkSites;
+	}
+
+	public void setLocalNetworkSites(LocalNetworkSites localNetworkSites) {
+		this.localNetworkSites = localNetworkSites;
 	}
 
 	/**

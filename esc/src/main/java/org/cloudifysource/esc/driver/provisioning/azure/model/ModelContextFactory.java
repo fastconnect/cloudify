@@ -70,6 +70,9 @@ public final class ModelContextFactory {
 		CLASSES.add(DomainJoin.class);
 		CLASSES.add(JoinCredentials.class);
 		CLASSES.add(DataVirtualHardDisks.class);
+		CLASSES.add(LocalNetworkSite.class);
+		CLASSES.add(LocalNetworkSites.class);
+
 	}
 
 	private static Class<?>[] getClasses() {

@@ -1,5 +1,5 @@
 /******************************************************************************
- *
+ * 
  * Copyright (c) 2012 GigaSpaces Technologies Ltd. All rights reserved * * Licensed under the Apache License, Version
  * 2.0 (the "License"); * you may not use this file except in compliance with the License. * You may obtain a copy of
  * the License at * * http://www.apache.org/licenses/LICENSE-2.0 * * Unless required by applicable law or agreed to in
@@ -81,7 +81,7 @@ import com.sun.jersey.client.urlconnection.HTTPSProperties;
  * IaaS. each VM is provisioned onto a separate cloud service that belong to the same virtual network site. this way all
  * VM's are assigned public and private IP. and all VM's can be either a back end of a front end of you application.
  * authentication is achieved by using self-signed certificates (OpenSSL, makecert)
- *
+ * 
  * @author elip
  ********************************************************************************/
 
@@ -99,6 +99,7 @@ public class MicrosoftAzureRestClient {
 	private String storagePrefix;
 
 	private Lock pendingRequest = new ReentrantLock(true);
+	private Lock pendingNetworkRequest = new ReentrantLock(true);
 
 	private MicrosoftAzureRequestBodyBuilder requestBodyBuilder;
 
@@ -184,7 +185,7 @@ public class MicrosoftAzureRestClient {
 	}
 
 	/**
-	 *
+	 * 
 	 * @param logger
 	 *            - the logger to add to the client
 	 */
@@ -216,12 +217,12 @@ public class MicrosoftAzureRestClient {
 	}
 
 	/**
-	 *
+	 * 
 	 * @param affinityGroup
 	 *            - the affinity group for the cloud service.
 	 * @param endTime
 	 *            .
-	 *
+	 * 
 	 * @return - the newly created cloud service name.
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
@@ -242,6 +243,9 @@ public class MicrosoftAzureRestClient {
 			String requestId = extractRequestId(response);
 			waitForRequestToFinish(requestId, endTime);
 			serviceName = createHostedService.getServiceName();
+
+			this.waitUntilCloudServiceIsCreated(serviceName, endTime);
+
 			logger.info("Cloud service created : " + serviceName);
 		} catch (final Exception e) {
 			logger.warning("Failed to create cloud service : " + e.getMessage());
@@ -258,16 +262,52 @@ public class MicrosoftAzureRestClient {
 		return serviceName;
 	}
 
+	private void waitUntilCloudServiceIsCreated(String cloudServiceName, long endTime) throws MicrosoftAzureException,
+			TimeoutException, InterruptedException {
+		logger.fine("Waiting cloud service '" + cloudServiceName + "' to be created");
+		while (true) {
+			HostedService hostedService = this.getCloudServiceByName(cloudServiceName);
+			if (hostedService != null) {
+				if (hostedService.getHostedServiceProperties() != null
+						&& "Created".equals(hostedService.getHostedServiceProperties().getStatus())) {
+					return;
+				} else if (hostedService.getHostedServiceProperties() != null) {
+					logger.info("Cloud service '" + cloudServiceName
+							+ "' has not reach Created status yet (current status="
+							+ hostedService.getHostedServiceProperties().getStatus() + ")");
+				} else {
+					throw new MicrosoftAzureException("Cloudn't retrieve cloud service properties '" + cloudServiceName
+							+ "'");
+				}
+			}
+
+			Thread.sleep(DEFAULT_POLLING_INTERVAL);
+
+			if (System.currentTimeMillis() > endTime) {
+				throw new TimeoutException(
+						"Timed out waiting the creation of cloud service " + cloudServiceName);
+			}
+		}
+
+	}
+
+	public HostedService getCloudServiceByName(String cloudServiceName) throws MicrosoftAzureException,
+			TimeoutException {
+		ClientResponse response = this.doGet("/services/hostedservices/" + cloudServiceName);
+		String responseBody = response.getEntity(String.class);
+		return (HostedService) MicrosoftAzureModelUtils.unmarshall(responseBody);
+	}
+
 	/**
 	 * this method creates a storage account with the given name, or does nothing if the account exists.
-	 *
+	 * 
 	 * @param affinityGroup
 	 *            - the affinity group for the storage account.
 	 * @param storageAccountName
 	 *            - the name for the storage account to create.
 	 * @param endTime
 	 *            .
-	 *
+	 * 
 	 * @throws InterruptedException .
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
@@ -296,7 +336,7 @@ public class MicrosoftAzureRestClient {
 
 	/**
 	 * this method creates a virtual network with the given name, or does nothing if the network exists.
-	 *
+	 * 
 	 * @param addressSpace
 	 *            - CIDR notation specifying the address space for the virtual network.
 	 * @param affinityGroup
@@ -305,7 +345,7 @@ public class MicrosoftAzureRestClient {
 	 *            - the name for the network to create
 	 * @param endTime
 	 *            .
-	 *
+	 * 
 	 * @throws InterruptedException .
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
@@ -561,14 +601,14 @@ public class MicrosoftAzureRestClient {
 
 	/**
 	 * this method creates an affinity group with the given name, or does nothing if the group exists.
-	 *
+	 * 
 	 * @param affinityGroup
 	 *            - the name of the affinity group to create
 	 * @param location
 	 *            - one of MS Data Centers locations.
 	 * @param endTime
 	 *            .
-	 *
+	 * 
 	 * @throws InterruptedException .
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
@@ -597,9 +637,9 @@ public class MicrosoftAzureRestClient {
 	 * This method creates a virtual machine and a corresponding cloud service. the cloud service will use the affinity
 	 * group specified by deploymentDesc.getAffinityGroup(); If another request was made this method will wait until the
 	 * pending request is finished.
-	 *
+	 * 
 	 * If a failure happened after the cloud service was created, this method will delete it and throw.
-	 *
+	 * 
 	 * @param deplyomentDesc
 	 *            .
 	 * @param endTime
@@ -889,7 +929,7 @@ public class MicrosoftAzureRestClient {
 	}
 
 	/**
-	 *
+	 * 
 	 * @return - the response body listing every available OS Image that belongs to the subscription
 	 * @throws MicrosoftAzureException
 	 *             - indicates an exception was caught during the API call
@@ -905,12 +945,12 @@ public class MicrosoftAzureRestClient {
 	/**
 	 * This method deletes the storage account with the specified name. or does nothing if the storage account does not
 	 * exist.
-	 *
+	 * 
 	 * @param storageAccountName
 	 *            .
 	 * @param endTime
 	 *            .
-	 *
+	 * 
 	 * @return - true if the operation was successful, throws otherwise.
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
@@ -935,7 +975,7 @@ public class MicrosoftAzureRestClient {
 	/**
 	 * This method deletes the affinity group with the specified name. or does nothing if the affinity group does not
 	 * exist.
-	 *
+	 * 
 	 * @param affinityGroupName
 	 *            .
 	 * @param endTime
@@ -961,7 +1001,7 @@ public class MicrosoftAzureRestClient {
 	/**
 	 * This method deletes the cloud service with the specified name. or does nothing if the cloud service does not
 	 * exist.
-	 *
+	 * 
 	 * @param cloudServiceName
 	 *            .
 	 * @param endTime
@@ -1007,7 +1047,7 @@ public class MicrosoftAzureRestClient {
 	}
 
 	/**
-	 *
+	 * 
 	 * @param machineIp
 	 *            - the machine ip.
 	 * @param isPrivateIp
@@ -1049,18 +1089,25 @@ public class MicrosoftAzureRestClient {
 
 		String osVhdName = role.getOsVirtualHardDisk().getName();
 		try {
+			logger.fine("Waiting for OS Disk " + osVhdName + " to detach from role " + roleName);
+			waitForDiskToDetach(osVhdName, roleName, endTime);
+			logger.info("Deleting OS Disk : " + osVhdName);
 			this.deleteDisk(osVhdName, true, endTime);
 		} catch (Exception e) {
-			logger.warning(String.format("Failed deleting OS disk '%s' for the role '%s'", osVhdName,
-					roleName));
+			logger.log(Level.WARNING, String.format("Failed deleting OS disk '%s' for the role '%s'", osVhdName,
+					roleName), e);
 		}
 
 		for (DataVirtualHardDisk disk : role.getDataVirtualHardDisks().getDataVirtualHardDisks()) {
+			String diskName = disk.getDiskName();
 			try {
-				this.deleteDisk(disk.getDiskName(), true, endTime);
+				logger.fine("Waiting for Data Disk " + diskName + " to detach from role " + roleName);
+				waitForDiskToDetach(diskName, roleName, endTime);
+				logger.info("Deleting Data Disk : " + diskName);
+				this.deleteDisk(diskName, true, endTime);
 			} catch (Exception e) {
-				logger.warning(String.format("Failed delete disk '%s' for the role '%s'", disk.getDiskName(),
-						roleName));
+				logger.log(Level.WARNING,
+						String.format("Failed delete disk '%s' for the role '%s'", diskName, roleName), e);
 			}
 
 		}
@@ -1072,7 +1119,7 @@ public class MicrosoftAzureRestClient {
 	/**
 	 * This method deletes the virtual machine under the deployment specifed by deploymentName. it also deletes the
 	 * associated disk and cloud service.
-	 *
+	 * 
 	 * @param cloudServiceName
 	 *            .
 	 * @param deploymentName
@@ -1161,7 +1208,7 @@ public class MicrosoftAzureRestClient {
 	/**
 	 * this method return all disks that are currently being used by this subscription. NOTE : disks that are not
 	 * attached to any deployment are also returned. this means that {@code Disk.getAttachedTo} might return null.
-	 *
+	 * 
 	 * @return .
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
@@ -1176,11 +1223,11 @@ public class MicrosoftAzureRestClient {
 	/**
 	 * This method deletes a disk with the specified name. or does nothing if the disk does not exist. if the parameter
 	 * deleteVhd is true, this will delete also the .vhd file
-	 *
+	 * 
 	 * @param diskName
-	 *
+	 * 
 	 * @param deleteVhd
-	 *
+	 * 
 	 * @param endTime
 	 *            .
 	 * @return - true if the operation was successful, throws otherwise.
@@ -1204,13 +1251,14 @@ public class MicrosoftAzureRestClient {
 		ClientResponse response = doDelete(url);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
+
 		return true;
 	}
 
 	/**
 	 * This method deletes just the virtual machine from the specified cloud service. associated OS Disk and cloud
 	 * service are not removed.
-	 *
+	 * 
 	 * @param hostedServiceName
 	 *            .
 	 * @param deploymentName
@@ -1322,7 +1370,7 @@ public class MicrosoftAzureRestClient {
 	}
 
 	/**
-	 *
+	 * 
 	 * @return .
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
@@ -1337,7 +1385,7 @@ public class MicrosoftAzureRestClient {
 	}
 
 	/**
-	 *
+	 * 
 	 * @return .
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
@@ -1353,7 +1401,7 @@ public class MicrosoftAzureRestClient {
 	}
 
 	/**
-	 *
+	 * 
 	 * @return .
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
@@ -1365,7 +1413,7 @@ public class MicrosoftAzureRestClient {
 	}
 
 	/**
-	 *
+	 * 
 	 * @return .
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
@@ -1422,7 +1470,7 @@ public class MicrosoftAzureRestClient {
 	}
 
 	/**
-	 *
+	 * 
 	 * @param hostedServiceName
 	 *            .
 	 * @param deploymentSlot
@@ -1450,7 +1498,7 @@ public class MicrosoftAzureRestClient {
 	}
 
 	/**
-	 *
+	 * 
 	 * @param hostedServiceName
 	 *            .
 	 * @param deploymentName
@@ -1479,7 +1527,7 @@ public class MicrosoftAzureRestClient {
 	}
 
 	/**
-	 *
+	 * 
 	 * @param machineIp
 	 *            .
 	 * @param isPrivateIp
@@ -1531,7 +1579,7 @@ public class MicrosoftAzureRestClient {
 
 	/**
 	 * This method deletes the virtual network specified. or does nothing if the virtual network does not exist.
-	 *
+	 * 
 	 * @param virtualNetworkSite
 	 *            - virtual network site name to delete .
 	 * @param endTime
@@ -1745,14 +1793,33 @@ public class MicrosoftAzureRestClient {
 			final VirtualNetworkConfiguration virtualNetworkConfiguration)
 			throws MicrosoftAzureException, TimeoutException,
 			InterruptedException {
-		GlobalNetworkConfiguration networkConfiguration =
-				requestBodyBuilder.buildGlobalNetworkConfiguration(virtualNetworkConfiguration);
 
-		String xmlRequest = MicrosoftAzureModelUtils.marshall(networkConfiguration, true);
+		long currentTimeInMillis = System.currentTimeMillis();
+		long lockTimeout = endTime - currentTimeInMillis;
+		if (lockTimeout < 0) {
+			throw new MicrosoftAzureException("Timeout. Abord request to update network configuration");
+		}
+		logger.fine(getThreadIdentity() + "Waiting for pending network request lock for lock "
+				+ pendingRequest.hashCode());
+		boolean lockAcquired = pendingNetworkRequest.tryLock(lockTimeout, TimeUnit.MILLISECONDS);
 
-		ClientResponse response = doPut("/services/networking/media", xmlRequest, "text/plain");
-		String requestId = extractRequestId(response);
-		waitForRequestToFinish(requestId, endTime);
+		if (lockAcquired) {
+			try {
+				GlobalNetworkConfiguration networkConfiguration =
+						requestBodyBuilder.buildGlobalNetworkConfiguration(virtualNetworkConfiguration);
+
+				String xmlRequest = MicrosoftAzureModelUtils.marshall(networkConfiguration, true);
+
+				ClientResponse response = doPut("/services/networking/media", xmlRequest, "text/plain");
+				String requestId = extractRequestId(response);
+				waitForRequestToFinish(requestId, endTime);
+			} finally {
+				pendingNetworkRequest.unlock();
+			}
+		} else {
+			throw new TimeoutException("Failed to acquire lock to set network request after + "
+					+ lockTimeout + " milliseconds");
+		}
 	}
 
 	private void waitForRequestToFinish(final String requestId,

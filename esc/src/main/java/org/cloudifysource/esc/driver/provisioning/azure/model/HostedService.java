@@ -7,18 +7,31 @@ import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlType;
 
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+
 /**
  * @author elip
- *
+ * 
  */
 
 @XmlRootElement(name = "HostedService")
-@XmlType(propOrder = { "url", "serviceName", "deployments" })
+@XmlType(propOrder = { "url", "serviceName", "hostedServiceProperties", "deployments" })
 public class HostedService {
 
 	private String url;
 	private String serviceName;
+	private HostedServiceProperties hostedServiceProperties;
 	private Deployments deployments;
+
+	@XmlElement(name = "HostedServiceProperties")
+	public HostedServiceProperties getHostedServiceProperties() {
+		return hostedServiceProperties;
+	}
+
+	public void setHostedServiceProperties(HostedServiceProperties hostedServiceProperties) {
+		this.hostedServiceProperties = hostedServiceProperties;
+	}
 
 	@XmlElement(name = "Deployments")
 	public Deployments getDeployments() {
@@ -61,6 +74,11 @@ public class HostedService {
 			}
 		}
 		return null;
+	}
+
+	@Override
+	public String toString() {
+		return ToStringBuilder.reflectionToString(this, ToStringStyle.SHORT_PREFIX_STYLE);
 	}
 
 }

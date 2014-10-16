@@ -432,12 +432,10 @@ public class MicrosoftAzureRestClient {
 		}
 
 		// VPN configuration
-		// at the moment VPN support is for one local network site
-		LocalNetworkSite newLocalNetworkSite = null;
-		if (vpnConfiguration != null) {
+		// at the moment VPN support one local network site
+		LocalNetworkSite newLocalNetworkSite = vpnConfiguration.getLocalNetworkSites().getLocalNetworkSites().get(0);
 
-			// no local network sites list is empty, so we create a new one
-			newLocalNetworkSite = vpnConfiguration.getLocalNetworkSites().getLocalNetworkSites().get(0);
+		if (vpnConfiguration != null) {
 
 			if (virtualNetworkConfiguration.getLocalNetworkSites() == null) {
 				virtualNetworkConfiguration.setLocalNetworkSites(vpnConfiguration.getLocalNetworkSites());
@@ -451,7 +449,7 @@ public class MicrosoftAzureRestClient {
 				}
 			}
 
-			// add subnet for vpn gateway
+			// add gateway subnet if does't already exist in vNet
 			String gatewaySubnetName = vpnConfiguration.getSubnet().getName();
 			if (!virtualNetworkSite.getSubnets().contains(gatewaySubnetName)) {
 				logger.info("Creating the gateway subnet: " + gatewaySubnetName);
@@ -462,7 +460,7 @@ public class MicrosoftAzureRestClient {
 				shouldUpdateOrCreate = true;
 			}
 
-			// add gateway
+			// add gateway section
 			// check whether the network is already referenced in the gateway section or not
 			if (virtualNetworkSite.getLocalNetworkSiteRef(newLocalNetworkSite.getName()) == null) {
 				virtualNetworkSite.setGateway(vpnConfiguration.getGateway());
@@ -511,37 +509,37 @@ public class MicrosoftAzureRestClient {
 			logger.fine("Using existing virtual network site configuration: " + networkSiteName);
 		}
 
-		// continue with vpn gateway creation
-		// TODO: depending on use case, wait for the correct gateway state
+		// continue with vpn gateway provisioning [after vNet creation]
+		if (vpnConfiguration != null) {
 
-		GatewayInfo gateway = this.getGatewayInfo(networkSiteName, endTime);
-		if (gateway != null) {
+			GatewayInfo gateway = this.getGatewayInfo(networkSiteName, endTime);
+			if (gateway != null) {
 
-			logger.info(String.format("Current gateway state is '%s' ", gateway.getState()));
+				logger.info(String.format("Current gateway state is '%s' ", gateway.getState()));
 
-			if (gateway.isReadyForProvisionning()) {
+				if (gateway.isReadyForProvisioning()) {
 
-				logger.info(String.format(
-						"Creating Gateway between vNet '%s' and local network '%s'. This will take a while, "
-								+ "so please wait...", networkSiteName, newLocalNetworkSite.getName()));
+					logger.info(String.format(
+							"Creating Gateway between vNet '%s' and local network '%s'. This will take a while, "
+									+ "so please wait...", networkSiteName, newLocalNetworkSite.getName()));
 
-				this.createVirtualNetworkGateway(vpnConfiguration.getGatewayType(), virtualNetworkSite.getName(),
-						endTime);
+					this.createVirtualNetworkGateway(vpnConfiguration.getGatewayType(), virtualNetworkSite.getName(),
+							endTime);
+				} else {
+					logger.warning("Can't provision Gateway, current state is " + gateway.getState());
+				}
+
+				if (gateway.isReadyToConnect()) {
+					this.setVirtualNetworktGatewayKey(vpnConfiguration.getGatewaykey(), networkSiteName,
+							newLocalNetworkSite.getName(), endTime);
+				} else {
+					logger.warning("Can't connect Gateway, current state is " + gateway.getState());
+				}
+
+				// something went wrong
 			} else {
-				logger.warning("Can't provision Gateway, current state is " + gateway.getState());
+				logger.warning("Failed getting current gatway information, its creation will be skipped");
 			}
-
-			if (gateway.isReadyToConnect()) {
-				this.setVirtualNetworktGatewayKey(vpnConfiguration.getGatewaykey(), networkSiteName,
-						newLocalNetworkSite.getName(),
-						endTime);
-			} else {
-				logger.warning("Can't connect Gateway, current state is " + gateway.getState());
-			}
-
-			// something went wrong
-		} else {
-			logger.warning("Failed getting current gatway information, its creation will be skipped");
 		}
 	}
 
@@ -1602,6 +1600,11 @@ public class MicrosoftAzureRestClient {
 		for (int i = 0; i < virtualNetworkSites.getVirtualNetworkSites().size(); i++) {
 			VirtualNetworkSite site = virtualNetworkSites.getVirtualNetworkSites().get(i);
 			if (site.getName().equals(virtualNetworkSite)) {
+				if (site.getGateway() != null) {
+					logger.info("Deleting virtual network gateway...");
+					deleteVirtualNetworkGateway(virtualNetworkSite, endTime);
+					logger.info("Deleted virtual network gateway.");
+				}
 				index = i;
 				break;
 			}
@@ -1612,6 +1615,38 @@ public class MicrosoftAzureRestClient {
 		logger.fine("Deleted virtual network site : " + virtualNetworkSite);
 		return true;
 
+	}
+
+	private void deleteVirtualNetworkGateway(final String virtualNetworkSite, final long endTime)
+			throws MicrosoftAzureException, TimeoutException,
+			InterruptedException {
+
+		long currentTimeInMillis = System.currentTimeMillis();
+		long lockTimeout = endTime - currentTimeInMillis;
+		if (lockTimeout < 0) {
+			throw new MicrosoftAzureException("Timeout. Abord request to update network configuration");
+		}
+		logger.fine(getThreadIdentity() + "Waiting for pending network request lock for lock "
+				+ pendingRequest.hashCode());
+
+		boolean lockAcquired = pendingNetworkRequest.tryLock(lockTimeout, TimeUnit.MILLISECONDS);
+
+		if (lockAcquired) {
+			try {
+
+				// DELETE
+				// https://management.core.windows.net/<subscription-id>/services/networking/<virtual-network-name>/gateway
+				ClientResponse response = doDelete("/services/networking/" + virtualNetworkSite + "/gateway");
+				String requestId = extractRequestId(response);
+				waitForRequestToFinish(requestId, endTime);
+				waitForGatewayDeleteOperationToFinish(virtualNetworkSite, endTime);
+			} finally {
+				pendingNetworkRequest.unlock();
+			}
+		} else {
+			throw new TimeoutException("Failed to acquire lock to set network request after + "
+					+ lockTimeout + " milliseconds");
+		}
 	}
 
 	private String extractRequestId(final ClientResponse response) {
@@ -2004,8 +2039,11 @@ public class MicrosoftAzureRestClient {
 		while (true) {
 
 			GatewayInfo gatewayInfo = this.getGatewayInfo(virtualNetwork, endTime);
-			String state = gatewayInfo.getState();
+			if (gatewayInfo == null) {
+				throw new MicrosoftAzureException("Gateway not found");
+			}
 
+			String state = gatewayInfo.getState();
 			if (state.equals(GATEWAY_STATE_PROVISIONED)) {
 				return;
 			}
@@ -2015,7 +2053,7 @@ public class MicrosoftAzureRestClient {
 				Thread.sleep(DEFAULT_POLLING_INTERVAL);
 			}
 
-			// not right state
+			// not right state, not handled yet
 			if (state.equals(GATEWAY_STATE_DEPROVISIONING)) {
 				throw new MicrosoftAzureException("Gateway state error :" + state);
 			}
@@ -2028,24 +2066,72 @@ public class MicrosoftAzureRestClient {
 
 	}
 
+	/**
+	 * 
+	 * @param virtualNetwork
+	 * @param endTime
+	 * @throws MicrosoftAzureException
+	 * @throws TimeoutException
+	 * @throws InterruptedException
+	 */
+	public void waitForGatewayDeleteOperationToFinish(final String virtualNetwork, final long endTime)
+			throws MicrosoftAzureException,
+			TimeoutException, InterruptedException {
+
+		while (true) {
+
+			GatewayInfo gatewayInfo = this.getGatewayInfo(virtualNetwork, endTime);
+			if (gatewayInfo == null) {
+				logger.warning("Gateway not found, it might be already deleted.");
+				return;
+			}
+
+			String state = gatewayInfo.getState();
+			if (state.equals(GATEWAY_STATE_NOT_PROVISIONED)) {
+				return;
+			}
+
+			if (state.equals(GATEWAY_STATE_PROVISIONING)) {
+				throw new MicrosoftAzureException("Gateway state error :" + state);
+			}
+
+			// wait, in progress...
+			if (state.equals(GATEWAY_STATE_DEPROVISIONING) || state.equals(GATEWAY_STATE_PROVISIONED)) {
+				Thread.sleep(DEFAULT_POLLING_INTERVAL);
+			}
+
+			if (System.currentTimeMillis() > endTime) {
+				throw new TimeoutException("Timed out waiting for deleting gateway to finish. last state was : "
+						+ state);
+			}
+		}
+
+	}
+
 	public GatewayInfo getGatewayInfo(String virtualNetwork, long endTime) throws MicrosoftAzureException,
 			TimeoutException, InterruptedException {
 
 		GatewayInfo gatewayInfo = null;
 
-		// GET https://management.core.windows.net/<subscription-id>/services/networking/<virtual-network-name>/gateway
-		ClientResponse response = doGet("/services/networking/" + virtualNetwork + "/gateway");
+		try {
+			// GET
+			// https://management.core.windows.net/<subscription-id>/services/networking/<virtual-network-name>/gateway
+			ClientResponse response = doGet("/services/networking/" + virtualNetwork + "/gateway");
 
-		if (response.getStatus() != HTTP_NOT_FOUND) {
+			if (response.getStatus() != HTTP_NOT_FOUND) {
 
-			String requestId = extractRequestId(response);
-			this.waitForRequestToFinish(requestId, endTime);
-			String responseBody = response.getEntity(String.class);
-			gatewayInfo = (GatewayInfo) MicrosoftAzureModelUtils.unmarshall(responseBody);
+				String requestId = extractRequestId(response);
+				this.waitForRequestToFinish(requestId, endTime);
+				String responseBody = response.getEntity(String.class);
+				gatewayInfo = (GatewayInfo) MicrosoftAzureModelUtils.unmarshall(responseBody);
 
-			// no gateway found (404)
-		} else {
-			logger.warning(String.format("The network '%s' doesn't have any gateway", virtualNetwork));
+				// no gateway found (404)
+			} else {
+				logger.warning(String.format("The network '%s' doesn't have any gateway", virtualNetwork));
+			}
+
+		} catch (Exception e) {
+			logger.warning(String.format("Failed getting gateway information from network '%s'", virtualNetwork));
 		}
 
 		return gatewayInfo;

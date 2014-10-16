@@ -9,8 +9,8 @@ import javax.xml.bind.annotation.XmlRootElement;
 @XmlRootElement(name = "Gateway")
 public class GatewayInfo {
 
-	private static String GATEWAY_STATE_PROVISIONED = "Provisioned";
-	private static String GATEWAY_STATE_NOT_PROVISIONED = "NotProvisioned";
+	private final static String GATEWAY_STATE_PROVISIONED = "Provisioned";
+	private final static String GATEWAY_STATE_NOT_PROVISIONED = "NotProvisioned";
 
 	private String state;
 
@@ -23,7 +23,7 @@ public class GatewayInfo {
 		this.state = state;
 	}
 
-	public boolean isReadyForProvisionning() {
+	public boolean isReadyForProvisioning() {
 
 		if (state != null) {
 			if (state.equals(GATEWAY_STATE_NOT_PROVISIONED)) {

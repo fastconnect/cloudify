@@ -9,14 +9,19 @@ public class VpnConfiguration {
 	private LocalNetworkSites localNetworkSites;
 	private Subnet subnet;
 	private Gateway gateway;
+	private String gatewayType = "DynamicRouting";
+	private String gatewaykey;
 
-	public VpnConfiguration(LocalNetworkSites localNetworkSites, Subnet subnet, Gateway gateway) {
+	public VpnConfiguration() {
+	}
+
+	public VpnConfiguration(LocalNetworkSites localNetworkSites, Subnet subnet, Gateway gateway, String gatewayType,
+			String gatewaykey) {
 		this.localNetworkSites = localNetworkSites;
 		this.subnet = subnet;
 		this.gateway = gateway;
-	}
-
-	public VpnConfiguration() {
+		this.gatewayType = gatewayType;
+		this.setGatewaykey(gatewaykey);
 	}
 
 	public LocalNetworkSites getLocalNetworkSites() {
@@ -41,6 +46,22 @@ public class VpnConfiguration {
 
 	public void setGateway(Gateway gateway) {
 		this.gateway = gateway;
+	}
+
+	public String getGatewayType() {
+		return gatewayType;
+	}
+
+	public void setGatewayType(String gatewayType) {
+		this.gatewayType = gatewayType;
+	}
+
+	public String getGatewaykey() {
+		return gatewaykey;
+	}
+
+	public void setGatewaykey(String gatewaykey) {
+		this.gatewaykey = gatewaykey;
 	}
 
 }

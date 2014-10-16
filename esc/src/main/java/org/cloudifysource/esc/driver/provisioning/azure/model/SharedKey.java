@@ -8,6 +8,13 @@ public class SharedKey {
 
 	private String value;
 
+	public SharedKey() {
+	}
+
+	public SharedKey(String key) {
+		this.value = key;
+	}
+
 	@XmlElement(name = "Value")
 	public String getValue() {
 		return value;

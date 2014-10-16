@@ -76,6 +76,8 @@ public final class ModelContextFactory {
 		CLASSES.add(LocalNetworkSites.class);
 		CLASSES.add(Connection.class);
 		CLASSES.add(ConnectionsToLocalNetwork.class);
+		CLASSES.add(SharedKey.class);
+		CLASSES.add(CreateGatewayParameters.class);
 
 	}
 

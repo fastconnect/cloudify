@@ -127,11 +127,14 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String AZURE_NETWORK_ADDRESS_SPACE = "azure.address.space";
 	private static final String AZURE_DNS_SERVERS = "azure.dns.servers";
 
+	// -- VPN properties
 	private static final String AZURE_VPN_LOCALSITE_NAME = "azure.vpn.localsite.name";
-	private static final String AZURE_VPN_GATEWAY_ADDRESS = "azure.vpn.gateway.address";
 	private static final String AZURE_VPN_ADDRESS_SPACE = "azure.vpn.address.space";
 	private static final String AZURE_VPN_SUBNET_ADDRESS_PREFIX = "azure.vpn.subnet.address.prefix";
-	private static final String AZURE_VPN_SUBNET_NAME = "GatewaySubnet";
+	private static final String AZURE_VPN_GATEWAY_SUBNET_NAME = "GatewaySubnet";
+	private static final String AZURE_VPN_GATEWAY_ADDRESS = "azure.vpn.gateway.address";
+	private static final String AZURE_VPN_GATEWAY_TYPE = "azure.vpn.gateway.type";
+	private static final String AZURE_VPN_GATEWAY_KEY = "azure.vpn.gateway.key";
 
 	private static final String AZURE_CLOUD_SERVICE_CODE = "azure.cloud.service.code";
 
@@ -753,10 +756,14 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		String vpnGatewayAddress = cloudNetwork.getCustom().get(AZURE_VPN_GATEWAY_ADDRESS);
 		String addressSpacesString = cloudNetwork.getCustom().get(AZURE_VPN_ADDRESS_SPACE);
 		String vpnSubnetAddressPrefix = cloudNetwork.getCustom().get(AZURE_VPN_SUBNET_ADDRESS_PREFIX);
+		String vpnGatewayType = cloudNetwork.getCustom().get(AZURE_VPN_GATEWAY_TYPE);
+		String vpnGatewayKey = cloudNetwork.getCustom().get(AZURE_VPN_GATEWAY_KEY);
 		List<String> addressSpacesList = this.getAddressSpaces(addressSpacesString);
 
-		if (StringUtils.isNotBlank(vpnGatewayAddress) && StringUtils.isNotBlank(vpnSubnetAddressPrefix)
+		if (StringUtils.isNotBlank(vpnGatewayAddress) && StringUtils.isNotBlank(vpnGatewayType)
+				&& StringUtils.isNotBlank(vpnGatewayKey) && StringUtils.isNotBlank(vpnSubnetAddressPrefix)
 				&& addressSpacesList != null && !addressSpacesList.isEmpty()) {
+
 			LocalNetworkSites localNetworkSites = new LocalNetworkSites();
 			LocalNetworkSite localNetworkSite = new LocalNetworkSite(localSiteName, vpnGatewayAddress,
 					new AddressSpace(addressSpacesList));
@@ -764,7 +771,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			localNetworkSites.getLocalNetworkSites().add(localNetworkSite);
 			org.cloudifysource.esc.driver.provisioning.azure.model.Subnet subnet =
 					new org.cloudifysource.esc.driver.provisioning.azure.model.Subnet();
-			subnet.setName(AZURE_VPN_SUBNET_NAME);
+			subnet.setName(AZURE_VPN_GATEWAY_SUBNET_NAME);
 			subnet.setAddressPrefix(Arrays.asList(vpnSubnetAddressPrefix));
 
 			// gateway configuration
@@ -773,7 +780,10 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			connectionsToLocalNetwork.setLocalNetworkSiteRefs(Arrays.asList(siteRef));
 
 			Gateway gateway = new Gateway(connectionsToLocalNetwork);
-			vpnConfiguration = new VpnConfiguration(localNetworkSites, subnet, gateway);
+			vpnConfiguration = new VpnConfiguration(localNetworkSites, subnet, gateway, vpnGatewayType, vpnGatewayKey);
+
+		} else {
+			logger.warning("VPN configuration will be skipped, please check its properties");
 		}
 
 		return vpnConfiguration;

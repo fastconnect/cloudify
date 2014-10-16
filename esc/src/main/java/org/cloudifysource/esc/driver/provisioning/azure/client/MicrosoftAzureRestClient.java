@@ -33,6 +33,7 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.AttachedTo;
 import org.cloudifysource.esc.driver.provisioning.azure.model.ConfigurationSet;
 import org.cloudifysource.esc.driver.provisioning.azure.model.ConfigurationSets;
 import org.cloudifysource.esc.driver.provisioning.azure.model.CreateAffinityGroup;
+import org.cloudifysource.esc.driver.provisioning.azure.model.CreateGatewayParameters;
 import org.cloudifysource.esc.driver.provisioning.azure.model.CreateHostedService;
 import org.cloudifysource.esc.driver.provisioning.azure.model.CreateStorageServiceInput;
 import org.cloudifysource.esc.driver.provisioning.azure.model.DataVirtualHardDisk;
@@ -46,16 +47,18 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.DnsServerRef;
 import org.cloudifysource.esc.driver.provisioning.azure.model.DnsServers;
 import org.cloudifysource.esc.driver.provisioning.azure.model.DnsServersRef;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Error;
+import org.cloudifysource.esc.driver.provisioning.azure.model.GatewayOperation;
+import org.cloudifysource.esc.driver.provisioning.azure.model.GatewayInfo;
 import org.cloudifysource.esc.driver.provisioning.azure.model.GlobalNetworkConfiguration;
 import org.cloudifysource.esc.driver.provisioning.azure.model.HostedService;
 import org.cloudifysource.esc.driver.provisioning.azure.model.HostedServices;
 import org.cloudifysource.esc.driver.provisioning.azure.model.LocalNetworkSite;
-import org.cloudifysource.esc.driver.provisioning.azure.model.LocalNetworkSites;
 import org.cloudifysource.esc.driver.provisioning.azure.model.NetworkConfigurationSet;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Operation;
 import org.cloudifysource.esc.driver.provisioning.azure.model.PersistentVMRole;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Role;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleInstance;
+import org.cloudifysource.esc.driver.provisioning.azure.model.SharedKey;
 import org.cloudifysource.esc.driver.provisioning.azure.model.StorageServices;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Subnet;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Subnets;
@@ -112,6 +115,11 @@ public class MicrosoftAzureRestClient {
 	private static final String FAILED = "Failed";
 	private static final String SUCCEEDED = "Succeeded";
 	private static final String IN_PROGRESS = "InProgress";
+
+	private static String GATEWAY_STATE_PROVISIONED = "Provisioned";
+	private static String GATEWAY_STATE_NOT_PROVISIONED = "NotProvisioned";
+	private static String GATEWAY_STATE_PROVISIONING = "Provisioning";
+	private static String GATEWAY_STATE_DEPROVISIONING = "Deprovisioning";
 
 	private static final int MAX_RETRIES = 5;
 	private static final long DEFAULT_POLLING_INTERVAL = 5 * 1000; // 5 seconds
@@ -368,7 +376,6 @@ public class MicrosoftAzureRestClient {
 		if (virtualNetworkSite.getSubnets() == null) {
 			logger.info("Creating subnets for virtual network site : " + networkSiteName);
 			virtualNetworkSite.setSubnets(new Subnets());
-			System.out.println();
 		}
 
 		boolean shouldUpdateOrCreate = false;
@@ -385,17 +392,17 @@ public class MicrosoftAzureRestClient {
 		}
 
 		// VPN configuration
+		// at the moment VPN support is for one local network site
+		LocalNetworkSite newLocalNetworkSite = null;
 		if (vpnConfiguration != null) {
 
 			// no local network sites list is empty, so we create a new one
+			newLocalNetworkSite = vpnConfiguration.getLocalNetworkSites().getLocalNetworkSites().get(0);
+
 			if (virtualNetworkConfiguration.getLocalNetworkSites() == null) {
 				virtualNetworkConfiguration.setLocalNetworkSites(vpnConfiguration.getLocalNetworkSites());
 
 			} else {
-
-				// at the moment VPN support is for one local network site
-				LocalNetworkSite newLocalNetworkSite = vpnConfiguration.getLocalNetworkSites().getLocalNetworkSites().
-						get(0);
 
 				// add the localNetworkSite into localNetworkSites
 				if (virtualNetworkConfiguration.getLocalNetworkSiteConfigurationByName(newLocalNetworkSite.getName()) == null) {
@@ -417,7 +424,7 @@ public class MicrosoftAzureRestClient {
 
 			// add gateway
 			// check whether the network is already referenced in the gateway section or not
-			if (virtualNetworkSite.getLocalNetworkSiteRef(networkSiteName) == null) {
+			if (virtualNetworkSite.getLocalNetworkSiteRef(newLocalNetworkSite.getName()) == null) {
 				virtualNetworkSite.setGateway(vpnConfiguration.getGateway());
 				shouldUpdateOrCreate = true;
 			}
@@ -459,10 +466,43 @@ public class MicrosoftAzureRestClient {
 		if (shouldUpdateOrCreate) {
 			setNetworkConfiguration(endTime, virtualNetworkConfiguration);
 			logger.fine("Created/Updated virtual network site : " + networkSiteName);
+
 		} else {
 			logger.fine("Using existing virtual network site configuration: " + networkSiteName);
 		}
 
+		// continue with vpn gateway creation
+		// TODO: depending on use case, wait for the correct gateway state
+
+		GatewayInfo gateway = this.getGatewayInfo(networkSiteName, endTime);
+		if (gateway != null) {
+
+			logger.info(String.format("Current gateway state is '%s' ", gateway.getState()));
+
+			if (gateway.isReadyForProvisionning()) {
+
+				logger.info(String.format(
+						"Creating Gateway between vNet '%s' and local network '%s'. This will take a while, "
+								+ "so please wait...", networkSiteName, newLocalNetworkSite.getName()));
+
+				this.createVirtualNetworkGateway(vpnConfiguration.getGatewayType(), virtualNetworkSite.getName(),
+						endTime);
+			} else {
+				logger.warning("Can't provision Gateway, current state is " + gateway.getState());
+			}
+
+			if (gateway.isReadyToConnect()) {
+				this.setVirtualNetworktGatewayKey(vpnConfiguration.getGatewaykey(), networkSiteName,
+						newLocalNetworkSite.getName(),
+						endTime);
+			} else {
+				logger.warning("Can't connect Gateway, current state is " + gateway.getState());
+			}
+
+			// something went wrong
+		} else {
+			logger.warning("Failed getting current gatway information, its creation will be skipped");
+		}
 	}
 
 	public void addSubnetToVirtualNetwork(String networkSiteName, String subnetName, String subnetAddr, long endTime)
@@ -1752,8 +1792,7 @@ public class MicrosoftAzureRestClient {
 			throws MicrosoftAzureException, TimeoutException {
 
 		ClientResponse response = doGet("/operations/" + requestId);
-		return (Operation) MicrosoftAzureModelUtils
-				.unmarshall(response.getEntity(String.class));
+		return (Operation) MicrosoftAzureModelUtils.unmarshall(response.getEntity(String.class));
 	}
 
 	private String getThreadIdentity() {
@@ -1840,4 +1879,109 @@ public class MicrosoftAzureRestClient {
 		}
 		return role;
 	}
+
+	private void createVirtualNetworkGateway(String gatewayType,
+			String virtualNetworkName, long endTime)
+			throws MicrosoftAzureException, InterruptedException, TimeoutException {
+
+		try {
+			// POST
+			// https://management.core.windows.net/<subscription-id>/services/networking/<virtual-network-name>/gateway
+
+			String xmlRequest = MicrosoftAzureModelUtils.marshall(new CreateGatewayParameters(gatewayType), false);
+			ClientResponse response = doPost("/services/networking/" + virtualNetworkName + "/gateway/", xmlRequest);
+			checkForError(response);
+			String requestId = extractRequestId(response);
+			waitForRequestToFinish(requestId, endTime);
+			waitForGatewayOperationToFinish(virtualNetworkName, endTime);
+
+		} catch (TimeoutException e) {
+			logger.warning("Timed out while waiting for gateway creation");
+			throw e;
+		}
+	}
+
+	private void setVirtualNetworktGatewayKey(String key, String virtualNetworkName, String localNetworkSiteName,
+			long endTime)
+			throws MicrosoftAzureException, InterruptedException, TimeoutException {
+		try {
+			// POST
+			// https://management.core.windows.net/<subscription-id>/services/networking/<virtual-network-name>/gateway/connection/<local-network-site-name>/sharedkey
+			String xmlRequest = MicrosoftAzureModelUtils.marshall(new SharedKey(key), false);
+			ClientResponse response = doPost("/services/networking/" + virtualNetworkName
+					+ "/gateway/connection/" + localNetworkSiteName + "/sharedkey", xmlRequest);
+			checkForError(response);
+			String requestId = extractRequestId(response);
+			waitForRequestToFinish(requestId, endTime);
+
+		} catch (TimeoutException e) {
+			logger.warning("Timed out while waiting for setting gateway key.");
+			throw e;
+		}
+
+	}
+
+	/**
+	 * TODO investigate gateway operation status
+	 * 
+	 * @param virtualNetwork
+	 * @param endTime
+	 * @throws MicrosoftAzureException
+	 * @throws TimeoutException
+	 * @throws InterruptedException
+	 */
+	public void waitForGatewayOperationToFinish(final String virtualNetwork, final long endTime)
+			throws MicrosoftAzureException,
+			TimeoutException, InterruptedException {
+
+		while (true) {
+
+			GatewayInfo gatewayInfo = this.getGatewayInfo(virtualNetwork, endTime);
+			String state = gatewayInfo.getState();
+
+			if (state.equals(GATEWAY_STATE_PROVISIONED)) {
+				return;
+			}
+
+			// wait, in progress...
+			if (state.equals(GATEWAY_STATE_NOT_PROVISIONED) || state.equals(GATEWAY_STATE_PROVISIONING)) {
+				Thread.sleep(DEFAULT_POLLING_INTERVAL);
+			}
+
+			// not right state
+			if (state.equals(GATEWAY_STATE_DEPROVISIONING)) {
+				throw new MicrosoftAzureException("Gateway state error :" + state);
+			}
+
+			if (System.currentTimeMillis() > endTime) {
+				throw new TimeoutException("Timed out waiting for gateway provisionning to finish. last state was : "
+						+ state);
+			}
+		}
+
+	}
+
+	public GatewayInfo getGatewayInfo(String virtualNetwork, long endTime) throws MicrosoftAzureException,
+			TimeoutException, InterruptedException {
+
+		GatewayInfo gatewayInfo = null;
+
+		// GET https://management.core.windows.net/<subscription-id>/services/networking/<virtual-network-name>/gateway
+		ClientResponse response = doGet("/services/networking/" + virtualNetwork + "/gateway");
+
+		if (response.getStatus() != HTTP_NOT_FOUND) {
+
+			String requestId = extractRequestId(response);
+			this.waitForRequestToFinish(requestId, endTime);
+			String responseBody = response.getEntity(String.class);
+			gatewayInfo = (GatewayInfo) MicrosoftAzureModelUtils.unmarshall(responseBody);
+
+			// no gateway found (404)
+		} else {
+			logger.warning(String.format("The network '%s' doesn't have any gateway", virtualNetwork));
+		}
+
+		return gatewayInfo;
+	}
+
 }

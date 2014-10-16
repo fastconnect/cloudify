@@ -107,14 +107,12 @@ public class VirtualNetworkSite {
 	 */
 	public LocalNetworkSiteRef getLocalNetworkSiteRef(String networkReference) {
 
-		LocalNetworkSiteRef localNetworkSiteRef = null;
-
 		if (this.gateway != null) {
 			ConnectionsToLocalNetwork connectionsToLocalNetwork = gateway.getConnectionsToLocalNetwork();
 			if (connectionsToLocalNetwork != null && connectionsToLocalNetwork.getLocalNetworkSiteRefs() != null) {
 				for (LocalNetworkSiteRef siteRef : connectionsToLocalNetwork.getLocalNetworkSiteRefs()) {
 					if (siteRef.getName().equals(networkReference)) {
-						return localNetworkSiteRef;
+						return siteRef;
 					}
 				}
 			}

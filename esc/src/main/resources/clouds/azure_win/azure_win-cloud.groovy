@@ -74,6 +74,19 @@ cloud {
       /*
        "azure.dns.servers" : "dnsName1:ipAdress1,dnsName2:ipAdress2"
       */
+	  
+	  /***************************************************************************************
+	   * VPN CONFIGURATION                                                                    *
+	 
+	  ***************************************************************************************/
+	  
+	    "azure.vpn.localsite.name" : vpnLocalSiteName,   
+	    "azure.vpn.gateway.address" : vpnGatewayAddress,
+		"azure.vpn.gateway.type" : vpnGatewayType, // StaticRouting or DynamicRouting
+		"azure.vpn.gateway.key" : vpnGatwayKey,
+	    "azure.vpn.address.space" : vpnAddressSpace,	
+		"azure.vpn.subnet.address.prefix" : vpnSubnetAddressPrefix,
+	  
     ])
 
     management {

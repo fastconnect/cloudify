@@ -433,9 +433,9 @@ public class MicrosoftAzureRestClient {
 
 		// VPN configuration
 		// at the moment VPN support one local network site
-		LocalNetworkSite newLocalNetworkSite = vpnConfiguration.getLocalNetworkSites().getLocalNetworkSites().get(0);
-
+		LocalNetworkSite newLocalNetworkSite = null;
 		if (vpnConfiguration != null) {
+			newLocalNetworkSite = vpnConfiguration.getLocalNetworkSites().getLocalNetworkSites().get(0);
 
 			if (virtualNetworkConfiguration.getLocalNetworkSites() == null) {
 				virtualNetworkConfiguration.setLocalNetworkSites(vpnConfiguration.getLocalNetworkSites());

@@ -525,15 +525,18 @@ public class MicrosoftAzureRestClient {
 
 					this.createVirtualNetworkGateway(vpnConfiguration.getGatewayType(), virtualNetworkSite.getName(),
 							endTime);
+
+					// refresh state
+					gateway = this.getGatewayInfo(networkSiteName, endTime);
+					if (gateway != null && gateway.isReadyToConnect()) {
+
+						this.setVirtualNetworktGatewayKey(vpnConfiguration.getGatewaykey(), networkSiteName,
+								newLocalNetworkSite.getName(), endTime);
+					} else {
+						logger.warning("Can't connect Gateway, current state is " + gateway.getState());
+					}
 				} else {
 					logger.warning("Can't provision Gateway, current state is " + gateway.getState());
-				}
-
-				if (gateway.isReadyToConnect()) {
-					this.setVirtualNetworktGatewayKey(vpnConfiguration.getGatewaykey(), networkSiteName,
-							newLocalNetworkSite.getName(), endTime);
-				} else {
-					logger.warning("Can't connect Gateway, current state is " + gateway.getState());
 				}
 
 				// something went wrong

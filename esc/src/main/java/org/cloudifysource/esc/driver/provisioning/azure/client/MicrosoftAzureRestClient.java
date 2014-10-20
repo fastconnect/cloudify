@@ -432,9 +432,10 @@ public class MicrosoftAzureRestClient {
 		}
 
 		// VPN configuration
-		// at the moment VPN support one local network site
 		LocalNetworkSite newLocalNetworkSite = null;
 		if (vpnConfiguration != null) {
+
+			// at the moment VPN supports one local network site
 			newLocalNetworkSite = vpnConfiguration.getLocalNetworkSites().getLocalNetworkSites().get(0);
 
 			if (virtualNetworkConfiguration.getLocalNetworkSites() == null) {
@@ -511,37 +512,38 @@ public class MicrosoftAzureRestClient {
 
 		// continue with vpn gateway provisioning [after vNet creation]
 		if (vpnConfiguration != null) {
-
+			logger.info("Starting gateway configuration");
 			GatewayInfo gateway = this.getGatewayInfo(networkSiteName, endTime);
 			if (gateway != null) {
-
-				logger.info(String.format("Current gateway state is '%s' ", gateway.getState()));
-
 				if (gateway.isReadyForProvisioning()) {
 
-					logger.info(String.format(
-							"Creating Gateway between vNet '%s' and local network '%s'. This will take a while, "
-									+ "so please wait...", networkSiteName, newLocalNetworkSite.getName()));
+					logger.info(String
+							.format(
+									"Creating gateway between vNet '%s' and local network '%s'. This operation will take a while, "
+											+ "so please wait...", networkSiteName, newLocalNetworkSite.getName()));
 
 					this.createVirtualNetworkGateway(vpnConfiguration.getGatewayType(), virtualNetworkSite.getName(),
 							endTime);
 
-					// refresh state
-					gateway = this.getGatewayInfo(networkSiteName, endTime);
-					if (gateway != null && gateway.isReadyToConnect()) {
+				} else {
+					logger.warning("Can't provision gateway, current state is " + gateway.getState());
+				}
+
+				// refresh gateway state
+				gateway = this.getGatewayInfo(networkSiteName, endTime);
+				if (gateway != null) {
+					if (gateway.isReadyToConnect()) {
 
 						this.setVirtualNetworktGatewayKey(vpnConfiguration.getGatewaykey(), networkSiteName,
 								newLocalNetworkSite.getName(), endTime);
 					} else {
-						logger.warning("Can't connect Gateway, current state is " + gateway.getState());
+						logger.warning("Can't connect gateway, current state is " + gateway.getState());
 					}
-				} else {
-					logger.warning("Can't provision Gateway, current state is " + gateway.getState());
 				}
 
 				// something went wrong
 			} else {
-				logger.warning("Failed getting current gatway information, its creation will be skipped");
+				logger.warning("Failed getting current gateway state, it will not be provisioned");
 			}
 		}
 	}

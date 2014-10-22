@@ -611,10 +611,10 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			if (isWindows) {
 				// domain join, support for windows at this moment
 				desc.setDomainJoin(getDomainJoin());
-			}
 
-			// extensions
-			desc.setPuppetMasterServer(this.puppetMasterServer);
+				// puppet extension for windows only
+				desc.setPuppetMasterServer(this.puppetMasterServer);
+			}
 
 			roleAddressDetails = azureClient.createVirtualMachineDeployment(desc, isWindows, endTime);
 

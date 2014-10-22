@@ -1,6 +1,6 @@
 [
 
-	win2012_puppet : computeTemplate {
+	win2012_puppet_symantec : computeTemplate {
 
 		imageId "a699494373c04fc0bc8f2bb1389d6106__Windows-Server-2012-R2-201408.01-en.us-127GB.vhd"
 		machineMemoryMB 3500
@@ -19,7 +19,12 @@
 			"azure.pfx.file": pfxFile,
 			"azure.pfx.password" : pfxPassword,
 			"azure.cloud.service" : "cfytestitpuppet",
-			"azure.extension.puppet.master.server" : "pmaster",
+			
+			"azure.extensions" : [
+				[name:"puppet", value:"pmaster"],
+				[name:"symantec", value:""]
+			],
+			
 			
 
 			// Endpoints definition

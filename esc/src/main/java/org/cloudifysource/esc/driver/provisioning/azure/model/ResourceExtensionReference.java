@@ -3,7 +3,7 @@ package org.cloudifysource.esc.driver.provisioning.azure.model;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 
-@XmlType(propOrder = { "referenceName", "publisher", "name", "version",
+@XmlType(name = "ResourceExtensionReference", propOrder = { "referenceName", "publisher", "name", "version",
 		"resourceExtensionParameterValues", "state" })
 public class ResourceExtensionReference {
 

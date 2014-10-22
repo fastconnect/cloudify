@@ -3,8 +3,8 @@
  */
 package org.cloudifysource.esc.driver.provisioning.azure.client;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.cloudifysource.esc.driver.provisioning.azure.model.DomainJoin;
 import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoints;
@@ -41,7 +41,7 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 	private boolean addToExistingDeployment = false;
 	private boolean generateCloudServiceName = false;
 
-	private String puppetMasterServer;
+	private List<Map<String, String>> extensions;
 	private ResourceExtensionReferences extensionReferences = new ResourceExtensionReferences();
 
 	public String getHostedServiceName() {
@@ -234,20 +234,20 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 		this.generateCloudServiceName = generateCloudServiceName;
 	}
 
-	public String getPuppetMasterServer() {
-		return puppetMasterServer;
-	}
-
-	public void setPuppetMasterServer(String puppetMasterServer) {
-		this.puppetMasterServer = puppetMasterServer;
-	}
-
 	public ResourceExtensionReferences getExtensionReferences() {
 		return extensionReferences;
 	}
 
 	public void setExtensionReferences(ResourceExtensionReferences extensionReferences) {
 		this.extensionReferences = extensionReferences;
+	}
+
+	public List<Map<String, String>> getExtensions() {
+		return extensions;
+	}
+
+	public void setExtensions(List<Map<String, String>> extensions) {
+		this.extensions = extensions;
 	}
 
 }

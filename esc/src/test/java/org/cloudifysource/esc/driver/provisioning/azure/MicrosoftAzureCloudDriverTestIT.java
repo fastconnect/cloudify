@@ -484,4 +484,44 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 		}
 	}
 
+	@Test
+	public void testWin2012ExtensionsSymantecAndPuppet() throws Exception {
+
+		String computeTemplateName = "win2012_puppet_symantec";
+
+		final Cloud cloud = AzureTestUtils.createCloud("./src/main/resources/clouds", "azure_win", null,
+				computeTemplateName);
+		final ComputeTemplate computeTemplate = cloud.getCloudCompute().getTemplates().get(computeTemplateName);
+		final String cloudServiceName = (String) computeTemplate.getCustom().get("azure.cloud.service");
+		final String deploymentSlot = (String) computeTemplate.getCustom().get("azure.deployment.slot");
+
+		Map<String, String> cloudProperties = AzureTestUtils.getCloudProperties();
+		String affinityPrefix = cloudProperties.get("affinityGroup");
+
+		final MicrosoftAzureRestClient azureRestClient =
+				AzureTestUtils.createMicrosoftAzureRestClient(cloudServiceName, affinityPrefix);
+
+		this.startAndStopManagementMachine(computeTemplateName, new MachineDetailsAssertion() {
+
+			@Override
+			public void additionalAssertions(MachineDetails md) throws TimeoutException, MicrosoftAzureException {
+
+				Deployment deployment = azureRestClient.getDeploymentByDeploymentSlot(
+						cloudServiceName, deploymentSlot);
+
+				Assert.assertNotNull(deployment);
+				// deployment should have one role (resources should be cleaned)
+				Role role = deployment.getRoleList().getRoles().get(0);
+				Assert.assertNotNull(role.getResourceExtensionReferences());
+
+				String referenceName = "PuppetEnterpriseAgent";
+				Assert.assertNotNull(role.getResourceExtensionReferenceByName(referenceName));
+
+				referenceName = "SymantecEndpointProtection";
+				Assert.assertNotNull(role.getResourceExtensionReferenceByName(referenceName));
+			}
+
+		});
+	}
+
 }

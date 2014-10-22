@@ -11,6 +11,7 @@ package org.cloudifysource.esc.driver.provisioning.azure.client;
 
 import java.io.UnsupportedEncodingException;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import net.sf.json.JSONObject;
@@ -31,13 +32,12 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.NetworkConfigurati
 import org.cloudifysource.esc.driver.provisioning.azure.model.OSVirtualHardDisk;
 import org.cloudifysource.esc.driver.provisioning.azure.model.PersistentVMRole;
 import org.cloudifysource.esc.driver.provisioning.azure.model.PuppetResourceExtensionReference;
-import org.cloudifysource.esc.driver.provisioning.azure.model.ResourceExtensionParameterValue;
-import org.cloudifysource.esc.driver.provisioning.azure.model.ResourceExtensionParameterValues;
 import org.cloudifysource.esc.driver.provisioning.azure.model.ResourceExtensionReferences;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RestartRoleOperation;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Role;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleList;
 import org.cloudifysource.esc.driver.provisioning.azure.model.SubnetNames;
+import org.cloudifysource.esc.driver.provisioning.azure.model.SymantecResourceExtensionReference;
 import org.cloudifysource.esc.driver.provisioning.azure.model.VirtualNetworkConfiguration;
 import org.cloudifysource.esc.driver.provisioning.azure.model.VirtualNetworkSite;
 import org.cloudifysource.esc.driver.provisioning.azure.model.VirtualNetworkSites;
@@ -57,7 +57,13 @@ public class MicrosoftAzureRequestBodyBuilder {
 
 	private static final String UTF_8 = "UTF-8";
 	private static final int UUID_LENGTH = 8;
+
+	private final static String EXTENSION_NAME = "name";
+	private final static String EXTENSION_VALUE = "value";
+
 	private final static String PUPPET_MASTER_SERVER_KEY = "PUPPET_MASTER_SERVER";
+	private final static String EXTENSION_PUPPET_NAME = "puppet";
+	private final static String EXTENSION_SYMANTEC_NAME = "symantec";
 
 	private String affinityPrefix;
 	private String cloudServicePrefix;
@@ -408,6 +414,47 @@ public class MicrosoftAzureRequestBodyBuilder {
 		String jsonValueEncoded = this.getBase64String(jsonObject.toString());
 		PuppetResourceExtensionReference puppetRef = new PuppetResourceExtensionReference(jsonValueEncoded);
 		return puppetRef;
+	}
+
+	public ResourceExtensionReferences buildResourceExtensionReferences(List<Map<String, String>> extensions,
+			boolean isWindows) {
+
+		ResourceExtensionReferences extensionReferences = new ResourceExtensionReferences();
+
+		if (extensions != null && !extensions.isEmpty()) {
+
+			// windows support only
+			if (isWindows) {
+
+				for (Map<String, String> extMap : extensions) {
+					String extensionName = extMap.get(EXTENSION_NAME);
+					String extensionValue = extMap.get(EXTENSION_VALUE);
+					if (StringUtils.isNotBlank(extensionName)) {
+
+						// puppet, value is required
+						if (StringUtils.isNotBlank(extensionValue)) {
+
+							if (extensionName.equals(EXTENSION_PUPPET_NAME)) {
+								PuppetResourceExtensionReference puppetReference =
+										this.buildPuppetResourceExtensionReference(extensionValue);
+								extensionReferences.getResourceExtensionReferences().add(puppetReference);
+							}
+						}
+
+						// symantec,value isn't required
+						if (extensionName.equals(EXTENSION_SYMANTEC_NAME)) {
+							SymantecResourceExtensionReference symantecReference =
+									new SymantecResourceExtensionReference();
+
+							extensionReferences.getResourceExtensionReferences().add(symantecReference);
+						}
+					}
+				}
+			}
+		}
+
+		return extensionReferences;
+
 	}
 
 	public String getBase64String(String string) {

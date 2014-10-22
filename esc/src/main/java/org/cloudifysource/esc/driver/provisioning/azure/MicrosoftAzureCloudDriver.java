@@ -115,7 +115,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String AZURE_STORAGE_ACCOUNT = "azure.storage.account";
 
 	// extensions
-	private static final String AZURE_EXTENSION_MASTER_PUPPET_SERVER = "azure.extension.puppet.master.server";
+	private static final String AZURE_EXTENSIONS = "azure.extensions";
 
 	/**
 	 * Optional. If set, the driver will create and attack a data disk with the defined size to the new VM.
@@ -177,7 +177,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	private List<Map<String, String>> firewallPorts;
 
-	private String puppetMasterServer;
+	private List<Map<String, String>> extensions;
 
 	private static final int WEBUI_PORT = 8099;
 	private static final int REST_PORT = 8100;
@@ -305,7 +305,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		dnsServers = MicrosoftAzureUtils.parseDnsServersStringToMap(dnsServer);
 
 		// extensions
-		puppetMasterServer = (String) this.template.getCustom().get(AZURE_EXTENSION_MASTER_PUPPET_SERVER);
+		extensions = (List<Map<String, String>>) this.template.getCustom().get(AZURE_EXTENSIONS);
 
 		// Prefixes
 		if (this.management) {
@@ -612,8 +612,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 				// domain join, support for windows at this moment
 				desc.setDomainJoin(getDomainJoin());
 
-				// puppet extension for windows only
-				desc.setPuppetMasterServer(this.puppetMasterServer);
+				// extensions for windows only
+				desc.setExtensions(this.extensions);
 			}
 
 			roleAddressDetails = azureClient.createVirtualMachineDeployment(desc, isWindows, endTime);

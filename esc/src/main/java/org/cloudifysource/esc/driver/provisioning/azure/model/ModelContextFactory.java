@@ -73,13 +73,17 @@ public final class ModelContextFactory {
 		CLASSES.add(LocalNetworkSite.class);
 		CLASSES.add(LocalNetworkSites.class);
 		CLASSES.add(Gateway.class);
+		CLASSES.add(GatewayInfo.class);
 		CLASSES.add(LocalNetworkSites.class);
 		CLASSES.add(Connection.class);
 		CLASSES.add(ConnectionsToLocalNetwork.class);
 		CLASSES.add(SharedKey.class);
 		CLASSES.add(CreateGatewayParameters.class);
-		CLASSES.add(GatewayInfo.class);
-
+		CLASSES.add(PuppetResourceExtensionReference.class);
+		CLASSES.add(ResourceExtensionReferences.class);
+		CLASSES.add(ResourceExtensionParameterValue.class);
+		CLASSES.add(ResourceExtensionParameterValues.class);
+		CLASSES.add(PuppetResourceExtensionReference.class);
 	}
 
 	private static Class<?>[] getClasses() {

@@ -9,13 +9,14 @@ import javax.xml.bind.annotation.XmlType;
  * 
  */
 @XmlType(name = "Role", propOrder = {
-		"roleName", "roleType", "configurationSets", "availabilitySetName", "dataVirtualHardDisks",
-		"osVirtualHardDisk", "roleSize", "provisionGuestAgent" })
+		"roleName", "roleType", "configurationSets", "resourceExtensionReferences", "availabilitySetName",
+		"dataVirtualHardDisks", "osVirtualHardDisk", "roleSize", "provisionGuestAgent" })
 public class Role {
 
 	private String roleName;
 	private String roleType;
 	private ConfigurationSets configurationSets;
+	private ResourceExtensionReferences resourceExtensionReferences;
 	private String availabilitySetName;
 	private DataVirtualHardDisks dataVirtualHardDisks;
 	private OSVirtualHardDisk osVirtualHardDisk;
@@ -92,6 +93,35 @@ public class Role {
 
 	public void setDataVirtualHardDisks(DataVirtualHardDisks dataVirtualHardDisks) {
 		this.dataVirtualHardDisks = dataVirtualHardDisks;
+	}
+
+	@XmlElement(name = "ResourceExtensionReferences")
+	public ResourceExtensionReferences getResourceExtensionReferences() {
+		return resourceExtensionReferences;
+	}
+
+	public void setResourceExtensionReferences(ResourceExtensionReferences resourceExtensionReferences) {
+		this.resourceExtensionReferences = resourceExtensionReferences;
+	}
+
+	/**
+	 * Finds a ResourceExtensionReference by reference name
+	 * 
+	 * @param referenceName
+	 * @return ResourceExtensionReference object if found, null otherwise
+	 */
+	public ResourceExtensionReference getResourceExtensionReferenceByName(String referenceName) {
+
+		if (resourceExtensionReferences != null
+				&& !resourceExtensionReferences.getResourceExtensionReferences().isEmpty()) {
+			for (ResourceExtensionReference extensionReference : resourceExtensionReferences
+					.getResourceExtensionReferences()) {
+				if (extensionReference.getReferenceName().equals(referenceName)) {
+					return extensionReference;
+				}
+			}
+		}
+		return null;
 	}
 
 }

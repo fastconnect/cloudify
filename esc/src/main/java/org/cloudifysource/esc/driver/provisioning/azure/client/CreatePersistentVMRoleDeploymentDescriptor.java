@@ -3,10 +3,12 @@
  */
 package org.cloudifysource.esc.driver.provisioning.azure.client;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.cloudifysource.esc.driver.provisioning.azure.model.DomainJoin;
 import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoints;
+import org.cloudifysource.esc.driver.provisioning.azure.model.ResourceExtensionReferences;
 
 /************************************************************************************************
  * * A POJO holding all necessary properties for create a new vm to an existing virtual network. * *
@@ -38,6 +40,9 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 
 	private boolean addToExistingDeployment = false;
 	private boolean generateCloudServiceName = false;
+
+	private String puppetMasterServer;
+	private ResourceExtensionReferences extensionReferences = new ResourceExtensionReferences();
 
 	public String getHostedServiceName() {
 		return hostedServiceName;
@@ -227,6 +232,22 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 
 	public void setGenerateCloudServiceName(boolean generateCloudServiceName) {
 		this.generateCloudServiceName = generateCloudServiceName;
+	}
+
+	public String getPuppetMasterServer() {
+		return puppetMasterServer;
+	}
+
+	public void setPuppetMasterServer(String puppetMasterServer) {
+		this.puppetMasterServer = puppetMasterServer;
+	}
+
+	public ResourceExtensionReferences getExtensionReferences() {
+		return extensionReferences;
+	}
+
+	public void setExtensionReferences(ResourceExtensionReferences extensionReferences) {
+		this.extensionReferences = extensionReferences;
 	}
 
 }

@@ -13,6 +13,8 @@ import java.io.UnsupportedEncodingException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import net.sf.json.JSONObject;
+
 import org.apache.commons.lang.StringUtils;
 import org.cloudifysource.esc.driver.provisioning.azure.model.AddressSpace;
 import org.cloudifysource.esc.driver.provisioning.azure.model.ConfigurationSets;
@@ -28,6 +30,10 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.Listeners;
 import org.cloudifysource.esc.driver.provisioning.azure.model.NetworkConfigurationSet;
 import org.cloudifysource.esc.driver.provisioning.azure.model.OSVirtualHardDisk;
 import org.cloudifysource.esc.driver.provisioning.azure.model.PersistentVMRole;
+import org.cloudifysource.esc.driver.provisioning.azure.model.PuppetResourceExtensionReference;
+import org.cloudifysource.esc.driver.provisioning.azure.model.ResourceExtensionParameterValue;
+import org.cloudifysource.esc.driver.provisioning.azure.model.ResourceExtensionParameterValues;
+import org.cloudifysource.esc.driver.provisioning.azure.model.ResourceExtensionReferences;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RestartRoleOperation;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Role;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleList;
@@ -50,6 +56,8 @@ import com.sun.jersey.core.util.Base64;
 public class MicrosoftAzureRequestBodyBuilder {
 
 	private static final String UTF_8 = "UTF-8";
+	private static final int UUID_LENGTH = 8;
+	private final static String PUPPET_MASTER_SERVER_KEY = "PUPPET_MASTER_SERVER";
 
 	private String affinityPrefix;
 	private String cloudServicePrefix;
@@ -62,8 +70,6 @@ public class MicrosoftAzureRequestBodyBuilder {
 		this.cloudServicePrefix = cloudServicePrefix;
 		this.storagePrefix = storagePrefix;
 	}
-
-	private static final int UUID_LENGTH = 8;
 
 	/**
 	 * 
@@ -308,6 +314,9 @@ public class MicrosoftAzureRequestBodyBuilder {
 		// availability set
 		role.setAvailabilitySetName(desc.getAvailabilitySetName());
 
+		// extensions
+		role.setResourceExtensionReferences(desc.getExtensionReferences());
+
 		// NetworkConfiguration
 		NetworkConfigurationSet networkConfiguration = new NetworkConfigurationSet();
 
@@ -391,4 +400,26 @@ public class MicrosoftAzureRequestBodyBuilder {
 		persistentVMRole.setRoleType(role.getRoleType());
 		return persistentVMRole;
 	}
+
+	public PuppetResourceExtensionReference buildPuppetResourceExtensionReference(String puppetMasterServer) {
+
+		JSONObject jsonObject = new JSONObject();
+		jsonObject.put(PUPPET_MASTER_SERVER_KEY, puppetMasterServer);
+		String jsonValueEncoded = this.getBase64String(jsonObject.toString());
+		PuppetResourceExtensionReference puppetRef = new PuppetResourceExtensionReference(jsonValueEncoded);
+		return puppetRef;
+	}
+
+	public String getBase64String(String string) {
+
+		String base64String = null;
+		if (string != null) {
+			try {
+				base64String = new String(Base64.encode(string), UTF_8);
+			} catch (UnsupportedEncodingException e) {
+			}
+		}
+		return base64String;
+	}
+
 }

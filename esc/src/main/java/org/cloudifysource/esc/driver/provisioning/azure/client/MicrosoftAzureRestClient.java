@@ -24,6 +24,8 @@ import java.util.logging.Logger;
 
 import javax.net.ssl.SSLContext;
 
+import net.sf.json.JSONObject;
+
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.esc.driver.provisioning.azure.model.AddressAvailability;
@@ -47,7 +49,6 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.DnsServerRef;
 import org.cloudifysource.esc.driver.provisioning.azure.model.DnsServers;
 import org.cloudifysource.esc.driver.provisioning.azure.model.DnsServersRef;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Error;
-import org.cloudifysource.esc.driver.provisioning.azure.model.GatewayOperation;
 import org.cloudifysource.esc.driver.provisioning.azure.model.GatewayInfo;
 import org.cloudifysource.esc.driver.provisioning.azure.model.GlobalNetworkConfiguration;
 import org.cloudifysource.esc.driver.provisioning.azure.model.HostedService;
@@ -56,6 +57,7 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.LocalNetworkSite;
 import org.cloudifysource.esc.driver.provisioning.azure.model.NetworkConfigurationSet;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Operation;
 import org.cloudifysource.esc.driver.provisioning.azure.model.PersistentVMRole;
+import org.cloudifysource.esc.driver.provisioning.azure.model.PuppetResourceExtensionReference;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Role;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleInstance;
 import org.cloudifysource.esc.driver.provisioning.azure.model.SharedKey;
@@ -121,6 +123,9 @@ public class MicrosoftAzureRestClient {
 	private static String GATEWAY_STATE_NOT_PROVISIONED = "NotProvisioned";
 	private static String GATEWAY_STATE_PROVISIONING = "Provisioning";
 	private static String GATEWAY_STATE_DEPROVISIONING = "Deprovisioning";
+
+	// extension
+	private final static String PUPPET_MASTER_SERVER_KEY = "PUPPET_MASTER_SERVER";
 
 	private static final int MAX_RETRIES = 5;
 	private static final long DEFAULT_POLLING_INTERVAL = 5 * 1000; // 5 seconds
@@ -714,6 +719,14 @@ public class MicrosoftAzureRestClient {
 
 					}
 					deploymentDesc.setAvailableIp(availableIp);
+				}
+
+				// extensions
+				String puppetMaster = deploymentDesc.getPuppetMasterServer();
+				if (puppetMaster != null) {
+					PuppetResourceExtensionReference puppetRef =
+							requestBodyBuilder.buildPuppetResourceExtensionReference(puppetMaster);
+					deploymentDesc.getExtensionReferences().getResourceExtensionReferences().add(puppetRef);
 				}
 
 				// Add role to specified deployment

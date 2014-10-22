@@ -331,16 +331,16 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 	@Test
 	public void testNetworkAndSubnets() throws Exception {
 		final MicrosoftAzureRestClient azureClient = AzureTestUtils.createMicrosoftAzureRestClient();
-		final String dataSubnetName = "data_subnet";
 
 		Map<String, String> cloudProperties = AzureTestUtils.getCloudProperties();
-		final String networkSite = cloudProperties.get("netWorksite");
+		String mngSubnet = cloudProperties.get("managementSubnetName");
+		final String[] subnets = new String[] { mngSubnet, "admin_subnet", "data_subnet" };
 
 		AzureDriverTestBuilder driverBuilder = new AzureDriverTestBuilder();
 		MicrosoftAzureCloudDriver mngDriver = driverBuilder.createDriverAndSetConfig("ubuntu1410");
 
 		try {
-			// Start the manager machine without creating the service subnet
+			// Start the manager machine creates all subnets
 			this.startManagementMachine(mngDriver, new MachineDetailsAssertion() {
 				@Override
 				public void additionalAssertions(MachineDetails md) throws Exception {
@@ -349,33 +349,12 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 					VirtualNetworkConfiguration vnetConfig = azureClient.getVirtualNetworkConfiguration();
 					VirtualNetworkSite virtualNetworkSite =
 							vnetConfig.getVirtualNetworkSites().getVirtualNetworkSite(networkSite);
-					Assert.assertNull("Doesn't expect existing subnet '" + dataSubnetName + "'",
-							virtualNetworkSite.getSubnets().getSubnet(dataSubnetName));
+
+					for (String subnet : subnets) {
+						Assert.assertNotNull(virtualNetworkSite.getSubnets().getSubnet(subnet));
+					}
 				}
 			});
-
-			// Starting the agent machine should create the subnet
-			ServiceNetwork serviceNetwork = new ServiceNetwork();
-			serviceNetwork.setTemplate("DATA_NET");
-			MicrosoftAzureCloudDriver serviceDriver =
-					this.startAndStopMachine("ubuntu1410", serviceNetwork, new MachineDetailsAssertion() {
-						@Override
-						public void additionalAssertions(MachineDetails md) throws Exception {
-							VirtualNetworkConfiguration vnetConfig = azureClient.getVirtualNetworkConfiguration();
-							VirtualNetworkSite virtualNetworkSite =
-									vnetConfig.getVirtualNetworkSites().getVirtualNetworkSite(networkSite);
-							Assert.assertNotNull("Expecting subnet '" + dataSubnetName + "'",
-									virtualNetworkSite.getSubnets().getSubnet(dataSubnetName));
-						}
-					});
-
-			// Test deletion of the subnet
-			serviceDriver.onServiceUninstalled(30, TimeUnit.MINUTES);
-			VirtualNetworkConfiguration vnetConfig = azureClient.getVirtualNetworkConfiguration();
-			VirtualNetworkSite virtualNetworkSite =
-					vnetConfig.getVirtualNetworkSites().getVirtualNetworkSite(networkSite);
-			Assert.assertNull("Expected subnet '" + dataSubnetName + "' to be deleted",
-					virtualNetworkSite.getSubnets().getSubnet(dataSubnetName));
 
 		} finally {
 			stopManagementMachines(mngDriver);

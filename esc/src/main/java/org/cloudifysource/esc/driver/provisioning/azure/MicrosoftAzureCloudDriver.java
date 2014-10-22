@@ -483,27 +483,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			throw new CloudProvisioningException(e);
 		}
 
-		// Add a subnet for the service instance if required
-		CloudNetwork cloudNetwork = cloud.getCloudNetwork();
-		if (this.configuration.getNetwork() != null) {
-			String networkTemplate = this.configuration.getNetwork().getTemplate();
-			NetworkConfiguration networkConfiguration = cloudNetwork.getTemplates().get(networkTemplate);
-			List<Subnet> subnets = networkConfiguration.getSubnets();
-			Subnet subnet = subnets.get(0);
-			if (subnets.isEmpty()) {
-				throw new CloudProvisioningException("No subnet configured for template network '" + networkTemplate
-						+ "'");
-			}
-			try {
-				String networkName = cloud.getCloudNetwork().getCustom().get(AZURE_NETWORK_NAME);
-				String subnetName = subnet.getName();
-				String subnetRange = subnet.getRange();
-				azureClient.addSubnetToVirtualNetwork(networkName, subnetName, subnetRange, endTime);
-			} catch (Exception e) {
-				throw new CloudProvisioningException(e);
-			}
-		}
-
 		// underscore character in hostname might cause deployment to fail
 		String serverName = this.serverNamePrefix + String.format("%03d", serviceCounter.getAndIncrement());
 		final ComputeTemplate computeTemplate = this.cloud.getCloudCompute().getTemplates().get(this.cloudTemplateName);
@@ -1180,23 +1159,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	@Override
 	public void onServiceUninstalled(long duration, TimeUnit unit) {
-		final long endTime = System.currentTimeMillis() + CLEANUP_TIMEOUT;
-
-		// Remove subnet
-		if (this.configuration.getNetwork() != null) {
-			CloudNetwork cloudNetwork = cloud.getCloudNetwork();
-			String networkTemplate = this.configuration.getNetwork().getTemplate();
-			NetworkConfiguration networkConfiguration = cloudNetwork.getTemplates().get(networkTemplate);
-			List<Subnet> subnets = networkConfiguration.getSubnets();
-			Subnet subnet = subnets.get(0);
-			try {
-				logger.info("Delete the subnet '" + subnet.getName() + "' from network '" + this.networkName + "'");
-				azureClient.removeSubnetByName(this.networkName, subnet.getName(), endTime);
-			} catch (Exception e) {
-				logger.log(Level.WARNING, "Couldn't remove subnet '" + subnet.getName() + "' from network '"
-						+ this.networkName + "'", e);
-			}
-		}
 	}
 
 	private List<String> getIpAddressesList(Map<String, Object> map) {

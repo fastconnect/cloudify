@@ -727,9 +727,11 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			NetworkConfiguration networkConfiguration = cloudNetwork.getManagement().getNetworkConfiguration();
 			Subnet subnet = networkConfiguration.getSubnets().get(0);
 
+			Map<String, NetworkConfiguration> networkTemplates = cloudNetwork.getTemplates();
+
 			VpnConfiguration vpnConfiguration = this.getVpnConfiguration(cloudNetwork);
 			azureClient.createVirtualNetworkSite(addressSpace, affinityGroup, networkName, subnet.getName(),
-					subnet.getRange(), dnsServers, vpnConfiguration, endTime);
+					subnet.getRange(), networkTemplates, dnsServers, vpnConfiguration, endTime);
 
 			azureClient.createStorageAccount(affinityGroup, storageAccountName, endTime);
 		} catch (final Exception e) {

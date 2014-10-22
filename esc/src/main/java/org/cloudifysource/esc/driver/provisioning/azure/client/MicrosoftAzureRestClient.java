@@ -25,6 +25,7 @@ import java.util.logging.Logger;
 import javax.net.ssl.SSLContext;
 
 import org.apache.commons.lang.exception.ExceptionUtils;
+import org.cloudifysource.domain.cloud.network.NetworkConfiguration;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.esc.driver.provisioning.azure.model.AddressAvailability;
 import org.cloudifysource.esc.driver.provisioning.azure.model.AddressSpace;
@@ -386,7 +387,8 @@ public class MicrosoftAzureRestClient {
 	}
 
 	public void createVirtualNetworkSite(String addressSpace, String affinityGroup, String networkSiteName,
-			String subnetName, String subnetAddr, Map<String, String> dnsServers, VpnConfiguration vpnConfiguration,
+			String subnetName, String subnetAddr, Map<String, NetworkConfiguration> networkTemplates,
+			Map<String, String> dnsServers, VpnConfiguration vpnConfiguration,
 			long endTime) throws MicrosoftAzureException, TimeoutException, InterruptedException {
 
 		VirtualNetworkConfiguration virtualNetworkConfiguration = getVirtualNetworkConfiguration();
@@ -418,6 +420,14 @@ public class MicrosoftAzureRestClient {
 		}
 
 		boolean shouldUpdateOrCreate = false;
+
+		List<Subnet> notExistingSubnets = this.getNotExistingSubnets(networkTemplates, virtualNetworkSite.getSubnets());
+		if (!notExistingSubnets.isEmpty()) {
+			virtualNetworkSite.getSubnets().getSubnets().addAll(notExistingSubnets);
+			logger.info("Added subnets from network templates");
+			shouldUpdateOrCreate = true;
+		}
+
 		if (!virtualNetworkSite.getSubnets().contains(subnetName)) {
 			logger.info("Creating the subnet: " + subnetName);
 			Subnet subnet = new Subnet();
@@ -426,7 +436,7 @@ public class MicrosoftAzureRestClient {
 			virtualNetworkSite.getSubnets().getSubnets().add(subnet);
 			shouldUpdateOrCreate = true;
 		} else {
-			logger.info("Using an already existing subnet '" + subnetName + "' from virtual network site '"
+			logger.info("Using an already existing management subnet '" + subnetName + "' from virtual network site '"
 					+ networkSiteName + "'");
 		}
 
@@ -545,6 +555,22 @@ public class MicrosoftAzureRestClient {
 				logger.warning("Failed getting current gateway state, it will not be provisioned");
 			}
 		}
+	}
+
+	private List<Subnet> getNotExistingSubnets(Map<String, NetworkConfiguration> networkTemplates, Subnets subnets) {
+
+		List<Subnet> subnetList = new ArrayList<Subnet>();
+		for (NetworkConfiguration networkConfiguration : networkTemplates.values()) {
+			for (org.cloudifysource.domain.cloud.network.Subnet netWorkSubnet : networkConfiguration.getSubnets()) {
+				if (!subnets.contains(netWorkSubnet.getName())) {
+					Subnet subnet = new Subnet();
+					subnet.getAddressPrefix().add(netWorkSubnet.getRange());
+					subnet.setName(netWorkSubnet.getName());
+					subnetList.add(subnet);
+				}
+			}
+		}
+		return subnetList;
 	}
 
 	public void addSubnetToVirtualNetwork(String networkSiteName, String subnetName, String subnetAddr, long endTime)
@@ -733,6 +759,7 @@ public class MicrosoftAzureRestClient {
 							deploymentDesc.getDeploymentName() + "/roles", xmlRequest);
 					String requestId = extractRequestId(response);
 					waitForRequestToFinish(requestId, endTime);
+
 				} else {
 					// regular deployment
 					deployment = requestBodyBuilder.buildDeployment(deploymentDesc, isWindows);

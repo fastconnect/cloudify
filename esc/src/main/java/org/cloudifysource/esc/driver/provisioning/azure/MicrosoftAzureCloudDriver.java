@@ -514,43 +514,16 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			// verify whether a CS is set or not in the compute template
 			String cloudServiceInCompute = (String) template.getCustom().get(AZURE_CLOUD_SERVICE);
 			if (cloudServiceInCompute != null && !cloudServiceInCompute.trim().isEmpty()) {
-
-				HostedServices hostedServices = azureClient.listHostedServices();
-
-				// is specified cs exist on azure ?
-				if (hostedServices.contains(cloudServiceInCompute)) {
-
-					Deployment deployment = azureClient.listDeploymentsBySlot(cloudServiceInCompute,
-							deploymentSlot, endTime);
-
-					// is there any deployment in the existing CS/slot
-					if (deployment != null) {
-						desc.setDeploymentName(deployment.getName());
-						// use add role
-						desc.setAddToExistingDeployment(true);
-
-						// create a new deployment with the already existing CS
-					} else {
-						desc.setDeploymentName(cloudServiceInCompute);
-					}
-
-					desc.setHostedServiceName(cloudServiceInCompute);
-
-				} else {
-					// a cs/deployment will be created with specified name
-					logger.warning(String.format("The cloud service '%s' doesn't exist on azure. "
-							+ "It will be created.", cloudServiceInCompute));
-					desc.setGenerateCloudServiceName(false);
-					desc.setAddToExistingDeployment(false);
-					desc.setCloudServiceName(cloudServiceInCompute);
-				}
-			} else {
+				desc.setGenerateCloudServiceName(false);
+			}
+			else {
 				// a cs will be created with a generated name
-				logger.fine(String.format("No cloud service was specified in compute '%s'. "
-						+ "It will be created with a generic name.", this.cloudTemplateName));
-				desc.setAddToExistingDeployment(false);
+				logger.finest(String.format("No cloud service was specified in compute '%s'. ", this.cloudTemplateName));
 				desc.setGenerateCloudServiceName(true);
 			}
+
+			// cloud service
+			desc.setHostedServiceName(cloudServiceInCompute);
 
 			desc.setAffinityGroup(affinityGroup);
 			desc.setCustomData(deploymentCustomData);
@@ -613,7 +586,13 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			if (isWindows) {
 				// TODO remove this/ use other way to open firewall bootstrap ? customdata ?
 				// Open firewall ports needed for the template
-				openFirewallPorts(machineDetails);
+				try {
+					logger.info("Trying to open windows vm firewall ports...");
+					openFirewallPorts(machineDetails);
+					logger.info("Windows vm firewall ports opened successfully");
+				} catch (Exception e) {
+					logger.warning("Failed opening windows vm firewall ports. This can be critical for Windows Vms if the required ports are not open.");
+				}
 			}
 
 			machineDetails.setOpenFilesLimit(this.template.getOpenFilesLimit());

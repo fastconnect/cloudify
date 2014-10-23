@@ -17,7 +17,7 @@ import javax.xml.bind.annotation.XmlType;
 
 @XmlType(name = "Deployments")
 public class Deployments implements Iterable<Deployment> {
-	
+
 	private List<Deployment> deployments = new ArrayList<Deployment>();
 
 	@XmlElement(name = "Deployment")
@@ -28,18 +28,21 @@ public class Deployments implements Iterable<Deployment> {
 	public void setDeployments(final List<Deployment> deployments) {
 		this.deployments = deployments;
 	}
-	
-	/* (non-Javadoc)
+
+	/*
+	 * (non-Javadoc)
+	 * 
 	 * @see java.lang.Iterable#iterator()
 	 */
 	@Override
 	public Iterator<Deployment> iterator() {
 		return deployments.iterator();
 	}
-	
+
 	/**
 	 * 
-	 * @param deploymentName .
+	 * @param deploymentName
+	 *            .
 	 * @return .
 	 */
 	public boolean contains(final String deploymentName) {
@@ -50,6 +53,22 @@ public class Deployments implements Iterable<Deployment> {
 		}
 		return false;
 	}
-	
+
+	/**
+	 * Get a deployment by slot name
+	 * 
+	 * @return Deployment if is there any, null otherwise
+	 */
+	public Deployment getDeploymentBySlot(String slot) {
+
+		if (this.deployments != null && !this.deployments.isEmpty()) {
+			for (Deployment d : this.deployments) {
+				if (d.getDeploymentSlot().equals(slot)) {
+					return d;
+				}
+			}
+		}
+		return null;
+	}
 
 }

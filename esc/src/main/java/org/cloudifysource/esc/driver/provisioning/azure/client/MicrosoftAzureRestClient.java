@@ -39,6 +39,7 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.CreateHostedServic
 import org.cloudifysource.esc.driver.provisioning.azure.model.CreateStorageServiceInput;
 import org.cloudifysource.esc.driver.provisioning.azure.model.DataVirtualHardDisk;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
+import org.cloudifysource.esc.driver.provisioning.azure.model.DeploymentInfo;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Deployments;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Disk;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Disks;
@@ -237,6 +238,8 @@ public class MicrosoftAzureRestClient {
 				requestBodyBuilder.buildCreateCloudService(affinityGroup, cloudServiceNameOverride);
 
 		String serviceName = null;
+
+		// create a new cloud service with generated name
 		try {
 			String xmlRequest = MicrosoftAzureModelUtils.marshall(createHostedService, false);
 			ClientResponse response = doPost("/services/hostedservices", xmlRequest);
@@ -693,36 +696,21 @@ public class MicrosoftAzureRestClient {
 		logger.fine(getThreadIdentity() + "Waiting for pending request lock for lock " + pendingRequest.hashCode());
 		boolean lockAcquired = pendingRequest.tryLock(lockTimeout, TimeUnit.MILLISECONDS);
 
-		String serviceName = null;
-		Deployment deployment = null;
-		String deploymentSlot = deploymentDesc.getDeploymentSlot();
+		String cloudServiceName = null;
+		DeploymentInfo deploymentInfo = null;
+		System.out.println();
 
 		if (lockAcquired) {
 
 			logger.fine(getThreadIdentity() + "Lock acquired : " + pendingRequest.hashCode());
 			logger.fine(getThreadIdentity() + "Executing a request to provision a new virtual machine");
-
+			logger.info("Preparing VM deployment...");
 			try {
 
-				// is there a hosted service to use ?
-				if (deploymentDesc.getHostedServiceName() == null) {
-
-					// final cloud service name with extra characters (count)
-					if (deploymentDesc.isGenerateCloudServiceName()) {
-						serviceName = createCloudService(deploymentDesc.getAffinityGroup(), null, endTime);
-
-						// create a cloud service with the specified name in compute template
-					} else {
-						serviceName = createCloudService(deploymentDesc.getAffinityGroup(),
-								deploymentDesc.getCloudServiceName(), endTime);
-					}
-
-					deploymentDesc.setHostedServiceName(serviceName);
-					deploymentDesc.setDeploymentName(serviceName);
-				} else {
-					// use existing cloud service
-					serviceName = deploymentDesc.getHostedServiceName();
-				}
+				deploymentInfo = this.getDeploymentInfo(deploymentDesc, endTime);
+				deploymentDesc.setHostedServiceName(deploymentInfo.getCloudServiceName());
+				deploymentDesc.setDeploymentName(deploymentInfo.getDeploymentName());
+				cloudServiceName = deploymentInfo.getCloudServiceName();
 
 				// check static IP(s) availability
 				// which is skipped if no private ip was defined in the current compute template
@@ -743,11 +731,14 @@ public class MicrosoftAzureRestClient {
 
 				// extensions
 				List<Map<String, String>> extensions = deploymentDesc.getExtensions();
+				logger.fine(String.format("Setting extensions..."));
 				deploymentDesc.setExtensionReferences(requestBodyBuilder.buildResourceExtensionReferences(extensions,
 						isWindows));
 
 				// Add role to specified deployment
-				if (deploymentDesc.isAddToExistingDeployment()) {
+				if (deploymentInfo.isAddRoleToExistingDeployment()) {
+					logger.info(String.format("Adding current VM Role in deployment '%s'",
+							deploymentDesc.getDeploymentName()));
 					PersistentVMRole persistentVMRole = requestBodyBuilder.buildPersistentVMRole(deploymentDesc,
 							isWindows);
 					String xmlRequest = MicrosoftAzureModelUtils.marshall(persistentVMRole, false);
@@ -755,21 +746,23 @@ public class MicrosoftAzureRestClient {
 							+ String.format("Launching virtual machine '%s', in current deployment '%s'",
 									deploymentDesc.getRoleName(), deploymentDesc.getDeploymentName()));
 
-					ClientResponse response = doPost("/services/hostedservices/" + serviceName + "/deployments/" +
+					ClientResponse response = doPost("/services/hostedservices/" + cloudServiceName + "/deployments/" +
 							deploymentDesc.getDeploymentName() + "/roles", xmlRequest);
 					String requestId = extractRequestId(response);
 					waitForRequestToFinish(requestId, endTime);
 
 				} else {
 					// regular deployment
-					deployment = requestBodyBuilder.buildDeployment(deploymentDesc, isWindows);
+					logger.info(String.format("Creating a new deployment '%s' for the currnet VM Role.",
+							deploymentDesc.getDeploymentName()));
+					Deployment deployment = requestBodyBuilder.buildDeployment(deploymentDesc, isWindows);
 					String xmlRequest = MicrosoftAzureModelUtils.marshall(deployment, false);
 
 					logger.fine(getThreadIdentity() + "Launching virtual machine : "
 							+ deploymentDesc.getRoleName());
 
 					ClientResponse response = doPost("/services/hostedservices/"
-							+ serviceName + "/deployments", xmlRequest);
+							+ cloudServiceName + "/deployments", xmlRequest);
 					String requestId = extractRequestId(response);
 					waitForRequestToFinish(requestId, endTime);
 				}
@@ -780,12 +773,12 @@ public class MicrosoftAzureRestClient {
 			} catch (final Exception e) {
 				logger.log(Level.FINE, getThreadIdentity() + "A failure occured : about to release lock "
 						+ pendingRequest.hashCode(), e);
-				if (serviceName != null) {
+				if (cloudServiceName != null) {
 					try {
 						// delete the dedicated cloud service that was created for the virtual machine.
-						deleteCloudService(serviceName, endTime);
+						deleteCloudService(cloudServiceName, endTime);
 					} catch (final Exception e1) {
-						logger.warning("Failed deleting cloud service " + serviceName + " : " + e1.getMessage());
+						logger.warning("Failed deleting cloud service " + cloudServiceName + " : " + e1.getMessage());
 						logger.finest(ExceptionUtils.getFullStackTrace(e1));
 					}
 				}
@@ -809,8 +802,10 @@ public class MicrosoftAzureRestClient {
 
 		Deployment deploymentResponse = null;
 		try {
-			deploymentResponse = waitForDeploymentStatus("Running", serviceName, deploymentSlot, endTime);
-			deploymentResponse = waitForRoleInstanceStatus("ReadyRole", serviceName, deploymentSlot, endTime);
+			logger.info("Waiting for the VM deployment, this will take while...");
+			String deploymentSlot = deploymentDesc.getDeploymentSlot();
+			deploymentResponse = waitForDeploymentStatus("Running", cloudServiceName, deploymentSlot, endTime);
+			deploymentResponse = waitForRoleInstanceStatus("ReadyRole", cloudServiceName, deploymentSlot, endTime);
 		} catch (final Exception e) {
 			logger.fine("Error while waiting for VM status : " + e.getMessage());
 			// the VM was created but with a bad status
@@ -841,7 +836,7 @@ public class MicrosoftAzureRestClient {
 
 		String privateIp = null;
 		// get instanceRole from details
-		if (deploymentDesc.isAddToExistingDeployment()) {
+		if (deploymentInfo.isAddRoleToExistingDeployment()) {
 			RoleInstance roleInstance = deploymentResponse.getRoleInstanceList().
 					getInstanceRoleByRoleName(deploymentDesc.getRoleName());
 			privateIp = roleInstance.getIpAddress();
@@ -1498,9 +1493,14 @@ public class MicrosoftAzureRestClient {
 			builder.append("?embed-detail=true");
 		}
 		ClientResponse response = doGet(builder.toString());
-		checkForError(response);
-		String responseBody = response.getEntity(String.class);
-		return (HostedService) MicrosoftAzureModelUtils.unmarshall(responseBody);
+		if (response.getStatus() != HTTP_NOT_FOUND) {
+			checkForError(response);
+			String responseBody = response.getEntity(String.class);
+			HostedService hostedService = (HostedService) MicrosoftAzureModelUtils.unmarshall(responseBody);
+			return hostedService;
+		}
+
+		return null;
 	}
 
 	/**
@@ -1701,7 +1701,6 @@ public class MicrosoftAzureRestClient {
 
 	private ClientResponse doPost(final String url, final String body)
 			throws MicrosoftAzureException {
-		System.out.println();
 		ClientResponse response = resource.path(subscriptionId + url)
 				.header(X_MS_VERSION_HEADER_NAME, X_MS_VERSION_HEADER_VALUE)
 				.header(CONTENT_TYPE_HEADER_NAME, CONTENT_TYPE_HEADER_VALUE)
@@ -2172,6 +2171,72 @@ public class MicrosoftAzureRestClient {
 		}
 
 		return gatewayInfo;
+	}
+
+	private DeploymentInfo getDeploymentInfo(CreatePersistentVMRoleDeploymentDescriptor deploymentDesc, long endTime)
+			throws MicrosoftAzureException, TimeoutException, InterruptedException {
+
+		String deploymentName = null;
+		String cloudServiceName = null;
+		String deploymentSlot = deploymentDesc.getDeploymentSlot();
+		String hostedServiceName = deploymentDesc.getHostedServiceName();
+		boolean addRoleToExistingDeployment = false;
+		HostedService hostedService = null;
+
+		// if set to true, this means that no cloud service was specified in compute template
+		if (deploymentDesc.isGenerateCloudServiceName()) {
+			CreateHostedService csBuild = requestBodyBuilder.buildCreateCloudService(this.affinityPrefix, null);
+			String generatedName = csBuild.getServiceName();
+			hostedService = this.getHostedService(generatedName, true);
+
+			// is generate cloud service name is in use ?
+			if (hostedService != null) {
+				Deployment deploymentFound =
+						hostedService.getDeployments().getDeploymentBySlot(deploymentSlot);
+				if (deploymentFound != null) {
+					deploymentName = deploymentFound.getName();
+					addRoleToExistingDeployment = true;
+				} else {
+					deploymentName = generatedName;
+				}
+
+				cloudServiceName = generatedName;
+
+				// not in use, create a cloud service with generated name
+			} else {
+				cloudServiceName = createCloudService(deploymentDesc.getAffinityGroup(), generatedName, endTime);
+				deploymentName = cloudServiceName;
+			}
+		}
+
+		// avoid if /else block
+		// use cloud service that was specified in compute template
+		if (!deploymentDesc.isGenerateCloudServiceName()) {
+			hostedService = this.getHostedService(hostedServiceName, true);
+			if (hostedService != null) {
+				Deployment deploymentFound =
+						hostedService.getDeployments().getDeploymentBySlot(deploymentSlot);
+				if (deploymentFound != null) {
+					deploymentName = deploymentFound.getName();
+					addRoleToExistingDeployment = true;
+				} else {
+					deploymentName = hostedServiceName;
+				}
+
+				cloudServiceName = hostedServiceName;
+
+				// not in use, create a cloud service with generated name
+			} else {
+				cloudServiceName = createCloudService(deploymentDesc.getAffinityGroup(), hostedServiceName, endTime);
+				deploymentName = cloudServiceName;
+			}
+		}
+
+		DeploymentInfo deploymentInfo = new DeploymentInfo();
+		deploymentInfo.setCloudServiceName(cloudServiceName);
+		deploymentInfo.setDeploymentName(deploymentName);
+		deploymentInfo.setAddRoleToExistingDeployment(addRoleToExistingDeployment);
+		return deploymentInfo;
 	}
 
 }

@@ -4,7 +4,6 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import org.cloudifysource.domain.ServiceNetwork;
 import org.cloudifysource.domain.cloud.Cloud;
 import org.cloudifysource.domain.cloud.compute.ComputeTemplate;
 import org.cloudifysource.domain.cloud.network.CloudNetwork;
@@ -292,7 +291,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 	}
 
 	@Test
-	public void testDeleteRoleUbuntuMachineFromDeployment() throws Exception {
+	public void testAddAndDeleteRoleUbuntuMachineFromDeployment() throws Exception {
 
 		String computeTemplateName = "ubuntu1410_deleterole";
 		Cloud cloud = AzureTestUtils.createCloud("./src/main/resources/clouds", "azure_win", null, computeTemplateName);
@@ -464,6 +463,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 	}
 
 	@Test
+	@Ignore("Winrm not supported on jenkins host, endpoints seem blocked after installing symantec extension")
 	public void testWin2012ExtensionsSymantecAndPuppet() throws Exception {
 
 		String computeTemplateName = "win2012_puppet_symantec";

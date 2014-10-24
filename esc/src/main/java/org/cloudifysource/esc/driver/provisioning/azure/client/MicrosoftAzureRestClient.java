@@ -699,6 +699,7 @@ public class MicrosoftAzureRestClient {
 
 		String cloudServiceName = null;
 		DeploymentInfo deploymentInfo = null;
+		String roleName = null;
 
 		if (lockAcquired) {
 
@@ -742,6 +743,7 @@ public class MicrosoftAzureRestClient {
 							deploymentDesc.getDeploymentName()));
 					PersistentVMRole persistentVMRole = requestBodyBuilder.buildPersistentVMRole(deploymentDesc,
 							isWindows);
+					roleName = persistentVMRole.getRoleName();
 					String xmlRequest = MicrosoftAzureModelUtils.marshall(persistentVMRole, false);
 					logger.fine(getThreadIdentity()
 							+ String.format("Launching virtual machine '%s', in current deployment '%s'",
@@ -757,6 +759,7 @@ public class MicrosoftAzureRestClient {
 					logger.info(String.format("Creating a new deployment '%s' for the current VM Role.",
 							deploymentDesc.getDeploymentName()));
 					Deployment deployment = requestBodyBuilder.buildDeployment(deploymentDesc, isWindows);
+					roleName = deployment.getRoleList().getRoles().get(0).getRoleName();
 					String xmlRequest = MicrosoftAzureModelUtils.marshall(deployment, false);
 
 					logger.fine(getThreadIdentity() + "Launching virtual machine : "
@@ -806,7 +809,8 @@ public class MicrosoftAzureRestClient {
 			logger.info("Waiting for the VM deployment, this will take while...");
 			String deploymentSlot = deploymentDesc.getDeploymentSlot();
 			deploymentResponse = waitForDeploymentStatus("Running", cloudServiceName, deploymentSlot, endTime);
-			deploymentResponse = waitForRoleInstanceStatus("ReadyRole", cloudServiceName, deploymentSlot, endTime);
+			deploymentResponse =
+					waitForRoleInstanceStatus("ReadyRole", cloudServiceName, deploymentSlot, roleName, endTime);
 		} catch (final Exception e) {
 			logger.fine("Error while waiting for VM status : " + e.getMessage());
 			// the VM was created but with a bad status
@@ -839,7 +843,7 @@ public class MicrosoftAzureRestClient {
 		// get instanceRole from details
 		if (deploymentInfo.isAddRoleToExistingDeployment()) {
 			RoleInstance roleInstance = deploymentResponse.getRoleInstanceList().
-					getInstanceRoleByRoleName(deploymentDesc.getRoleName());
+					getRoleInstanceByRoleName(deploymentDesc.getRoleName());
 			privateIp = roleInstance.getIpAddress();
 
 		} else {
@@ -1810,8 +1814,7 @@ public class MicrosoftAzureRestClient {
 			MicrosoftAzureException, InterruptedException {
 
 		while (true) {
-			Deployment deployment = getDeploymentByDeploymentSlot(
-					hostedServiceName, deploymentSlot);
+			Deployment deployment = getDeploymentByDeploymentSlot(hostedServiceName, deploymentSlot);
 			String status = deployment.getStatus();
 			if (status.equals(state)) {
 				return deployment;
@@ -1829,17 +1832,15 @@ public class MicrosoftAzureRestClient {
 	}
 
 	private Deployment waitForRoleInstanceStatus(final String state,
-			final String hostedServiceName, final String deploymentSlot,
+			final String hostedServiceName, final String deploymentSlot, final String roleName,
 			final long endTime) throws TimeoutException,
 			MicrosoftAzureException, InterruptedException {
 
 		while (true) {
-			Deployment deployment = getDeploymentByDeploymentSlot(
-					hostedServiceName, deploymentSlot);
-			String roleName = deployment.getRoleList().getRoles().get(0)
-					.getRoleName();
-			String status = deployment.getRoleInstanceList().getRoleInstances()
-					.get(0).getInstanceStatus();
+			Deployment deployment = getDeploymentByDeploymentSlot(hostedServiceName, deploymentSlot);
+			RoleInstance roleInstance = deployment.getRoleInstanceList().getRoleInstanceByRoleName(roleName);
+			String status = roleInstance.getInstanceStatus();
+
 			boolean error = checkVirtualMachineStatusForError(status);
 			if (error) {
 				// bad status of VM.
@@ -1856,9 +1857,7 @@ public class MicrosoftAzureRestClient {
 						"Timed out waiting for operation to finish. last state was : "
 								+ status);
 			}
-
 		}
-
 	}
 
 	private void setNetworkConfiguration(final long endTime,

@@ -36,7 +36,7 @@ public class RoleInstanceList implements Iterable<RoleInstance> {
 	 * @param roleName
 	 * @return Role object if found, null otherwise
 	 */
-	public RoleInstance getInstanceRoleByRoleName(String roleName) {
+	public RoleInstance getRoleInstanceByRoleName(String roleName) {
 
 		if (roleInstances != null && !roleInstances.isEmpty()) {
 			for (RoleInstance ri : roleInstances) {

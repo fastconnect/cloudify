@@ -12,7 +12,7 @@
 		scriptLanguage "LINUX_SHELL"
 		javaUrl "https://s3-eu-west-1.amazonaws.com/cloudify-eu/jdk-6u32-linux-x64.bin"
 		custom ([
-			"azure.deployment.slot": "Staging",
+			"azure.deployment.slot": "Production",
 			"azure.pfx.file": pfxFile,
 			"azure.pfx.password" : pfxPassword,
 			"azure.availability.set" : "AVITTEST"

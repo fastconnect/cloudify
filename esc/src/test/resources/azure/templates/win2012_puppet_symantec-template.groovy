@@ -18,15 +18,14 @@
 			"azure.deployment.slot": "Production",
 			"azure.pfx.file": pfxFile,
 			"azure.pfx.password" : pfxPassword,
-			"azure.cloud.service" : "cfytestitpuppet",
+			"azure.cloud.service" : "cfytestitpuppetsymantec",
 			
 			"azure.extensions" : [
 				[name:"puppet", value:"pmaster"],
-				[name:"symantec", value:""]
+				// endpoints seem blocked after installing symantec extension
+			//	[name:"symantec"]
 			],
 			
-			
-
 			// Endpoints definition
 			"azure.endpoints" : [
 				[name:"CIFS_SMB", protocol:"TCP", localPort : "445", port:"445"],

@@ -22,6 +22,7 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.ConfigurationSets;
 import org.cloudifysource.esc.driver.provisioning.azure.model.CreateAffinityGroup;
 import org.cloudifysource.esc.driver.provisioning.azure.model.CreateHostedService;
 import org.cloudifysource.esc.driver.provisioning.azure.model.CreateStorageServiceInput;
+import org.cloudifysource.esc.driver.provisioning.azure.model.CustomScriptResourceExtensionReference;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
 import org.cloudifysource.esc.driver.provisioning.azure.model.GlobalNetworkConfiguration;
 import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoints;
@@ -64,6 +65,7 @@ public class MicrosoftAzureRequestBodyBuilder {
 	private final static String PUPPET_MASTER_SERVER_KEY = "PUPPET_MASTER_SERVER";
 	private final static String EXTENSION_PUPPET_NAME = "puppet";
 	private final static String EXTENSION_SYMANTEC_NAME = "symantec";
+	private final static String EXTENSION_CUSTOM_SCRIPT_NAME = "customScript";
 
 	private String affinityPrefix;
 	private String cloudServicePrefix;
@@ -407,15 +409,6 @@ public class MicrosoftAzureRequestBodyBuilder {
 		return persistentVMRole;
 	}
 
-	public PuppetResourceExtensionReference buildPuppetResourceExtensionReference(String puppetMasterServer) {
-
-		JSONObject jsonObject = new JSONObject();
-		jsonObject.put(PUPPET_MASTER_SERVER_KEY, puppetMasterServer);
-		String jsonValueEncoded = this.getBase64String(jsonObject.toString());
-		PuppetResourceExtensionReference puppetRef = new PuppetResourceExtensionReference(jsonValueEncoded);
-		return puppetRef;
-	}
-
 	public ResourceExtensionReferences buildResourceExtensionReferences(List<Map<String, String>> extensions,
 			boolean isWindows) {
 
@@ -448,13 +441,37 @@ public class MicrosoftAzureRequestBodyBuilder {
 
 							extensionReferences.getResourceExtensionReferences().add(symantecReference);
 						}
+
+						// custom script
+						if (extensionName.equals(EXTENSION_CUSTOM_SCRIPT_NAME)) {
+							CustomScriptResourceExtensionReference customScriptReference =
+									buildCustomScriptResourceExtensionReference(extensionValue);
+
+							extensionReferences.getResourceExtensionReferences().add(customScriptReference);
+						}
 					}
 				}
 			}
 		}
-
 		return extensionReferences;
+	}
 
+	private PuppetResourceExtensionReference buildPuppetResourceExtensionReference(String puppetMasterServer) {
+
+		JSONObject jsonObject = new JSONObject();
+		jsonObject.put(PUPPET_MASTER_SERVER_KEY, puppetMasterServer);
+		String jsonValueEncoded = this.getBase64String(jsonObject.toString());
+		PuppetResourceExtensionReference puppetRef = new PuppetResourceExtensionReference(jsonValueEncoded);
+		return puppetRef;
+	}
+
+	private CustomScriptResourceExtensionReference buildCustomScriptResourceExtensionReference(String puppetMasterServer) {
+
+		JSONObject jsonObject = new JSONObject();
+		jsonObject.put(PUPPET_MASTER_SERVER_KEY, puppetMasterServer);
+		String jsonValueEncoded = this.getBase64String(jsonObject.toString());
+		PuppetResourceExtensionReference puppetRef = new PuppetResourceExtensionReference(jsonValueEncoded);
+		return null;
 	}
 
 	public String getBase64String(String string) {
@@ -468,5 +485,4 @@ public class MicrosoftAzureRequestBodyBuilder {
 		}
 		return base64String;
 	}
-
 }

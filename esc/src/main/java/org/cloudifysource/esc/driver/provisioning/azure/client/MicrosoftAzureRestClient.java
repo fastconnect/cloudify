@@ -57,6 +57,7 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.LocalNetworkSite;
 import org.cloudifysource.esc.driver.provisioning.azure.model.NetworkConfigurationSet;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Operation;
 import org.cloudifysource.esc.driver.provisioning.azure.model.PersistentVMRole;
+import org.cloudifysource.esc.driver.provisioning.azure.model.ResourceExtensionReferences;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Role;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleInstance;
 import org.cloudifysource.esc.driver.provisioning.azure.model.SharedKey;
@@ -698,7 +699,6 @@ public class MicrosoftAzureRestClient {
 
 		String cloudServiceName = null;
 		DeploymentInfo deploymentInfo = null;
-		System.out.println();
 
 		if (lockAcquired) {
 
@@ -732,8 +732,9 @@ public class MicrosoftAzureRestClient {
 				// extensions
 				List<Map<String, String>> extensions = deploymentDesc.getExtensions();
 				logger.fine(String.format("Setting extensions..."));
-				deploymentDesc.setExtensionReferences(requestBodyBuilder.buildResourceExtensionReferences(extensions,
-						isWindows));
+				ResourceExtensionReferences extensionReferences =
+						requestBodyBuilder.buildResourceExtensionReferences(extensions, isWindows);
+				deploymentDesc.setExtensionReferences(extensionReferences);
 
 				// Add role to specified deployment
 				if (deploymentInfo.isAddRoleToExistingDeployment()) {
@@ -753,7 +754,7 @@ public class MicrosoftAzureRestClient {
 
 				} else {
 					// regular deployment
-					logger.info(String.format("Creating a new deployment '%s' for the currnet VM Role.",
+					logger.info(String.format("Creating a new deployment '%s' for the current VM Role.",
 							deploymentDesc.getDeploymentName()));
 					Deployment deployment = requestBodyBuilder.buildDeployment(deploymentDesc, isWindows);
 					String xmlRequest = MicrosoftAzureModelUtils.marshall(deployment, false);

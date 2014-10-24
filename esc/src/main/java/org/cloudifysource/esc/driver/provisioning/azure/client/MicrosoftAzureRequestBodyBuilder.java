@@ -10,6 +10,7 @@
 package org.cloudifysource.esc.driver.provisioning.azure.client;
 
 import java.io.UnsupportedEncodingException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -66,6 +67,14 @@ public class MicrosoftAzureRequestBodyBuilder {
 	private final static String EXTENSION_PUPPET_NAME = "puppet";
 	private final static String EXTENSION_SYMANTEC_NAME = "symantec";
 	private final static String EXTENSION_CUSTOM_SCRIPT_NAME = "customScript";
+
+	private final static String EXTENSION_CUSTOM_SCRIPT_FILEURIS = "fileUris";
+	private final static String EXTENSION_CUSTOM_SCRIPT_COMMAND_TO_EXECUTE = "commandToExecute";
+
+	private final static String EXTENSION_CUSTOM_SCRIPT_STORAGE_ACCOUNT_KEY = "storageAccount";
+	private final static String EXTENSION_CUSTOM_SCRIPT_STORAGE_CONTAINER_KEY = "container";
+	private final static String EXTENSION_CUSTOM_SCRIPT_FILES_KEY = "files";
+	private final static String EXTENSION_CUSTOM_SCRIPT_ARGUMENTS = "arguments";
 
 	private String affinityPrefix;
 	private String cloudServicePrefix;
@@ -419,9 +428,9 @@ public class MicrosoftAzureRequestBodyBuilder {
 			// windows support only
 			if (isWindows) {
 
-				for (Map<String, String> extMap : extensions) {
-					String extensionName = extMap.get(EXTENSION_NAME);
-					String extensionValue = extMap.get(EXTENSION_VALUE);
+				for (Map<String, String> extentionMap : extensions) {
+					String extensionName = extentionMap.get(EXTENSION_NAME);
+					String extensionValue = extentionMap.get(EXTENSION_VALUE);
 					if (StringUtils.isNotBlank(extensionName)) {
 
 						// puppet, value is required
@@ -445,7 +454,7 @@ public class MicrosoftAzureRequestBodyBuilder {
 						// custom script
 						if (extensionName.equals(EXTENSION_CUSTOM_SCRIPT_NAME)) {
 							CustomScriptResourceExtensionReference customScriptReference =
-									buildCustomScriptResourceExtensionReference(extensionValue);
+									buildCustomScriptResourceExtensionReference(extentionMap);
 
 							extensionReferences.getResourceExtensionReferences().add(customScriptReference);
 						}
@@ -465,9 +474,51 @@ public class MicrosoftAzureRequestBodyBuilder {
 		return puppetRef;
 	}
 
-	private CustomScriptResourceExtensionReference buildCustomScriptResourceExtensionReference(String puppetMasterServer) {
+	private CustomScriptResourceExtensionReference buildCustomScriptResourceExtensionReference(
+			Map<String, String> extentionMap) {
 
-		return null;
+		CustomScriptResourceExtensionReference customScriptResourceExtensionReference = null;
+
+		String storageAccount = extentionMap.get(EXTENSION_CUSTOM_SCRIPT_STORAGE_ACCOUNT_KEY);
+		String container = extentionMap.get(EXTENSION_CUSTOM_SCRIPT_STORAGE_CONTAINER_KEY);
+		String files = extentionMap.get(EXTENSION_CUSTOM_SCRIPT_FILES_KEY);
+		String arguments = extentionMap.get(EXTENSION_CUSTOM_SCRIPT_ARGUMENTS);
+
+		if (StringUtils.isNotBlank(storageAccount) && StringUtils.isNotBlank(container)
+				&& StringUtils.isNotBlank(files)) {
+
+			// file URI
+			JSONObject jsonObject = new JSONObject();
+			StringBuilder stringBuilder = new StringBuilder();
+			stringBuilder.append("https://");
+			stringBuilder.append(storageAccount);
+			stringBuilder.append(".blob.core.windows.net/");
+			stringBuilder.append(container);
+			stringBuilder.append("/");
+			stringBuilder.append(files);
+
+			List<String> uriList = Arrays.asList(stringBuilder.toString());
+			jsonObject.put(EXTENSION_CUSTOM_SCRIPT_FILEURIS, uriList);
+
+			// reset builder
+			stringBuilder.setLength(0);
+			stringBuilder.append("powershell -ExecutionPolicy Unrestricted ");
+			stringBuilder.append("-file ");
+			stringBuilder.append(files);
+
+			// script arguments
+			if (StringUtils.isNotBlank(arguments)) {
+				stringBuilder.append(" ");
+				stringBuilder.append(arguments);
+			}
+
+			jsonObject.put(EXTENSION_CUSTOM_SCRIPT_COMMAND_TO_EXECUTE, stringBuilder.toString());
+			String jsonValueEncoded = this.getBase64String(jsonObject.toString());
+
+			customScriptResourceExtensionReference = new CustomScriptResourceExtensionReference(null, jsonValueEncoded);
+		}
+
+		return customScriptResourceExtensionReference;
 	}
 
 	public String getBase64String(String string) {

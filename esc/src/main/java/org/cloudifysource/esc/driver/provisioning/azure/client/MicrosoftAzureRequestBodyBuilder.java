@@ -467,10 +467,6 @@ public class MicrosoftAzureRequestBodyBuilder {
 
 	private CustomScriptResourceExtensionReference buildCustomScriptResourceExtensionReference(String puppetMasterServer) {
 
-		JSONObject jsonObject = new JSONObject();
-		jsonObject.put(PUPPET_MASTER_SERVER_KEY, puppetMasterServer);
-		String jsonValueEncoded = this.getBase64String(jsonObject.toString());
-		PuppetResourceExtensionReference puppetRef = new PuppetResourceExtensionReference(jsonValueEncoded);
 		return null;
 	}
 

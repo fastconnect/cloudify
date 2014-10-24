@@ -8,7 +8,7 @@ public class ResourceExtensionParameterValue {
 
 	private String key;
 	private String value;
-	private String type = "Private";
+	private String type;
 
 	@XmlElement(name = "Key")
 	public String getKey() {

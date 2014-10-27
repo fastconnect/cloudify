@@ -535,17 +535,26 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 			InputEndpoints inputEndpoints = createInputEndPoints();
 
+			// network and subnet
 			CloudNetwork cloudNetwork = this.cloud.getCloudNetwork();
 
 			String subnetName = null;
+			subnetName = cloudNetwork.getManagement().getNetworkConfiguration().getSubnets().get(0).getName();
+
 			if (this.configuration.getNetwork() != null) {
-				// Use service's subnet
+
 				String networkTemplate = this.configuration.getNetwork().getTemplate();
 				NetworkConfiguration networkConfiguration = cloudNetwork.getTemplates().get(networkTemplate);
-				subnetName = networkConfiguration.getSubnets().get(0).getName();
-			} else {
-				// use management's subnet
-				subnetName = cloudNetwork.getManagement().getNetworkConfiguration().getSubnets().get(0).getName();
+
+				// check
+				if (networkConfiguration == null) {
+					logger.warning(String.format(
+							"The specified network template '%s' doesn't exist in available network templates. "
+									+ "Management subnet will be used instead.", networkTemplate));
+				} else {
+					// Use service's subnet
+					subnetName = networkConfiguration.getSubnets().get(0).getName();
+				}
 			}
 
 			desc.setInputEndpoints(inputEndpoints);

@@ -234,14 +234,14 @@ public class MicrosoftAzureRestClient {
 			final long endTime) throws MicrosoftAzureException,
 			TimeoutException, InterruptedException {
 
-		logger.fine(getThreadIdentity() + "Creating cloud service");
 		CreateHostedService createHostedService =
 				requestBodyBuilder.buildCreateCloudService(affinityGroup, cloudServiceNameOverride);
 
 		String serviceName = null;
 
-		// create a new cloud service with generated name
 		try {
+
+			logger.info(String.format("Creating cloud service '%s'", createHostedService.getServiceName()));
 			String xmlRequest = MicrosoftAzureModelUtils.marshall(createHostedService, false);
 			ClientResponse response = doPost("/services/hostedservices", xmlRequest);
 			String requestId = extractRequestId(response);

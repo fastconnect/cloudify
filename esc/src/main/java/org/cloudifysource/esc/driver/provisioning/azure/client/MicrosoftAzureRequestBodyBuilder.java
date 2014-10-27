@@ -423,7 +423,6 @@ public class MicrosoftAzureRequestBodyBuilder {
 			boolean isWindows) {
 
 		ResourceExtensionReferences extensionReferences = new ResourceExtensionReferences();
-		System.out.println();
 
 		if (extensions != null && !extensions.isEmpty()) {
 
@@ -435,10 +434,9 @@ public class MicrosoftAzureRequestBodyBuilder {
 
 				for (Map<String, String> extentionMap : extensions) {
 					String extensionName = extentionMap.get(EXTENSION_NAME_KEY);
-					// String extensionValue = extentionMap.get(EXTENSION_VALUE);
 					if (StringUtils.isNotBlank(extensionName)) {
 
-						// puppet, value is required
+						// puppet
 						if (extensionName.equals(EXTENSION_PUPPET_NAME)) {
 							String puppetMasterServer = extentionMap.get(PUPPET_MASTER_SERVER_KEY);
 							if (StringUtils.isNotBlank(puppetMasterServer)) {
@@ -449,7 +447,7 @@ public class MicrosoftAzureRequestBodyBuilder {
 							}
 						}
 
-						// symantec,value isn't required
+						// symantec, without parameters
 						if (extensionName.equals(EXTENSION_SYMANTEC_NAME)) {
 							SymantecResourceExtensionReference symantecReference =
 									new SymantecResourceExtensionReference();

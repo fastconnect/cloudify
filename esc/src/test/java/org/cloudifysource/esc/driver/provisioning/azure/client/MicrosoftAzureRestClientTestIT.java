@@ -6,7 +6,6 @@ import java.util.logging.Logger;
 
 import org.cloudifysource.esc.driver.provisioning.azure.AzureTestUtils;
 import org.cloudifysource.esc.driver.provisioning.azure.model.AffinityGroups;
-import org.cloudifysource.esc.driver.provisioning.azure.model.HostedService;
 import org.cloudifysource.esc.driver.provisioning.azure.model.StorageServices;
 import org.cloudifysource.esc.driver.provisioning.azure.model.VirtualNetworkConfiguration;
 import org.junit.Assert;
@@ -63,11 +62,4 @@ public class MicrosoftAzureRestClientTestIT {
 			}
 		}
 	}
-
-	@Test
-	public void testGetCloudServiceByName() throws Exception {
-		HostedService cloudServiceByName = client.getCloudServiceByName("vk7cfystorage001");
-		System.out.println(cloudServiceByName);
-	}
-
 }

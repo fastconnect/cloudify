@@ -105,6 +105,7 @@ public class MicrosoftAzureRestClient {
 
 	private Lock pendingRequest = new ReentrantLock(true);
 	private Lock pendingNetworkRequest = new ReentrantLock(true);
+	private Lock pendingStorageRequest = new ReentrantLock(true);
 
 	private MicrosoftAzureRequestBodyBuilder requestBodyBuilder;
 
@@ -2017,6 +2018,62 @@ public class MicrosoftAzureRestClient {
 	}
 
 	/**
+	 * Create a data disk.<br />
+	 * <br />
+	 * We trick Microsoft Azure to create a data disk with no attachment.<br />
+	 * Have to put a lock to ensure that the LUN is free on the temporary attached VM.
+	 * 
+	 * @param cloudServiceName
+	 * @param deploymentName
+	 * @param roleName
+	 * @param storageAccountName
+	 * @param vhdFilename
+	 * @param diskSize
+	 * @param lun
+	 * @param endTime
+	 * @return
+	 * @throws MicrosoftAzureException
+	 * @throws TimeoutException
+	 * @throws InterruptedException
+	 */
+	public String createDataDisk(String cloudServiceName, String deploymentName, String roleName,
+			String storageAccountName, String vhdFilename, int diskSize, long endTime)
+			throws MicrosoftAzureException, TimeoutException, InterruptedException {
+
+		int lun = 15; // The default LUN number to create a data disk
+
+		long lockTimeout = endTime - System.currentTimeMillis();
+		if (lockTimeout < 0) {
+			throw new MicrosoftAzureException("Timeout. Abord request to update storage configuration");
+		}
+		logger.fine(getThreadIdentity() + "Waiting for pending storage request lock for lock "
+				+ pendingStorageRequest.hashCode());
+		boolean lockAcquired = pendingStorageRequest.tryLock(lockTimeout, TimeUnit.MILLISECONDS);
+
+		if (lockAcquired) {
+			try {
+				// Create and attach a data disk to the first role of the deployment
+				// /!\ We use this trick to create a data disk in Microsoft Azure as it appear that no API is provided
+				// to create a data disk with no attach /!\
+				this.addDataDiskToVM(cloudServiceName, deploymentName, roleName, storageAccountName,
+						vhdFilename.toString(), diskSize, lun, endTime);
+				// Detach the data disk we just created.
+				DataVirtualHardDisk dataDisk = this.getDataDisk(cloudServiceName,
+						deploymentName, roleName, lun, endTime);
+				String dataDiskName = dataDisk.getDiskName();
+				this.removeDataDisk(cloudServiceName, deploymentName, roleName, lun, endTime);
+				return dataDiskName;
+			} finally {
+				pendingStorageRequest.unlock();
+			}
+		} else {
+			throw new TimeoutException("Failed to acquire lock to set storage request after + "
+					+ lockTimeout + " milliseconds");
+		}
+
+	}
+
+	/**
 	 * Create and attach a new data disk to a VM.
 	 * 
 	 * @param serviceName
@@ -2061,6 +2118,7 @@ public class MicrosoftAzureRestClient {
 		waitForRequestToFinish(requestId, endTime);
 		waitUntilDataDiskIsAttached(serviceName, deploymentName, roleName, lun, endTime);
 		logger.fine("Added a data disk to " + roleName);
+
 	}
 
 	private void waitUntilDataDiskIsAttached(String serviceName, String deploymentName, String roleName, int lun,

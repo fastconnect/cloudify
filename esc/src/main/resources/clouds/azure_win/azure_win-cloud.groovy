@@ -66,9 +66,9 @@ cloud {
         custom ([
           "azure.storage.account" : "${storageAccount}smallblock" as String,
         ])
-        partitioningRequired true // Partition with static storage if true
-        path "/storage"           // Used to mount
-        fileSystemType "ext4"     // Used to format
+        partitioningRequired true // If true, the driver will partition the disk (relevant with static storage)
+        path "/storage"           // Used to mount (relevant with static storage)
+        fileSystemType "ext4"     // Used to format (relevant with static storage)
       }
     ])
   }
@@ -164,9 +164,6 @@ cloud {
 
 				custom ([
 
-					// Optional. each availability set represents a different fault domain.
-					// "azure.availability.set" : "ENTER_AVAILABILITY_SET",
-
 					// Choose whether do deploy this instance in Staging or Production environment. defaults to Staging
 					"azure.deployment.slot": "Production",
 
@@ -183,6 +180,25 @@ cloud {
           "azure.endpoints" : [
             [name:"SSH", protocol:"TCP", localPort: "22", port:"22"]
           ]
+
+          // Optional. each availability set represents a different fault domain.
+          // "azure.availability.set" : "ENTER_AVAILABILITY_SET",
+
+          // Optional. Cloud service. If not exist, it will create one.
+          //"azure.cloud.service" : "CLOUD_SERVICE_NAME",
+
+          // Optional. Specify a storage account. If not exist, it will create one.
+          //"azure.storage.account" : ["STORAGE_ACCOUNT_NAME","STORAGE_ACCOUNT_NAME2"],
+
+          // Optional. If set, the driver will create and attack a data disk with the defined size to the new VM
+          //"azure.storage.datadisk.size" : 15, // Will create and attach a data disk of 15Gb
+
+          // Optional. Define a fixed IP address
+          // You can define a list of IPs. In this case, the machine will take the first free IP of the list
+          // "azure.network.ipAddresses" : "10.0.0.12,10.0.0.13",
+
+          // Optional. Custom Data
+          // "azure.deployment.customdata" : "#!/bin/sh\r\necho 'hello world' > /home/administrateur/hello.txt",
 				])
 			},
 
@@ -208,10 +224,6 @@ cloud {
 				scriptLanguage "WINDOWS_BATCH"
 
 				custom ([
-
-					// Optional. each availability set represents a different fault domain.
-					// "azure.availability.set" : "ENTER_AVAILABILITY_SET",
-
 					// Choose whether do deploy this instance in Staging or Production environment. defaults to Staging
 					"azure.deployment.slot": "Production",
 
@@ -233,9 +245,51 @@ cloud {
             [name:"HTTP", protocol:"TCP", localPort:"80", port:"80"]
 					],
 
+          // Optional. Firewall port to open
 					"azure.firewall.ports" : [
 					  [name:"EVENTS", protocol:"TCP", port:"8081"]
 					]
+
+
+          // Optional. each availability set represents a different fault domain.
+          // "azure.availability.set" : "ENTER_AVAILABILITY_SET",
+
+          // Optional. Cloud service. If not exist, it will create one.
+          //"azure.cloud.service" : "CLOUD_SERVICE_NAME",
+
+          // Optional. Specify a storage account. If not exist, it will create one.
+          //"azure.storage.account" : ["STORAGE_ACCOUNT_NAME","STORAGE_ACCOUNT_NAME2"],
+
+          // Optional. If set, the driver will create and attack a data disk with the defined size to the new VM
+          //"azure.storage.datadisk.size" : 15, // Will create and attach a data disk of 15Gb
+
+          // Optional. Define a fixed IP address
+          // You can define a list of IPs. In this case, the machine will take the first free IP of the list
+          // "azure.network.ipAddresses" : "10.0.0.12,10.0.0.13",
+
+          // Optional. Join a domain
+          /*
+          "azure.domain.join" : [
+            domain:"DOMAIN_NAME",  // ex: victor
+            userName:"DOMAIN_USER",  // ex: administrateur
+            password: "DOMAIN_USER_PASSWORD",  // ex: Azerty@01
+            joinDomain: "DOMAIN" // ex: victor.local
+          ]
+          */
+
+          // Optional. Specify extensions to install ('puppet', 'symantec')
+          /*
+          "azure.extensions" : [
+            // puppet
+            [name:"puppet", masterServer:"puppetMasterIpAddress"],
+
+            // custom script that creates a folder
+            [name:"customScript", storageAccount:"storageAccountName", container :"mycontainer", files:"myscript.ps1", arguments:"arg1 arg2"],
+
+            // endpoints seem blocked after installing symantec extension
+            [name:"symantec"]
+          ]
+          */
 				])
 			}
 		])

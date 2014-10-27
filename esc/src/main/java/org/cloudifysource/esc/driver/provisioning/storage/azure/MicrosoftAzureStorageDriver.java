@@ -90,7 +90,6 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 
 		MicrosoftAzureRestClient azureClient = getAzureClient();
 		AzureDeploymentContext context = getAzureContext();
-		int temporaryLun = 15; // The default LUN number to create a data disk
 
 		String dataDiskName = null;
 		try {
@@ -102,6 +101,7 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 			// Get the deployment to retrieve the role name
 			Deployment deployment = azureClient.getDeploymentByDeploymentName(cloudServiceName, deploymentName);
 			Role role = deployment.getRoleList().getRoles().get(0);
+
 			String roleName = role.getRoleName();
 
 			// Generate the vhd filename
@@ -111,17 +111,10 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 			vhdFilename.append("-data-");
 			vhdFilename.append(UUIDHelper.generateRandomUUID(4));
 
-			// Create and attach a data disk to the first role of the deployment
-			// /!\ We use this trick to create a data disk in Microsoft Azure as it appear that no API is provided to
-			// create a data disk with no attach /!\
-			azureClient.addDataDiskToVM(cloudServiceName, deploymentName, roleName, saName, vhdFilename.toString(),
-					diskSize, temporaryLun, endTime);
+			// Create a data disk
+			azureClient.createDataDisk(cloudServiceName, deploymentName, roleName, saName, vhdFilename.toString(),
+					diskSize, endTime);
 
-			// Detach the data disk we just created.
-			DataVirtualHardDisk dataDisk = azureClient.getDataDisk(cloudServiceName,
-					deploymentName, roleName, temporaryLun, endTime);
-			dataDiskName = dataDisk.getDiskName();
-			azureClient.removeDataDisk(cloudServiceName, deploymentName, roleName, temporaryLun, endTime);
 		} catch (MicrosoftAzureException e) {
 			throw new StorageProvisioningException(e);
 		} catch (InterruptedException e) {

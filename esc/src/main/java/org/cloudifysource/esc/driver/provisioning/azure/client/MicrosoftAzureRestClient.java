@@ -187,6 +187,14 @@ public class MicrosoftAzureRestClient {
 		this.storagePrefix = storagePrefix;
 	}
 
+	public String getVirtualNetwork() {
+		return virtualNetwork;
+	}
+
+	public void setVirtualNetwork(String virtualNetwork) {
+		this.virtualNetwork = virtualNetwork;
+	}
+
 	/**
 	 * 
 	 * @param logger
@@ -1961,25 +1969,76 @@ public class MicrosoftAzureRestClient {
 		return deployment;
 	}
 
+	/**
+	 * Create and attach a new data disk to a VM.<br />
+	 * This method generate a vhd filename and use LUN 0.
+	 * 
+	 * @param serviceName
+	 *            The cloud service name.
+	 * @param deploymentName
+	 *            The deployment name.
+	 * @param roleName
+	 *            The role name
+	 * @param storageAccountName
+	 *            The storage account to use.
+	 * @param diskSize
+	 *            The size of the data disk
+	 * @param endTime
+	 *            The timeout for the operation.F
+	 * @throws MicrosoftAzureException
+	 * @throws TimeoutException
+	 * @throws InterruptedException
+	 */
 	public void addDataDiskToVM(String serviceName, String deploymentName, String roleName, String storageAccountName,
 			int diskSize, long endTime) throws MicrosoftAzureException, TimeoutException, InterruptedException {
-		// https://management.core.windows.net/<subscription-id>/services/hostedservices/<service-name>/deployments/<deployment-name>/roles/<role-name>/DataDisks
+		StringBuilder vhdName = new StringBuilder();
+		vhdName.append(serviceName);
+		vhdName.append("-");
+		vhdName.append(roleName);
+		vhdName.append("-data-");
+		vhdName.append(UUIDHelper.generateRandomUUID(4));
+		vhdName.append(".vhd");
 
+		this.addDataDiskToVM(serviceName, deploymentName, roleName,
+				storageAccountName, vhdName.toString(), diskSize, 0, endTime);
+	}
+
+	/**
+	 * Create and attach a new data disk to a VM.
+	 * 
+	 * @param serviceName
+	 *            The cloud service name.
+	 * @param deploymentName
+	 *            The deployment name.
+	 * @param roleName
+	 *            The role name
+	 * @param storageAccountName
+	 *            The storage account to use.
+	 * @param vhdFilename
+	 *            The name of the vhd file.
+	 * @param diskSize
+	 *            The size of the data disk
+	 * @param lun
+	 *            The LUN number.
+	 * @param endTime
+	 *            The timeout for the operation.
+	 * @throws MicrosoftAzureException
+	 * @throws TimeoutException
+	 * @throws InterruptedException
+	 */
+	public void addDataDiskToVM(String serviceName, String deploymentName, String roleName,
+			String storageAccountName, String vhdFilename, int diskSize, int lun, long endTime)
+			throws MicrosoftAzureException, TimeoutException, InterruptedException {
 		StringBuilder dataMediaLinkBuilder = new StringBuilder();
 		dataMediaLinkBuilder.append("https://");
 		dataMediaLinkBuilder.append(storageAccountName);
 		dataMediaLinkBuilder.append(".blob.core.windows.net/vhds/");
-		dataMediaLinkBuilder.append(serviceName);
-		dataMediaLinkBuilder.append("-");
-		dataMediaLinkBuilder.append(roleName);
-		dataMediaLinkBuilder.append("-data-");
-		dataMediaLinkBuilder.append(UUIDHelper.generateRandomUUID(4));
-		dataMediaLinkBuilder.append(".vhd");
+		dataMediaLinkBuilder.append(vhdFilename);
 		DataVirtualHardDisk dataVirtualHardDisk = new DataVirtualHardDisk();
-		dataVirtualHardDisk.setLogicalDiskSizeInGB(10);
+		dataVirtualHardDisk.setLogicalDiskSizeInGB(diskSize);
 		dataVirtualHardDisk.setMediaLink(dataMediaLinkBuilder.toString());
 		dataVirtualHardDisk.setDiskLabel("Data");
-		dataVirtualHardDisk.setLun(0);
+		dataVirtualHardDisk.setLun(lun);
 
 		String xmlRequest = MicrosoftAzureModelUtils.marshall(dataVirtualHardDisk, false);
 		String url = String.format("/services/hostedservices/%s/deployments/%s/roles/%s/DataDisks",
@@ -1990,12 +2049,93 @@ public class MicrosoftAzureRestClient {
 		logger.fine("Added a data disk to " + roleName);
 	}
 
-	public String getVirtualNetwork() {
-		return virtualNetwork;
+	/**
+	 * Update a label of a data disk.
+	 * 
+	 * @param diskName
+	 *            The data disk name.
+	 * @param newLabel
+	 *            The label to set.
+	 * @param endTime
+	 *            The timeout for the operation.
+	 * @throws MicrosoftAzureException
+	 * @throws TimeoutException
+	 * @throws InterruptedException
+	 */
+	public void updateDataDiskLabel(String diskName, String newLabel, long endTime)
+			throws MicrosoftAzureException, TimeoutException, InterruptedException {
+		Disk disk = new Disk();
+		disk.setName(diskName);
+		disk.setLabel(newLabel);
+		String url = String.format("/services/disks/%s", diskName);
+
+		String xmlRequest = MicrosoftAzureModelUtils.marshall(disk, false);
+		ClientResponse response = doPut(url, xmlRequest, CONTENT_TYPE_HEADER_VALUE);
+		checkForError(response);
+		String requestId = extractRequestId(response);
+		waitForRequestToFinish(requestId, endTime);
 	}
 
-	public void setVirtualNetwork(String virtualNetwork) {
-		this.virtualNetwork = virtualNetwork;
+	/**
+	 * Attach a data disk to a VM.
+	 * 
+	 * @param serviceName
+	 *            The cloud service name.
+	 * @param deploymentName
+	 *            The deployment name.
+	 * @param roleName
+	 *            The role name
+	 * @param diskName
+	 *            The disk name to attach.
+	 * @param lun
+	 *            The LUN number where the disk is attached to.
+	 * @param endTime
+	 *            The timeout for the operation.
+	 * @throws MicrosoftAzureException
+	 * @throws TimeoutException
+	 * @throws InterruptedException
+	 */
+	public void addExistingDataDiskToVM(String serviceName, String deploymentName, String roleName, String diskName,
+			int lun, long endTime) throws MicrosoftAzureException, TimeoutException, InterruptedException {
+		DataVirtualHardDisk dataVirtualHardDisk = new DataVirtualHardDisk();
+		dataVirtualHardDisk.setDiskName(diskName);
+		dataVirtualHardDisk.setLun(lun);
+
+		String xmlRequest = MicrosoftAzureModelUtils.marshall(dataVirtualHardDisk, false);
+		String url = String.format("/services/hostedservices/%s/deployments/%s/roles/%s/DataDisks",
+				serviceName, deploymentName, roleName);
+		ClientResponse response = doPost(url, xmlRequest);
+		String requestId = extractRequestId(response);
+		waitForRequestToFinish(requestId, endTime);
+		logger.fine("Added a data disk to " + roleName);
+	}
+
+	/**
+	 * Datach a data disk from a VM.
+	 * 
+	 * @param serviceName
+	 *            The cloud service name.
+	 * @param deploymentName
+	 *            The deployment name.
+	 * @param roleName
+	 *            The role name
+	 * @param lun
+	 *            The LUN number where the disk is attached to.
+	 * @param endTime
+	 *            The timeout for the operation.
+	 * 
+	 * @throws MicrosoftAzureException
+	 * @throws TimeoutException
+	 * @throws InterruptedException
+	 */
+	public void removeDataDisk(String serviceName, String deploymentName, String roleName, int lun, long endTime)
+			throws MicrosoftAzureException, TimeoutException, InterruptedException {
+		String url = String.format("/services/hostedservices/%s/deployments/%s/roles/%s/DataDisks/%d", serviceName,
+				deploymentName, roleName, lun);
+		ClientResponse response = doDelete(url);
+		String requestId = extractRequestId(response);
+		waitForRequestToFinish(requestId, endTime);
+		logger.fine("Removed data disk from " + roleName);
 	}
 
 	private Role getRoleByIpAddress(String ipAddress, Deployment deployment)
@@ -2170,8 +2310,8 @@ public class MicrosoftAzureRestClient {
 		return gatewayInfo;
 	}
 
-	private DeploymentInfo getOrCreateDeploymentInfo(CreatePersistentVMRoleDeploymentDescriptor deploymentDesc, long endTime)
-			throws MicrosoftAzureException, TimeoutException, InterruptedException {
+	private DeploymentInfo getOrCreateDeploymentInfo(CreatePersistentVMRoleDeploymentDescriptor deploymentDesc,
+			long endTime) throws MicrosoftAzureException, TimeoutException, InterruptedException {
 
 		String deploymentName = null;
 		String cloudServiceName = null;

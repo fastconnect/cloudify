@@ -1518,7 +1518,7 @@ public class MicrosoftAzureRestClient {
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
 	 */
-	public Deployment getDeploymentByDeploymentSlot(
+	public Deployment getDeploymentBySlot(
 			final String hostedServiceName, final String deploymentSlot)
 			throws MicrosoftAzureException, TimeoutException {
 
@@ -1814,7 +1814,7 @@ public class MicrosoftAzureRestClient {
 			MicrosoftAzureException, InterruptedException {
 
 		while (true) {
-			Deployment deployment = getDeploymentByDeploymentSlot(hostedServiceName, deploymentSlot);
+			Deployment deployment = getDeploymentBySlot(hostedServiceName, deploymentSlot);
 			String status = deployment.getStatus();
 			if (status.equals(state)) {
 				return deployment;
@@ -1837,7 +1837,7 @@ public class MicrosoftAzureRestClient {
 			MicrosoftAzureException, InterruptedException {
 
 		while (true) {
-			Deployment deployment = getDeploymentByDeploymentSlot(hostedServiceName, deploymentSlot);
+			Deployment deployment = getDeploymentBySlot(hostedServiceName, deploymentSlot);
 			RoleInstance roleInstance = deployment.getRoleInstanceList().getRoleInstanceByRoleName(roleName);
 			String status = roleInstance.getInstanceStatus();
 

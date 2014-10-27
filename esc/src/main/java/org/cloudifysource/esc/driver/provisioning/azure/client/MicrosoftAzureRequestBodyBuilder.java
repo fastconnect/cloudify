@@ -19,6 +19,7 @@ import net.sf.json.JSONObject;
 
 import org.apache.commons.lang.StringUtils;
 import org.cloudifysource.esc.driver.provisioning.azure.model.AddressSpace;
+import org.cloudifysource.esc.driver.provisioning.azure.model.BGInfoResourceExtensionReference;
 import org.cloudifysource.esc.driver.provisioning.azure.model.ConfigurationSets;
 import org.cloudifysource.esc.driver.provisioning.azure.model.CreateAffinityGroup;
 import org.cloudifysource.esc.driver.provisioning.azure.model.CreateHostedService;
@@ -60,16 +61,16 @@ public class MicrosoftAzureRequestBodyBuilder {
 	private static final String UTF_8 = "UTF-8";
 	private static final int UUID_LENGTH = 8;
 
-	private final static String EXTENSION_NAME = "name";
-	private final static String EXTENSION_VALUE = "value";
+	private final static String EXTENSION_NAME_KEY = "name";
 
-	private final static String PUPPET_MASTER_SERVER_KEY = "PUPPET_MASTER_SERVER";
+	private final static String PUPPET_MASTER_SERVER_JKEY = "PUPPET_MASTER_SERVER";
+	private final static String PUPPET_MASTER_SERVER_KEY = "masterServer";
 	private final static String EXTENSION_PUPPET_NAME = "puppet";
 	private final static String EXTENSION_SYMANTEC_NAME = "symantec";
 	private final static String EXTENSION_CUSTOM_SCRIPT_NAME = "customScript";
 
-	private final static String EXTENSION_CUSTOM_SCRIPT_FILEURIS = "fileUris";
-	private final static String EXTENSION_CUSTOM_SCRIPT_COMMAND_TO_EXECUTE = "commandToExecute";
+	private final static String EXTENSION_CUSTOM_SCRIPT_FILEURIS_JKEY = "fileUris";
+	private final static String EXTENSION_CUSTOM_SCRIPT_COMMAND_TO_EXECUTE_JKEY = "commandToExecute";
 
 	private final static String EXTENSION_CUSTOM_SCRIPT_STORAGE_ACCOUNT_KEY = "storageAccount";
 	private final static String EXTENSION_CUSTOM_SCRIPT_STORAGE_CONTAINER_KEY = "container";
@@ -422,23 +423,28 @@ public class MicrosoftAzureRequestBodyBuilder {
 			boolean isWindows) {
 
 		ResourceExtensionReferences extensionReferences = new ResourceExtensionReferences();
+		System.out.println();
 
 		if (extensions != null && !extensions.isEmpty()) {
 
 			// windows support only
 			if (isWindows) {
 
+				// automatically adding BGInfo extension
+				extensionReferences.getResourceExtensionReferences().add(new BGInfoResourceExtensionReference());
+
 				for (Map<String, String> extentionMap : extensions) {
-					String extensionName = extentionMap.get(EXTENSION_NAME);
-					String extensionValue = extentionMap.get(EXTENSION_VALUE);
+					String extensionName = extentionMap.get(EXTENSION_NAME_KEY);
+					// String extensionValue = extentionMap.get(EXTENSION_VALUE);
 					if (StringUtils.isNotBlank(extensionName)) {
 
 						// puppet, value is required
-						if (StringUtils.isNotBlank(extensionValue)) {
-
-							if (extensionName.equals(EXTENSION_PUPPET_NAME)) {
+						if (extensionName.equals(EXTENSION_PUPPET_NAME)) {
+							String puppetMasterServer = extentionMap.get(PUPPET_MASTER_SERVER_KEY);
+							if (StringUtils.isNotBlank(puppetMasterServer)) {
 								PuppetResourceExtensionReference puppetReference =
-										this.buildPuppetResourceExtensionReference(extensionValue);
+										this.buildPuppetResourceExtensionReference(puppetMasterServer);
+
 								extensionReferences.getResourceExtensionReferences().add(puppetReference);
 							}
 						}
@@ -468,7 +474,7 @@ public class MicrosoftAzureRequestBodyBuilder {
 	private PuppetResourceExtensionReference buildPuppetResourceExtensionReference(String puppetMasterServer) {
 
 		JSONObject jsonObject = new JSONObject();
-		jsonObject.put(PUPPET_MASTER_SERVER_KEY, puppetMasterServer);
+		jsonObject.put(PUPPET_MASTER_SERVER_JKEY, puppetMasterServer);
 		String jsonValueEncoded = this.getBase64String(jsonObject.toString());
 		PuppetResourceExtensionReference puppetRef = new PuppetResourceExtensionReference(jsonValueEncoded);
 		return puppetRef;
@@ -498,7 +504,7 @@ public class MicrosoftAzureRequestBodyBuilder {
 			stringBuilder.append(files);
 
 			List<String> uriList = Arrays.asList(stringBuilder.toString());
-			jsonObject.put(EXTENSION_CUSTOM_SCRIPT_FILEURIS, uriList);
+			jsonObject.put(EXTENSION_CUSTOM_SCRIPT_FILEURIS_JKEY, uriList);
 
 			// reset builder
 			stringBuilder.setLength(0);
@@ -512,7 +518,7 @@ public class MicrosoftAzureRequestBodyBuilder {
 				stringBuilder.append(arguments);
 			}
 
-			jsonObject.put(EXTENSION_CUSTOM_SCRIPT_COMMAND_TO_EXECUTE, stringBuilder.toString());
+			jsonObject.put(EXTENSION_CUSTOM_SCRIPT_COMMAND_TO_EXECUTE_JKEY, stringBuilder.toString());
 			String jsonValueEncoded = this.getBase64String(jsonObject.toString());
 
 			customScriptResourceExtensionReference = new CustomScriptResourceExtensionReference(null, jsonValueEncoded);

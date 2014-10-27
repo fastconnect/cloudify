@@ -60,7 +60,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 				// Check Cloudify management machine name
 				RoleInstanceList roleInstanceList = deployment.getRoleInstanceList();
 				Assert.assertNotNull("Couldn't find VM " + machineName,
-						roleInstanceList.getInstanceRoleByRoleName(machineName));
+						roleInstanceList.getRoleInstanceByRoleName(machineName));
 
 				// Check availabilitySet
 				String availabilitySet = deployment.getRoleList().getRoleByName(machineName).getAvailabilitySetName();
@@ -162,7 +162,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 					Assert.assertNotNull(deployment);
 					// TODO make dynamic roleName
 					String roleName = String.format("%sCFYM1", cloud.getProvider().getManagementGroup());
-					Assert.assertNotNull(deployment.getRoleInstanceList().getInstanceRoleByRoleName(roleName));
+					Assert.assertNotNull(deployment.getRoleInstanceList().getRoleInstanceByRoleName(roleName));
 				} catch (Exception e) {
 					Assert.fail(e.getMessage());
 				}
@@ -419,7 +419,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 				public void additionalAssertions(MachineDetails md) throws TimeoutException {
 					try {
 
-						Deployment deployment = azureRestClient.getDeploymentByDeploymentSlot(
+						Deployment deployment = azureRestClient.getDeploymentBySlot(
 								cloudServiceName, deploymentSlot);
 						Assert.assertNotNull(deployment);
 
@@ -437,7 +437,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 				@Override
 				public void additionalAssertions(MachineDetails md) throws TimeoutException, MicrosoftAzureException {
 
-					Deployment deployment = azureRestClient.getDeploymentByDeploymentSlot(
+					Deployment deployment = azureRestClient.getDeploymentBySlot(
 							cloudServiceName, deploymentSlot);
 
 					Assert.assertNotNull(deployment);
@@ -464,9 +464,9 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 
 	@Test
 	@Ignore("Winrm not supported on jenkins host, endpoints seem blocked after installing symantec extension")
-	public void testWin2012ExtensionsSymantecAndPuppet() throws Exception {
+	public void testWin2012Extensions() throws Exception {
 
-		String computeTemplateName = "win2012_puppet_symantec";
+		String computeTemplateName = "win2012_extensions";
 
 		final Cloud cloud = AzureTestUtils.createCloud("./src/main/resources/clouds", "azure_win", null,
 				computeTemplateName);
@@ -485,8 +485,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 			@Override
 			public void additionalAssertions(MachineDetails md) throws TimeoutException, MicrosoftAzureException {
 
-				Deployment deployment = azureRestClient.getDeploymentByDeploymentSlot(
-						cloudServiceName, deploymentSlot);
+				Deployment deployment = azureRestClient.getDeploymentBySlot(cloudServiceName, deploymentSlot);
 
 				Assert.assertNotNull(deployment);
 				// deployment should have one role (resources should be cleaned)
@@ -496,45 +495,14 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 				String referenceName = "PuppetEnterpriseAgent";
 				Assert.assertNotNull(role.getResourceExtensionReferenceByName(referenceName));
 
-				referenceName = "SymantecEndpointProtection";
+				referenceName = "BGInfo";
 				Assert.assertNotNull(role.getResourceExtensionReferenceByName(referenceName));
-			}
 
-		});
-	}
+				referenceName = "CustomScriptExtension";
+				Assert.assertNotNull(role.getResourceExtensionReferenceByName(referenceName));
 
-	@Test
-	@Ignore("Winrm not supported on jenkins host")
-	public void testWin2012ExtensionCustomScript() throws Exception {
-
-		String computeTemplateName = "win2012_custom_script";
-
-		final Cloud cloud = AzureTestUtils.createCloud("./src/main/resources/clouds", "azure_win", null,
-				computeTemplateName);
-		final ComputeTemplate computeTemplate = cloud.getCloudCompute().getTemplates().get(computeTemplateName);
-		final String cloudServiceName = (String) computeTemplate.getCustom().get("azure.cloud.service");
-		final String deploymentSlot = (String) computeTemplate.getCustom().get("azure.deployment.slot");
-
-		Map<String, String> cloudProperties = AzureTestUtils.getCloudProperties();
-		String affinityPrefix = cloudProperties.get("affinityGroup");
-
-		final MicrosoftAzureRestClient azureRestClient =
-				AzureTestUtils.createMicrosoftAzureRestClient(cloudServiceName, affinityPrefix);
-
-		this.startAndStopManagementMachine(computeTemplateName, new MachineDetailsAssertion() {
-
-			@Override
-			public void additionalAssertions(MachineDetails md) throws TimeoutException, MicrosoftAzureException {
-
-				Deployment deployment = azureRestClient.getDeploymentByDeploymentSlot(
-						cloudServiceName, deploymentSlot);
-
-				Assert.assertNotNull(deployment);
-				// deployment should have one role (resources should be cleaned)
-				Role role = deployment.getRoleList().getRoles().get(0);
-				Assert.assertNotNull(role.getResourceExtensionReferences());
-
-				String referenceName = "CustomScriptExtension";
+				// symantec endpoints blocked
+				referenceName = "SymantecEndpointProtection";
 				Assert.assertNotNull(role.getResourceExtensionReferenceByName(referenceName));
 			}
 

@@ -1,6 +1,6 @@
 [
 
-	win2012_puppet_symantec : computeTemplate {
+	win2012_extensions : computeTemplate {
 
 		imageId "a699494373c04fc0bc8f2bb1389d6106__Windows-Server-2012-R2-201408.01-en.us-127GB.vhd"
 		machineMemoryMB 3500
@@ -21,9 +21,13 @@
 			"azure.cloud.service" : "cfytestitpuppetsymantec",
 			
 			"azure.extensions" : [
-				[name:"puppet", value:"pmaster"],
+				[name:"puppet", masterServer:"pmaster"],
+				
+				// custom script that creates a folder
+				[name:"customScript", storageAccount:"nouhstorage", container :"mycontainer", files:"myscript.ps1", arguments:"c:\\nouh"],
+				
 				// endpoints seem blocked after installing symantec extension
-			//	[name:"symantec"]
+				[name:"symantec"]
 			],
 			
 			// Endpoints definition

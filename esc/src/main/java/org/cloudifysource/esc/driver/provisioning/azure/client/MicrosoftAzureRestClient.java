@@ -1255,7 +1255,6 @@ public class MicrosoftAzureRestClient {
 						"Timed out waiting for disk " + diskName + " to detach from role " + roleName);
 			}
 		}
-
 	}
 
 	/**
@@ -2060,7 +2059,23 @@ public class MicrosoftAzureRestClient {
 		ClientResponse response = doPost(url, xmlRequest);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
+		waitUntilDataDiskIsAttached(serviceName, deploymentName, roleName, lun, endTime);
 		logger.fine("Added a data disk to " + roleName);
+	}
+
+	private void waitUntilDataDiskIsAttached(String serviceName, String deploymentName, String roleName, int lun,
+			long endTime) throws MicrosoftAzureException, TimeoutException, InterruptedException {
+		DataVirtualHardDisk dataDisk = null;
+
+		while (dataDisk == null) {
+			if (System.currentTimeMillis() > endTime) {
+				throw new TimeoutException(
+						"Timed out waiting for disk lun #" + lun + " to be attach to role " + roleName);
+			}
+			Thread.sleep(DEFAULT_POLLING_INTERVAL);
+			dataDisk = this.getDataDisk(serviceName, deploymentName, roleName, lun, endTime);
+		}
+
 	}
 
 	/**
@@ -2121,6 +2136,7 @@ public class MicrosoftAzureRestClient {
 		ClientResponse response = doPost(url, xmlRequest);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
+		waitUntilDataDiskIsAttached(serviceName, deploymentName, roleName, lun, endTime);
 		logger.fine("Added a data disk to " + roleName);
 	}
 
@@ -2144,12 +2160,41 @@ public class MicrosoftAzureRestClient {
 	 */
 	public void removeDataDisk(String serviceName, String deploymentName, String roleName, int lun, long endTime)
 			throws MicrosoftAzureException, TimeoutException, InterruptedException {
+		DataVirtualHardDisk dataDisk = this.getDataDisk(serviceName, deploymentName, roleName, lun, endTime);
 		String url = String.format("/services/hostedservices/%s/deployments/%s/roles/%s/DataDisks/%d", serviceName,
 				deploymentName, roleName, lun);
 		ClientResponse response = doDelete(url);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
+		waitForDiskToDetach(dataDisk.getDiskName(), roleName, endTime);
 		logger.fine("Removed data disk from " + roleName);
+	}
+
+	/**
+	 * Get a data disk.
+	 * 
+	 * @param serviceName
+	 *            The cloud service name.
+	 * @param deploymentName
+	 *            The deployment name.
+	 * @param roleName
+	 *            The role name
+	 * @param lun
+	 *            The LUN number where the disk is attached to.
+	 * @param endTime
+	 *            The timeout for the operation.
+	 * 
+	 * @throws MicrosoftAzureException
+	 * @throws TimeoutException
+	 * @throws InterruptedException
+	 */
+	public DataVirtualHardDisk getDataDisk(String serviceName, String deploymentName, String roleName, int lun,
+			long endTime) throws MicrosoftAzureException, TimeoutException, InterruptedException {
+		String url = String.format("/services/hostedservices/%s/deployments/%s/roles/%s/DataDisks/%d", serviceName,
+				deploymentName, roleName, lun);
+		ClientResponse response = doGet(url);
+		String responseBody = response.getEntity(String.class);
+		return (DataVirtualHardDisk) MicrosoftAzureModelUtils.unmarshall(responseBody);
 	}
 
 	private Role getRoleByIpAddress(String ipAddress, Deployment deployment)

@@ -6,6 +6,7 @@ import java.util.logging.Logger;
 
 import org.cloudifysource.esc.driver.provisioning.azure.AzureTestUtils;
 import org.cloudifysource.esc.driver.provisioning.azure.model.AffinityGroups;
+import org.cloudifysource.esc.driver.provisioning.azure.model.DataVirtualHardDisk;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Disk;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Disks;
@@ -137,5 +138,15 @@ public class MicrosoftAzureRestClientTestIT {
 		for (Disk disk : listDisks.getDisks()) {
 			System.out.println(disk.getName() + " | " + disk.getLabel());
 		}
+	}
+
+	@Test
+	@Ignore("for dev testing")
+	public void testGetDataDisk() throws Exception {
+		String serviceName = "vic14adm001";
+		String deploymentName = "vic14adm001";
+		DataVirtualHardDisk dataDisk =
+				client.getDataDisk(serviceName, deploymentName, "vic14cfym1", 0, createDefaultEndTime());
+		System.out.println(dataDisk);
 	}
 }

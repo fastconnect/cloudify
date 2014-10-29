@@ -1,5 +1,6 @@
 package org.cloudifysource.esc.driver.provisioning.storage.azure;
 
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -7,7 +8,15 @@ import java.util.logging.Logger;
 
 import org.cloudifysource.domain.cloud.Cloud;
 import org.cloudifysource.domain.cloud.storage.CloudStorage;
+import org.cloudifysource.domain.cloud.storage.StorageTemplate;
 import org.cloudifysource.esc.driver.provisioning.azure.MicrosoftAzureCloudDriver;
+import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureException;
+import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureRestClient;
+import org.cloudifysource.esc.driver.provisioning.azure.client.UUIDHelper;
+import org.cloudifysource.esc.driver.provisioning.azure.model.DataVirtualHardDisk;
+import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
+import org.cloudifysource.esc.driver.provisioning.azure.model.Role;
+import org.cloudifysource.esc.driver.provisioning.azure.model.RoleInstance;
 import org.cloudifysource.esc.driver.provisioning.storage.BaseStorageDriver;
 import org.cloudifysource.esc.driver.provisioning.storage.StorageProvisioningDriver;
 import org.cloudifysource.esc.driver.provisioning.storage.StorageProvisioningException;
@@ -32,6 +41,14 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 		cloudStorage = cloud.getCloudStorage();
 	}
 
+	private AzureDeploymentContext getAzureContext() {
+		return computeDriver.getAzureContext();
+	}
+
+	private MicrosoftAzureRestClient getAzureClient() {
+		return computeDriver.getAzureContext().getAzureClient();
+	}
+
 	/**
 	 * This method create and attach a new data disk to the first VM of the deployment role list. <br />
 	 * Then it will detach the disk. <br/>
@@ -52,16 +69,58 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 	@Override
 	public VolumeDetails createVolume(String templateName, String location, long duration, TimeUnit timeUnit)
 			throws TimeoutException, StorageProvisioningException {
+		long endTime = System.currentTimeMillis() + timeUnit.toMillis(duration);
 
-		// TODO Auto-generated method stub
-
-		VolumeDetails volumeDetails = new VolumeDetails();
-		AzureDeploymentContext azureContext = computeDriver.getAzureContext();
-		if (azureContext != null) {
-			volumeDetails.setId(computeDriver.getAzureContext().getDeploymentName() + "-"
-					+ azureContext.getCloudServiceName());
+		StorageTemplate storageTemplate = cloudStorage.getTemplates().get(templateName);
+		if (storageTemplate == null) {
+			throw new StorageProvisioningException("Storage template '" + templateName + "' does not exist.");
 		}
-		logger.info("azureContext=" + azureContext);
+
+		String namePrefix = storageTemplate.getNamePrefix();
+		int diskSize = storageTemplate.getSize();
+		String saName = (String) storageTemplate.getCustom().get(MicrosoftAzureCloudDriver.AZURE_STORAGE_ACCOUNT);
+
+		MicrosoftAzureRestClient azureClient = getAzureClient();
+		AzureDeploymentContext context = getAzureContext();
+		int temporaryLun = 50; // The default LUN number to create a data disk
+
+		String dataDiskName = null;
+		try {
+			String cloudServiceName = context.getCloudServiceName();
+			String deploymentName = context.getDeploymentName();
+			// Get the deployment to retrieve the role name
+			Deployment deployment = azureClient.getDeploymentByDeploymentName(cloudServiceName, deploymentName);
+			Role role = deployment.getRoleList().getRoles().get(0);
+			String roleName = role.getRoleName();
+
+			// Generate the vhd filename
+			StringBuilder vhdFilename = new StringBuilder();
+			vhdFilename.append(namePrefix);
+			vhdFilename.append(cloudServiceName);
+			vhdFilename.append("-data-");
+			vhdFilename.append(UUIDHelper.generateRandomUUID(4));
+
+			// Create and attach a data disk to the first role of the deployment
+			// /!\ We use this trick to create a data disk in Microsoft Azure as it appear that no API is provided to
+			// create a data disk with no attach /!\
+			azureClient.addDataDiskToVM(cloudServiceName, deploymentName, roleName, saName, vhdFilename.toString(),
+					diskSize, temporaryLun, endTime);
+
+			// Detach the data disk we just created.
+			DataVirtualHardDisk dataDisk = azureClient.getDataDisk(cloudServiceName,
+					deploymentName, roleName, temporaryLun, endTime);
+			dataDiskName = dataDisk.getDiskName();
+			azureClient.removeDataDisk(cloudServiceName, deploymentName, roleName, temporaryLun, endTime);
+		} catch (MicrosoftAzureException e) {
+			throw new StorageProvisioningException(e);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new StorageProvisioningException(e);
+		}
+
+		// Return the data disk name as id.
+		VolumeDetails volumeDetails = new VolumeDetails();
+		volumeDetails.setId(dataDiskName);
 		return volumeDetails;
 	}
 
@@ -84,8 +143,33 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 	@Override
 	public void attachVolume(String volumeId, String device, String ip, long duration, TimeUnit timeUnit)
 			throws TimeoutException, StorageProvisioningException {
-		// TODO Auto-generated method stub
+		long endTime = System.currentTimeMillis() + timeUnit.toMillis(duration);
 
+		MicrosoftAzureRestClient azureClient = getAzureClient();
+		AzureDeploymentContext context = getAzureContext();
+
+		String cloudServiceName = context.getCloudServiceName();
+		String deploymentName = context.getDeploymentName();
+		String roleName = null;
+
+		try {
+			// Get the deployment to retrieve the role name
+			Deployment deployment = azureClient.getDeploymentByDeploymentName(cloudServiceName, deploymentName);
+			for (RoleInstance role : deployment.getRoleInstanceList().getRoleInstances()) {
+				if (role.getIpAddress().equals(ip)) {
+					roleName = role.getRoleName();
+				}
+			}
+
+			// Attach the existing data disk to the VM
+			azureClient.addExistingDataDiskToVM(cloudServiceName, deploymentName, roleName,
+					volumeId, Integer.parseInt(device), endTime);
+		} catch (MicrosoftAzureException e) {
+			throw new StorageProvisioningException(e);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new StorageProvisioningException(e);
+		}
 	}
 
 	/**
@@ -104,7 +188,43 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 	@Override
 	public void detachVolume(String volumeId, String ip, long duration, TimeUnit timeUnit) throws TimeoutException,
 			StorageProvisioningException {
-		// TODO Auto-generated method stub
+		long endTime = System.currentTimeMillis() + timeUnit.toMillis(duration);
+
+		MicrosoftAzureRestClient azureClient = getAzureClient();
+		AzureDeploymentContext context = getAzureContext();
+
+		String cloudServiceName = context.getCloudServiceName();
+		String deploymentName = context.getDeploymentName();
+		String roleName = null;
+		int lun = -1;
+
+		try {
+			// Get the deployment to retrieve the role name
+			Deployment deployment = azureClient.getDeploymentByDeploymentName(cloudServiceName, deploymentName);
+			for (RoleInstance role : deployment.getRoleInstanceList().getRoleInstances()) {
+				if (role.getIpAddress().equals(ip)) {
+					roleName = role.getRoleName();
+				}
+			}
+
+			// Retrieve the LUN number from the data disk name
+			List<DataVirtualHardDisk> dataVirtualHardDisks =
+					deployment.getRoleList().getRoleByName(roleName).getDataVirtualHardDisks()
+							.getDataVirtualHardDisks();
+			for (DataVirtualHardDisk dvhd : dataVirtualHardDisks) {
+				if (dvhd.getDiskName().equals(volumeId)) {
+					lun = dvhd.getLun();
+				}
+			}
+
+			// Detach the data disk from the VM
+			azureClient.removeDataDisk(cloudServiceName, deploymentName, roleName, lun, endTime);
+		} catch (MicrosoftAzureException e) {
+			throw new StorageProvisioningException(e);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new StorageProvisioningException(e);
+		}
 
 	}
 
@@ -123,7 +243,16 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 	@Override
 	public void deleteVolume(String location, String volumeId, long duration, TimeUnit timeUnit)
 			throws TimeoutException, StorageProvisioningException {
-		// TODO Auto-generated method stub
+		long endTime = System.currentTimeMillis() + timeUnit.toMillis(duration);
+		MicrosoftAzureRestClient azureClient = getAzureClient();
+		try {
+			azureClient.deleteDisk(volumeId, true, endTime);
+		} catch (MicrosoftAzureException e) {
+			throw new StorageProvisioningException(e);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new StorageProvisioningException(e);
+		}
 
 	}
 

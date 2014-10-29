@@ -11,10 +11,12 @@
 package org.cloudifysource.esc.driver.provisioning.azure.client;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
@@ -135,6 +137,7 @@ public class MicrosoftAzureRestClient {
 
 	private MicrosoftAzureSSLHelper sslHelper;
 	private String virtualNetwork;
+	private Set<String> storageAccounts = new HashSet<String>();
 
 	private Logger logger = Logger.getLogger(this.getClass().getName());
 
@@ -151,7 +154,6 @@ public class MicrosoftAzureRestClient {
 	}
 
 	public MicrosoftAzureRestClient() {
-
 	}
 
 	public String getSubscriptionId() {
@@ -1053,7 +1055,7 @@ public class MicrosoftAzureRestClient {
 			return;
 		}
 
-		logger.fine("Deleting cloud service : " + cloudServiceName);
+		logger.fine("Try deleting cloud service : " + cloudServiceName);
 
 		if (!doesCloudServiceContainsDeployments(cloudServiceName, endTime)) {
 			// Delete cloud service
@@ -1147,8 +1149,19 @@ public class MicrosoftAzureRestClient {
 
 		}
 
-		logger.fine(String.format("Role '%s' resources cleaned with success", roleName));
+		// delete storage accounts
+		for (String storage : this.storageAccounts) {
 
+			try {
+				this.deleteStorageAccount(storage, endTime);
+
+			} catch (Exception e) {
+				logger.warning(String.format("Failed deleting storage account '%s'. It might be already in use.",
+						storage));
+			}
+		}
+
+		logger.fine(String.format("Role '%s' resources cleaned with success", roleName));
 	}
 
 	/**
@@ -2238,6 +2251,14 @@ public class MicrosoftAzureRestClient {
 		deploymentInfo.setDeploymentName(deploymentName);
 		deploymentInfo.setAddRoleToExistingDeployment(addRoleToExistingDeployment);
 		return deploymentInfo;
+	}
+
+	public Set<String> getStorageAccounts() {
+		return storageAccounts;
+	}
+
+	public void setStorageAccounts(Set<String> storageAccounts) {
+		this.storageAccounts = storageAccounts;
 	}
 
 }

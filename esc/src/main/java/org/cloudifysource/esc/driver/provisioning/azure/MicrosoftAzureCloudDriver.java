@@ -175,8 +175,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	private List<String> computeTemplateStorageAccountName;
 
-	// private List<String> storageAccountsOs;
-
 	private FileTransferModes fileTransferMode;
 	private RemoteExecutionModes remoteExecutionMode;
 	private ScriptLanguages scriptLanguage;
@@ -545,6 +543,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 				if (this.computeTemplateStorageAccountName != null) {
 					storageOS = this.getBalancedStorageAccountOS(this.computeTemplateStorageAccountName);
 					azureClient.createStorageAccount(this.affinityGroup, storageOS, endTime);
+					azureClient.getStorageAccounts().add(storageOS);
 				}
 			} catch (Exception e) {
 				logger.warning("Failed selecting balanced storage account from the specified storage accounts : "
@@ -582,7 +581,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			desc.setInputEndpoints(inputEndpoints);
 			desc.setPassword(password);
 			desc.setSize(size);
-			desc.setStorageAccountName(storageAccountName);
 			desc.setUserName(userName);
 			desc.setNetworkName(networkName);
 			desc.setSubnetName(subnetName);
@@ -680,10 +678,10 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 				if (disksByStorageMap.get(existingStorage) == 0) {
 					return existingStorage;
 				}
-
-				// otherwise choose one from the not existing list
-				return notExistingStorageAccounts.get(0);
 			}
+
+			// otherwise choose one from the not existing list
+			return notExistingStorageAccounts.get(0);
 		}
 
 		// at this point we have to select the existing SACC with a minimum number of disk
@@ -903,7 +901,20 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			logger.fine(ExceptionUtils.getFullStackTrace(e));
 		}
 
-		if (deletedNetwork && deletedStorage) {
+		// delete storage accounts
+		boolean deletedStorageAccounts = true;
+		for (String storage : this.computeTemplateStorageAccountName) {
+			try {
+				azureClient.deleteStorageAccount(storage, endTime);
+
+			} catch (Exception e) {
+				logger.warning(String.format("Failed deleting storage account '%s'. It might be already in use.",
+						storage));
+				deletedStorageAccounts = false;
+			}
+		}
+
+		if (deletedNetwork && deletedStorage && deletedStorageAccounts) {
 			try {
 				azureClient.deleteAffinityGroup(affinityGroup, endTime);
 			} catch (final Exception e) {
@@ -914,8 +925,17 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 				logger.fine(ExceptionUtils.getFullStackTrace(e));
 			}
 		} else {
-			logger.info("Not trying to delete affinity group since either virtual network " + networkName
-					+ " , or storage account " + storageAccountName + " depend on it.");
+			StringBuilder msg = new StringBuilder();
+			msg.append(String.format("Not trying to delete affinity group since is has some active services, "
+					+ "either virtual network '%s'", networkName));
+
+			msg.append(String.format(", main storage account '%s'", storageAccountName));
+			if (this.computeTemplateStorageAccountName != null) {
+				msg.append(String.format(", or other storage accounts '%s' ",
+						this.computeTemplateStorageAccountName.toString()));
+			}
+			logger.info(msg.toString());
+
 		}
 		if (first != null) {
 			throw new CloudProvisioningException(first);

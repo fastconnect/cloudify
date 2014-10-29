@@ -273,17 +273,53 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 	public void testUbuntuComputeTemplateStorage() throws Exception {
 		String computeTemplate = "ubuntu1410_storage";
 
-		AzureDriverTestBuilder driverBuilder = new AzureDriverTestBuilder();
+		final AzureDriverTestBuilder driverBuilder = new AzureDriverTestBuilder();
 		MicrosoftAzureCloudDriver driver = driverBuilder.createDriverAndSetConfig(computeTemplate);
-		Cloud cloud = driverBuilder.getConfiguration().getCloud();
+		final Cloud cloud = driverBuilder.getConfiguration().getCloud();
+
+		final ComputeTemplate template = cloud.getCloudCompute().getTemplates().get(computeTemplate);
+		final String cloudServiceName = (String) template.getCustom().get("azure.cloud.service");
+		final String deploymentSlot = (String) template.getCustom().get("azure.deployment.slot");
+
+		Map<String, String> cloudProperties = AzureTestUtils.getCloudProperties();
+		String affinityPrefix = cloudProperties.get("affinityGroup");
+		final MicrosoftAzureRestClient azureRestClient =
+				AzureTestUtils.createMicrosoftAzureRestClient(cloudServiceName, affinityPrefix);
 		try {
-			StorageAssertion storageAssertionManagement = new StorageAssertion("CFYM1", "specificstorage", true);
+
+			StorageAssertion storageAssertionManagement =
+					new StorageAssertion("CFYM1", "specificstorage", true);
 			storageAssertionManagement.setManagementGroup(cloud.getProvider().getManagementGroup());
 			this.startManagementMachine(driver, storageAssertionManagement);
 
-			final String roleSuffix = driverBuilder.getServiceName() + "001";
-			StorageAssertion storageAssertionMachine = new StorageAssertion(roleSuffix, "specificstorage", false);
-			this.startAndStopMachine(computeTemplate, storageAssertionMachine);
+			Deployment deployment = azureRestClient.getDeploymentBySlot(
+					cloudServiceName, deploymentSlot);
+
+			Assert.assertNotNull(deployment);
+			Role managementRole = deployment.getRoleList().getRoles().get(0);
+			Assert.assertNotNull(managementRole);
+
+			String mediaLink = managementRole.getOsVirtualHardDisk().getMediaLink();
+			Assert.assertTrue(mediaLink.contains("cfytestitos1"));
+
+			this.startAndStopMachine(computeTemplate, new MachineDetailsAssertion() {
+
+				@Override
+				public void additionalAssertions(MachineDetails md) throws TimeoutException, MicrosoftAzureException {
+
+					Deployment deployment = azureRestClient.getDeploymentBySlot(
+							cloudServiceName, deploymentSlot);
+
+					Assert.assertNotNull(deployment);
+
+					final String managementGroup = cloud.getProvider().getManagementGroup();
+					String roleName = managementGroup + driverBuilder.getServiceName() + "001";
+					Role role = deployment.getRoleList().getRoleByName(roleName);
+					Assert.assertNotNull(role);
+					String mediaLink = role.getOsVirtualHardDisk().getMediaLink();
+					Assert.assertTrue(mediaLink.contains("cfytestitos2"));
+				}
+			});
 		} finally {
 			stopManagementMachines(driver);
 		}

@@ -399,10 +399,11 @@ public class MicrosoftAzureRestClient {
 		VirtualNetworkSites virtualNetworkSites = virtualNetworkConfiguration.getVirtualNetworkSites();
 
 		if (virtualNetworkSites == null) {
-			logger.info("Creating virtual network sites");
+			logger.fine("Creating virtual network sites");
 			virtualNetworkSites = new VirtualNetworkSites();
 		}
-
+		logger.fine("Creating virtual network sites");
+		logger.info("Creating virtual network sites");
 		VirtualNetworkSite virtualNetworkSite = null;
 		if (!virtualNetworkSites.contains(networkSiteName)) {
 			VirtualNetworkSite newSite = new VirtualNetworkSite();
@@ -756,7 +757,7 @@ public class MicrosoftAzureRestClient {
 
 				} else {
 					// regular deployment
-					logger.info(String.format("Creating a new deployment '%s' for the current VM Role.",
+					logger.fine(String.format("Creating a new deployment '%s' for the current VM Role.",
 							deploymentDesc.getDeploymentName()));
 					Deployment deployment = requestBodyBuilder.buildDeployment(deploymentDesc, isWindows);
 					roleName = deployment.getRoleList().getRoles().get(0).getRoleName();
@@ -2225,7 +2226,7 @@ public class MicrosoftAzureRestClient {
 
 				cloudServiceName = hostedServiceName;
 
-				// not in use, create a cloud service with generated name
+				// not in use, create a cloud service with specified name
 			} else {
 				cloudServiceName = createCloudService(deploymentDesc.getAffinityGroup(), hostedServiceName, endTime);
 				deploymentName = cloudServiceName;

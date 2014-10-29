@@ -60,6 +60,7 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.PersistentVMRole;
 import org.cloudifysource.esc.driver.provisioning.azure.model.ResourceExtensionReferences;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Role;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleInstance;
+import org.cloudifysource.esc.driver.provisioning.azure.model.RoleInstanceList;
 import org.cloudifysource.esc.driver.provisioning.azure.model.SharedKey;
 import org.cloudifysource.esc.driver.provisioning.azure.model.StorageServices;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Subnet;
@@ -708,7 +709,7 @@ public class MicrosoftAzureRestClient {
 			logger.info("Preparing VM deployment...");
 			try {
 
-				deploymentInfo = this.getDeploymentInfo(deploymentDesc, endTime);
+				deploymentInfo = this.getOrCreateDeploymentInfo(deploymentDesc, endTime);
 				deploymentDesc.setHostedServiceName(deploymentInfo.getCloudServiceName());
 				deploymentDesc.setDeploymentName(deploymentInfo.getDeploymentName());
 				cloudServiceName = deploymentInfo.getCloudServiceName();
@@ -837,43 +838,39 @@ public class MicrosoftAzureRestClient {
 		}
 		// ***************************************
 
+		// Get instanceRole from details
+		RoleInstanceList roleInstanceList = deploymentResponse.getRoleInstanceList();
+		RoleInstance roleInstance = roleInstanceList.getRoleInstanceByRoleName(deploymentDesc.getRoleName());
+
 		RoleDetails roleAddressDetails = new RoleDetails();
+		roleAddressDetails.setId(roleInstance.getRoleName());
+		roleAddressDetails.setCloudServiceName(cloudServiceName);
+		roleAddressDetails.setDeploymentName(deploymentInfo.getDeploymentName());
+		roleAddressDetails.setPrivateIp(roleInstance.getIpAddress());
+		roleAddressDetails.setPublicIp(this.retrievePublicIp(deploymentResponse, roleInstance));
 
-		String privateIp = null;
-		// get instanceRole from details
-		if (deploymentInfo.isAddRoleToExistingDeployment()) {
-			RoleInstance roleInstance = deploymentResponse.getRoleInstanceList().
-					getRoleInstanceByRoleName(deploymentDesc.getRoleName());
-			privateIp = roleInstance.getIpAddress();
+		return roleAddressDetails;
+	}
 
-		} else {
-			privateIp = deploymentResponse.getRoleInstanceList().getRoleInstances().get(0).getIpAddress();
-		}
-
-		roleAddressDetails.setId(deploymentResponse.getPrivateId());
-		roleAddressDetails.setPrivateIp(privateIp);
-		ConfigurationSets configurationSets = deploymentResponse.getRoleList()
-				.getRoles().get(0).getConfigurationSets();
-
-		// TODO handle for vms on the same cloud service
+	private String retrievePublicIp(Deployment deploymentResponse, RoleInstance roleInstance) {
+		// TODO handle for VMs on the same cloud service
 		String publicIp = null;
+		Role role = deploymentResponse.getRoleList().getRoleByName(roleInstance.getRoleName());
+		ConfigurationSets configurationSets = role.getConfigurationSets();
 		for (ConfigurationSet configurationSet : configurationSets) {
 			if (configurationSet instanceof NetworkConfigurationSet) {
 				NetworkConfigurationSet networkConfigurationSet = (NetworkConfigurationSet) configurationSet;
 				if (networkConfigurationSet.getInputEndpoints() != null) {
 					// TODO if no endpoint has been defined, the VM will note have a public IP
 					// Should retrieve the public ip in the cloud service.
-					publicIp = networkConfigurationSet.getInputEndpoints()
-							.getInputEndpoints().get(0).getvIp();
+					publicIp = networkConfigurationSet.getInputEndpoints().getInputEndpoints().get(0).getvIp();
+
 				}
 			}
 		}
-
-		roleAddressDetails.setPublicIp(publicIp);
-		return roleAddressDetails;
+		return publicIp;
 	}
 
-	// Exist
 	private boolean isSubnetExist(String subnetName, String virtualNetwork, long endTime)
 			throws MicrosoftAzureException,
 			TimeoutException, InterruptedException {
@@ -2173,7 +2170,7 @@ public class MicrosoftAzureRestClient {
 		return gatewayInfo;
 	}
 
-	private DeploymentInfo getDeploymentInfo(CreatePersistentVMRoleDeploymentDescriptor deploymentDesc, long endTime)
+	private DeploymentInfo getOrCreateDeploymentInfo(CreatePersistentVMRoleDeploymentDescriptor deploymentDesc, long endTime)
 			throws MicrosoftAzureException, TimeoutException, InterruptedException {
 
 		String deploymentName = null;

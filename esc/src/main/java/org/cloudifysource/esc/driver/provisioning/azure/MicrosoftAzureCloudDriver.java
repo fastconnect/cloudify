@@ -1,11 +1,11 @@
 /*******************************************************************************
  * Copyright (c) 2012 GigaSpaces Technologies Ltd. All rights reserved
- *
+ * 
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
- *
+ * 
  * http://www.apache.org/licenses/LICENSE-2.0
- *
+ * 
  * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
@@ -76,6 +76,7 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.LocalNetworkSiteRe
 import org.cloudifysource.esc.driver.provisioning.azure.model.LocalNetworkSites;
 import org.cloudifysource.esc.driver.provisioning.azure.model.StorageServices;
 import org.cloudifysource.esc.driver.provisioning.azure.model.VpnConfiguration;
+import org.cloudifysource.esc.driver.provisioning.storage.azure.AzureDeploymentContext;
 import org.cloudifysource.esc.installer.InstallationDetails;
 import org.cloudifysource.esc.installer.InstallerException;
 import org.cloudifysource.esc.installer.remoteExec.RemoteExecutor;
@@ -84,7 +85,7 @@ import org.cloudifysource.esc.util.Utils;
 
 /***************************************************************************************
  * A custom Cloud Driver implementation for provisioning machines on Azure.
- *
+ * 
  * @author elip
  ***************************************************************************************/
 public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
@@ -180,7 +181,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private ScriptLanguages scriptLanguage;
 
 	private List<Map<String, String>> firewallPorts;
-
 	private List<Map<String, String>> extensions;
 
 	private static final int WEBUI_PORT = 8099;
@@ -219,7 +219,14 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	private final Map<String, Long> stoppingMachines = new ConcurrentHashMap<String, Long>();
 
+	/** Contains information to be shared with the storage driver */
+	private AzureDeploymentContext azureDeploymentContext = null;
+
 	public MicrosoftAzureCloudDriver() {
+	}
+
+	public AzureDeploymentContext getAzureContext() {
+		return azureDeploymentContext;
 	}
 
 	private static synchronized void initRestClient(
@@ -323,7 +330,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	/**
 	 * Add configuration for FileTransfer endpoint (22/445) or winrm endpoint (22/445) if doesn't exist.
-	 *
+	 * 
 	 * @throws CloudProvisioningException
 	 */
 	private void ensureEndpointForManagementMachine() throws CloudProvisioningException {
@@ -625,6 +632,13 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			}
 
 			machineDetails.setOpenFilesLimit(this.template.getOpenFilesLimit());
+
+			// For storage driver
+			if (azureDeploymentContext == null) {
+				this.azureDeploymentContext = new AzureDeploymentContext(roleAddressDetails.getCloudServiceName(),
+						roleAddressDetails.getDeploymentName(), azureClient);
+			}
+
 			return machineDetails;
 		} catch (final Exception e) {
 			throw new CloudProvisioningException(e);
@@ -708,7 +722,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	}
 
 	// TODO replace/remove opening ports with this logic
-	@Deprecated
 	private void openFirewallPorts(MachineDetails machineDetails) throws InstallerException, TimeoutException,
 			InterruptedException {
 
@@ -944,7 +957,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	/*********
 	 * Checks if a stop request for this machine was already requested recently.
-	 *
+	 * 
 	 * @param ip
 	 *            the IP address of the machine.
 	 * @return true if there was a recent request, false otherwise.
@@ -1129,9 +1142,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	}
 
 	/**
-	 *
+	 * 
 	 * @author elip
-	 *
+	 * 
 	 */
 	private class StopManagementMachineCallable implements Callable<Boolean> {
 		private final String deploymentName;
@@ -1232,8 +1245,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			}
 		}
 
-		// TODO change this behavior
-		// open WEBUI and REST ports for management machines
+		// Open WEBUI and REST ports for management machines
 		if (this.management) {
 
 			InputEndpoint webuiEndpoint = new InputEndpoint();
@@ -1260,7 +1272,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	@Override
 	public Object getComputeContext() {
-		return null;
+		return this;
 	}
 
 	@Override

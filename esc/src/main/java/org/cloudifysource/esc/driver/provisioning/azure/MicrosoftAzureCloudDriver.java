@@ -551,6 +551,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 					storageOS = this.getBalancedStorageAccountOS(this.computeTemplateStorageAccountName);
 					azureClient.createStorageAccount(this.affinityGroup, storageOS, endTime);
 					azureClient.getStorageAccounts().add(storageOS);
+				} else {
+					storageOS = this.storageAccountName;
 				}
 			} catch (Exception e) {
 				logger.warning("Failed selecting balanced storage account from the specified storage accounts : "

@@ -114,7 +114,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String AZURE_DEPLOYMENT_SLOT = "azure.deployment.slot";
 	private static final String AZURE_DEPLOYMENT_CUSTOMDATA = "azure.deployment.customdata";
 	private static final String AZURE_AFFINITY_LOCATION = "azure.affinity.location";
-	private static final String AZURE_AFFINITY_GROUP = "azure.affinity.group";
+	public static final String AZURE_AFFINITY_GROUP = "azure.affinity.group";
 	public static final String AZURE_STORAGE_ACCOUNT = "azure.storage.account";
 
 	// extensions

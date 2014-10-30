@@ -36,9 +36,17 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 
 	private CloudStorage cloudStorage;
 
+	private String affinityGroup;
+
 	@Override
 	public void setConfig(Cloud cloud, String computeTemplateName) {
 		cloudStorage = cloud.getCloudStorage();
+
+		this.affinityGroup = (String) cloud.getCustom().get(MicrosoftAzureCloudDriver.AZURE_AFFINITY_GROUP);
+		if (affinityGroup == null) {
+			throw new IllegalArgumentException("Custom field '" + MicrosoftAzureCloudDriver.AZURE_AFFINITY_GROUP
+					+ "' must be set");
+		}
 	}
 
 	private AzureDeploymentContext getAzureContext() {
@@ -86,6 +94,9 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 
 		String dataDiskName = null;
 		try {
+			// Make sure the storage account exists
+			azureClient.createStorageAccount(affinityGroup, saName, endTime);
+
 			String cloudServiceName = context.getCloudServiceName();
 			String deploymentName = context.getDeploymentName();
 			// Get the deployment to retrieve the role name

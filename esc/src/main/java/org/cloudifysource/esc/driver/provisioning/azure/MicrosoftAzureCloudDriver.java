@@ -916,14 +916,16 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 		// delete storage accounts
 		boolean deletedStorageAccounts = true;
-		for (String storage : this.computeTemplateStorageAccountName) {
-			try {
-				azureClient.deleteStorageAccount(storage, endTime);
+		if (this.computeTemplateStorageAccountName != null) {
+			for (String storage : this.computeTemplateStorageAccountName) {
+				try {
+					azureClient.deleteStorageAccount(storage, endTime);
 
-			} catch (Exception e) {
-				logger.warning(String.format("Failed deleting storage account '%s'. It might be already in use.",
-						storage));
-				deletedStorageAccounts = false;
+				} catch (Exception e) {
+					logger.warning(String.format("Failed deleting storage account '%s'. It might be already in use.",
+							storage));
+					deletedStorageAccounts = false;
+				}
 			}
 		}
 

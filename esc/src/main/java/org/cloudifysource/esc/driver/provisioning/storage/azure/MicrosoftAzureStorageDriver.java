@@ -82,7 +82,7 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 
 		MicrosoftAzureRestClient azureClient = getAzureClient();
 		AzureDeploymentContext context = getAzureContext();
-		int temporaryLun = 50; // The default LUN number to create a data disk
+		int temporaryLun = 15; // The default LUN number to create a data disk
 
 		String dataDiskName = null;
 		try {

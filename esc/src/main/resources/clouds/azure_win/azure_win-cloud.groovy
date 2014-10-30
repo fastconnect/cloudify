@@ -64,7 +64,7 @@ cloud {
         deviceName "2" // LUN
         deleteOnExit false
         custom ([
-          "azure.storage.account" : "${storageAccount}smallblock",
+          "azure.storage.account" : "${storageAccount}smallblock" as String,
         ])
         partitioningRequired true // Partition with static storage if true
         path "/storage"           // Used to mount

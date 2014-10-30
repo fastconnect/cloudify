@@ -172,6 +172,9 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 				}
 			}
 
+			// Update the disk label
+			azureClient.updateDataDiskLabel(volumeId, roleName, endTime);
+
 			// Attach the existing data disk to the VM
 			azureClient.addExistingDataDiskToVM(cloudServiceName, deploymentName, roleName,
 					volumeId, Integer.parseInt(device), endTime);
@@ -230,6 +233,10 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 
 			// Detach the data disk from the VM
 			azureClient.removeDataDisk(cloudServiceName, deploymentName, roleName, lun, endTime);
+
+			// Remove the disk label
+			azureClient.updateDataDiskLabel(volumeId, "", endTime);
+
 		} catch (MicrosoftAzureException e) {
 			throw new StorageProvisioningException(e);
 		} catch (InterruptedException e) {

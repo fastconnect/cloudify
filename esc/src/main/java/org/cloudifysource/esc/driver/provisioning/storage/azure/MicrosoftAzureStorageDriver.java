@@ -112,8 +112,8 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 			vhdFilename.append(UUIDHelper.generateRandomUUID(4));
 
 			// Create a data disk
-			azureClient.createDataDisk(cloudServiceName, deploymentName, roleName, saName, vhdFilename.toString(),
-					diskSize, endTime);
+			dataDiskName = azureClient.createDataDisk(cloudServiceName, deploymentName, roleName, saName,
+					vhdFilename.toString(), diskSize, endTime);
 
 		} catch (MicrosoftAzureException e) {
 			throw new StorageProvisioningException(e);

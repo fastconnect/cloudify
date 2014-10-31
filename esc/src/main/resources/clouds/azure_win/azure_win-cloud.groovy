@@ -335,7 +335,7 @@ cloud {
 		"azure.cloud.service.code" : cloudServiceCode,
 
     // Enable/Disable Cloud Requests Logging.
-    "azure.wireLog": "false",
+    "azure.wireLog": wireLog,
 	])
 }
 

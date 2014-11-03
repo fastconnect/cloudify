@@ -1749,10 +1749,10 @@ public class MicrosoftAzureRestClient {
 
 				// if a conflict error, than wait and retry until end time
 				if (System.currentTimeMillis() > endTime) {
-					String timeout = "Timeout while waiting for conflict to be resolved, more about the error : " +
+					String timeoutMessage = "Timeout while waiting for conflict to be resolved, more about the error : " +
 							errorString;
-					logger.severe(timeout);
-					throw new MicrosoftAzureException(timeout);
+					logger.severe(timeoutMessage);
+					throw new MicrosoftAzureException(timeoutMessage);
 				}
 
 				try {

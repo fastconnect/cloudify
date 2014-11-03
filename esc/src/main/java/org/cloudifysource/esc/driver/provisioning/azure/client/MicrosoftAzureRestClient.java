@@ -1763,8 +1763,7 @@ public class MicrosoftAzureRestClient {
 				logger.fine("Waiting for conflict to be resolved...");
 				Thread.sleep(DEFAULT_POLLING_INTERVAL);
 			} catch (InterruptedException e) {
-				String interruptedMesg = "Interrupted while waiting for conflict to be resolved, more about the"
-						+ " error : " + errorString;
+				String interruptedMesg = "Interrupted while waiting for conflict to be resolved";
 				logger.severe(interruptedMesg);
 				throw new MicrosoftAzureException(interruptedMesg, e);
 			}
@@ -1858,7 +1857,7 @@ public class MicrosoftAzureRestClient {
 		if (status != HTTP_OK && status != HTTP_CREATED
 				&& status != HTTP_ACCEPTED) { // we got some
 
-			// sort of error
+			// sort of error, if itsn't a conflict one than throw an exception
 			error = (Error) MicrosoftAzureModelUtils.unmarshall(response.getEntity(String.class));
 			if (!error.getCode().equals(HTTP_AZURE_CONFLICT_CODE)) {
 				String errorMessage = error.getMessage();
@@ -1866,7 +1865,6 @@ public class MicrosoftAzureRestClient {
 				throw new MicrosoftAzureException(errorCode, errorMessage);
 			}
 		}
-
 		return error;
 	}
 
@@ -1885,9 +1883,8 @@ public class MicrosoftAzureRestClient {
 			}
 
 			if (System.currentTimeMillis() > endTime) {
-				throw new TimeoutException(
-						"Timed out waiting for operation to finish. last state was : "
-								+ status);
+				throw new TimeoutException("Timed out waiting for operation to finish. last state was : "
+						+ status);
 			}
 		}
 

@@ -1717,12 +1717,14 @@ public class MicrosoftAzureRestClient {
 	}
 
 	private ClientResponse doPut(final String url, final String body,
-			final String contentType) throws MicrosoftAzureException {
+			final String contentType, long endTime) throws MicrosoftAzureException {
 		ClientResponse response = resource.path(subscriptionId + url)
 				.header(X_MS_VERSION_HEADER_NAME, X_MS_VERSION_HEADER_VALUE)
 				.header(CONTENT_TYPE_HEADER_NAME, contentType)
 				.put(ClientResponse.class, body);
-		checkForError(response);
+
+		Error error = checkForError(response);
+		checkForConflict(error, endTime);
 		return response;
 	}
 
@@ -1737,32 +1739,34 @@ public class MicrosoftAzureRestClient {
 					.post(ClientResponse.class, body);
 
 			Error error = checkForError(response);
+			checkForConflict(error, endTime);
+			return response;
+		}
+	}
 
-			// null means no error, return valid response
-			if (error == null) {
-				return response;
+	private void checkForConflict(Error error, long endTime) throws MicrosoftAzureException {
+		// eventually a conflict error here
+		if (error != null) {
 
-				// eventually a conflict error here
-			} else {
+			String errorString = ReflectionToStringBuilder.toString(error, ToStringStyle.SHORT_PREFIX_STYLE);
 
-				String errorString = ReflectionToStringBuilder.toString(error, ToStringStyle.SHORT_PREFIX_STYLE);
+			// if a conflict error, than wait and retry until end time
+			if (System.currentTimeMillis() > endTime) {
+				String timeoutMessage =
+						"Timeout while waiting for conflict to be resolved, more about the error : " +
+								errorString;
+				logger.severe(timeoutMessage);
+				throw new MicrosoftAzureException(timeoutMessage);
+			}
 
-				// if a conflict error, than wait and retry until end time
-				if (System.currentTimeMillis() > endTime) {
-					String timeoutMessage = "Timeout while waiting for conflict to be resolved, more about the error : " +
-							errorString;
-					logger.severe(timeoutMessage);
-					throw new MicrosoftAzureException(timeoutMessage);
-				}
-
-				try {
-					Thread.sleep(DEFAULT_POLLING_INTERVAL);
-				} catch (InterruptedException e) {
-					String interruptedMesg = "Interrupted while waiting for conflict to be resolved, more about the"
-							+ " error : " + errorString;
-					logger.severe(interruptedMesg);
-					throw new MicrosoftAzureException(interruptedMesg, e);
-				}
+			try {
+				logger.fine("Waiting for conflict to be resolved...");
+				Thread.sleep(DEFAULT_POLLING_INTERVAL);
+			} catch (InterruptedException e) {
+				String interruptedMesg = "Interrupted while waiting for conflict to be resolved, more about the"
+						+ " error : " + errorString;
+				logger.severe(interruptedMesg);
+				throw new MicrosoftAzureException(interruptedMesg, e);
 			}
 		}
 	}
@@ -1939,7 +1943,7 @@ public class MicrosoftAzureRestClient {
 
 				String xmlRequest = MicrosoftAzureModelUtils.marshall(networkConfiguration, true);
 
-				ClientResponse response = doPut("/services/networking/media", xmlRequest, "text/plain");
+				ClientResponse response = doPut("/services/networking/media", xmlRequest, "text/plain", endTime);
 				String requestId = extractRequestId(response);
 				waitForRequestToFinish(requestId, endTime);
 			} finally {
@@ -2196,8 +2200,7 @@ public class MicrosoftAzureRestClient {
 		String url = String.format("/services/disks/%s", diskName);
 
 		String xmlRequest = MicrosoftAzureModelUtils.marshall(disk, false);
-		ClientResponse response = doPut(url, xmlRequest, CONTENT_TYPE_HEADER_VALUE);
-		checkForError(response);
+		ClientResponse response = doPut(url, xmlRequest, CONTENT_TYPE_HEADER_VALUE, endTime);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
 	}

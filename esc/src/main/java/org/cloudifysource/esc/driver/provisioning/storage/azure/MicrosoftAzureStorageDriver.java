@@ -227,8 +227,9 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 			// Detach the data disk from the VM
 			azureClient.removeDataDisk(cloudServiceName, deploymentName, roleName, lun, endTime);
 
-			// Remove the disk label
-			azureClient.updateDataDiskLabel(volumeId, "", endTime);
+			// set a new label name for the detached disk
+			String newLabel = "unattached-data-disk" + UUIDHelper.generateRandomUUID(4);
+			azureClient.updateDataDiskLabel(volumeId, newLabel, endTime);
 
 		} catch (MicrosoftAzureException e) {
 			throw new StorageProvisioningException(e);

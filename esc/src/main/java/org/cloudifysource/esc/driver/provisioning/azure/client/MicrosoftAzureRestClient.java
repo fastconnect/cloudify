@@ -26,6 +26,8 @@ import java.util.logging.Logger;
 
 import javax.net.ssl.SSLContext;
 
+import org.apache.commons.lang.builder.ReflectionToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.cloudifysource.domain.cloud.network.NetworkConfiguration;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
@@ -96,6 +98,7 @@ public class MicrosoftAzureRestClient {
 	private static final int HTTP_OK = 200;
 	private static final int HTTP_CREATED = 201;
 	private static final int HTTP_ACCEPTED = 202;
+	private static final String HTTP_AZURE_CONFLICT_CODE = "ConflictError";
 
 	private static final char BAD_CHAR = 65279;
 
@@ -255,7 +258,7 @@ public class MicrosoftAzureRestClient {
 
 			logger.info(String.format("Creating cloud service '%s'", createHostedService.getServiceName()));
 			String xmlRequest = MicrosoftAzureModelUtils.marshall(createHostedService, false);
-			ClientResponse response = doPost("/services/hostedservices", xmlRequest);
+			ClientResponse response = doPost("/services/hostedservices", xmlRequest, endTime);
 			String requestId = extractRequestId(response);
 			waitForRequestToFinish(requestId, endTime);
 			serviceName = createHostedService.getServiceName();
@@ -342,7 +345,7 @@ public class MicrosoftAzureRestClient {
 		logger.info("Creating a storage account : " + storageAccountName);
 
 		String xmlRequest = MicrosoftAzureModelUtils.marshall(createStorageServiceInput, false);
-		ClientResponse response = doPost("/services/storageservices", xmlRequest);
+		ClientResponse response = doPost("/services/storageservices", xmlRequest, endTime);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
 
@@ -672,7 +675,7 @@ public class MicrosoftAzureRestClient {
 		logger.info("Creating affinity group : " + affinityGroup);
 
 		String xmlRequest = MicrosoftAzureModelUtils.marshall(createAffinityGroup, false);
-		ClientResponse response = doPost("/affinitygroups", xmlRequest);
+		ClientResponse response = doPost("/affinitygroups", xmlRequest, endTime);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
 		logger.fine("Created affinity group : " + affinityGroup);
@@ -763,7 +766,7 @@ public class MicrosoftAzureRestClient {
 									deploymentDesc.getRoleName(), deploymentDesc.getDeploymentName()));
 
 					ClientResponse response = doPost("/services/hostedservices/" + cloudServiceName + "/deployments/" +
-							deploymentDesc.getDeploymentName() + "/roles", xmlRequest);
+							deploymentDesc.getDeploymentName() + "/roles", xmlRequest, endTime);
 					String requestId = extractRequestId(response);
 					waitForRequestToFinish(requestId, endTime);
 
@@ -779,7 +782,7 @@ public class MicrosoftAzureRestClient {
 							+ deploymentDesc.getRoleName());
 
 					ClientResponse response = doPost("/services/hostedservices/"
-							+ cloudServiceName + "/deployments", xmlRequest);
+							+ cloudServiceName + "/deployments", xmlRequest, endTime);
 					String requestId = extractRequestId(response);
 					waitForRequestToFinish(requestId, endTime);
 				}
@@ -1723,14 +1726,45 @@ public class MicrosoftAzureRestClient {
 		return response;
 	}
 
-	private ClientResponse doPost(final String url, final String body)
+	private ClientResponse doPost(final String url, final String body, final long endTime)
 			throws MicrosoftAzureException {
-		ClientResponse response = resource.path(subscriptionId + url)
-				.header(X_MS_VERSION_HEADER_NAME, X_MS_VERSION_HEADER_VALUE)
-				.header(CONTENT_TYPE_HEADER_NAME, CONTENT_TYPE_HEADER_VALUE)
-				.post(ClientResponse.class, body);
-		checkForError(response);
-		return response;
+
+		while (true) {
+
+			ClientResponse response = resource.path(subscriptionId + url)
+					.header(X_MS_VERSION_HEADER_NAME, X_MS_VERSION_HEADER_VALUE)
+					.header(CONTENT_TYPE_HEADER_NAME, CONTENT_TYPE_HEADER_VALUE)
+					.post(ClientResponse.class, body);
+
+			Error error = checkForError(response);
+
+			// null means no error, return valid response
+			if (error == null) {
+				return response;
+
+				// eventually a conflict error here
+			} else {
+
+				String errorString = ReflectionToStringBuilder.toString(error, ToStringStyle.SHORT_PREFIX_STYLE);
+
+				// if a conflict error, than wait and retry until end time
+				if (System.currentTimeMillis() > endTime) {
+					String timeout = "Timeout while waiting for conflict to be resolved, more about the error : " +
+							errorString;
+					logger.severe(timeout);
+					throw new MicrosoftAzureException(timeout);
+				}
+
+				try {
+					Thread.sleep(DEFAULT_POLLING_INTERVAL);
+				} catch (InterruptedException e) {
+					String interruptedMesg = "Interrupted while waiting for conflict to be resolved, more about the"
+							+ " error : " + errorString;
+					logger.severe(interruptedMesg);
+					throw new MicrosoftAzureException(interruptedMesg, e);
+				}
+			}
+		}
 	}
 
 	private ClientResponse doGet(final String url)
@@ -1813,18 +1847,23 @@ public class MicrosoftAzureRestClient {
 		return (sites.contains(virtualNetworkName));
 	}
 
-	private void checkForError(final ClientResponse response)
+	private Error checkForError(final ClientResponse response)
 			throws MicrosoftAzureException {
 		int status = response.getStatus();
+		Error error = null;
 		if (status != HTTP_OK && status != HTTP_CREATED
 				&& status != HTTP_ACCEPTED) { // we got some
+
 			// sort of error
-			Error error = (Error) MicrosoftAzureModelUtils.unmarshall(response
-					.getEntity(String.class));
-			String errorMessage = error.getMessage();
-			String errorCode = error.getCode();
-			throw new MicrosoftAzureException(errorCode, errorMessage);
+			error = (Error) MicrosoftAzureModelUtils.unmarshall(response.getEntity(String.class));
+			if (!error.getCode().equals(HTTP_AZURE_CONFLICT_CODE)) {
+				String errorMessage = error.getMessage();
+				String errorCode = error.getCode();
+				throw new MicrosoftAzureException(errorCode, errorMessage);
+			}
 		}
+
+		return error;
 	}
 
 	private Deployment waitForDeploymentStatus(final String state,
@@ -2113,7 +2152,7 @@ public class MicrosoftAzureRestClient {
 		String xmlRequest = MicrosoftAzureModelUtils.marshall(dataVirtualHardDisk, false);
 		String url = String.format("/services/hostedservices/%s/deployments/%s/roles/%s/DataDisks",
 				serviceName, deploymentName, roleName);
-		ClientResponse response = doPost(url, xmlRequest);
+		ClientResponse response = doPost(url, xmlRequest, endTime);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
 		waitUntilDataDiskIsAttached(serviceName, deploymentName, roleName, lun, endTime);
@@ -2191,7 +2230,7 @@ public class MicrosoftAzureRestClient {
 		String xmlRequest = MicrosoftAzureModelUtils.marshall(dataVirtualHardDisk, false);
 		String url = String.format("/services/hostedservices/%s/deployments/%s/roles/%s/DataDisks",
 				serviceName, deploymentName, roleName);
-		ClientResponse response = doPost(url, xmlRequest);
+		ClientResponse response = doPost(url, xmlRequest, endTime);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
 		waitUntilDataDiskIsAttached(serviceName, deploymentName, roleName, lun, endTime);
@@ -2281,7 +2320,8 @@ public class MicrosoftAzureRestClient {
 			// https://management.core.windows.net/<subscription-id>/services/networking/<virtual-network-name>/gateway
 
 			String xmlRequest = MicrosoftAzureModelUtils.marshall(new CreateGatewayParameters(gatewayType), false);
-			ClientResponse response = doPost("/services/networking/" + virtualNetworkName + "/gateway/", xmlRequest);
+			ClientResponse response =
+					doPost("/services/networking/" + virtualNetworkName + "/gateway/", xmlRequest, endTime);
 			checkForError(response);
 			String requestId = extractRequestId(response);
 			waitForRequestToFinish(requestId, endTime);
@@ -2301,7 +2341,7 @@ public class MicrosoftAzureRestClient {
 			// https://management.core.windows.net/<subscription-id>/services/networking/<virtual-network-name>/gateway/connection/<local-network-site-name>/sharedkey
 			String xmlRequest = MicrosoftAzureModelUtils.marshall(new SharedKey(key), false);
 			ClientResponse response = doPost("/services/networking/" + virtualNetworkName
-					+ "/gateway/connection/" + localNetworkSiteName + "/sharedkey", xmlRequest);
+					+ "/gateway/connection/" + localNetworkSiteName + "/sharedkey", xmlRequest, endTime);
 			checkForError(response);
 			String requestId = extractRequestId(response);
 			waitForRequestToFinish(requestId, endTime);

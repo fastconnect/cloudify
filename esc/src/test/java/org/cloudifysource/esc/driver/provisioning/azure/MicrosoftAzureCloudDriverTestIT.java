@@ -253,7 +253,6 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 				}
 			}
 		});
-
 	}
 
 	@Test

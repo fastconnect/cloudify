@@ -1010,7 +1010,7 @@ public class MicrosoftAzureRestClient {
 		}
 
 		logger.info("Deleting storage account : " + storageAccountName);
-		ClientResponse response = doDelete("/services/storageservices/" + storageAccountName);
+		ClientResponse response = doDelete("/services/storageservices/" + storageAccountName, endTime);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
 		logger.fine("Deleted storage account : " + storageAccountName);
@@ -1037,7 +1037,7 @@ public class MicrosoftAzureRestClient {
 			return true;
 		}
 		logger.info("Deleting affinity group : " + affinityGroupName);
-		ClientResponse response = doDelete("/affinitygroups/" + affinityGroupName);
+		ClientResponse response = doDelete("/affinitygroups/" + affinityGroupName, endTime);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
 		logger.fine("Deleted affinity group : " + affinityGroupName);
@@ -1068,7 +1068,7 @@ public class MicrosoftAzureRestClient {
 
 		if (!doesCloudServiceContainsDeployments(cloudServiceName, endTime)) {
 			// Delete cloud service
-			ClientResponse response = doDelete("/services/hostedservices/" + cloudServiceName);
+			ClientResponse response = doDelete("/services/hostedservices/" + cloudServiceName, endTime);
 			String requestId = extractRequestId(response);
 			waitForRequestToFinish(requestId, endTime);
 
@@ -1304,7 +1304,7 @@ public class MicrosoftAzureRestClient {
 		if (deleteVhd) {
 			url = url + "?comp=media";
 		}
-		ClientResponse response = doDelete(url);
+		ClientResponse response = doDelete(url, endTime);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
 
@@ -1352,7 +1352,7 @@ public class MicrosoftAzureRestClient {
 						+ deploymentName);
 
 				ClientResponse response = doDelete("/services/hostedservices/"
-						+ hostedServiceName + "/deployments/" + deploymentName);
+						+ hostedServiceName + "/deployments/" + deploymentName, endTime);
 				String requestId = extractRequestId(response);
 				waitForRequestToFinish(requestId, endTime);
 				pendingRequest.unlock();
@@ -1396,7 +1396,7 @@ public class MicrosoftAzureRestClient {
 				// https://management.core.windows.net/<subscription-id>/services/hostedservices/<cloudservice-name>/deployments/<deployment-name>/roles/<role-name>
 
 				ClientResponse response = doDelete("/services/hostedservices/" + deployment.getHostedServiceName()
-						+ "/deployments/" + deployment.getName() + "/roles/" + roleName);
+						+ "/deployments/" + deployment.getName() + "/roles/" + roleName, endTime);
 
 				String requestId = extractRequestId(response);
 				waitForRequestToFinish(requestId, endTime);
@@ -1699,7 +1699,7 @@ public class MicrosoftAzureRestClient {
 
 				// DELETE
 				// https://management.core.windows.net/<subscription-id>/services/networking/<virtual-network-name>/gateway
-				ClientResponse response = doDelete("/services/networking/" + virtualNetworkSite + "/gateway");
+				ClientResponse response = doDelete("/services/networking/" + virtualNetworkSite + "/gateway", endTime);
 				String requestId = extractRequestId(response);
 				waitForRequestToFinish(requestId, endTime);
 				waitForGatewayDeleteOperationToFinish(virtualNetworkSite, endTime);
@@ -1718,14 +1718,18 @@ public class MicrosoftAzureRestClient {
 
 	private ClientResponse doPut(final String url, final String body,
 			final String contentType, long endTime) throws MicrosoftAzureException {
-		ClientResponse response = resource.path(subscriptionId + url)
-				.header(X_MS_VERSION_HEADER_NAME, X_MS_VERSION_HEADER_VALUE)
-				.header(CONTENT_TYPE_HEADER_NAME, contentType)
-				.put(ClientResponse.class, body);
 
-		Error error = checkForError(response);
-		checkForConflict(error, endTime);
-		return response;
+		while (true) {
+
+			ClientResponse response = resource.path(subscriptionId + url)
+					.header(X_MS_VERSION_HEADER_NAME, X_MS_VERSION_HEADER_VALUE)
+					.header(CONTENT_TYPE_HEADER_NAME, contentType)
+					.put(ClientResponse.class, body);
+
+			Error error = checkForError(response);
+			checkForConflict(error, endTime);
+			return response;
+		}
 	}
 
 	private ClientResponse doPost(final String url, final String body, final long endTime)
@@ -1742,6 +1746,22 @@ public class MicrosoftAzureRestClient {
 			checkForConflict(error, endTime);
 			return response;
 		}
+	}
+
+	private ClientResponse doDelete(final String url, long endTime)
+			throws MicrosoftAzureException {
+
+		while (true) {
+			ClientResponse response = resource.path(subscriptionId + url)
+					.header(X_MS_VERSION_HEADER_NAME, X_MS_VERSION_HEADER_VALUE)
+					.header(CONTENT_TYPE_HEADER_NAME, CONTENT_TYPE_HEADER_VALUE)
+					.delete(ClientResponse.class);
+
+			Error error = checkForError(response);
+			checkForConflict(error, endTime);
+			return response;
+		}
+
 	}
 
 	private void checkForConflict(Error error, long endTime) throws MicrosoftAzureException {
@@ -1800,16 +1820,6 @@ public class MicrosoftAzureRestClient {
 			throw new TimeoutException("Timed out while executing GET after " + MAX_RETRIES);
 		}
 
-		return response;
-	}
-
-	private ClientResponse doDelete(final String url)
-			throws MicrosoftAzureException {
-		ClientResponse response = resource.path(subscriptionId + url)
-				.header(X_MS_VERSION_HEADER_NAME, X_MS_VERSION_HEADER_VALUE)
-				.header(CONTENT_TYPE_HEADER_NAME, CONTENT_TYPE_HEADER_VALUE)
-				.delete(ClientResponse.class);
-		checkForError(response);
 		return response;
 	}
 
@@ -2264,7 +2274,7 @@ public class MicrosoftAzureRestClient {
 		DataVirtualHardDisk dataDisk = this.getDataDisk(serviceName, deploymentName, roleName, lun, endTime);
 		String url = String.format("/services/hostedservices/%s/deployments/%s/roles/%s/DataDisks/%d", serviceName,
 				deploymentName, roleName, lun);
-		ClientResponse response = doDelete(url);
+		ClientResponse response = doDelete(url, endTime);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
 		waitForDiskToDetach(dataDisk.getDiskName(), roleName, endTime);

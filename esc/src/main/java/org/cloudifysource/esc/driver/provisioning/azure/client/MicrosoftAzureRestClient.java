@@ -1752,20 +1752,20 @@ public class MicrosoftAzureRestClient {
 
 			// if a conflict error, than wait and retry until end time
 			if (System.currentTimeMillis() > endTime) {
-				String timeoutMessage =
+				String timeoutMsg =
 						"Timeout while waiting for conflict to be resolved, more about the error : " +
 								errorString;
-				logger.severe(timeoutMessage);
-				throw new MicrosoftAzureException(timeoutMessage);
+				logger.severe(timeoutMsg);
+				throw new MicrosoftAzureException(timeoutMsg);
 			}
 
 			try {
 				logger.fine("Waiting for conflict to be resolved...");
 				Thread.sleep(DEFAULT_POLLING_INTERVAL);
 			} catch (InterruptedException e) {
-				String interruptedMesg = "Interrupted while waiting for conflict to be resolved";
-				logger.severe(interruptedMesg);
-				throw new MicrosoftAzureException(interruptedMesg, e);
+				String interruptedMsg = "Interrupted while waiting for conflict to be resolved";
+				logger.severe(interruptedMsg);
+				throw new MicrosoftAzureException(interruptedMsg, e);
 			}
 		}
 	}
@@ -1778,22 +1778,26 @@ public class MicrosoftAzureRestClient {
 			try {
 				response = resource
 						.path(subscriptionId + url)
-						.header(X_MS_VERSION_HEADER_NAME,
-								X_MS_VERSION_HEADER_VALUE)
-						.header(CONTENT_TYPE_HEADER_NAME,
-								CONTENT_TYPE_HEADER_VALUE)
+						.header(X_MS_VERSION_HEADER_NAME, X_MS_VERSION_HEADER_VALUE)
+						.header(CONTENT_TYPE_HEADER_NAME, CONTENT_TYPE_HEADER_VALUE)
 						.get(ClientResponse.class);
 				break;
 			} catch (ClientHandlerException e) {
 				logger.warning("Caught an exception while executing GET with url "
 						+ url + ". Message :" + e.getMessage());
-				logger.warning("Retrying request");
+				logger.warning("Waiting for a few seconds before retrying request");
+
+				try {
+					Thread.sleep(DEFAULT_POLLING_INTERVAL);
+				} catch (InterruptedException e1) {
+					logger.warning("Interrupted while waiting before trying to send a new request.");
+				}
 				continue;
 			}
 		}
+
 		if (response == null) {
-			throw new TimeoutException("Timed out while executing GET after "
-					+ MAX_RETRIES);
+			throw new TimeoutException("Timed out while executing GET after " + MAX_RETRIES);
 		}
 
 		return response;

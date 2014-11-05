@@ -719,8 +719,6 @@ public class MicrosoftAzureRestClient {
 
 		if (lockAcquired) {
 
-			logger.info("Waiting for the VM deployment, this will take a while...");
-
 			logger.fine(getThreadIdentity() + "Lock acquired : " + pendingRequest.hashCode());
 			logger.fine(getThreadIdentity() + "Executing a request to provision a new virtual machine");
 			logger.info("Preparing VM deployment...");
@@ -825,6 +823,7 @@ public class MicrosoftAzureRestClient {
 
 		Deployment deploymentResponse = null;
 		try {
+			logger.info("Waiting for the VM to be ready. This will take a while...");
 			String deploymentSlot = deploymentDesc.getDeploymentSlot();
 			deploymentResponse = waitForDeploymentStatus("Running", cloudServiceName, deploymentSlot, endTime);
 			deploymentResponse = waitForRoleInstanceStatus("ReadyRole", cloudServiceName, deploymentSlot, roleName,

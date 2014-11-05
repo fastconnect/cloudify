@@ -235,7 +235,7 @@ public class MicrosoftAzureRequestBodyBuilder {
 
 		String deploymentSlot = desc.getDeploymentSlot();
 		String imageName = desc.getImageName();
-		String storageAccountName = desc.getStorageAccountName();
+		String osStorageAccountName = desc.getOsStorageAccountName();
 		String userName = desc.getUserName();
 		String password = desc.getPassword();
 		String networkName = desc.getNetworkName();
@@ -265,7 +265,7 @@ public class MicrosoftAzureRequestBodyBuilder {
 
 		StringBuilder mediaLinkBuilder = new StringBuilder();
 		mediaLinkBuilder.append("https://");
-		mediaLinkBuilder.append(storageAccountName);
+		mediaLinkBuilder.append(osStorageAccountName);
 		mediaLinkBuilder.append(".blob.core.windows.net/vhds/");
 		mediaLinkBuilder.append(desc.getHostedServiceName());
 		mediaLinkBuilder.append("-");

@@ -19,7 +19,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -74,7 +73,6 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.LoadBalancerProbe;
 import org.cloudifysource.esc.driver.provisioning.azure.model.LocalNetworkSite;
 import org.cloudifysource.esc.driver.provisioning.azure.model.LocalNetworkSiteRef;
 import org.cloudifysource.esc.driver.provisioning.azure.model.LocalNetworkSites;
-import org.cloudifysource.esc.driver.provisioning.azure.model.StorageServices;
 import org.cloudifysource.esc.driver.provisioning.azure.model.VpnConfiguration;
 import org.cloudifysource.esc.driver.provisioning.storage.azure.AzureDeploymentContext;
 import org.cloudifysource.esc.installer.InstallationDetails;
@@ -116,6 +114,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String AZURE_AFFINITY_LOCATION = "azure.affinity.location";
 	public static final String AZURE_AFFINITY_GROUP = "azure.affinity.group";
 	public static final String AZURE_STORAGE_ACCOUNT = "azure.storage.account";
+	public static final String AZURE_STORAGE_ACCOUNTS_DATA = "azure.storage.accounts.data";
 
 	// extensions
 	private static final String AZURE_EXTENSIONS = "azure.extensions";
@@ -175,6 +174,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private Integer dataDiskSize;
 
 	private List<String> computeTemplateStorageAccountName;
+	private List<String> computeTemplateDataStorageAccounts;
 
 	private FileTransferModes fileTransferMode;
 	private RemoteExecutionModes remoteExecutionMode;
@@ -296,6 +296,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 		// storage accounts
 		this.computeTemplateStorageAccountName = (List<String>) this.template.getCustom().get(AZURE_STORAGE_ACCOUNT);
+		this.computeTemplateDataStorageAccounts =
+				(List<String>) this.template.getCustom().get(AZURE_STORAGE_ACCOUNTS_DATA);
 
 		this.storageAccountName = (String) this.cloud.getCustom().get(AZURE_STORAGE_ACCOUNT);
 		if (storageAccountName == null) {
@@ -539,29 +541,40 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			desc.setAffinityGroup(affinityGroup);
 			desc.setCustomData(deploymentCustomData);
 
+			// main storage account
+			desc.setStorageAccountName(this.storageAccountName);
+
 			// Data disk configuration
 			if (this.dataDiskSize != null) {
 				desc.setDataDiskSize(dataDiskSize);
+
+				if (computeTemplateDataStorageAccounts != null && !computeTemplateDataStorageAccounts.isEmpty()) {
+					desc.setDataStorageAccounts(computeTemplateDataStorageAccounts);
+				}
 			}
 
 			// Storage Account for OS
-			String storageOS = null;
+			String osStorageAccountName = null;
 			try {
 				if (this.computeTemplateStorageAccountName != null) {
-					storageOS = this.getBalancedStorageAccountOS(this.computeTemplateStorageAccountName);
-					azureClient.createStorageAccount(this.affinityGroup, storageOS, endTime);
-					azureClient.getStorageAccounts().add(storageOS);
+					osStorageAccountName =
+							MicrosoftAzureUtils.getBalancedStorageAccount(this.computeTemplateStorageAccountName,
+									azureClient);
+					azureClient.createStorageAccount(this.affinityGroup, osStorageAccountName, endTime);
+
+					// added this newly created storage to the list (cleaning resources)
+					azureClient.getStorageAccounts().add(osStorageAccountName);
 				} else {
-					storageOS = this.storageAccountName;
+					osStorageAccountName = this.storageAccountName;
 				}
 			} catch (Exception e) {
 				logger.warning("Failed selecting balanced storage account from the specified storage accounts : "
 						+ this.computeTemplateStorageAccountName.toString());
-				storageOS = this.storageAccountName;
+				osStorageAccountName = this.storageAccountName;
 			}
 
-			logger.fine(String.format("Using storage account '%s' as OS storage account", storageOS));
-			desc.setStorageAccountName(storageOS);
+			logger.fine(String.format("Using storage account '%s' as OS storage account", osStorageAccountName));
+			desc.setOsStorageAccountName(osStorageAccountName);
 
 			InputEndpoints inputEndpoints = createInputEndPoints();
 
@@ -640,87 +653,11 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 				this.azureDeploymentContext = new AzureDeploymentContext(roleAddressDetails.getCloudServiceName(),
 						roleAddressDetails.getDeploymentName(), azureClient);
 			}
-
 			return machineDetails;
 		} catch (final Exception e) {
 			throw new CloudProvisioningException(e);
 		}
 
-	}
-
-	/**
-	 * TODO Checks this method if the format of the VM OS disk media link changes
-	 */
-	private String getBalancedStorageAccountOS(List<String> storageAccounts) throws MicrosoftAzureException,
-			TimeoutException {
-
-		StorageServices storageServices = azureClient.listStorageServices();
-		Map<String, Integer> disksByStorageMap = new HashMap<String, Integer>();
-
-		List<String> existingStorageAccounts = new ArrayList<String>();
-		List<String> notExistingStorageAccounts = new ArrayList<String>();
-
-		// check if the specified storage accounts exist in the subscription
-		for (String storage : storageAccounts) {
-			if (storageServices.contains(storage)) {
-				existingStorageAccounts.add(storage);
-
-				// init counter map
-				disksByStorageMap.put(storage, 0);
-			} else {
-				notExistingStorageAccounts.add(storage);
-			}
-		}
-
-		// all specified SACC don't exist, choose one form the non existing list
-		if (existingStorageAccounts.isEmpty()) {
-			return notExistingStorageAccounts.get(0);
-		}
-
-		// calculate the number of disk for each existing SACC
-		for (Disk disk : azureClient.listDisks().getDisks()) {
-			String storageName = StringUtils.substringBetween(disk.getMediaLink(), "https://", ".");
-			if (existingStorageAccounts.contains(storageName)) {
-				Integer currentCount = disksByStorageMap.get(storageName);
-				disksByStorageMap.put(storageName, ++currentCount);
-			}
-		}
-
-		// choose an existing SACC if it dosn't have any disk instead of creating a new one from the not
-		// existing list
-		if (!notExistingStorageAccounts.isEmpty()) {
-			for (String existingStorage : existingStorageAccounts) {
-
-				if (disksByStorageMap.get(existingStorage) == 0) {
-					return existingStorage;
-				}
-			}
-
-			// otherwise choose one from the not existing list
-			return notExistingStorageAccounts.get(0);
-		}
-
-		// at this point we have to select the existing SACC with a minimum number of disk
-
-		String balancedStorageAccount = null;
-
-		if (notExistingStorageAccounts.isEmpty()) {
-
-			// init by choosing the first element
-			balancedStorageAccount = disksByStorageMap.keySet().iterator().next();
-			int min = disksByStorageMap.values().iterator().next();
-
-			// get the storage account name that has the minimum number of disks
-			for (Entry<String, Integer> entry : disksByStorageMap.entrySet()) {
-				String storageName = entry.getKey();
-				if (entry.getValue() <= min) {
-					min = entry.getValue();
-					balancedStorageAccount = storageName;
-				}
-			}
-		}
-
-		return balancedStorageAccount;
 	}
 
 	// TODO replace/remove opening ports with this logic

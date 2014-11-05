@@ -16,6 +16,7 @@
 			"azure.pfx.file": pfxFile,
 			"azure.pfx.password" : pfxPassword,
 			"azure.storage.account" : ["cfytestitos1", "cfytestitos2"] as List,
+			"azure.storage.accounts.data" : ["cfytestitdata1", "cfytestitdata2"] as List,
 			"azure.storage.datadisk.size" : 10,
 		])
   }

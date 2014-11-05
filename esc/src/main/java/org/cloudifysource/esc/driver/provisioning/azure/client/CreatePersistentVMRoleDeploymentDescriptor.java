@@ -22,6 +22,7 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 	private String deploymentSlot;
 	private String imageName;
 	private String storageAccountName;
+	private String osStorageAccountName;
 	private String userName;
 	private String password;
 	private String size;
@@ -36,6 +37,8 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 	private DomainJoin domainJoin;
 	private String customData;
 	private Integer dataDiskSize;
+
+	private List<String> dataStorageAccounts;
 
 	private boolean generateCloudServiceName;
 
@@ -230,6 +233,22 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 
 	public void setExtensions(List<Map<String, String>> extensions) {
 		this.extensions = extensions;
+	}
+
+	public List<String> getDataStorageAccounts() {
+		return dataStorageAccounts;
+	}
+
+	public void setDataStorageAccounts(List<String> dataStorageAccounts) {
+		this.dataStorageAccounts = dataStorageAccounts;
+	}
+
+	public String getOsStorageAccountName() {
+		return osStorageAccountName;
+	}
+
+	public void setOsStorageAccountName(String osStorageAccountName) {
+		this.osStorageAccountName = osStorageAccountName;
 	}
 
 }

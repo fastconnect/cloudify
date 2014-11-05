@@ -31,6 +31,7 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.cloudifysource.domain.cloud.network.NetworkConfiguration;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
+import org.cloudifysource.esc.driver.provisioning.azure.MicrosoftAzureUtils;
 import org.cloudifysource.esc.driver.provisioning.azure.model.AddressAvailability;
 import org.cloudifysource.esc.driver.provisioning.azure.model.AddressSpace;
 import org.cloudifysource.esc.driver.provisioning.azure.model.AffinityGroups;
@@ -822,11 +823,11 @@ public class MicrosoftAzureRestClient {
 
 		Deployment deploymentResponse = null;
 		try {
-			logger.info("Waiting for the VM deployment, this will take while...");
+			logger.info("Waiting for the VM deployment, this will take a while...");
 			String deploymentSlot = deploymentDesc.getDeploymentSlot();
 			deploymentResponse = waitForDeploymentStatus("Running", cloudServiceName, deploymentSlot, endTime);
-			deploymentResponse =
-					waitForRoleInstanceStatus("ReadyRole", cloudServiceName, deploymentSlot, roleName, endTime);
+			deploymentResponse = waitForRoleInstanceStatus("ReadyRole", cloudServiceName, deploymentSlot, roleName,
+					endTime);
 		} catch (final Exception e) {
 			logger.fine("Error while waiting for VM status : " + e.getMessage());
 			// the VM was created but with a bad status
@@ -846,9 +847,26 @@ public class MicrosoftAzureRestClient {
 
 		// ***************************************
 		// Add a data disk when creating a new VM
+		String storageAccountName = null;
 		if (deploymentDesc.getDataDiskSize() != null) {
+
+			// choose balanced storage account for the current data disk
+			if (deploymentDesc.getDataStorageAccounts() != null) {
+				storageAccountName = MicrosoftAzureUtils.getBalancedStorageAccount(deploymentDesc.
+						getDataStorageAccounts(), this);
+			} else {
+				storageAccountName = deploymentDesc.getStorageAccountName();
+			}
+
+			this.createStorageAccount(deploymentDesc.getAffinityGroup(), storageAccountName, endTime);
+
+			// set the created SA (to be cleaned later)
+			if (!storageAccountName.equals(deploymentDesc.getStorageAccountName())) {
+				this.storageAccounts.add(storageAccountName);
+			}
+
 			this.addDataDiskToVM(deploymentDesc.getHostedServiceName(), deploymentDesc.getDeploymentName(),
-					deploymentDesc.getRoleName(), deploymentDesc.getStorageAccountName(),
+					deploymentDesc.getRoleName(), storageAccountName,
 					deploymentDesc.getDataDiskSize(), endTime);
 		}
 		// ***************************************
@@ -863,7 +881,6 @@ public class MicrosoftAzureRestClient {
 		roleAddressDetails.setDeploymentName(deploymentInfo.getDeploymentName());
 		roleAddressDetails.setPrivateIp(roleInstance.getIpAddress());
 		roleAddressDetails.setPublicIp(this.retrievePublicIp(deploymentResponse, roleInstance));
-
 		return roleAddressDetails;
 	}
 
@@ -1060,7 +1077,7 @@ public class MicrosoftAzureRestClient {
 	public void deleteCloudService(final String cloudServiceName, final long endTime)
 			throws MicrosoftAzureException, TimeoutException, InterruptedException {
 		if (!cloudServiceExists(cloudServiceName)) {
-			logger.info("Cloud service " + cloudServiceName + " does not exist.");
+			logger.info("Cloud service " + cloudServiceName + " does not exist. No delete operation will be attempted");
 			return;
 		}
 
@@ -1071,6 +1088,7 @@ public class MicrosoftAzureRestClient {
 			ClientResponse response = doDelete("/services/hostedservices/" + cloudServiceName, endTime);
 			String requestId = extractRequestId(response);
 			waitForRequestToFinish(requestId, endTime);
+			logger.fine(String.format("Deleted cloud service '%s'", cloudServiceName));
 
 		} else {
 			logger.warning(String.format("Can't delete cloud service '%s', it still contains deployment(s)",
@@ -1155,7 +1173,6 @@ public class MicrosoftAzureRestClient {
 				logger.log(Level.WARNING,
 						String.format("Failed delete disk '%s' for the role '%s'", diskName, roleName), e);
 			}
-
 		}
 
 		// delete storage accounts
@@ -1351,10 +1368,14 @@ public class MicrosoftAzureRestClient {
 				logger.fine(getThreadIdentity() + "Deleting deployment of virtual machine from : "
 						+ deploymentName);
 
-				ClientResponse response = doDelete("/services/hostedservices/"
-						+ hostedServiceName + "/deployments/" + deploymentName, endTime);
+				ClientResponse response = doDelete("/services/hostedservices/" + hostedServiceName + "/deployments/"
+						+ deploymentName, endTime);
+
 				String requestId = extractRequestId(response);
 				waitForRequestToFinish(requestId, endTime);
+
+				logger.fine(String.format("Deleted deployment '%s'", deploymentName));
+
 				pendingRequest.unlock();
 				logger.fine(getThreadIdentity() + "Lock unlcoked");
 			} catch (final Exception e) {
@@ -1734,9 +1755,7 @@ public class MicrosoftAzureRestClient {
 
 	private ClientResponse doPost(final String url, final String body, final long endTime)
 			throws MicrosoftAzureException {
-
 		while (true) {
-
 			ClientResponse response = resource.path(subscriptionId + url)
 					.header(X_MS_VERSION_HEADER_NAME, X_MS_VERSION_HEADER_VALUE)
 					.header(CONTENT_TYPE_HEADER_NAME, CONTENT_TYPE_HEADER_VALUE)

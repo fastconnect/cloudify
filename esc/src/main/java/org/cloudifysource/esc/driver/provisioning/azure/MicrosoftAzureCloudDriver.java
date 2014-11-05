@@ -573,7 +573,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 				osStorageAccountName = this.storageAccountName;
 			}
 
-			logger.fine(String.format("Using storage account '%s' as OS storage account", osStorageAccountName));
+			logger.fine(String.format("Using '%s' as balanced storage account for OS disk", osStorageAccountName));
 			desc.setOsStorageAccountName(osStorageAccountName);
 
 			InputEndpoints inputEndpoints = createInputEndPoints();

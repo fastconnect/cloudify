@@ -418,7 +418,6 @@ public class MicrosoftAzureRestClient {
 			logger.fine("Creating virtual network sites");
 			virtualNetworkSites = new VirtualNetworkSites();
 		}
-		logger.fine("Creating virtual network sites");
 		logger.info("Creating virtual network sites");
 		VirtualNetworkSite virtualNetworkSite = null;
 		if (!virtualNetworkSites.contains(networkSiteName)) {
@@ -720,6 +719,8 @@ public class MicrosoftAzureRestClient {
 
 		if (lockAcquired) {
 
+			logger.info("Waiting for the VM deployment, this will take a while...");
+
 			logger.fine(getThreadIdentity() + "Lock acquired : " + pendingRequest.hashCode());
 			logger.fine(getThreadIdentity() + "Executing a request to provision a new virtual machine");
 			logger.info("Preparing VM deployment...");
@@ -792,6 +793,7 @@ public class MicrosoftAzureRestClient {
 				pendingRequest.unlock();
 
 			} catch (final Exception e) {
+				logger.severe("The deployment of the VM Role ");
 				logger.log(Level.FINE, getThreadIdentity() + "A failure occured : about to release lock "
 						+ pendingRequest.hashCode(), e);
 				if (cloudServiceName != null) {
@@ -823,7 +825,6 @@ public class MicrosoftAzureRestClient {
 
 		Deployment deploymentResponse = null;
 		try {
-			logger.info("Waiting for the VM deployment, this will take a while...");
 			String deploymentSlot = deploymentDesc.getDeploymentSlot();
 			deploymentResponse = waitForDeploymentStatus("Running", cloudServiceName, deploymentSlot, endTime);
 			deploymentResponse = waitForRoleInstanceStatus("ReadyRole", cloudServiceName, deploymentSlot, roleName,
@@ -859,6 +860,7 @@ public class MicrosoftAzureRestClient {
 			}
 
 			this.createStorageAccount(deploymentDesc.getAffinityGroup(), storageAccountName, endTime);
+			logger.fine(String.format("Using '%s' as balanced storage account for data disk", storageAccountName));
 
 			// set the created SA (to be cleaned later)
 			if (!storageAccountName.equals(deploymentDesc.getStorageAccountName())) {

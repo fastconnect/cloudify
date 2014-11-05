@@ -301,6 +301,9 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 			String mediaLink = managementRole.getOsVirtualHardDisk().getMediaLink();
 			Assert.assertTrue(mediaLink.contains("cfytestitos1"));
 
+			mediaLink = managementRole.getDataVirtualHardDisks().getDataVirtualHardDisks().get(0).getMediaLink();
+			Assert.assertTrue(mediaLink.contains("cfytestitdata1"));
+
 			this.startAndStopMachine(computeTemplate, new MachineDetailsAssertion() {
 
 				@Override
@@ -317,10 +320,15 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 					Assert.assertNotNull(role);
 					String mediaLink = role.getOsVirtualHardDisk().getMediaLink();
 					Assert.assertTrue(mediaLink.contains("cfytestitos2"));
+
+					mediaLink = role.getDataVirtualHardDisks().getDataVirtualHardDisks().get(0).getMediaLink();
+					Assert.assertTrue(mediaLink.contains("cfytestitdata2"));
 				}
+
 			});
 		} finally {
 			stopManagementMachines(driver);
+
 		}
 
 	}

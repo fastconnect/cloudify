@@ -15,7 +15,7 @@ public class InputEndpoint {
 	private String loadBalancedEndpointSetName;
 	private int localPort;
 	private String name;
-	private int port;
+	private Integer port;
 	private LoadBalancerProbe loadBalancerProbe;
 	private String protocol;
 	private String vIp;
@@ -61,15 +61,6 @@ public class InputEndpoint {
 		this.name = name;
 	}
 
-	@XmlElement(name = "Port")
-	public int getPort() {
-		return port;
-	}
-
-	public void setPort(final int port) {
-		this.port = port;
-	}
-
 	@XmlElement(name = "Protocol")
 	public String getProtocol() {
 		return protocol;
@@ -88,11 +79,21 @@ public class InputEndpoint {
 		this.loadBalancerProbe = loadBalancerProbe;
 	}
 
+	@XmlElement(name = "Port")
+	public Integer getPort() {
+		return port;
+	}
+
+	public void setPort(Integer port) {
+		this.port = port;
+	}
+
 	@Override
 	public String toString() {
 		return "InputEndpoint [loadBalancedEndpointSetName="
 				+ loadBalancedEndpointSetName + ", localPort=" + localPort
-				+ ", name=" + name + ", port=" + port + ", protocol="
+				+ ", name=" + name + ", port=" + getPort() + ", protocol="
 				+ protocol + ", vIp=" + vIp + "]";
 	}
+
 }

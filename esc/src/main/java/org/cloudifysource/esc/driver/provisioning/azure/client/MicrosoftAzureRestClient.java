@@ -791,7 +791,7 @@ public class MicrosoftAzureRestClient {
 				pendingRequest.unlock();
 
 			} catch (final Exception e) {
-				logger.severe("The deployment of the VM Role ");
+				logger.severe("The deployment of the VM Role has failed. " + e.getMessage());
 				logger.log(Level.FINE, getThreadIdentity() + "A failure occured : about to release lock "
 						+ pendingRequest.hashCode(), e);
 				if (cloudServiceName != null) {

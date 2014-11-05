@@ -218,11 +218,11 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 					// Valid ports
 					InputEndpoint httpEndpoint = inputEndpoints.getInputEndpointByName("HTTP");
 					Assert.assertNotNull("Missing HTTP endpoint", httpEndpoint);
-					Assert.assertEquals(8080, httpEndpoint.getPort());
+					Assert.assertEquals(new Integer(8080), httpEndpoint.getPort());
 
 					InputEndpoint sshEndpoint = inputEndpoints.getInputEndpointByName("SSH");
 					Assert.assertNotNull("Missing SHH endpoint", sshEndpoint);
-					Assert.assertEquals(22, sshEndpoint.getPort());
+					Assert.assertEquals(new Integer(22), sshEndpoint.getPort());
 				} catch (Exception e) {
 					Assert.fail(e.getMessage());
 				}

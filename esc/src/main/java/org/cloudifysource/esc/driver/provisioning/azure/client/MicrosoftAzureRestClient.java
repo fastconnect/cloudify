@@ -865,6 +865,7 @@ public class MicrosoftAzureRestClient {
 			// set the created SA (to be cleaned later)
 			if (!storageAccountName.equals(deploymentDesc.getStorageAccountName())) {
 				this.storageAccounts.add(storageAccountName);
+				logger.finest(String.format("Added '%s' to current storage accounts list", storageAccountName));
 			}
 
 			this.addDataDiskToVM(deploymentDesc.getHostedServiceName(), deploymentDesc.getDeploymentName(),

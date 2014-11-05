@@ -176,8 +176,6 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 	@Test
 	public void testStartUbuntuManagementMachineEndPoints() throws Exception {
 
-		final long endTime = 10000000;
-
 		String computeTemplateName = "ubuntu1410_endpoints";
 		final Cloud cloud =
 				AzureTestUtils.createCloud("./src/main/resources/clouds", "azure_win", null, computeTemplateName);
@@ -186,14 +184,9 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 		final ComputeTemplate computeTemplate = cloud.getCloudCompute().getTemplates().get(computeTemplateName);
 		final String cloudServiceName = (String) computeTemplate.getCustom().get("azure.cloud.service");
 		String affinityPrefix = (String) cloud.getCustom().get("azure.affinity.group");
-		String location = (String) cloud.getCustom().get("azure.affinity.location");
 
 		final MicrosoftAzureRestClient azureRestClient =
 				AzureTestUtils.createMicrosoftAzureRestClient(cloudServiceName, affinityPrefix);
-
-		// Created resources should be released by the stop management
-		azureRestClient.createAffinityGroup(affinityPrefix, location, endTime);
-		azureRestClient.createCloudService(affinityPrefix, cloudServiceName, endTime);
 
 		this.startAndStopManagementMachine(computeTemplateName, new MachineDetailsAssertion() {
 			@Override
@@ -202,8 +195,9 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 					HostedServices cloudServices = azureRestClient.listHostedServices();
 					Assert.assertTrue(cloudServices.contains(cloudServiceName));
 					String deploymentSlot = (String) computeTemplate.getCustom().get("azure.deployment.slot");
-					Deployment deployment = azureRestClient.listDeploymentsBySlot(cloudServiceName, deploymentSlot,
-							endTime);
+
+					Deployment deployment = azureRestClient.getDeploymentBySlot(
+							cloudServiceName, deploymentSlot);
 
 					Assert.assertNotNull(deployment);
 
@@ -223,6 +217,10 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 					InputEndpoint sshEndpoint = inputEndpoints.getInputEndpointByName("SSH");
 					Assert.assertNotNull("Missing SHH endpoint", sshEndpoint);
 					Assert.assertEquals(new Integer(22), sshEndpoint.getPort());
+
+					InputEndpoint genertedEndpoint = inputEndpoints.getInputEndpointByName("SPECIALPORT");
+					Assert.assertNotNull("Missing SPECIALPORT endpoint", genertedEndpoint);
+
 				} catch (Exception e) {
 					Assert.fail(e.getMessage());
 				}

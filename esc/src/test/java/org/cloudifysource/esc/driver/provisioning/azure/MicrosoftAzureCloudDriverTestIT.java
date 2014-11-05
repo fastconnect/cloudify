@@ -3,6 +3,7 @@ package org.cloudifysource.esc.driver.provisioning.azure;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.logging.Logger;
 
 import org.cloudifysource.domain.cloud.Cloud;
 import org.cloudifysource.domain.cloud.compute.ComputeTemplate;
@@ -31,6 +32,8 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
+
+	protected static final Logger logger = Logger.getLogger(MicrosoftAzureCloudDriverTestIT.class.getName());
 
 	@Test
 	public void testNamingConvention() throws Exception {
@@ -326,7 +329,11 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 				}
 
 			});
-		} finally {
+		} catch (Exception e) {
+			logger.severe("Error it test :" + e.getMessage());
+		}
+
+		finally {
 			stopManagementMachines(driver);
 
 		}

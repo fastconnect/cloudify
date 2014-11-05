@@ -1274,8 +1274,8 @@ public class MicrosoftAzureRestClient {
 			}
 
 			if (System.currentTimeMillis() > endTime) {
-				throw new TimeoutException(
-						"Timed out waiting for disk " + diskName + " to detach from role " + roleName);
+				throw new TimeoutException("Timed out waiting for disk " + diskName + " to detach from role "
+						+ roleName);
 			}
 		}
 	}

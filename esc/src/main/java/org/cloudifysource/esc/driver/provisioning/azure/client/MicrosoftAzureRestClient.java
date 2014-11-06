@@ -11,12 +11,10 @@
 package org.cloudifysource.esc.driver.provisioning.azure.client;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
@@ -143,7 +141,7 @@ public class MicrosoftAzureRestClient {
 
 	private MicrosoftAzureSSLHelper sslHelper;
 	private String virtualNetwork;
-	private Set<String> storageAccounts = new HashSet<String>();
+	// private Set<String> storageAccounts = new HashSet<String>();
 
 	private Logger logger = Logger.getLogger(this.getClass().getName());
 
@@ -828,6 +826,9 @@ public class MicrosoftAzureRestClient {
 			deploymentResponse = waitForDeploymentStatus("Running", cloudServiceName, deploymentSlot, endTime);
 			deploymentResponse = waitForRoleInstanceStatus("ReadyRole", cloudServiceName, deploymentSlot, roleName,
 					endTime);
+			logger.fine(String.format("VM '%s' provisioning finished successfully. Starting Role configuration",
+					roleName));
+
 		} catch (final Exception e) {
 			logger.fine("Error while waiting for VM status : " + e.getMessage());
 			// the VM was created but with a bad status
@@ -860,12 +861,6 @@ public class MicrosoftAzureRestClient {
 
 			this.createStorageAccount(deploymentDesc.getAffinityGroup(), storageAccountName, endTime);
 			logger.fine(String.format("Using '%s' as balanced storage account for data disk", storageAccountName));
-
-			// set the created SA (to be cleaned later)
-			if (!storageAccountName.equals(deploymentDesc.getStorageAccountName())) {
-				this.storageAccounts.add(storageAccountName);
-				logger.finest(String.format("Added '%s' to current storage accounts list", storageAccountName));
-			}
 
 			this.addDataDiskToVM(deploymentDesc.getHostedServiceName(), deploymentDesc.getDeploymentName(),
 					deploymentDesc.getRoleName(), storageAccountName,
@@ -1127,6 +1122,7 @@ public class MicrosoftAzureRestClient {
 	public void deleteVirtualMachineByIp(final String machineIp, final boolean isPrivateIp, final long endTime)
 			throws TimeoutException, MicrosoftAzureException, InterruptedException {
 
+		logger.info("Deleting virtual machine with ip " + machineIp);
 		Deployment deployment = getDeploymentByIp(machineIp, isPrivateIp);
 		if (deployment == null) {
 			throw new MicrosoftAzureException("Could not find a deployment for Virtual Machine with IP " + machineIp);
@@ -1148,22 +1144,27 @@ public class MicrosoftAzureRestClient {
 			this.deleteDeployment(deployment.getHostedServiceName(), deployment.getName(), endTime);
 		}
 
-		// delete cloud service, verification for possible deployments is done inside this method
+		logger.fine(String.format("Cleaning resources associated with role '%s' [%s]", roleName, machineIp));
+
+		logger.finest("Cleaning associated cloud service");
+
+		// delete cloud service, verification for eventual deployments is done inside the deleteCloudService method
 		this.deleteCloudService(deployment.getHostedServiceName(), endTime);
 
-		logger.fine(String.format("Cleaning resources for role '%s' [%s]", roleName, machineIp));
-
+		logger.finest("Cleaning associated OS disk");
 		String osVhdName = role.getOsVirtualHardDisk().getName();
 		try {
 			logger.fine("Waiting for OS Disk " + osVhdName + " to detach from role " + roleName);
 			waitForDiskToDetach(osVhdName, roleName, endTime);
 			logger.info("Deleting OS Disk : " + osVhdName);
 			this.deleteDisk(osVhdName, true, endTime);
+			logger.finest("Cleaned associated OS disk");
 		} catch (Exception e) {
 			logger.log(Level.WARNING, String.format("Failed deleting OS disk '%s' for the role '%s'", osVhdName,
 					roleName), e);
 		}
 
+		logger.finest("Cleaning associated data disk(s)");
 		for (DataVirtualHardDisk disk : role.getDataVirtualHardDisks().getDataVirtualHardDisks()) {
 			String diskName = disk.getDiskName();
 			try {
@@ -1176,19 +1177,7 @@ public class MicrosoftAzureRestClient {
 						String.format("Failed delete disk '%s' for the role '%s'", diskName, roleName), e);
 			}
 		}
-
-		// delete storage accounts
-		for (String storage : this.storageAccounts) {
-
-			try {
-				this.deleteStorageAccount(storage, endTime);
-
-			} catch (Exception e) {
-				logger.warning(String.format("Failed deleting storage account '%s'. It might be already in use.",
-						storage));
-			}
-		}
-
+		logger.finest("Cleaned associated data disk(s)");
 		logger.fine(String.format("Role '%s' resources cleaned with success", roleName));
 	}
 
@@ -1406,6 +1395,8 @@ public class MicrosoftAzureRestClient {
 	public boolean deleteRoleFromDeployment(final String roleName,
 			final Deployment deployment, final long endTime) throws InterruptedException, MicrosoftAzureException,
 			TimeoutException {
+
+		logger.fine(String.format("Deleting VM Role '%s' from deployment '%s'", roleName, deployment.getName()));
 
 		long currentTimeInMillis = System.currentTimeMillis();
 		long lockTimeout = endTime - currentTimeInMillis;
@@ -2174,6 +2165,9 @@ public class MicrosoftAzureRestClient {
 	public void addDataDiskToVM(String serviceName, String deploymentName, String roleName,
 			String storageAccountName, String vhdFilename, int diskSize, int lun, long endTime)
 			throws MicrosoftAzureException, TimeoutException, InterruptedException {
+
+		logger.finest(String.format("Trying to add disk to vm role '%s' ", roleName));
+
 		StringBuilder dataMediaLinkBuilder = new StringBuilder();
 		dataMediaLinkBuilder.append("https://");
 		dataMediaLinkBuilder.append(storageAccountName);
@@ -2566,14 +2560,6 @@ public class MicrosoftAzureRestClient {
 		deploymentInfo.setDeploymentName(deploymentName);
 		deploymentInfo.setAddRoleToExistingDeployment(addRoleToExistingDeployment);
 		return deploymentInfo;
-	}
-
-	public Set<String> getStorageAccounts() {
-		return storageAccounts;
-	}
-
-	public void setStorageAccounts(Set<String> storageAccounts) {
-		this.storageAccounts = storageAccounts;
 	}
 
 }

@@ -562,8 +562,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 									azureClient);
 					azureClient.createStorageAccount(this.affinityGroup, osStorageAccountName, endTime);
 
-					// added this newly created storage to the list (cleaning resources)
-					azureClient.getStorageAccounts().add(osStorageAccountName);
 				} else {
 					osStorageAccountName = this.storageAccountName;
 				}
@@ -854,21 +852,42 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		}
 
 		// delete storage accounts
-		boolean deletedStorageAccounts = true;
+		boolean deletedOsStorageAccounts = false;
+
+		logger.fine("Cleaning storage accounts of OS disks ");
 		if (this.computeTemplateStorageAccountName != null) {
 			for (String storage : this.computeTemplateStorageAccountName) {
 				try {
 					azureClient.deleteStorageAccount(storage, endTime);
-
+					deletedOsStorageAccounts = true;
 				} catch (Exception e) {
 					logger.warning(String.format("Failed deleting storage account '%s'. It might be already in use.",
 							storage));
-					deletedStorageAccounts = false;
+					if (first == null) {
+						first = e;
+					}
 				}
 			}
 		}
 
-		if (deletedNetwork && deletedStorage && deletedStorageAccounts) {
+		logger.fine("Cleaning storage accounts for data disks");
+		boolean deletedDataStorageAccounts = false;
+		if (this.computeTemplateDataStorageAccounts != null) {
+			for (String storage : this.computeTemplateDataStorageAccounts) {
+				try {
+					azureClient.deleteStorageAccount(storage, endTime);
+					deletedDataStorageAccounts = true;
+				} catch (Exception e) {
+					logger.warning(String.format("Failed deleting storage account '%s'. It might be already in use.",
+							storage));
+					if (first == null) {
+						first = e;
+					}
+				}
+			}
+		}
+
+		if (deletedNetwork && deletedStorage && deletedOsStorageAccounts && deletedDataStorageAccounts) {
 			try {
 				azureClient.deleteAffinityGroup(affinityGroup, endTime);
 			} catch (final Exception e) {
@@ -880,15 +899,27 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			}
 		} else {
 			StringBuilder msg = new StringBuilder();
-			msg.append(String.format("Not trying to delete affinity group since is has some active services, "
-					+ "either virtual network '%s'", networkName));
+			msg.append("Not trying to delete affinity group since is has some active services :  \n");
 
-			msg.append(String.format(", main storage account '%s'", storageAccountName));
-			if (this.computeTemplateStorageAccountName != null) {
-				msg.append(String.format(", or other storage accounts '%s' ",
-						this.computeTemplateStorageAccountName.toString()));
+			if (deletedNetwork) {
+				msg.append(String.format(" - virtual network '%s' \n", networkName));
 			}
-			logger.info(msg.toString());
+
+			if (deletedStorage) {
+				msg.append(String.format(String.format("- main storage account '%s' \n", storageAccountName)));
+			}
+
+			if (deletedOsStorageAccounts) {
+				msg.append(String.format(String.format("- storage accounts for OS disks %s \n",
+						this.computeTemplateStorageAccountName)));
+			}
+
+			if (deletedDataStorageAccounts) {
+				msg.append(String.format(String.format("- storage accounts for data disks %s \n",
+						this.computeTemplateDataStorageAccounts)));
+			}
+
+			logger.warning(msg.toString());
 
 		}
 		if (first != null) {

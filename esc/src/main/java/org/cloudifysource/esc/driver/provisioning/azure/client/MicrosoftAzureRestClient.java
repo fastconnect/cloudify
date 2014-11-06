@@ -141,7 +141,6 @@ public class MicrosoftAzureRestClient {
 
 	private MicrosoftAzureSSLHelper sslHelper;
 	private String virtualNetwork;
-	// private Set<String> storageAccounts = new HashSet<String>();
 
 	private Logger logger = Logger.getLogger(this.getClass().getName());
 
@@ -753,11 +752,14 @@ public class MicrosoftAzureRestClient {
 
 				// Add role to specified deployment
 				if (deploymentInfo.isAddRoleToExistingDeployment()) {
-					logger.info(String.format("Adding current VM Role in deployment '%s'",
-							deploymentDesc.getDeploymentName()));
+
 					PersistentVMRole persistentVMRole = requestBodyBuilder.buildPersistentVMRole(deploymentDesc,
 							isWindows);
 					roleName = persistentVMRole.getRoleName();
+
+					logger.info(String.format("Adding VM Role '%s' in the current deployment '%s'",
+							roleName, deploymentDesc.getDeploymentName()));
+
 					String xmlRequest = MicrosoftAzureModelUtils.marshall(persistentVMRole, false);
 					logger.fine(getThreadIdentity()
 							+ String.format("Launching virtual machine '%s', in current deployment '%s'",
@@ -1128,6 +1130,9 @@ public class MicrosoftAzureRestClient {
 			throw new MicrosoftAzureException("Could not find a deployment for Virtual Machine with IP " + machineIp);
 		}
 
+		String hostedServiceName = deployment.getHostedServiceName();
+		String deploymentName = deployment.getName();
+
 		Role role = this.getRoleByIpAddress(machineIp, deployment);
 		if (role == null) {
 			throw new MicrosoftAzureException("Could not role for Virtual Machine with IP " + machineIp);
@@ -1141,7 +1146,7 @@ public class MicrosoftAzureRestClient {
 
 			// otherwise delete deployment
 		} else {
-			this.deleteDeployment(deployment.getHostedServiceName(), deployment.getName(), endTime);
+			this.deleteDeployment(hostedServiceName, deploymentName, endTime);
 		}
 
 		logger.fine(String.format("Cleaning resources associated with role '%s' [%s]", roleName, machineIp));
@@ -1149,13 +1154,15 @@ public class MicrosoftAzureRestClient {
 		logger.finest("Cleaning associated cloud service");
 
 		// delete cloud service, verification for eventual deployments is done inside the deleteCloudService method
-		this.deleteCloudService(deployment.getHostedServiceName(), endTime);
+		this.deleteCloudService(hostedServiceName, endTime);
 
 		logger.finest("Cleaning associated OS disk");
 		String osVhdName = role.getOsVirtualHardDisk().getName();
+
+		// TODO PROBLEM with azure, os disk still attached to non existing vm which causes timeout
 		try {
-			logger.fine("Waiting for OS Disk " + osVhdName + " to detach from role " + roleName);
-			waitForDiskToDetach(osVhdName, roleName, endTime);
+			// logger.fine("Waiting for OS Disk " + osVhdName + " to detach from role " + roleName);
+			// waitForDiskToDetach(osVhdName, roleName, endTime);
 			logger.info("Deleting OS Disk : " + osVhdName);
 			this.deleteDisk(osVhdName, true, endTime);
 			logger.finest("Cleaned associated OS disk");
@@ -1169,6 +1176,8 @@ public class MicrosoftAzureRestClient {
 			String diskName = disk.getDiskName();
 			try {
 				logger.fine("Waiting for Data Disk " + diskName + " to detach from role " + roleName);
+				int lun = disk.getLun();
+				removeDataDisk(hostedServiceName, deploymentName, roleName, lun, endTime);
 				waitForDiskToDetach(diskName, roleName, endTime);
 				logger.info("Deleting Data Disk : " + diskName);
 				this.deleteDisk(diskName, true, endTime);
@@ -2176,7 +2185,7 @@ public class MicrosoftAzureRestClient {
 		DataVirtualHardDisk dataVirtualHardDisk = new DataVirtualHardDisk();
 		dataVirtualHardDisk.setLogicalDiskSizeInGB(diskSize);
 		dataVirtualHardDisk.setMediaLink(dataMediaLinkBuilder.toString());
-		dataVirtualHardDisk.setDiskLabel("Data");
+		// dataVirtualHardDisk.setDiskLabel("Data");
 		dataVirtualHardDisk.setLun(lun);
 
 		String xmlRequest = MicrosoftAzureModelUtils.marshall(dataVirtualHardDisk, false);
@@ -2286,6 +2295,7 @@ public class MicrosoftAzureRestClient {
 	 */
 	public void removeDataDisk(String serviceName, String deploymentName, String roleName, int lun, long endTime)
 			throws MicrosoftAzureException, TimeoutException, InterruptedException {
+		logger.fine("Removing/detaching data disk from role " + roleName);
 		DataVirtualHardDisk dataDisk = this.getDataDisk(serviceName, deploymentName, roleName, lun, endTime);
 		String url = String.format("/services/hostedservices/%s/deployments/%s/roles/%s/DataDisks/%d", serviceName,
 				deploymentName, roleName, lun);
@@ -2293,7 +2303,7 @@ public class MicrosoftAzureRestClient {
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
 		waitForDiskToDetach(dataDisk.getDiskName(), roleName, endTime);
-		logger.fine("Removed data disk from " + roleName);
+		logger.fine("Removed data disk from role " + roleName);
 	}
 
 	/**

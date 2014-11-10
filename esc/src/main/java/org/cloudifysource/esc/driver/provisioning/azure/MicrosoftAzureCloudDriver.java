@@ -765,7 +765,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 		int numberOfManagementMachines = this.cloud.getProvider().getNumberOfManagementMachines();
 		return doStartManagementMachines(endTime, numberOfManagementMachines);
-
 	}
 
 	/**
@@ -899,7 +898,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			}
 		} else {
 			StringBuilder msg = new StringBuilder();
-			msg.append("Not trying to delete affinity group since is has some active services :  \n");
+			msg.append("Not attempting to delete affinity group since is has some active services :  \n");
 
 			if (deletedNetwork) {
 				msg.append(String.format(" - virtual network '%s' \n", networkName));

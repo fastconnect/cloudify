@@ -8,7 +8,7 @@ public class DeploymentInfo {
 
 	private String deploymentName;
 	private String cloudServiceName;
-	private boolean addRoleToExistingDeployment;
+	private boolean addToDeployment;
 
 	public String getDeploymentName() {
 		return deploymentName;
@@ -26,12 +26,12 @@ public class DeploymentInfo {
 		this.cloudServiceName = cloudServiceName;
 	}
 
-	public boolean isAddRoleToExistingDeployment() {
-		return addRoleToExistingDeployment;
+	public boolean isAddToDeployment() {
+		return addToDeployment;
 	}
 
-	public void setAddRoleToExistingDeployment(boolean addRoleToExistingDeployment) {
-		this.addRoleToExistingDeployment = addRoleToExistingDeployment;
+	public void setAddToDeployment(boolean addToDeployment) {
+		this.addToDeployment = addToDeployment;
 	}
 
 }

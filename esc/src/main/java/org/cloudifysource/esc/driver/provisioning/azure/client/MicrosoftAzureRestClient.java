@@ -543,10 +543,9 @@ public class MicrosoftAzureRestClient {
 			if (gateway != null) {
 				if (gateway.isReadyForProvisioning()) {
 
-					logger.info(String
-							.format(
-									"Creating gateway between vNet '%s' and local network '%s'. This operation will take a while, "
-											+ "so please wait...", networkSiteName, newLocalNetworkSite.getName()));
+					logger.info(String.format("Creating gateway between vNet '%s' and local network '%s'. This "
+							+ "operation will take a while, " + "so please wait...", networkSiteName,
+							newLocalNetworkSite.getName()));
 
 					this.createVirtualNetworkGateway(vpnConfiguration.getGatewayType(), virtualNetworkSite.getName(),
 							endTime);
@@ -721,10 +720,12 @@ public class MicrosoftAzureRestClient {
 			logger.info("Preparing VM deployment...");
 			try {
 
-				deploymentInfo = this.getOrCreateDeploymentInfo(deploymentDesc, endTime);
+				deploymentInfo = this.getDeploymentInfo(deploymentDesc, endTime);
 				deploymentDesc.setHostedServiceName(deploymentInfo.getCloudServiceName());
 				deploymentDesc.setDeploymentName(deploymentInfo.getDeploymentName());
 				cloudServiceName = deploymentInfo.getCloudServiceName();
+
+				createCloudService(deploymentDesc.getAffinityGroup(), cloudServiceName, endTime);
 
 				// check static IP(s) availability
 				// which is skipped if no private ip was defined in the current compute template
@@ -751,7 +752,7 @@ public class MicrosoftAzureRestClient {
 				deploymentDesc.setExtensionReferences(extensionReferences);
 
 				// Add role to specified deployment
-				if (deploymentInfo.isAddRoleToExistingDeployment()) {
+				if (deploymentInfo.isAddToDeployment()) {
 
 					PersistentVMRole persistentVMRole = requestBodyBuilder.buildPersistentVMRole(deploymentDesc,
 							isWindows);
@@ -778,8 +779,7 @@ public class MicrosoftAzureRestClient {
 					roleName = deployment.getRoleList().getRoles().get(0).getRoleName();
 					String xmlRequest = MicrosoftAzureModelUtils.marshall(deployment, false);
 
-					logger.fine(getThreadIdentity() + "Launching virtual machine : "
-							+ deploymentDesc.getRoleName());
+					logger.fine(getThreadIdentity() + "Launching virtual machine : " + deploymentDesc.getRoleName());
 
 					ClientResponse response = doPost("/services/hostedservices/"
 							+ cloudServiceName + "/deployments", xmlRequest, endTime);
@@ -1026,9 +1026,10 @@ public class MicrosoftAzureRestClient {
 		}
 
 		logger.info("Deleting storage account : " + storageAccountName);
-		ClientResponse response = doDelete("/services/storageservices/" + storageAccountName, endTime);
+		ClientResponse response = doDelete("/services/storageservices/" + storageAccountName);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
+
 		logger.fine("Deleted storage account : " + storageAccountName);
 		return true;
 
@@ -1053,7 +1054,7 @@ public class MicrosoftAzureRestClient {
 			return true;
 		}
 		logger.info("Deleting affinity group : " + affinityGroupName);
-		ClientResponse response = doDelete("/affinitygroups/" + affinityGroupName, endTime);
+		ClientResponse response = doDelete("/affinitygroups/" + affinityGroupName);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
 		logger.fine("Deleted affinity group : " + affinityGroupName);
@@ -1084,7 +1085,7 @@ public class MicrosoftAzureRestClient {
 
 		if (!doesCloudServiceContainsDeployments(cloudServiceName, endTime)) {
 			// Delete cloud service
-			ClientResponse response = doDelete("/services/hostedservices/" + cloudServiceName, endTime);
+			ClientResponse response = doDelete("/services/hostedservices/" + cloudServiceName);
 			String requestId = extractRequestId(response);
 			waitForRequestToFinish(requestId, endTime);
 			logger.fine(String.format("Deleted cloud service '%s'", cloudServiceName));
@@ -1130,64 +1131,20 @@ public class MicrosoftAzureRestClient {
 			throw new MicrosoftAzureException("Could not find a deployment for Virtual Machine with IP " + machineIp);
 		}
 
-		String hostedServiceName = deployment.getHostedServiceName();
-		String deploymentName = deployment.getName();
-
 		Role role = this.getRoleByIpAddress(machineIp, deployment);
 		if (role == null) {
 			throw new MicrosoftAzureException("Could not role for Virtual Machine with IP " + machineIp);
 		}
 
 		String roleName = role.getRoleName();
+		this.deleteRoleFromDeployment(roleName, deployment, true, endTime);
 
-		// delete role if the current deployment has at least 2 roles.
-		if (deployment.hasAtLeastTwoRoles()) {
-			this.deleteRoleFromDeployment(roleName, deployment, endTime);
-
-			// otherwise delete deployment
-		} else {
-			this.deleteDeployment(hostedServiceName, deploymentName, endTime);
-		}
-
+		String hostedServiceName = deployment.getHostedServiceName();
 		logger.fine(String.format("Cleaning resources associated with role '%s' [%s]", roleName, machineIp));
+		logger.finest(String.format("Trying to clean associated cloud service '%s' ", hostedServiceName));
 
-		logger.finest("Cleaning associated cloud service");
-
-		// delete cloud service, verification for eventual deployments is done inside the deleteCloudService method
 		this.deleteCloudService(hostedServiceName, endTime);
 
-		logger.finest("Cleaning associated OS disk");
-		String osVhdName = role.getOsVirtualHardDisk().getName();
-
-		// TODO PROBLEM with azure, os disk still attached to non existing vm which causes timeout
-		try {
-			// logger.fine("Waiting for OS Disk " + osVhdName + " to detach from role " + roleName);
-			// waitForDiskToDetach(osVhdName, roleName, endTime);
-			logger.info("Deleting OS Disk : " + osVhdName);
-			this.deleteDisk(osVhdName, true, endTime);
-			logger.finest("Cleaned associated OS disk");
-		} catch (Exception e) {
-			logger.log(Level.WARNING, String.format("Failed deleting OS disk '%s' for the role '%s'", osVhdName,
-					roleName), e);
-		}
-
-		logger.finest("Cleaning associated data disk(s)");
-		for (DataVirtualHardDisk disk : role.getDataVirtualHardDisks().getDataVirtualHardDisks()) {
-			String diskName = disk.getDiskName();
-			try {
-				logger.fine("Waiting for Data Disk " + diskName + " to detach from role " + roleName);
-				int lun = disk.getLun();
-				removeDataDisk(hostedServiceName, deploymentName, roleName, lun, endTime);
-				waitForDiskToDetach(diskName, roleName, endTime);
-				logger.info("Deleting Data Disk : " + diskName);
-				this.deleteDisk(diskName, true, endTime);
-			} catch (Exception e) {
-				logger.log(Level.WARNING,
-						String.format("Failed delete disk '%s' for the role '%s'", diskName, roleName), e);
-			}
-		}
-		logger.finest("Cleaned associated data disk(s)");
-		logger.fine(String.format("Role '%s' resources cleaned with success", roleName));
 	}
 
 	/**
@@ -1209,7 +1166,6 @@ public class MicrosoftAzureRestClient {
 			throws TimeoutException, MicrosoftAzureException, InterruptedException {
 
 		String roleName = null;
-		// Disk disk = getDiskByAttachedCloudService(cloudServiceName);
 		List<Disk> disks = getDisksByAttachedCloudService(cloudServiceName);
 		if (disks != null && !disks.isEmpty()) {
 			roleName = disks.get(0).getAttachedTo().getRoleName();
@@ -1227,8 +1183,6 @@ public class MicrosoftAzureRestClient {
 
 		for (Disk disk : disks) {
 			String diskName = disk.getName();
-			logger.fine("Waiting for OS or Data Disk " + diskName + " to detach from role " + roleName);
-			waitForDiskToDetach(diskName, roleName, endTime);
 			logger.info("Deleting OS or Data Disk : " + diskName);
 			deleteDisk(diskName, true, endTime);
 		}
@@ -1311,6 +1265,7 @@ public class MicrosoftAzureRestClient {
 	public boolean deleteDisk(final String diskName, final boolean deleteVhd, final long endTime)
 			throws MicrosoftAzureException, TimeoutException,
 			InterruptedException {
+
 		if (!isDiskExists(diskName)) {
 			logger.info("Disk " + diskName + " does not exist");
 			return true;
@@ -1321,9 +1276,14 @@ public class MicrosoftAzureRestClient {
 		if (deleteVhd) {
 			url = url + "?comp=media";
 		}
-		ClientResponse response = doDelete(url, endTime);
+
+		try {
+			ClientResponse response = performDeleteRequest(url, true, endTime);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
+		} catch (AzureResourceNotFoundException e) {
+			logger.fine(String.format("Disk '%s' seems already deleted", diskName));
+		}
 
 		return true;
 	}
@@ -1369,7 +1329,7 @@ public class MicrosoftAzureRestClient {
 						+ deploymentName);
 
 				ClientResponse response = doDelete("/services/hostedservices/" + hostedServiceName + "/deployments/"
-						+ deploymentName, endTime);
+						+ deploymentName);
 
 				String requestId = extractRequestId(response);
 				waitForRequestToFinish(requestId, endTime);
@@ -1401,8 +1361,8 @@ public class MicrosoftAzureRestClient {
 	}
 
 	// TODO : refactoring with other methods that use the same process lock>->request->response->unlock
-	public boolean deleteRoleFromDeployment(final String roleName,
-			final Deployment deployment, final long endTime) throws InterruptedException, MicrosoftAzureException,
+	public boolean deleteRoleFromDeployment(final String roleName, final Deployment deployment,
+			final boolean deleteVhd, final long endTime) throws InterruptedException, MicrosoftAzureException,
 			TimeoutException {
 
 		logger.fine(String.format("Deleting VM Role '%s' from deployment '%s'", roleName, deployment.getName()));
@@ -1416,10 +1376,17 @@ public class MicrosoftAzureRestClient {
 		if (lockAcquired) {
 			try {
 
-				// https://management.core.windows.net/<subscription-id>/services/hostedservices/<cloudservice-name>/deployments/<deployment-name>/roles/<role-name>
+				String url = "/services/hostedservices/" + deployment.getHostedServiceName() + "/deployments/" +
+						deployment.getName() + "/roles/" + roleName;
+
+				if (deleteVhd) {
+					url = url + "?comp=media";
+				}
+
+				// https://management.core.windows.net/<subscription-id>/services/hostedservices/<cloudservice-name>/deployments/<deployment-name>/roles/<role-name>?comp=media
 
 				ClientResponse response = doDelete("/services/hostedservices/" + deployment.getHostedServiceName()
-						+ "/deployments/" + deployment.getName() + "/roles/" + roleName, endTime);
+						+ "/deployments/" + deployment.getName() + "/roles/" + roleName);
 
 				String requestId = extractRequestId(response);
 				waitForRequestToFinish(requestId, endTime);
@@ -1459,8 +1426,7 @@ public class MicrosoftAzureRestClient {
 		ClientResponse response = doGet("/services/hostedservices");
 		String responseBody = response.getEntity(String.class);
 		checkForError(response);
-		return (HostedServices) MicrosoftAzureModelUtils
-				.unmarshall(responseBody);
+		return (HostedServices) MicrosoftAzureModelUtils.unmarshall(responseBody);
 	}
 
 	/**
@@ -1722,7 +1688,7 @@ public class MicrosoftAzureRestClient {
 
 				// DELETE
 				// https://management.core.windows.net/<subscription-id>/services/networking/<virtual-network-name>/gateway
-				ClientResponse response = doDelete("/services/networking/" + virtualNetworkSite + "/gateway", endTime);
+				ClientResponse response = doDelete("/services/networking/" + virtualNetworkSite + "/gateway");
 				String requestId = extractRequestId(response);
 				waitForRequestToFinish(requestId, endTime);
 				waitForGatewayDeleteOperationToFinish(virtualNetworkSite, endTime);
@@ -1769,33 +1735,61 @@ public class MicrosoftAzureRestClient {
 		}
 	}
 
-	private ClientResponse doDelete(final String url, long endTime)
+	private ClientResponse doDelete(final String url)
 			throws MicrosoftAzureException {
 
-		while (true) {
-			ClientResponse response = resource.path(subscriptionId + url)
+		ClientResponse response = null;
+		response = resource.path(subscriptionId + url)
 					.header(X_MS_VERSION_HEADER_NAME, X_MS_VERSION_HEADER_VALUE)
 					.header(CONTENT_TYPE_HEADER_NAME, CONTENT_TYPE_HEADER_VALUE)
 					.delete(ClientResponse.class);
 
-			Error error = checkForError(response);
-			checkForConflict(error, endTime);
 			return response;
 		}
 
+	private ClientResponse performDeleteRequest(String url, boolean waitForConflict, long endTime)
+			throws MicrosoftAzureException,
+			AzureResourceNotFoundException {
+
+		while (true) {
+
+			ClientResponse response = doDelete(url);
+			int status = response.getStatus();
+			if (status == HTTP_NOT_FOUND) {
+				logger.finest("Azure resource not found, it might be already deleted");
+				throw new AzureResourceNotFoundException();
 	}
 
-	private void checkForConflict(Error error, long endTime) throws MicrosoftAzureException {
-		// eventually a conflict error here
-		if (error != null) {
+			// OK status
+			if (status == HTTP_OK || status == HTTP_CREATED || status == HTTP_ACCEPTED) {
+				return response;
+			}
 
-			String errorString = ReflectionToStringBuilder.toString(error, ToStringStyle.SHORT_PREFIX_STYLE);
+			// error at this point
+			Error error = (Error) MicrosoftAzureModelUtils.unmarshall(response.getEntity(String.class));
 
-			// if a conflict error, than wait and retry until end time
+			// a conflict error, wait and see
+			if (error.getCode().equals(HTTP_AZURE_CONFLICT_CODE)) {
+
+				if (waitForConflict) {
+					logger.fine("Waiting for resource conflict/lease to be resolved/released...");
+					try {
+						Thread.sleep(DEFAULT_POLLING_INTERVAL);
+					} catch (InterruptedException e) {
+						String interruptedMsg = "Interrupted while waiting for conflict to be resolved";
+						logger.severe(interruptedMsg);
+						throw new MicrosoftAzureException(interruptedMsg, e);
+					}
+				} else {
+					throw new MicrosoftAzureException("Conflicted detected, but wait for resolution is disabled");
+				}
+			}
+
+			// timeout
 			if (System.currentTimeMillis() > endTime) {
-				String timeoutMsg =
-						"Timeout while waiting for conflict to be resolved, more about the error : " +
-								errorString;
+				String errorString = ReflectionToStringBuilder.toString(error, ToStringStyle.SHORT_PREFIX_STYLE);
+				String timeoutMsg = "Timeout while waiting for resource conflict/lease to be resolved/released, "
+						+ "more about the error : " + errorString;
 				logger.severe(timeoutMsg);
 				throw new MicrosoftAzureException(timeoutMsg);
 			}
@@ -1864,7 +1858,6 @@ public class MicrosoftAzureRestClient {
 		} else {
 			return false;
 		}
-
 	}
 
 	private boolean storageExists(final String storageAccouhtName)
@@ -1889,17 +1882,13 @@ public class MicrosoftAzureRestClient {
 			throws MicrosoftAzureException {
 		int status = response.getStatus();
 		Error error = null;
-		if (status != HTTP_OK && status != HTTP_CREATED
-				&& status != HTTP_ACCEPTED) { // we got some
-
-			// sort of error, if itsn't a conflict one than throw an exception
+		if (status != HTTP_OK && status != HTTP_CREATED && status != HTTP_ACCEPTED) {
+			// we got some sort of error, if itsn't a conflict one than throw an exception
 			error = (Error) MicrosoftAzureModelUtils.unmarshall(response.getEntity(String.class));
-			if (!error.getCode().equals(HTTP_AZURE_CONFLICT_CODE)) {
 				String errorMessage = error.getMessage();
 				String errorCode = error.getCode();
 				throw new MicrosoftAzureException(errorCode, errorMessage);
 			}
-		}
 		return error;
 	}
 
@@ -2017,7 +2006,6 @@ public class MicrosoftAzureRestClient {
 								+ status);
 			}
 		}
-
 	}
 
 	private Operation getOperation(final String requestId)
@@ -2299,7 +2287,7 @@ public class MicrosoftAzureRestClient {
 		DataVirtualHardDisk dataDisk = this.getDataDisk(serviceName, deploymentName, roleName, lun, endTime);
 		String url = String.format("/services/hostedservices/%s/deployments/%s/roles/%s/DataDisks/%d", serviceName,
 				deploymentName, roleName, lun);
-		ClientResponse response = doDelete(url, endTime);
+		ClientResponse response = doDelete(url);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
 		waitForDiskToDetach(dataDisk.getDiskName(), roleName, endTime);
@@ -2506,69 +2494,39 @@ public class MicrosoftAzureRestClient {
 		return gatewayInfo;
 	}
 
-	private DeploymentInfo getOrCreateDeploymentInfo(CreatePersistentVMRoleDeploymentDescriptor deploymentDesc,
+	private DeploymentInfo getDeploymentInfo(CreatePersistentVMRoleDeploymentDescriptor deploymentDesc,
 			long endTime) throws MicrosoftAzureException, TimeoutException, InterruptedException {
 
-		String deploymentName = null;
-		String cloudServiceName = null;
-		String deploymentSlot = deploymentDesc.getDeploymentSlot();
-		String hostedServiceName = deploymentDesc.getHostedServiceName();
-		boolean addRoleToExistingDeployment = false;
-		HostedService hostedService = null;
+		String cloudServiceName = deploymentDesc.getHostedServiceName();
 
-		// if set to true, this means that no cloud service was specified in compute template
 		if (deploymentDesc.isGenerateCloudServiceName()) {
 			CreateHostedService csBuild = requestBodyBuilder.buildCreateCloudService(this.affinityPrefix, null);
-			String generatedName = csBuild.getServiceName();
-			hostedService = this.getHostedService(generatedName, true);
-
-			// is generate cloud service name is in use ?
-			if (hostedService != null) {
-				Deployment deploymentFound =
-						hostedService.getDeployments().getDeploymentBySlot(deploymentSlot);
-				if (deploymentFound != null) {
-					deploymentName = deploymentFound.getName();
-					addRoleToExistingDeployment = true;
-				} else {
-					deploymentName = generatedName;
+			cloudServiceName = csBuild.getServiceName();
 				}
 
-				cloudServiceName = generatedName;
+		String deploymentName = null;
+		Boolean addToDeployment = false;
 
-				// not in use, create a cloud service with generated name
-			} else {
-				cloudServiceName = createCloudService(deploymentDesc.getAffinityGroup(), generatedName, endTime);
-				deploymentName = cloudServiceName;
-			}
-		}
-
-		// avoid if /else block
-		// use cloud service that was specified in compute template
-		if (!deploymentDesc.isGenerateCloudServiceName()) {
-			hostedService = this.getHostedService(hostedServiceName, true);
+		HostedService hostedService = this.getHostedService(cloudServiceName, true);
 			if (hostedService != null) {
-				Deployment deploymentFound =
-						hostedService.getDeployments().getDeploymentBySlot(deploymentSlot);
+
+			String deploymentSlot = deploymentDesc.getDeploymentSlot();
+			Deployment deploymentFound = hostedService.getDeployments().getDeploymentBySlot(deploymentSlot);
 				if (deploymentFound != null) {
 					deploymentName = deploymentFound.getName();
-					addRoleToExistingDeployment = true;
+				addToDeployment = true;
 				} else {
-					deploymentName = hostedServiceName;
+				deploymentName = cloudServiceName;
 				}
 
-				cloudServiceName = hostedServiceName;
-
-				// not in use, create a cloud service with specified name
 			} else {
-				cloudServiceName = createCloudService(deploymentDesc.getAffinityGroup(), hostedServiceName, endTime);
 				deploymentName = cloudServiceName;
 			}
-		}
 
 		DeploymentInfo deploymentInfo = new DeploymentInfo();
 		deploymentInfo.setCloudServiceName(cloudServiceName);
 		deploymentInfo.setDeploymentName(deploymentName);
-		deploymentInfo.setAddRoleToExistingDeployment(addRoleToExistingDeployment);
+		deploymentInfo.setAddToDeployment(addToDeployment);
 		return deploymentInfo;
 	}
 

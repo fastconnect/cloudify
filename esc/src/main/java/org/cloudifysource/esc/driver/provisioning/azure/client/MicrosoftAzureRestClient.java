@@ -56,6 +56,7 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.GatewayInfo;
 import org.cloudifysource.esc.driver.provisioning.azure.model.GlobalNetworkConfiguration;
 import org.cloudifysource.esc.driver.provisioning.azure.model.HostedService;
 import org.cloudifysource.esc.driver.provisioning.azure.model.HostedServices;
+import org.cloudifysource.esc.driver.provisioning.azure.model.HttpRequestType;
 import org.cloudifysource.esc.driver.provisioning.azure.model.LocalNetworkSite;
 import org.cloudifysource.esc.driver.provisioning.azure.model.NetworkConfigurationSet;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Operation;
@@ -706,9 +707,8 @@ public class MicrosoftAzureRestClient {
 		long currentTimeInMillis = System.currentTimeMillis();
 		long lockTimeout = endTime - currentTimeInMillis - ESTIMATED_TIME_TO_START_VM;
 		if (lockTimeout < 0) {
-			throw new MicrosoftAzureException(
-					"Aborted request to provision virtual machine. "
-							+ "The timeout is less then the estimated time to provision the machine");
+			throw new MicrosoftAzureException("Aborted request to provision virtual machine. "
+					+ "The timeout is less then the estimated time to provision the machine");
 		}
 
 		logger.fine(getThreadIdentity() + "Waiting for pending request lock for lock " + pendingRequest.hashCode());
@@ -771,8 +771,11 @@ public class MicrosoftAzureRestClient {
 							+ String.format("Launching virtual machine '%s', in current deployment '%s'",
 									deploymentDesc.getRoleName(), deploymentDesc.getDeploymentName()));
 
-					ClientResponse response = doPost("/services/hostedservices/" + cloudServiceName + "/deployments/" +
-							deploymentDesc.getDeploymentName() + "/roles", xmlRequest, endTime);
+					String url = "/services/hostedservices/" + cloudServiceName + "/deployments/" +
+							deploymentDesc.getDeploymentName() + "/roles";
+
+					ClientResponse response = performHttpRequest(HttpRequestType.POST, url, xmlRequest, null, true,
+							endTime);
 					String requestId = extractRequestId(response);
 					waitForRequestToFinish(requestId, endTime);
 
@@ -786,8 +789,10 @@ public class MicrosoftAzureRestClient {
 
 					logger.fine(getThreadIdentity() + "Launching virtual machine : " + deploymentDesc.getRoleName());
 
-					ClientResponse response = doPost("/services/hostedservices/"
-							+ cloudServiceName + "/deployments", xmlRequest, endTime);
+					String url = "/services/hostedservices/" + cloudServiceName + "/deployments";
+					ClientResponse response = performHttpRequest(HttpRequestType.POST, url, xmlRequest, null, true,
+							endTime);
+
 					String requestId = extractRequestId(response);
 					waitForRequestToFinish(requestId, endTime);
 				}
@@ -1283,7 +1288,7 @@ public class MicrosoftAzureRestClient {
 		}
 
 		try {
-			ClientResponse response = performDeleteRequest(url, true, endTime);
+			ClientResponse response = performHttpRequest(HttpRequestType.DELETE, url, null, null, true, endTime);
 			String requestId = extractRequestId(response);
 			waitForRequestToFinish(requestId, endTime);
 		} catch (AzureResourceNotFoundException e) {
@@ -1725,71 +1730,33 @@ public class MicrosoftAzureRestClient {
 		return response;
 	}
 
-	private ClientResponse performDeleteRequest(String url, boolean waitForConflict, long endTime)
-			throws MicrosoftAzureException,
-			AzureResourceNotFoundException {
+	private ClientResponse performHttpRequest(HttpRequestType requestType, String url, String body, String contentType,
+			boolean waitForConflict, long endTime) throws MicrosoftAzureException, AzureResourceNotFoundException {
 
-		// just for logging
-		boolean conflict = false;
-
+		ClientResponse response = null;
 		while (true) {
 
-			ClientResponse response = doDelete(url);
-			int status = response.getStatus();
-			if (status == HTTP_NOT_FOUND) {
-				logger.finest("Azure resource not found, it might be already deleted");
-				throw new AzureResourceNotFoundException();
+			switch (requestType) {
+
+			case GET:
+				break;
+
+			case POST:
+				response = doPost(url, body, endTime);
+				break;
+
+			case PUT:
+				response = doPut(url, body, contentType);
+				break;
+
+			case DELETE:
+				response = doDelete(url);
+				break;
+
+			default:
+				break;
 			}
 
-			// OK status
-			if (status == HTTP_OK || status == HTTP_CREATED || status == HTTP_ACCEPTED) {
-
-				if (conflict) {
-					logger.fine("conflict/lease is resolved/released");
-				}
-				return response;
-			}
-
-			// error at this point
-			Error error = (Error) MicrosoftAzureModelUtils.unmarshall(response.getEntity(String.class));
-
-			// a conflict error, wait and see
-			if (error.getCode().equals(HTTP_AZURE_CONFLICT_CODE)) {
-
-				conflict = true;
-
-				if (waitForConflict) {
-					logger.fine("Waiting for resource conflict/lease to be resolved/released...");
-					try {
-						Thread.sleep(DEFAULT_POLLING_INTERVAL);
-					} catch (InterruptedException e) {
-						String interruptedMsg = "Interrupted while waiting for conflict to be resolved";
-						logger.severe(interruptedMsg);
-						throw new MicrosoftAzureException(interruptedMsg, e);
-					}
-				} else {
-					throw new MicrosoftAzureException("Conflicted detected, but wait for resolution is disabled");
-				}
-			}
-
-			// timeout
-			if (System.currentTimeMillis() > endTime) {
-				String errorString = ReflectionToStringBuilder.toString(error, ToStringStyle.SHORT_PREFIX_STYLE);
-				String timeoutMsg = "Timeout while waiting for resource conflict/lease to be resolved/released, "
-						+ "more about the error : " + errorString;
-				logger.severe(timeoutMsg);
-				throw new MicrosoftAzureException(timeoutMsg);
-			}
-		}
-	}
-
-	private ClientResponse performPutRequest(String url, String body, String contentType, boolean waitForConflict,
-			long endTime)
-			throws MicrosoftAzureException, AzureResourceNotFoundException {
-
-		while (true) {
-
-			ClientResponse response = doPut(url, body, contentType);
 			int status = response.getStatus();
 			if (status == HTTP_NOT_FOUND) {
 				logger.finest("Azure resource not found, it might be already deleted");
@@ -1992,8 +1959,9 @@ public class MicrosoftAzureRestClient {
 				String xmlRequest = MicrosoftAzureModelUtils.marshall(networkConfiguration, true);
 
 				// ClientResponse response = doPut("/services/networking/media", xmlRequest, "text/plain");
-				ClientResponse response = performPutRequest("/services/networking/media", xmlRequest, "text/plain",
-						true, endTime);
+				ClientResponse response = performHttpRequest(HttpRequestType.PUT, "/services/networking/media",
+						xmlRequest, "text/plain", true, endTime);
+
 				String requestId = extractRequestId(response);
 				waitForRequestToFinish(requestId, endTime);
 			} catch (AzureResourceNotFoundException e) {
@@ -2254,10 +2222,11 @@ public class MicrosoftAzureRestClient {
 		String url = String.format("/services/disks/%s", diskName);
 
 		String xmlRequest = MicrosoftAzureModelUtils.marshall(disk, false);
-		// ClientResponse response = doPut(url, xmlRequest, CONTENT_TYPE_HEADER_VALUE);
 
 		try {
-			ClientResponse response = performPutRequest(url, xmlRequest, CONTENT_TYPE_HEADER_VALUE, false, endTime);
+			ClientResponse response = performHttpRequest(HttpRequestType.PUT, url, xmlRequest,
+					CONTENT_TYPE_HEADER_VALUE, false, endTime);
+
 			String requestId = extractRequestId(response);
 			waitForRequestToFinish(requestId, endTime);
 

@@ -403,7 +403,7 @@ public class MicrosoftAzureRestClient {
 		logger.fine("Created virtual network site : " + networkSiteName);
 	}
 
-	public void createVirtualNetworkSite(String addressSpace, String affinityGroup, String networkSiteName,
+	public void createVirtualNetworkSite(List<String> addressSpace, String affinityGroup, String networkSiteName,
 			String subnetName, String subnetAddr, Map<String, NetworkConfiguration> networkTemplates,
 			Map<String, String> dnsServers, VpnConfiguration vpnConfiguration,
 			long endTime) throws MicrosoftAzureException, TimeoutException, InterruptedException {
@@ -415,16 +415,13 @@ public class MicrosoftAzureRestClient {
 			logger.fine("Creating virtual network sites");
 			virtualNetworkSites = new VirtualNetworkSites();
 		}
-		logger.info("Creating virtual network sites");
+		logger.info("Starting configuration of the virtual network site : " + networkSiteName);
 		VirtualNetworkSite virtualNetworkSite = null;
 		if (!virtualNetworkSites.contains(networkSiteName)) {
 			VirtualNetworkSite newSite = new VirtualNetworkSite();
-			AddressSpace address = new AddressSpace();
-			address.getAddressPrefix().add(addressSpace);
-			newSite.setAddressSpace(address);
+			newSite.setAddressSpace(new AddressSpace());
 			newSite.setAffinityGroup(affinityGroup);
 			newSite.setName(networkSiteName);
-
 			virtualNetworkSites.getVirtualNetworkSites().add(newSite);
 		} else {
 			logger.info("Using an already existing virtual network site : " + networkSiteName);
@@ -438,10 +435,18 @@ public class MicrosoftAzureRestClient {
 
 		boolean shouldUpdateOrCreate = false;
 
+		// checking address
+		for (String addressPrefix : addressSpace) {
+			if (!virtualNetworkSite.getAddressSpace().getAddressPrefix().contains(addressPrefix)) {
+				virtualNetworkSite.getAddressSpace().getAddressPrefix().add(addressPrefix);
+				shouldUpdateOrCreate = true;
+			}
+		}
+
 		List<Subnet> notExistingSubnets = this.getNotExistingSubnets(networkTemplates, virtualNetworkSite.getSubnets());
 		if (!notExistingSubnets.isEmpty()) {
 			virtualNetworkSite.getSubnets().getSubnets().addAll(notExistingSubnets);
-			logger.info("Added subnets from network templates");
+			logger.fine("Added new subnets from network templates");
 			shouldUpdateOrCreate = true;
 		}
 
@@ -1279,8 +1284,8 @@ public class MicrosoftAzureRestClient {
 
 		try {
 			ClientResponse response = performDeleteRequest(url, true, endTime);
-		String requestId = extractRequestId(response);
-		waitForRequestToFinish(requestId, endTime);
+			String requestId = extractRequestId(response);
+			waitForRequestToFinish(requestId, endTime);
 		} catch (AzureResourceNotFoundException e) {
 			logger.fine(String.format("Disk '%s' seems already deleted", diskName));
 		}
@@ -1456,23 +1461,6 @@ public class MicrosoftAzureRestClient {
 		String responseBody = response.getEntity(String.class);
 		return (StorageServices) MicrosoftAzureModelUtils.unmarshall(responseBody);
 	}
-
-	/**
-	 * 
-	 * @return .
-	 * @throws MicrosoftAzureException .
-	 * @throws TimeoutException .
-	 */
-	/*
-	 * public VirtualNetworkSites listVirtualNetworkSites() throws MicrosoftAzureException, TimeoutException {
-	 * ClientResponse response = doGet("/services/networking/media"); if (response.getStatus() == HTTP_NOT_FOUND) {
-	 * return null; } String responseBody = response.getEntity(String.class); if (responseBody.charAt(0) == BAD_CHAR) {
-	 * responseBody = responseBody.substring(1); }
-	 * 
-	 * GlobalNetworkConfiguration globalNetowrkConfiguration = (GlobalNetworkConfiguration) MicrosoftAzureModelUtils
-	 * .unmarshall(responseBody); return globalNetowrkConfiguration.getVirtualNetworkConfiguration()
-	 * .getVirtualNetworkSites(); }
-	 */
 
 	public VirtualNetworkConfiguration getVirtualNetworkConfiguration() throws MicrosoftAzureException,
 			TimeoutException {
@@ -1706,33 +1694,25 @@ public class MicrosoftAzureRestClient {
 	}
 
 	private ClientResponse doPut(final String url, final String body,
-			final String contentType, long endTime) throws MicrosoftAzureException {
+			final String contentType) throws MicrosoftAzureException {
+		ClientResponse response = resource.path(subscriptionId + url)
+				.header(X_MS_VERSION_HEADER_NAME, X_MS_VERSION_HEADER_VALUE)
+				.header(CONTENT_TYPE_HEADER_NAME, contentType)
+				.put(ClientResponse.class, body);
 
-		while (true) {
-
-			ClientResponse response = resource.path(subscriptionId + url)
-					.header(X_MS_VERSION_HEADER_NAME, X_MS_VERSION_HEADER_VALUE)
-					.header(CONTENT_TYPE_HEADER_NAME, contentType)
-					.put(ClientResponse.class, body);
-
-			Error error = checkForError(response);
-			checkForConflict(error, endTime);
-			return response;
-		}
+		// checkForError(response);
+		return response;
 	}
 
 	private ClientResponse doPost(final String url, final String body, final long endTime)
 			throws MicrosoftAzureException {
-		while (true) {
-			ClientResponse response = resource.path(subscriptionId + url)
-					.header(X_MS_VERSION_HEADER_NAME, X_MS_VERSION_HEADER_VALUE)
-					.header(CONTENT_TYPE_HEADER_NAME, CONTENT_TYPE_HEADER_VALUE)
-					.post(ClientResponse.class, body);
+		ClientResponse response = resource.path(subscriptionId + url)
+				.header(X_MS_VERSION_HEADER_NAME, X_MS_VERSION_HEADER_VALUE)
+				.header(CONTENT_TYPE_HEADER_NAME, CONTENT_TYPE_HEADER_VALUE)
+				.post(ClientResponse.class, body);
 
-			Error error = checkForError(response);
-			checkForConflict(error, endTime);
-			return response;
-		}
+		checkForError(response);
+		return response;
 	}
 
 	private ClientResponse doDelete(final String url)
@@ -1740,12 +1720,12 @@ public class MicrosoftAzureRestClient {
 
 		ClientResponse response = null;
 		response = resource.path(subscriptionId + url)
-					.header(X_MS_VERSION_HEADER_NAME, X_MS_VERSION_HEADER_VALUE)
-					.header(CONTENT_TYPE_HEADER_NAME, CONTENT_TYPE_HEADER_VALUE)
-					.delete(ClientResponse.class);
+				.header(X_MS_VERSION_HEADER_NAME, X_MS_VERSION_HEADER_VALUE)
+				.header(CONTENT_TYPE_HEADER_NAME, CONTENT_TYPE_HEADER_VALUE)
+				.delete(ClientResponse.class);
 
-			return response;
-		}
+		return response;
+	}
 
 	private ClientResponse performDeleteRequest(String url, boolean waitForConflict, long endTime)
 			throws MicrosoftAzureException,
@@ -1758,7 +1738,7 @@ public class MicrosoftAzureRestClient {
 			if (status == HTTP_NOT_FOUND) {
 				logger.finest("Azure resource not found, it might be already deleted");
 				throw new AzureResourceNotFoundException();
-	}
+			}
 
 			// OK status
 			if (status == HTTP_OK || status == HTTP_CREATED || status == HTTP_ACCEPTED) {
@@ -1822,13 +1802,13 @@ public class MicrosoftAzureRestClient {
 
 				if (waitForConflict) {
 					logger.fine("Waiting for resource conflict/lease to be resolved/released...");
-			try {
-				Thread.sleep(DEFAULT_POLLING_INTERVAL);
-			} catch (InterruptedException e) {
-				String interruptedMsg = "Interrupted while waiting for conflict to be resolved";
-				logger.severe(interruptedMsg);
-				throw new MicrosoftAzureException(interruptedMsg, e);
-			}
+					try {
+						Thread.sleep(DEFAULT_POLLING_INTERVAL);
+					} catch (InterruptedException e) {
+						String interruptedMsg = "Interrupted while waiting for conflict to be resolved";
+						logger.severe(interruptedMsg);
+						throw new MicrosoftAzureException(interruptedMsg, e);
+					}
 				} else {
 					throw new MicrosoftAzureException("Conflicted detected, but wait for resolution is disabled");
 				}
@@ -1925,10 +1905,10 @@ public class MicrosoftAzureRestClient {
 		if (status != HTTP_OK && status != HTTP_CREATED && status != HTTP_ACCEPTED) {
 			// we got some sort of error, if itsn't a conflict one than throw an exception
 			error = (Error) MicrosoftAzureModelUtils.unmarshall(response.getEntity(String.class));
-				String errorMessage = error.getMessage();
-				String errorCode = error.getCode();
-				throw new MicrosoftAzureException(errorCode, errorMessage);
-			}
+			String errorMessage = error.getMessage();
+			String errorCode = error.getCode();
+			throw new MicrosoftAzureException(errorCode, errorMessage);
+		}
 		return error;
 	}
 
@@ -2004,9 +1984,14 @@ public class MicrosoftAzureRestClient {
 
 				String xmlRequest = MicrosoftAzureModelUtils.marshall(networkConfiguration, true);
 
-				ClientResponse response = doPut("/services/networking/media", xmlRequest, "text/plain", endTime);
+				// ClientResponse response = doPut("/services/networking/media", xmlRequest, "text/plain");
+				ClientResponse response =
+						performPutRequest("/services/networking/media", xmlRequest, "text/plain", true,
+								endTime);
 				String requestId = extractRequestId(response);
 				waitForRequestToFinish(requestId, endTime);
+			} catch (AzureResourceNotFoundException e) {
+				throw new MicrosoftAzureException("Network resource not found.");
 			} finally {
 				pendingNetworkRequest.unlock();
 			}
@@ -2263,9 +2248,18 @@ public class MicrosoftAzureRestClient {
 		String url = String.format("/services/disks/%s", diskName);
 
 		String xmlRequest = MicrosoftAzureModelUtils.marshall(disk, false);
-		ClientResponse response = doPut(url, xmlRequest, CONTENT_TYPE_HEADER_VALUE, endTime);
-		String requestId = extractRequestId(response);
-		waitForRequestToFinish(requestId, endTime);
+		// ClientResponse response = doPut(url, xmlRequest, CONTENT_TYPE_HEADER_VALUE);
+
+		try {
+			ClientResponse response = performPutRequest(url, xmlRequest, CONTENT_TYPE_HEADER_VALUE, false, endTime);
+			String requestId = extractRequestId(response);
+			waitForRequestToFinish(requestId, endTime);
+
+		} catch (AzureResourceNotFoundException e) {
+			String diskResourceNotFoundStr = String.format("Disk '%s' resource not found", diskName);
+			logger.warning(diskResourceNotFoundStr);
+			throw new MicrosoftAzureException(diskResourceNotFoundStr);
+		}
 	}
 
 	/**
@@ -2542,26 +2536,26 @@ public class MicrosoftAzureRestClient {
 		if (deploymentDesc.isGenerateCloudServiceName()) {
 			CreateHostedService csBuild = requestBodyBuilder.buildCreateCloudService(this.affinityPrefix, null);
 			cloudServiceName = csBuild.getServiceName();
-				}
+		}
 
 		String deploymentName = null;
 		Boolean addToDeployment = false;
 
 		HostedService hostedService = this.getHostedService(cloudServiceName, true);
-			if (hostedService != null) {
+		if (hostedService != null) {
 
 			String deploymentSlot = deploymentDesc.getDeploymentSlot();
 			Deployment deploymentFound = hostedService.getDeployments().getDeploymentBySlot(deploymentSlot);
-				if (deploymentFound != null) {
-					deploymentName = deploymentFound.getName();
+			if (deploymentFound != null) {
+				deploymentName = deploymentFound.getName();
 				addToDeployment = true;
-				} else {
-				deploymentName = cloudServiceName;
-				}
-
 			} else {
 				deploymentName = cloudServiceName;
 			}
+
+		} else {
+			deploymentName = cloudServiceName;
+		}
 
 		DeploymentInfo deploymentInfo = new DeploymentInfo();
 		deploymentInfo.setCloudServiceName(cloudServiceName);

@@ -1,5 +1,6 @@
 package org.cloudifysource.esc.driver.provisioning.azure;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -12,6 +13,7 @@ import org.cloudifysource.esc.driver.provisioning.ComputeDriverConfiguration;
 import org.cloudifysource.esc.driver.provisioning.MachineDetails;
 import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureException;
 import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureRestClient;
+import org.cloudifysource.esc.driver.provisioning.azure.model.AddressSpace;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Dns;
 import org.cloudifysource.esc.driver.provisioning.azure.model.DnsServer;
@@ -381,7 +383,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 
 		Map<String, String> cloudProperties = AzureTestUtils.getCloudProperties();
 		String mngSubnet = cloudProperties.get("managementSubnetName");
-		final String[] subnets = new String[] { mngSubnet, "admin_subnet", "data_subnet" };
+		final String[] subnets = new String[] { mngSubnet, "admin_subnet", "data_subnet", "data_subnet2" };
 
 		AzureDriverTestBuilder driverBuilder = new AzureDriverTestBuilder();
 		MicrosoftAzureCloudDriver mngDriver = driverBuilder.createDriverAndSetConfig("ubuntu1410");
@@ -400,13 +402,24 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 					for (String subnet : subnets) {
 						Assert.assertNotNull(virtualNetworkSite.getSubnets().getSubnet(subnet));
 					}
+
+					// address space
+					AddressSpace addressSpace = virtualNetworkSite.getAddressSpace();
+
+					String netAddressSpaceProperty = cloudProperties.get("netAddress");
+					List<String> addressPrefixes = MicrosoftAzureUtils.getListFromSplitedString
+							(netAddressSpaceProperty, ",");
+					for (final String addressPrefix : addressPrefixes) {
+						String msg = String.format("The address prefix '%s' must exist in the vNet address"
+								+ "space", addressPrefix);
+						Assert.assertTrue(msg, addressSpace.getAddressPrefix().contains(addressPrefix));
+					}
 				}
 			});
 
 		} finally {
 			stopManagementMachines(mngDriver);
 		}
-
 	}
 
 	@Test

@@ -137,7 +137,16 @@ cloud {
             range "10.0.2.0/23"
           }
         }
-      }
+      },
+	  "DATA2_NET" :  networkConfiguration {
+		name null // this property is unused with azure
+		subnets {
+		  subnet {
+			name "data_subnet2"
+			range "10.1.0.0/16"
+		  }
+		 }
+	   }
     ])
   }
 

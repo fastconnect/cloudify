@@ -111,7 +111,23 @@ public class MicrosoftAzureUtils {
 				}
 			}
 		}
-
 		return balancedStorageAccount;
 	}
+
+	public static List<String> getListFromSplitedString(String string, String seperator) {
+
+		List<String> list = null;
+
+		if (string != null && seperator != null) {
+			list = new ArrayList<String>();
+			String[] split = string.split(seperator);
+			for (String aSplit : split) {
+				if (StringUtils.isNotBlank(aSplit.trim())) {
+					list.add(aSplit.trim());
+				}
+			}
+		}
+		return list;
+	}
+
 }

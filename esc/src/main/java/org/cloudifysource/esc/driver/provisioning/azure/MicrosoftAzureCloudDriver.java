@@ -90,6 +90,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	// TODO set dynamic value for manager name if necessary
 	protected static final String CLOUDIFY_MANAGER_NAME = "CFYM";
+	private static final String STRING_SEPERATOR = ",";
 
 	private static final String CLOUDIFY_AFFINITY_PREFIX = "cloudifyaffinity";
 	private static final String CLOUDIFY_STORAGE_ACCOUNT_PREFIX = "cloudifystorage";
@@ -557,9 +558,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			String osStorageAccountName = null;
 			try {
 				if (this.computeTemplateStorageAccountName != null) {
-					osStorageAccountName =
-							MicrosoftAzureUtils.getBalancedStorageAccount(this.computeTemplateStorageAccountName,
-									azureClient);
+					osStorageAccountName = MicrosoftAzureUtils.getBalancedStorageAccount(
+							this.computeTemplateStorageAccountName, azureClient);
 					azureClient.createStorageAccount(this.affinityGroup, osStorageAccountName, endTime);
 
 				} else {
@@ -742,7 +742,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			Map<String, NetworkConfiguration> networkTemplates = cloudNetwork.getTemplates();
 
 			VpnConfiguration vpnConfiguration = this.getVpnConfiguration(cloudNetwork);
-			azureClient.createVirtualNetworkSite(addressSpace, affinityGroup, networkName, subnet.getName(),
+
+			List<String> addressSpaces = MicrosoftAzureUtils.getListFromSplitedString(addressSpace, STRING_SEPERATOR);
+			azureClient.createVirtualNetworkSite(addressSpaces, affinityGroup, networkName, subnet.getName(),
 					subnet.getRange(), networkTemplates, dnsServers, vpnConfiguration, endTime);
 
 			azureClient.createStorageAccount(affinityGroup, storageAccountName, endTime);
@@ -901,7 +903,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			msg.append("Not attempting to delete affinity group since is has some active services :  \n");
 
 			if (deletedNetwork) {
-				msg.append(String.format(" - virtual network '%s' \n", networkName));
+				msg.append(String.format("- virtual network '%s' \n", networkName));
 			}
 
 			if (deletedStorage) {

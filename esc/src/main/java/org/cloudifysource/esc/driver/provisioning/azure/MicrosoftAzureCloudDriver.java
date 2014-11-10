@@ -864,7 +864,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			for (String storage : this.computeTemplateStorageAccountName) {
 				try {
 					azureClient.deleteStorageAccount(storage, endTime);
-					failedDeleteOsStorageAccounts.add(storage);
+
 				} catch (Exception e) {
 					logger.warning(String.format(
 							"Failed deleting os storage account '%s'. It might be already in use.",
@@ -872,6 +872,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 					if (first == null) {
 						first = e;
 					}
+
+					failedDeleteOsStorageAccounts.add(storage);
 				}
 			}
 		}
@@ -882,7 +884,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			for (String storage : this.computeTemplateDataStorageAccounts) {
 				try {
 					azureClient.deleteStorageAccount(storage, endTime);
-					failedDeleteDataStorageAccounts.add(storage);
+
 				} catch (Exception e) {
 					logger.warning(String.format(
 							"Failed deleting data storage account '%s'. It might be already in use.",
@@ -890,6 +892,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 					if (first == null) {
 						first = e;
 					}
+					failedDeleteDataStorageAccounts.add(storage);
 
 				}
 			}

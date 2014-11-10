@@ -4,11 +4,12 @@ package org.cloudifysource.esc.driver.provisioning.azure.model;
  * Used when creating a virtual machine deployment
  *
  */
-public class DeploymentInfo {
+public class RoleDeploymentInfo {
 
 	private String deploymentName;
 	private String cloudServiceName;
 	private boolean addToDeployment;
+	private boolean createCloudService;
 
 	public String getDeploymentName() {
 		return deploymentName;
@@ -32,6 +33,14 @@ public class DeploymentInfo {
 
 	public void setAddToDeployment(boolean addToDeployment) {
 		this.addToDeployment = addToDeployment;
+	}
+
+	public boolean isCreateCloudService() {
+		return createCloudService;
+	}
+
+	public void setCreateCloudService(boolean createCloudService) {
+		this.createCloudService = createCloudService;
 	}
 
 }

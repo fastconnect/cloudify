@@ -42,7 +42,7 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.CreateHostedServic
 import org.cloudifysource.esc.driver.provisioning.azure.model.CreateStorageServiceInput;
 import org.cloudifysource.esc.driver.provisioning.azure.model.DataVirtualHardDisk;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
-import org.cloudifysource.esc.driver.provisioning.azure.model.DeploymentInfo;
+import org.cloudifysource.esc.driver.provisioning.azure.model.RoleDeploymentInfo;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Deployments;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Disk;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Disks;
@@ -248,8 +248,8 @@ public class MicrosoftAzureRestClient {
 			final long endTime) throws MicrosoftAzureException,
 			TimeoutException, InterruptedException {
 
-		CreateHostedService createHostedService =
-				requestBodyBuilder.buildCreateCloudService(affinityGroup, cloudServiceNameOverride);
+		CreateHostedService createHostedService = requestBodyBuilder.buildCreateCloudService(affinityGroup,
+				cloudServiceNameOverride);
 
 		String serviceName = null;
 
@@ -258,6 +258,7 @@ public class MicrosoftAzureRestClient {
 			logger.info(String.format("Creating cloud service '%s'", createHostedService.getServiceName()));
 			String xmlRequest = MicrosoftAzureModelUtils.marshall(createHostedService, false);
 			ClientResponse response = doPost("/services/hostedservices", xmlRequest, endTime);
+			checkForError(response);
 			String requestId = extractRequestId(response);
 			waitForRequestToFinish(requestId, endTime);
 			serviceName = createHostedService.getServiceName();
@@ -678,6 +679,7 @@ public class MicrosoftAzureRestClient {
 
 		String xmlRequest = MicrosoftAzureModelUtils.marshall(createAffinityGroup, false);
 		ClientResponse response = doPost("/affinitygroups", xmlRequest, endTime);
+		checkForError(response);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
 		logger.fine("Created affinity group : " + affinityGroup);
@@ -715,7 +717,7 @@ public class MicrosoftAzureRestClient {
 		boolean lockAcquired = pendingRequest.tryLock(lockTimeout, TimeUnit.MILLISECONDS);
 
 		String cloudServiceName = null;
-		DeploymentInfo deploymentInfo = null;
+		RoleDeploymentInfo deploymentInfo = null;
 		String roleName = null;
 
 		if (lockAcquired) {
@@ -729,8 +731,15 @@ public class MicrosoftAzureRestClient {
 				deploymentDesc.setHostedServiceName(deploymentInfo.getCloudServiceName());
 				deploymentDesc.setDeploymentName(deploymentInfo.getDeploymentName());
 				cloudServiceName = deploymentInfo.getCloudServiceName();
+				boolean addToDeployment = deploymentInfo.isAddToDeployment();
 
-				createCloudService(deploymentDesc.getAffinityGroup(), cloudServiceName, endTime);
+				// create the cloud service if it doesn't exist
+				if (deploymentInfo.isCreateCloudService()) {
+					createCloudService(deploymentDesc.getAffinityGroup(), cloudServiceName, endTime);
+
+				} else {
+					logger.info("Using already existing cloud service : " + cloudServiceName);
+				}
 
 				// check static IP(s) availability
 				// which is skipped if no private ip was defined in the current compute template
@@ -757,7 +766,7 @@ public class MicrosoftAzureRestClient {
 				deploymentDesc.setExtensionReferences(extensionReferences);
 
 				// Add role to specified deployment
-				if (deploymentInfo.isAddToDeployment()) {
+				if (addToDeployment) {
 
 					PersistentVMRole persistentVMRole = requestBodyBuilder.buildPersistentVMRole(deploymentDesc,
 							isWindows);
@@ -768,7 +777,7 @@ public class MicrosoftAzureRestClient {
 
 					String xmlRequest = MicrosoftAzureModelUtils.marshall(persistentVMRole, false);
 					logger.fine(getThreadIdentity()
-							+ String.format("Launching virtual machine '%s', in current deployment '%s'",
+							+ String.format("Launching virtual machine '%s', to deployment '%s'",
 									deploymentDesc.getRoleName(), deploymentDesc.getDeploymentName()));
 
 					String url = "/services/hostedservices/" + cloudServiceName + "/deployments/" +
@@ -1709,12 +1718,12 @@ public class MicrosoftAzureRestClient {
 
 	private ClientResponse doPost(final String url, final String body, final long endTime)
 			throws MicrosoftAzureException {
+
 		ClientResponse response = resource.path(subscriptionId + url)
 				.header(X_MS_VERSION_HEADER_NAME, X_MS_VERSION_HEADER_VALUE)
 				.header(CONTENT_TYPE_HEADER_NAME, CONTENT_TYPE_HEADER_VALUE)
 				.post(ClientResponse.class, body);
 
-		checkForError(response);
 		return response;
 	}
 
@@ -1734,6 +1743,10 @@ public class MicrosoftAzureRestClient {
 			boolean waitForConflict, long endTime) throws MicrosoftAzureException, AzureResourceNotFoundException {
 
 		ClientResponse response = null;
+
+		// for logging
+		boolean conflict = false;
+
 		while (true) {
 
 			switch (requestType) {
@@ -1765,6 +1778,10 @@ public class MicrosoftAzureRestClient {
 
 			// OK status
 			if (status == HTTP_OK || status == HTTP_CREATED || status == HTTP_ACCEPTED) {
+				if (conflict) {
+					logger.fine("conflict/lease is resolved/released");
+				}
+
 				return response;
 			}
 
@@ -1777,6 +1794,7 @@ public class MicrosoftAzureRestClient {
 				if (waitForConflict) {
 					logger.fine("Waiting for resource conflict/lease to be resolved/released...");
 					try {
+						conflict = true;
 						Thread.sleep(DEFAULT_POLLING_INTERVAL);
 					} catch (InterruptedException e) {
 						String interruptedMsg = "Interrupted while waiting for conflict to be resolved";
@@ -2172,18 +2190,23 @@ public class MicrosoftAzureRestClient {
 		DataVirtualHardDisk dataVirtualHardDisk = new DataVirtualHardDisk();
 		dataVirtualHardDisk.setLogicalDiskSizeInGB(diskSize);
 		dataVirtualHardDisk.setMediaLink(dataMediaLinkBuilder.toString());
-		// dataVirtualHardDisk.setDiskLabel("Data");
+		dataVirtualHardDisk.setDiskLabel("Data");
 		dataVirtualHardDisk.setLun(lun);
 
 		String xmlRequest = MicrosoftAzureModelUtils.marshall(dataVirtualHardDisk, false);
 		String url = String.format("/services/hostedservices/%s/deployments/%s/roles/%s/DataDisks",
 				serviceName, deploymentName, roleName);
-		ClientResponse response = doPost(url, xmlRequest, endTime);
-		String requestId = extractRequestId(response);
-		waitForRequestToFinish(requestId, endTime);
-		waitUntilDataDiskIsAttached(serviceName, deploymentName, roleName, lun, endTime);
-		logger.fine("Added a data disk to " + roleName);
 
+		try {
+			ClientResponse response = performHttpRequest(HttpRequestType.POST, url, xmlRequest, null, true, endTime);
+			String requestId = extractRequestId(response);
+			waitForRequestToFinish(requestId, endTime);
+			waitUntilDataDiskIsAttached(serviceName, deploymentName, roleName, lun, endTime);
+			logger.fine("Added a data disk to " + roleName);
+
+		} catch (AzureResourceNotFoundException e) {
+			logger.warning("Failed adding disk to VM, the associated resource was not found");
+		}
 	}
 
 	private void waitUntilDataDiskIsAttached(String serviceName, String deploymentName, String roleName, int lun,
@@ -2265,11 +2288,17 @@ public class MicrosoftAzureRestClient {
 		String xmlRequest = MicrosoftAzureModelUtils.marshall(dataVirtualHardDisk, false);
 		String url = String.format("/services/hostedservices/%s/deployments/%s/roles/%s/DataDisks",
 				serviceName, deploymentName, roleName);
-		ClientResponse response = doPost(url, xmlRequest, endTime);
-		String requestId = extractRequestId(response);
-		waitForRequestToFinish(requestId, endTime);
-		waitUntilDataDiskIsAttached(serviceName, deploymentName, roleName, lun, endTime);
-		logger.fine("Added a data disk to " + roleName);
+
+		try {
+			ClientResponse response = performHttpRequest(HttpRequestType.POST, url, xmlRequest, null, true, endTime);
+			String requestId = extractRequestId(response);
+			waitForRequestToFinish(requestId, endTime);
+			waitUntilDataDiskIsAttached(serviceName, deploymentName, roleName, lun, endTime);
+			logger.fine("Added a data disk to " + roleName);
+		} catch (AzureResourceNotFoundException e) {
+			logger.warning("Failed to added existing disk, the associated resource was not found");
+		}
+
 	}
 
 	/**
@@ -2356,8 +2385,8 @@ public class MicrosoftAzureRestClient {
 			// https://management.core.windows.net/<subscription-id>/services/networking/<virtual-network-name>/gateway
 
 			String xmlRequest = MicrosoftAzureModelUtils.marshall(new CreateGatewayParameters(gatewayType), false);
-			ClientResponse response =
-					doPost("/services/networking/" + virtualNetworkName + "/gateway/", xmlRequest, endTime);
+			ClientResponse response = doPost("/services/networking/" + virtualNetworkName + "/gateway/",
+					xmlRequest, endTime);
 			checkForError(response);
 			String requestId = extractRequestId(response);
 			waitForRequestToFinish(requestId, endTime);
@@ -2376,8 +2405,8 @@ public class MicrosoftAzureRestClient {
 			// POST
 			// https://management.core.windows.net/<subscription-id>/services/networking/<virtual-network-name>/gateway/connection/<local-network-site-name>/sharedkey
 			String xmlRequest = MicrosoftAzureModelUtils.marshall(new SharedKey(key), false);
-			ClientResponse response = doPost("/services/networking/" + virtualNetworkName
-					+ "/gateway/connection/" + localNetworkSiteName + "/sharedkey", xmlRequest, endTime);
+			ClientResponse response = doPost("/services/networking/" + virtualNetworkName + "/gateway/connection/" +
+					localNetworkSiteName + "/sharedkey", xmlRequest, endTime);
 			checkForError(response);
 			String requestId = extractRequestId(response);
 			waitForRequestToFinish(requestId, endTime);
@@ -2503,7 +2532,7 @@ public class MicrosoftAzureRestClient {
 		return gatewayInfo;
 	}
 
-	private DeploymentInfo getDeploymentInfo(CreatePersistentVMRoleDeploymentDescriptor deploymentDesc,
+	private RoleDeploymentInfo getDeploymentInfo(CreatePersistentVMRoleDeploymentDescriptor deploymentDesc,
 			long endTime) throws MicrosoftAzureException, TimeoutException, InterruptedException {
 
 		String cloudServiceName = deploymentDesc.getHostedServiceName();
@@ -2515,6 +2544,7 @@ public class MicrosoftAzureRestClient {
 
 		String deploymentName = null;
 		Boolean addToDeployment = false;
+		Boolean createCloudService = false;
 
 		HostedService hostedService = this.getHostedService(cloudServiceName, true);
 		if (hostedService != null) {
@@ -2530,12 +2560,14 @@ public class MicrosoftAzureRestClient {
 
 		} else {
 			deploymentName = cloudServiceName;
+			createCloudService = true;
 		}
 
-		DeploymentInfo deploymentInfo = new DeploymentInfo();
+		RoleDeploymentInfo deploymentInfo = new RoleDeploymentInfo();
 		deploymentInfo.setCloudServiceName(cloudServiceName);
 		deploymentInfo.setDeploymentName(deploymentName);
 		deploymentInfo.setAddToDeployment(addToDeployment);
+		deploymentInfo.setCreateCloudService(createCloudService);
 		return deploymentInfo;
 	}
 

@@ -285,17 +285,15 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 
 		Map<String, String> cloudProperties = AzureTestUtils.getCloudProperties();
 		String affinityPrefix = cloudProperties.get("affinityGroup");
-		final MicrosoftAzureRestClient azureRestClient =
-				AzureTestUtils.createMicrosoftAzureRestClient(cloudServiceName, affinityPrefix);
+		final MicrosoftAzureRestClient azureRestClient = AzureTestUtils.createMicrosoftAzureRestClient(
+				cloudServiceName, affinityPrefix);
 		try {
 
-			StorageAssertion storageAssertionManagement =
-					new StorageAssertion("CFYM1", "specificstorage", true);
+			StorageAssertion storageAssertionManagement = new StorageAssertion("CFYM1", "specificstorage", true);
 			storageAssertionManagement.setManagementGroup(cloud.getProvider().getManagementGroup());
 			this.startManagementMachine(driver, storageAssertionManagement);
 
-			Deployment deployment = azureRestClient.getDeploymentBySlot(
-					cloudServiceName, deploymentSlot);
+			Deployment deployment = azureRestClient.getDeploymentBySlot(cloudServiceName, deploymentSlot);
 
 			Assert.assertNotNull(deployment);
 			Role managementRole = deployment.getRoleList().getRoles().get(0);
@@ -312,8 +310,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 				@Override
 				public void additionalAssertions(MachineDetails md) throws TimeoutException, MicrosoftAzureException {
 
-					Deployment deployment = azureRestClient.getDeploymentBySlot(
-							cloudServiceName, deploymentSlot);
+					Deployment deployment = azureRestClient.getDeploymentBySlot(cloudServiceName, deploymentSlot);
 
 					Assert.assertNotNull(deployment);
 
@@ -327,17 +324,12 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 					mediaLink = role.getDataVirtualHardDisks().getDataVirtualHardDisks().get(0).getMediaLink();
 					Assert.assertTrue(mediaLink.contains("cfytestitdata2"));
 				}
-
 			});
-		} catch (Exception e) {
-			logger.severe("Error it test :" + e.getMessage());
 		}
 
 		finally {
 			stopManagementMachines(driver);
-
 		}
-
 	}
 
 	@Test

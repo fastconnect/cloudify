@@ -772,13 +772,11 @@ public class MicrosoftAzureRestClient {
 							isWindows);
 					roleName = persistentVMRole.getRoleName();
 
-					logger.info(String.format("Adding VM Role '%s' in the current deployment '%s'",
+					logger.info(String.format("Adding VM Role '%s' in deployment '%s'",
 							roleName, deploymentDesc.getDeploymentName()));
 
 					String xmlRequest = MicrosoftAzureModelUtils.marshall(persistentVMRole, false);
-					logger.fine(getThreadIdentity()
-							+ String.format("Launching virtual machine '%s', to deployment '%s'",
-									deploymentDesc.getRoleName(), deploymentDesc.getDeploymentName()));
+					logger.fine(getThreadIdentity() + String.format("Launching virtual machine '%s' ", roleName));
 
 					String url = "/services/hostedservices/" + cloudServiceName + "/deployments/" +
 							deploymentDesc.getDeploymentName() + "/roles";

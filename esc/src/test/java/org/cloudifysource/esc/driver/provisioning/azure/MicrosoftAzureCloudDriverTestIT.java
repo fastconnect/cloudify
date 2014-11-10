@@ -411,7 +411,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 							(netAddressSpaceProperty, ",");
 					for (final String addressPrefix : addressPrefixes) {
 						String msg = String.format("The address prefix '%s' must exist in the vNet address"
-								+ "space", addressPrefix);
+								+ " space", addressPrefix);
 						Assert.assertTrue(msg, addressSpace.getAddressPrefix().contains(addressPrefix));
 					}
 				}

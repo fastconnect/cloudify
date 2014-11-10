@@ -1699,8 +1699,6 @@ public class MicrosoftAzureRestClient {
 				.header(X_MS_VERSION_HEADER_NAME, X_MS_VERSION_HEADER_VALUE)
 				.header(CONTENT_TYPE_HEADER_NAME, contentType)
 				.put(ClientResponse.class, body);
-
-		// checkForError(response);
 		return response;
 	}
 
@@ -1731,6 +1729,9 @@ public class MicrosoftAzureRestClient {
 			throws MicrosoftAzureException,
 			AzureResourceNotFoundException {
 
+		// just for logging
+		boolean conflict = false;
+
 		while (true) {
 
 			ClientResponse response = doDelete(url);
@@ -1742,6 +1743,10 @@ public class MicrosoftAzureRestClient {
 
 			// OK status
 			if (status == HTTP_OK || status == HTTP_CREATED || status == HTTP_ACCEPTED) {
+
+				if (conflict) {
+					logger.fine("conflict/lease is resolved/released");
+				}
 				return response;
 			}
 
@@ -1750,6 +1755,8 @@ public class MicrosoftAzureRestClient {
 
 			// a conflict error, wait and see
 			if (error.getCode().equals(HTTP_AZURE_CONFLICT_CODE)) {
+
+				conflict = true;
 
 				if (waitForConflict) {
 					logger.fine("Waiting for resource conflict/lease to be resolved/released...");
@@ -1985,9 +1992,8 @@ public class MicrosoftAzureRestClient {
 				String xmlRequest = MicrosoftAzureModelUtils.marshall(networkConfiguration, true);
 
 				// ClientResponse response = doPut("/services/networking/media", xmlRequest, "text/plain");
-				ClientResponse response =
-						performPutRequest("/services/networking/media", xmlRequest, "text/plain", true,
-								endTime);
+				ClientResponse response = performPutRequest("/services/networking/media", xmlRequest, "text/plain",
+						true, endTime);
 				String requestId = extractRequestId(response);
 				waitForRequestToFinish(requestId, endTime);
 			} catch (AzureResourceNotFoundException e) {

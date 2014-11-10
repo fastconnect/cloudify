@@ -836,6 +836,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 		try {
 			deletedNetwork = azureClient.deleteVirtualNetworkSite(networkName, endTime);
+			deletedNetwork = true;
 		} catch (final Exception e) {
 			first = e;
 			logger.warning("Failed deleting virtual network site " + networkName + " : " + e.getMessage());
@@ -844,6 +845,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 		try {
 			deletedStorage = azureClient.deleteStorageAccount(storageAccountName, endTime);
+			deletedStorage = true;
 		} catch (final Exception e) {
 			if (first == null) {
 				first = e;
@@ -853,16 +855,19 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		}
 
 		// delete storage accounts
-		boolean deletedOsStorageAccounts = false;
+		// TODO refactor
 
-		logger.fine("Cleaning storage accounts of OS disks ");
+		List<String> failedDeleteOsStorageAccounts = new ArrayList<String>();
+
 		if (this.computeTemplateStorageAccountName != null) {
+			logger.fine("Cleaning storage accounts of OS disks ");
 			for (String storage : this.computeTemplateStorageAccountName) {
 				try {
 					azureClient.deleteStorageAccount(storage, endTime);
-					deletedOsStorageAccounts = true;
+					failedDeleteOsStorageAccounts.add(storage);
 				} catch (Exception e) {
-					logger.warning(String.format("Failed deleting storage account '%s'. It might be already in use.",
+					logger.warning(String.format(
+							"Failed deleting os storage account '%s'. It might be already in use.",
 							storage));
 					if (first == null) {
 						first = e;
@@ -871,24 +876,27 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			}
 		}
 
-		logger.fine("Cleaning storage accounts for data disks");
-		boolean deletedDataStorageAccounts = false;
+		List<String> failedDeleteDataStorageAccounts = new ArrayList<String>();
 		if (this.computeTemplateDataStorageAccounts != null) {
+			logger.fine("Cleaning storage accounts for data disks");
 			for (String storage : this.computeTemplateDataStorageAccounts) {
 				try {
 					azureClient.deleteStorageAccount(storage, endTime);
-					deletedDataStorageAccounts = true;
+					failedDeleteDataStorageAccounts.add(storage);
 				} catch (Exception e) {
-					logger.warning(String.format("Failed deleting storage account '%s'. It might be already in use.",
+					logger.warning(String.format(
+							"Failed deleting data storage account '%s'. It might be already in use.",
 							storage));
 					if (first == null) {
 						first = e;
 					}
+
 				}
 			}
 		}
 
-		if (deletedNetwork && deletedStorage && deletedOsStorageAccounts && deletedDataStorageAccounts) {
+		if (deletedNetwork && deletedStorage && failedDeleteOsStorageAccounts.isEmpty()
+				&& failedDeleteDataStorageAccounts.isEmpty()) {
 			try {
 				azureClient.deleteAffinityGroup(affinityGroup, endTime);
 			} catch (final Exception e) {
@@ -898,26 +906,27 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 				logger.warning("Failed deleting affinity group " + affinityGroup + " : " + e.getMessage());
 				logger.fine(ExceptionUtils.getFullStackTrace(e));
 			}
+
 		} else {
 			StringBuilder msg = new StringBuilder();
 			msg.append("Not attempting to delete affinity group since is has some active services :  \n");
 
-			if (deletedNetwork) {
+			if (!deletedNetwork) {
 				msg.append(String.format("- virtual network '%s' \n", networkName));
 			}
 
-			if (deletedStorage) {
+			if (!deletedStorage) {
 				msg.append(String.format(String.format("- main storage account '%s' \n", storageAccountName)));
 			}
 
-			if (deletedOsStorageAccounts) {
+			if (!failedDeleteOsStorageAccounts.isEmpty()) {
 				msg.append(String.format(String.format("- storage accounts for OS disks %s \n",
-						this.computeTemplateStorageAccountName)));
+						failedDeleteOsStorageAccounts.toString())));
 			}
 
-			if (deletedDataStorageAccounts) {
+			if (!failedDeleteDataStorageAccounts.isEmpty()) {
 				msg.append(String.format(String.format("- storage accounts for data disks %s \n",
-						this.computeTemplateDataStorageAccounts)));
+						failedDeleteDataStorageAccounts.toString())));
 			}
 
 			logger.warning(msg.toString());

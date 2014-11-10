@@ -1793,14 +1793,54 @@ public class MicrosoftAzureRestClient {
 				logger.severe(timeoutMsg);
 				throw new MicrosoftAzureException(timeoutMsg);
 			}
+		}
+	}
 
+	private ClientResponse performPutRequest(String url, String body, String contentType, boolean waitForConflict,
+			long endTime)
+			throws MicrosoftAzureException, AzureResourceNotFoundException {
+
+		while (true) {
+
+			ClientResponse response = doPut(url, body, contentType);
+			int status = response.getStatus();
+			if (status == HTTP_NOT_FOUND) {
+				logger.finest("Azure resource not found, it might be already deleted");
+				throw new AzureResourceNotFoundException();
+			}
+
+			// OK status
+			if (status == HTTP_OK || status == HTTP_CREATED || status == HTTP_ACCEPTED) {
+				return response;
+			}
+
+			// error at this point
+			Error error = (Error) MicrosoftAzureModelUtils.unmarshall(response.getEntity(String.class));
+
+			// a conflict error, wait and see
+			if (error.getCode().equals(HTTP_AZURE_CONFLICT_CODE)) {
+
+				if (waitForConflict) {
+					logger.fine("Waiting for resource conflict/lease to be resolved/released...");
 			try {
-				logger.fine("Waiting for conflict to be resolved...");
 				Thread.sleep(DEFAULT_POLLING_INTERVAL);
 			} catch (InterruptedException e) {
 				String interruptedMsg = "Interrupted while waiting for conflict to be resolved";
 				logger.severe(interruptedMsg);
 				throw new MicrosoftAzureException(interruptedMsg, e);
+			}
+				} else {
+					throw new MicrosoftAzureException("Conflicted detected, but wait for resolution is disabled");
+				}
+			}
+
+			// timeout
+			if (System.currentTimeMillis() > endTime) {
+				String errorString = ReflectionToStringBuilder.toString(error, ToStringStyle.SHORT_PREFIX_STYLE);
+				String timeoutMsg = "Timeout while waiting for resource conflict/lease to be resolved/released, "
+						+ "more about the error : " + errorString;
+				logger.severe(timeoutMsg);
+				throw new MicrosoftAzureException(timeoutMsg);
 			}
 		}
 	}

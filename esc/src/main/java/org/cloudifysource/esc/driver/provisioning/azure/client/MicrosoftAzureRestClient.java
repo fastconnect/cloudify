@@ -42,7 +42,6 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.CreateHostedServic
 import org.cloudifysource.esc.driver.provisioning.azure.model.CreateStorageServiceInput;
 import org.cloudifysource.esc.driver.provisioning.azure.model.DataVirtualHardDisk;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
-import org.cloudifysource.esc.driver.provisioning.azure.model.RoleDeploymentInfo;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Deployments;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Disk;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Disks;
@@ -63,6 +62,7 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.Operation;
 import org.cloudifysource.esc.driver.provisioning.azure.model.PersistentVMRole;
 import org.cloudifysource.esc.driver.provisioning.azure.model.ResourceExtensionReferences;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Role;
+import org.cloudifysource.esc.driver.provisioning.azure.model.RoleDeploymentInfo;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleInstance;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleInstanceList;
 import org.cloudifysource.esc.driver.provisioning.azure.model.SharedKey;
@@ -234,38 +234,36 @@ public class MicrosoftAzureRestClient {
 
 	/**
 	 * 
-	 * @param affinityGroup
-	 *            - the affinity group for the cloud service.
+	 * 
 	 * @param endTime
 	 *            .
-	 * 
 	 * @return - the newly created cloud service name.
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
 	 * @throws InterruptedException .
 	 */
-	public String createCloudService(final String affinityGroup, String cloudServiceNameOverride,
-			final long endTime) throws MicrosoftAzureException,
-			TimeoutException, InterruptedException {
+	public void createCloudService(final CreateHostedService createHostedService, final long endTime)
+			throws MicrosoftAzureException, TimeoutException, InterruptedException {
 
-		CreateHostedService createHostedService = requestBodyBuilder.buildCreateCloudService(affinityGroup,
-				cloudServiceNameOverride);
-
-		String serviceName = null;
+		String cloudServiceName = createHostedService.getServiceName();
+		logger.info(String.format("Try Creating cloud service '%s'", cloudServiceName));
 
 		try {
 
-			logger.info(String.format("Creating cloud service '%s'", createHostedService.getServiceName()));
+			if (this.getHostedService(cloudServiceName, false) != null) {
+				logger.info(String.format("The cloud service '%s' exists already", cloudServiceName));
+				return;
+			}
+
 			String xmlRequest = MicrosoftAzureModelUtils.marshall(createHostedService, false);
 			ClientResponse response = doPost("/services/hostedservices", xmlRequest, endTime);
 			checkForError(response);
 			String requestId = extractRequestId(response);
 			waitForRequestToFinish(requestId, endTime);
-			serviceName = createHostedService.getServiceName();
 
-			this.waitUntilCloudServiceIsCreated(serviceName, endTime);
+			this.waitUntilCloudServiceIsCreated(cloudServiceName, endTime);
 
-			logger.info("Cloud service created : " + serviceName);
+			logger.info("Cloud service created : " + cloudServiceName);
 		} catch (final Exception e) {
 			logger.warning("Failed to create cloud service : " + e.getMessage());
 			if (e instanceof MicrosoftAzureException) {
@@ -278,12 +276,11 @@ public class MicrosoftAzureRestClient {
 				throw (InterruptedException) e;
 			}
 		}
-		return serviceName;
 	}
 
 	private void waitUntilCloudServiceIsCreated(String cloudServiceName, long endTime) throws MicrosoftAzureException,
 			TimeoutException, InterruptedException {
-		logger.fine("Waiting cloud service '" + cloudServiceName + "' to be created");
+		logger.fine("Waiting for the cloud service '" + cloudServiceName + "' to be created");
 		while (true) {
 			HostedService hostedService = this.getCloudServiceByName(cloudServiceName);
 			if (hostedService != null) {
@@ -728,18 +725,13 @@ public class MicrosoftAzureRestClient {
 			try {
 
 				deploymentInfo = this.getDeploymentInfo(deploymentDesc, endTime);
-				deploymentDesc.setHostedServiceName(deploymentInfo.getCloudServiceName());
 				deploymentDesc.setDeploymentName(deploymentInfo.getDeploymentName());
-				cloudServiceName = deploymentInfo.getCloudServiceName();
-				boolean addToDeployment = deploymentInfo.isAddToDeployment();
+				CreateHostedService createHostedService = deploymentInfo.getCreateHostedService();
 
-				// create the cloud service if it doesn't exist
-				if (deploymentInfo.isCreateCloudService()) {
-					createCloudService(deploymentDesc.getAffinityGroup(), cloudServiceName, endTime);
+				createCloudService(createHostedService, endTime);
 
-				} else {
-					logger.info("Using already existing cloud service : " + cloudServiceName);
-				}
+				cloudServiceName = createHostedService.getServiceName();
+				deploymentDesc.setHostedServiceName(cloudServiceName);
 
 				// check static IP(s) availability
 				// which is skipped if no private ip was defined in the current compute template
@@ -765,7 +757,9 @@ public class MicrosoftAzureRestClient {
 						requestBodyBuilder.buildResourceExtensionReferences(extensions, isWindows);
 				deploymentDesc.setExtensionReferences(extensionReferences);
 
-				// Add role to specified deployment
+				boolean addToDeployment = deploymentInfo.isAddToDeployment();
+
+				// Add role to an existing deployment
 				if (addToDeployment) {
 
 					PersistentVMRole persistentVMRole = requestBodyBuilder.buildPersistentVMRole(deploymentDesc,
@@ -1974,7 +1968,6 @@ public class MicrosoftAzureRestClient {
 
 				String xmlRequest = MicrosoftAzureModelUtils.marshall(networkConfiguration, true);
 
-				// ClientResponse response = doPut("/services/networking/media", xmlRequest, "text/plain");
 				ClientResponse response = performHttpRequest(HttpRequestType.PUT, "/services/networking/media",
 						xmlRequest, "text/plain", true, endTime);
 
@@ -2054,7 +2047,7 @@ public class MicrosoftAzureRestClient {
 
 			// no deployment found (404)
 		} else {
-			logger.warning(String.format("The cloud service '%s' doesn't have any deployment in slot '%s'.",
+			logger.finest(String.format("The cloud service '%s' doesn't have any deployment in slot '%s'.",
 					cloudService, deploymentSlot));
 		}
 
@@ -2300,7 +2293,7 @@ public class MicrosoftAzureRestClient {
 	}
 
 	/**
-	 * Datach a data disk from a VM.
+	 * Detach a data disk from a VM.
 	 * 
 	 * @param serviceName
 	 *            The cloud service name.
@@ -2413,7 +2406,6 @@ public class MicrosoftAzureRestClient {
 			logger.warning("Timed out while waiting for setting gateway key.");
 			throw e;
 		}
-
 	}
 
 	/**
@@ -2498,7 +2490,6 @@ public class MicrosoftAzureRestClient {
 						+ state);
 			}
 		}
-
 	}
 
 	public GatewayInfo getGatewayInfo(String virtualNetwork, long endTime) throws MicrosoftAzureException,
@@ -2534,15 +2525,12 @@ public class MicrosoftAzureRestClient {
 			long endTime) throws MicrosoftAzureException, TimeoutException, InterruptedException {
 
 		String cloudServiceName = deploymentDesc.getHostedServiceName();
-
-		if (deploymentDesc.isGenerateCloudServiceName()) {
-			CreateHostedService csBuild = requestBodyBuilder.buildCreateCloudService(this.affinityPrefix, null);
-			cloudServiceName = csBuild.getServiceName();
-		}
+		CreateHostedService createHostedService = requestBodyBuilder.buildCreateCloudService(
+				deploymentDesc.getAffinityGroup(), cloudServiceName);
+		cloudServiceName = createHostedService.getServiceName();
 
 		String deploymentName = null;
 		Boolean addToDeployment = false;
-		Boolean createCloudService = false;
 
 		HostedService hostedService = this.getHostedService(cloudServiceName, true);
 		if (hostedService != null) {
@@ -2558,14 +2546,12 @@ public class MicrosoftAzureRestClient {
 
 		} else {
 			deploymentName = cloudServiceName;
-			createCloudService = true;
 		}
 
 		RoleDeploymentInfo deploymentInfo = new RoleDeploymentInfo();
-		deploymentInfo.setCloudServiceName(cloudServiceName);
+		deploymentInfo.setCreateHostedService(createHostedService);
 		deploymentInfo.setDeploymentName(deploymentName);
 		deploymentInfo.setAddToDeployment(addToDeployment);
-		deploymentInfo.setCreateCloudService(createCloudService);
 		return deploymentInfo;
 	}
 

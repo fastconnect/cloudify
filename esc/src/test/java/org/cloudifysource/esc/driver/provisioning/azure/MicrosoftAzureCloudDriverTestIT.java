@@ -48,22 +48,18 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 				String codeEnvironment = cloudProperties.get("codeEnvironment");
 				String cloudServiceCode = cloudProperties.get("cloudServiceCode");
 
-				// Cloud Service : {codeCountry}{codeEnv}{codeCloudService}XXX
-				String cloudServiceName = String.format("%s%s%s001", codeCountry, codeEnvironment, cloudServiceCode);
-
-				// Machine Name : {codeCountry}{codeEnv}{serviceName}XXX
-				String machineName = String.format("%s%s" + MicrosoftAzureCloudDriver.CLOUDIFY_MANAGER_NAME + "1",
-						codeCountry, codeEnvironment);
-
 				MicrosoftAzureRestClient client = AzureTestUtils.createMicrosoftAzureRestClient();
 
 				// Check Cloud service name
+				String cloudServiceName = String.format("%s%s%s001", codeCountry, codeEnvironment, cloudServiceCode);
 				Deployment deployment = client.getDeploymentByDeploymentName(cloudServiceName, cloudServiceName);
 				Assert.assertEquals("Cloud service name is not correct", cloudServiceName,
 						deployment.getHostedServiceName());
 
 				// Check Cloudify management machine name
 				RoleInstanceList roleInstanceList = deployment.getRoleInstanceList();
+				String machineName = String.format("%s%s" + MicrosoftAzureCloudDriver.CLOUDIFY_MANAGER_NAME + "1",
+						codeCountry, codeEnvironment);
 				Assert.assertNotNull("Couldn't find VM " + machineName,
 						roleInstanceList.getRoleInstanceByRoleName(machineName));
 
@@ -138,21 +134,16 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 		final long endTime = 10000000;
 
 		String computeTemplateName = "ubuntu1410_cloudservice";
-		final Cloud cloud =
-				AzureTestUtils.createCloud("./src/main/resources/clouds", "azure_win", null, computeTemplateName);
+		final Cloud cloud = AzureTestUtils.createCloud("./src/main/resources/clouds", "azure_win", null,
+				computeTemplateName);
 
 		// Retrieve the cloud service name
 		final ComputeTemplate computeTemplate = cloud.getCloudCompute().getTemplates().get(computeTemplateName);
 		final String cloudServiceName = (String) computeTemplate.getCustom().get("azure.cloud.service");
 		String affinityPrefix = (String) cloud.getCustom().get("azure.affinity.group");
-		String location = (String) cloud.getCustom().get("azure.affinity.location");
 
 		final MicrosoftAzureRestClient azureRestClient =
 				AzureTestUtils.createMicrosoftAzureRestClient(cloudServiceName, affinityPrefix);
-
-		// Created resources should be released by the stop management
-		azureRestClient.createAffinityGroup(affinityPrefix, location, endTime);
-		azureRestClient.createCloudService(affinityPrefix, cloudServiceName, endTime);
 
 		this.startAndStopManagementMachine(computeTemplateName, new MachineDetailsAssertion() {
 			@Override

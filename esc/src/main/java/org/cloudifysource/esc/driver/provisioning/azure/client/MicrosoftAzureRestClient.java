@@ -724,7 +724,7 @@ public class MicrosoftAzureRestClient {
 			logger.info("Preparing VM deployment...");
 			try {
 
-				deploymentInfo = this.getDeploymentInfo(deploymentDesc, endTime);
+				deploymentInfo = this.getRoleDeploymentInfo(deploymentDesc, endTime);
 				deploymentDesc.setDeploymentName(deploymentInfo.getDeploymentName());
 				CreateHostedService createHostedService = deploymentInfo.getCreateHostedService();
 
@@ -2521,7 +2521,7 @@ public class MicrosoftAzureRestClient {
 		return gatewayInfo;
 	}
 
-	private RoleDeploymentInfo getDeploymentInfo(CreatePersistentVMRoleDeploymentDescriptor deploymentDesc,
+	private RoleDeploymentInfo getRoleDeploymentInfo(CreatePersistentVMRoleDeploymentDescriptor deploymentDesc,
 			long endTime) throws MicrosoftAzureException, TimeoutException, InterruptedException {
 
 		String cloudServiceName = deploymentDesc.getHostedServiceName();

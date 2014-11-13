@@ -1186,17 +1186,17 @@ public class MicrosoftAzureRestClient {
 		}
 
 		logger.info("Deleting Virtual Machine " + roleName);
-		deleteDeployment(cloudServiceName, deploymentName, true, endTime);
+		deleteDeployment(cloudServiceName, deploymentName, endTime);
 
 		logger.fine("Deleting cloud service : " + cloudServiceName + " that was dedicated for virtual machine "
 				+ roleName);
 		deleteCloudService(cloudServiceName, endTime);
 
-		// for (Disk disk : disks) {
-		// String diskName = disk.getName();
-		// logger.info("Deleting OS or Data Disk : " + diskName);
-		// deleteDisk(diskName, true, endTime);
-		// }
+		for (Disk disk : disks) {
+			String diskName = disk.getName();
+			logger.info("Deleting OS or Data Disk : " + diskName);
+			deleteDisk(diskName, true, endTime);
+		}
 	}
 
 	private List<Disk> getDisksByAttachedCloudService(final String cloudServiceName)
@@ -1314,9 +1314,8 @@ public class MicrosoftAzureRestClient {
 	 * @throws TimeoutException .
 	 * @throws InterruptedException .
 	 */
-	public boolean deleteDeployment(final String hostedServiceName, final String deploymentName,
-			final boolean deleteVhd, final long endTime) throws MicrosoftAzureException, TimeoutException,
-			InterruptedException {
+	public boolean deleteDeployment(final String hostedServiceName, final String deploymentName, final long endTime)
+			throws MicrosoftAzureException, TimeoutException, InterruptedException {
 
 		if (!deploymentExists(hostedServiceName, deploymentName)) {
 			logger.info("Deployment " + deploymentName + " does not exist");
@@ -1338,13 +1337,9 @@ public class MicrosoftAzureRestClient {
 
 				logger.fine(getThreadIdentity() + "Deleting deployment : " + deploymentName);
 
-				String url = "/services/hostedservices/" + hostedServiceName + "/deployments/" + deploymentName;
+				ClientResponse response = doDelete("/services/hostedservices/" + hostedServiceName + "/deployments/"
+						+ deploymentName);
 
-				if (deleteVhd) {
-					url = url + "?comp=media";
-				}
-
-				ClientResponse response = doDelete(url);
 				String requestId = extractRequestId(response);
 				waitForRequestToFinish(requestId, endTime);
 

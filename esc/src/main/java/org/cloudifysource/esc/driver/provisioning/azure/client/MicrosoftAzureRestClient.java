@@ -256,7 +256,7 @@ public class MicrosoftAzureRestClient {
 			}
 
 			String xmlRequest = MicrosoftAzureModelUtils.marshall(createHostedService, false);
-			ClientResponse response = doPost("/services/hostedservices", xmlRequest, endTime);
+			ClientResponse response = doPost("/services/hostedservices", xmlRequest);
 			checkForError(response);
 			String requestId = extractRequestId(response);
 			waitForRequestToFinish(requestId, endTime);
@@ -342,7 +342,7 @@ public class MicrosoftAzureRestClient {
 		logger.info("Creating a storage account : " + storageAccountName);
 
 		String xmlRequest = MicrosoftAzureModelUtils.marshall(createStorageServiceInput, false);
-		ClientResponse response = doPost("/services/storageservices", xmlRequest, endTime);
+		ClientResponse response = doPost("/services/storageservices", xmlRequest);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
 
@@ -675,7 +675,7 @@ public class MicrosoftAzureRestClient {
 		logger.info("Creating affinity group : " + affinityGroup);
 
 		String xmlRequest = MicrosoftAzureModelUtils.marshall(createAffinityGroup, false);
-		ClientResponse response = doPost("/affinitygroups", xmlRequest, endTime);
+		ClientResponse response = doPost("/affinitygroups", xmlRequest);
 		checkForError(response);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
@@ -1708,7 +1708,7 @@ public class MicrosoftAzureRestClient {
 		return response;
 	}
 
-	private ClientResponse doPost(final String url, final String body, final long endTime)
+	private ClientResponse doPost(final String url, final String body)
 			throws MicrosoftAzureException {
 
 		ClientResponse response = resource.path(subscriptionId + url)
@@ -1747,7 +1747,7 @@ public class MicrosoftAzureRestClient {
 				break;
 
 			case POST:
-				response = doPost(url, body, endTime);
+				response = doPost(url, body);
 				break;
 
 			case PUT:
@@ -2377,7 +2377,7 @@ public class MicrosoftAzureRestClient {
 
 			String xmlRequest = MicrosoftAzureModelUtils.marshall(new CreateGatewayParameters(gatewayType), false);
 			ClientResponse response = doPost("/services/networking/" + virtualNetworkName + "/gateway/",
-					xmlRequest, endTime);
+					xmlRequest);
 			checkForError(response);
 			String requestId = extractRequestId(response);
 			waitForRequestToFinish(requestId, endTime);
@@ -2397,7 +2397,7 @@ public class MicrosoftAzureRestClient {
 			// https://management.core.windows.net/<subscription-id>/services/networking/<virtual-network-name>/gateway/connection/<local-network-site-name>/sharedkey
 			String xmlRequest = MicrosoftAzureModelUtils.marshall(new SharedKey(key), false);
 			ClientResponse response = doPost("/services/networking/" + virtualNetworkName + "/gateway/connection/" +
-					localNetworkSiteName + "/sharedkey", xmlRequest, endTime);
+					localNetworkSiteName + "/sharedkey", xmlRequest);
 			checkForError(response);
 			String requestId = extractRequestId(response);
 			waitForRequestToFinish(requestId, endTime);

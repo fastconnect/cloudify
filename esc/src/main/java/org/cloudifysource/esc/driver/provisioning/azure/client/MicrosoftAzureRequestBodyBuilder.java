@@ -200,15 +200,13 @@ public class MicrosoftAzureRequestBodyBuilder {
 	 *         see <a href= "http://msdn.microsoft.com/en-us/library/windowsazure/jj157181.aspx" >Set Network
 	 *         Configuration</a>
 	 */
-	public GlobalNetworkConfiguration buildGlobalNetworkConfiguration(
-			final List<VirtualNetworkSite> sites) {
+	public GlobalNetworkConfiguration buildGlobalNetworkConfiguration(final List<VirtualNetworkSite> sites) {
 
 		GlobalNetworkConfiguration networkConfiguration = new GlobalNetworkConfiguration();
 
 		VirtualNetworkConfiguration virtualNetworkConfiguration = new VirtualNetworkConfiguration();
 
 		VirtualNetworkSites virtualNetworkSites = new VirtualNetworkSites();
-
 		virtualNetworkSites.setVirtualNetworkSites(sites);
 		virtualNetworkConfiguration.setVirtualNetworkSites(virtualNetworkSites);
 		networkConfiguration.setVirtualNetworkConfiguration(virtualNetworkConfiguration);
@@ -230,8 +228,7 @@ public class MicrosoftAzureRequestBodyBuilder {
 	 *         see <a href= "http://msdn.microsoft.com/en-us/library/windowsazure/jj157194.aspx" >Create Virtual Machine
 	 *         Deployment</a>
 	 */
-	public Deployment buildDeployment(final CreatePersistentVMRoleDeploymentDescriptor desc,
-			final boolean isWindows) {
+	public Deployment buildDeployment(final CreatePersistentVMRoleDeploymentDescriptor desc, final boolean isWindows) {
 
 		String deploymentSlot = desc.getDeploymentSlot();
 		String imageName = desc.getImageName();
@@ -252,16 +249,11 @@ public class MicrosoftAzureRequestBodyBuilder {
 		deployment.setLabel(deploymentName);
 		deployment.setName(deploymentName);
 
-		RoleList roleList = new RoleList();
-
 		Role role = new Role();
 		role.setRoleType("PersistentVMRole");
 		role.setRoleName(roleName);
 		role.setRoleSize(size);
 		role.setProvisionGuestAgent(true);
-
-		OSVirtualHardDisk osVirtualHardDisk = new OSVirtualHardDisk();
-		osVirtualHardDisk.setSourceImageName(imageName);
 
 		StringBuilder mediaLinkBuilder = new StringBuilder();
 		mediaLinkBuilder.append("https://");
@@ -273,6 +265,9 @@ public class MicrosoftAzureRequestBodyBuilder {
 		mediaLinkBuilder.append("-");
 		mediaLinkBuilder.append(generateRandomUUID(7));
 		mediaLinkBuilder.append(".vhd");
+
+		OSVirtualHardDisk osVirtualHardDisk = new OSVirtualHardDisk();
+		osVirtualHardDisk.setSourceImageName(imageName);
 		osVirtualHardDisk.setMediaLink(mediaLinkBuilder.toString());
 		role.setOsVirtualHardDisk(osVirtualHardDisk);
 
@@ -315,7 +310,6 @@ public class MicrosoftAzureRequestBodyBuilder {
 		}
 		else {
 			LinuxProvisioningConfigurationSet linuxProvisioningSet = new LinuxProvisioningConfigurationSet();
-			// linuxProvisioningSet.setDisableSshPasswordAuthentication(true);
 			linuxProvisioningSet.setHostName(roleName);
 			linuxProvisioningSet.setUserName(userName);
 			linuxProvisioningSet.setUserPassword(password);
@@ -350,9 +344,10 @@ public class MicrosoftAzureRequestBodyBuilder {
 		networkConfiguration.setInputEndpoints(endPoints);
 		configurationSets.getConfigurationSets().add(networkConfiguration);
 		role.setConfigurationSets(configurationSets);
+
+		RoleList roleList = new RoleList();
 		roleList.getRoles().add(role);
 		deployment.setRoleList(roleList);
-
 		return deployment;
 	}
 

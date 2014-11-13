@@ -549,7 +549,6 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 				referenceName = "SymantecEndpointProtection";
 				Assert.assertNotNull(role.getResourceExtensionReferenceByName(referenceName));
 			}
-
 		});
 	}
 

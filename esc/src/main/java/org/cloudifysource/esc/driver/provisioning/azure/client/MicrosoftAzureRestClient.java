@@ -300,8 +300,7 @@ public class MicrosoftAzureRestClient {
 			Thread.sleep(DEFAULT_POLLING_INTERVAL);
 
 			if (System.currentTimeMillis() > endTime) {
-				throw new TimeoutException(
-						"Timed out waiting the creation of cloud service " + cloudServiceName);
+				throw new TimeoutException("Timed out waiting the creation of cloud service " + cloudServiceName);
 			}
 		}
 
@@ -347,7 +346,6 @@ public class MicrosoftAzureRestClient {
 		waitForRequestToFinish(requestId, endTime);
 
 		logger.fine("Created a storage account : " + storageAccountName);
-
 	}
 
 	/**
@@ -414,7 +412,9 @@ public class MicrosoftAzureRestClient {
 			logger.fine("Creating virtual network sites");
 			virtualNetworkSites = new VirtualNetworkSites();
 		}
+
 		logger.info("Starting configuration of the virtual network site : " + networkSiteName);
+
 		VirtualNetworkSite virtualNetworkSite = null;
 		if (!virtualNetworkSites.contains(networkSiteName)) {
 			VirtualNetworkSite newSite = new VirtualNetworkSite();
@@ -1186,17 +1186,17 @@ public class MicrosoftAzureRestClient {
 		}
 
 		logger.info("Deleting Virtual Machine " + roleName);
-		deleteDeployment(cloudServiceName, deploymentName, endTime);
+		deleteDeployment(cloudServiceName, deploymentName, true, endTime);
 
 		logger.fine("Deleting cloud service : " + cloudServiceName + " that was dedicated for virtual machine "
 				+ roleName);
 		deleteCloudService(cloudServiceName, endTime);
 
-		for (Disk disk : disks) {
-			String diskName = disk.getName();
-			logger.info("Deleting OS or Data Disk : " + diskName);
-			deleteDisk(diskName, true, endTime);
-		}
+		// for (Disk disk : disks) {
+		// String diskName = disk.getName();
+		// logger.info("Deleting OS or Data Disk : " + diskName);
+		// deleteDisk(diskName, true, endTime);
+		// }
 	}
 
 	private List<Disk> getDisksByAttachedCloudService(final String cloudServiceName)
@@ -1314,9 +1314,9 @@ public class MicrosoftAzureRestClient {
 	 * @throws TimeoutException .
 	 * @throws InterruptedException .
 	 */
-	public boolean deleteDeployment(final String hostedServiceName,
-			final String deploymentName, final long endTime)
-			throws MicrosoftAzureException, TimeoutException, InterruptedException {
+	public boolean deleteDeployment(final String hostedServiceName, final String deploymentName,
+			final boolean deleteVhd, final long endTime) throws MicrosoftAzureException, TimeoutException,
+			InterruptedException {
 
 		if (!deploymentExists(hostedServiceName, deploymentName)) {
 			logger.info("Deployment " + deploymentName + " does not exist");
@@ -1336,12 +1336,15 @@ public class MicrosoftAzureRestClient {
 
 			try {
 
-				logger.fine(getThreadIdentity() + "Deleting deployment of virtual machine from : "
-						+ deploymentName);
+				logger.fine(getThreadIdentity() + "Deleting deployment : " + deploymentName);
 
-				ClientResponse response = doDelete("/services/hostedservices/" + hostedServiceName + "/deployments/"
-						+ deploymentName);
+				String url = "/services/hostedservices/" + hostedServiceName + "/deployments/" + deploymentName;
 
+				if (deleteVhd) {
+					url = url + "?comp=media";
+				}
+
+				ClientResponse response = doDelete(url);
 				String requestId = extractRequestId(response);
 				waitForRequestToFinish(requestId, endTime);
 
@@ -1364,9 +1367,8 @@ public class MicrosoftAzureRestClient {
 			}
 			return true;
 		} else {
-			throw new TimeoutException(
-					"Failed to acquire lock for deleteDeployment request after + "
-							+ lockTimeout + " milliseconds");
+			throw new TimeoutException("Failed to acquire lock for deleteDeployment request after + "
+					+ lockTimeout + " milliseconds");
 		}
 
 	}
@@ -2448,7 +2450,6 @@ public class MicrosoftAzureRestClient {
 						+ state);
 			}
 		}
-
 	}
 
 	/**
@@ -2498,6 +2499,7 @@ public class MicrosoftAzureRestClient {
 		GatewayInfo gatewayInfo = null;
 
 		try {
+
 			// GET
 			// https://management.core.windows.net/<subscription-id>/services/networking/<virtual-network-name>/gateway
 			ClientResponse response = doGet("/services/networking/" + virtualNetwork + "/gateway");

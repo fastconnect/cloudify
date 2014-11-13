@@ -59,13 +59,10 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.AddressSpace;
 import org.cloudifysource.esc.driver.provisioning.azure.model.AttachedTo;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Connection;
 import org.cloudifysource.esc.driver.provisioning.azure.model.ConnectionsToLocalNetwork;
-import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Disk;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Disks;
 import org.cloudifysource.esc.driver.provisioning.azure.model.DomainJoin;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Gateway;
-import org.cloudifysource.esc.driver.provisioning.azure.model.HostedService;
-import org.cloudifysource.esc.driver.provisioning.azure.model.HostedServices;
 import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoint;
 import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoints;
 import org.cloudifysource.esc.driver.provisioning.azure.model.JoinCredentials;
@@ -785,7 +782,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		String vpnSubnetAddressPrefix = cloudNetwork.getCustom().get(AZURE_VPN_SUBNET_ADDRESS_PREFIX);
 		String vpnGatewayType = cloudNetwork.getCustom().get(AZURE_VPN_GATEWAY_TYPE);
 		String vpnGatewayKey = cloudNetwork.getCustom().get(AZURE_VPN_GATEWAY_KEY);
-		List<String> addressSpacesList = this.getAddressSpaces(addressSpacesString);
+		List<String> addressSpacesList = MicrosoftAzureUtils.getListFromSplitedString(addressSpacesString, ",");
 
 		if (StringUtils.isNotBlank(vpnGatewayAddress) && StringUtils.isNotBlank(vpnGatewayType)
 				&& StringUtils.isNotBlank(vpnGatewayKey) && StringUtils.isNotBlank(vpnSubnetAddressPrefix)
@@ -814,16 +811,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		}
 
 		return vpnConfiguration;
-	}
-
-	// TODO refactor/ see getIpAddressesList
-	private List<String> getAddressSpaces(String addressSpacesString) {
-		List<String> addressSpaces = null;
-		if (StringUtils.isNotBlank(addressSpacesString)) {
-			String[] split = addressSpacesString.split(",");
-			addressSpaces = Arrays.asList(split);
-		}
-		return addressSpaces;
 	}
 
 	private void cleanup() throws CloudProvisioningException {
@@ -982,17 +969,17 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	}
 
 	@Override
-	public void stopManagementMachines() throws TimeoutException,
-			CloudProvisioningException {
+	public void stopManagementMachines() throws TimeoutException, CloudProvisioningException {
 
-		final long endTime = System.currentTimeMillis()
-				+ TimeUnit.MINUTES.toMillis(stopManagementMachinesTimeoutInMinutes);
+		final long endTime =
+				System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(stopManagementMachinesTimeoutInMinutes);
 		boolean success = false;
 
 		ExecutorService service = Executors.newCachedThreadPool();
 		try {
 			stopManagementMachines(endTime, service);
 			success = true;
+
 		} finally {
 			if (!success) {
 				if (cleanup) {
@@ -1002,39 +989,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			service.shutdown();
 		}
 
-		scanLeakingNodes();
-
 		if (cleanup) {
 			logger.info("Cleaning up management services");
 			cleanup();
-		}
-	}
-
-	@Deprecated
-	// TODO methods searches all hosted services/deployment, it should look for only ones that are managed/newly
-	// deployed, prefixes ?
-	private void scanLeakingNodes() {
-		try {
-			HostedServices hostedServices = azureClient.listHostedServices();
-			if (!hostedServices.getHostedServices().isEmpty()) {
-				logger.warning("Found running cloud services. Scanning for leaking nodes...");
-				for (HostedService hostedService : hostedServices) {
-					logger.fine("Searching for deployments in cloud service " + hostedService.getServiceName());
-					HostedService serviceWithDeployments =
-							azureClient.getHostedService(hostedService.getServiceName(), true);
-					if (serviceWithDeployments.getDeployments().getDeployments().size() > 0) {
-						Deployment deployment = serviceWithDeployments.getDeployments().getDeployments().get(0);
-						if (deployment != null) {
-							logger.info("Found : " + deployment.getRoleList().getRoles().get(0).getRoleName());
-						}
-						throw new CloudProvisioningException(
-								"There are still running instances, please shut them down and try again.");
-					}
-				}
-			}
-		} catch (final Exception e) {
-			logger.warning("Failed Retrieving running virtual machines : " + e.getMessage());
-			// nothing to do here...
 		}
 	}
 
@@ -1109,11 +1066,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 					logger.finest(ExceptionUtils.getFullStackTrace(e));
 				}
 			}
-			throw new CloudProvisioningException(
-					exceptionOnStopMachines.get(0).getMessage(),
+			throw new CloudProvisioningException(exceptionOnStopMachines.get(0).getMessage(),
 					exceptionOnStopMachines.get(0));
 		}
-
 	}
 
 	@Override
@@ -1149,9 +1104,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		}
 	}
 
-	private boolean stopManagementMachine(final String hostedServiceName,
-			final String deploymentName, final long endTime)
-			throws CloudProvisioningException, TimeoutException {
+	private boolean stopManagementMachine(final String hostedServiceName, final String deploymentName,
+			final long endTime) throws CloudProvisioningException, TimeoutException {
 		try {
 			azureClient.deleteVirtualMachineByDeploymentName(hostedServiceName, deploymentName, endTime);
 			return true;
@@ -1160,7 +1114,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		} catch (InterruptedException e) {
 			throw new CloudProvisioningException(e);
 		}
-
 	}
 
 	private InputEndpoints createInputEndPoints() throws MicrosoftAzureException {
@@ -1186,7 +1139,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 					if (StringUtils.isNotBlank(portStr)) {
 						endpoint.setPort(Integer.parseInt(portStr));
-					} // otherwise, port number will be generated by azure
+					} // otherwise, public port number will be generated by azure
 
 					endpoint.setLocalPort(Integer.parseInt(localPortStr));
 					endpoint.setName(name);
@@ -1275,7 +1228,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 					ipAddressesList = Arrays.asList(split);
 				}
 			}
-
 		}
 		return ipAddressesList;
 	}

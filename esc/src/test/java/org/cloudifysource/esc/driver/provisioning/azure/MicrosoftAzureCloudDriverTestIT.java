@@ -552,4 +552,30 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 		});
 	}
 
+	@Test
+	public void testUbuntuStorageFileshare() throws Exception {
+
+		String computeTemplateName = "ubuntu1410";
+
+		final Cloud cloud = AzureTestUtils.createCloud("./src/main/resources/clouds", "azure_win", null,
+				computeTemplateName);
+		final ComputeTemplate computeTemplate = cloud.getCloudCompute().getTemplates().get(computeTemplateName);
+		final String cloudServiceName = (String) computeTemplate.getCustom().get("azure.cloud.service");
+
+		Map<String, String> cloudProperties = AzureTestUtils.getCloudProperties();
+		String affinityPrefix = cloudProperties.get("affinityGroup");
+
+		final MicrosoftAzureRestClient azureRestClient =
+				AzureTestUtils.createMicrosoftAzureRestClient(cloudServiceName, affinityPrefix);
+
+		final String fileServiceStorageAccount = cloudProperties.get("fileServiceStorageAccount");
+
+		this.startAndStopManagementMachine(computeTemplateName, new MachineDetailsAssertion() {
+			@Override
+			public void additionalAssertions(MachineDetails md) throws TimeoutException, MicrosoftAzureException {
+				Assert.assertTrue(String.format("Storage account '%s' should be creatd ", fileServiceStorageAccount),
+						azureRestClient.listStorageServices().contains(fileServiceStorageAccount));
+			}
+		});
+	}
 }

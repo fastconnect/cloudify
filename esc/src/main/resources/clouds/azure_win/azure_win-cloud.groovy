@@ -64,7 +64,7 @@ cloud {
         deviceName "2" // LUN
         deleteOnExit false
         custom ([
-          "azure.storage.account" : "${storageAccount}smallblock" as String,
+          "azure.storage.account" : "${storageAccountPrefix}smallblock" as String,
         ])
         partitioningRequired true // If true, the driver will partition the disk (relevant with static storage)
         path "/storage"           // Used to mount (relevant with static storage)
@@ -320,22 +320,31 @@ cloud {
 		*********************************************************************************************************************************/
 		"azure.affinity.location" : affinityLocation,
 
+		/************************************************************************************************************
+		 * A (defaut) Storage Account prefix name.																    *
+		 * All OS/Data Disk Images will be stored in this account if thery weren't defined in the compute template. * 	
+		 * If the specified account does not exist, it will be created automatically for you.	 				    *
+		************************************************************************************************************/
+
+		"azure.storage.account.prefix" : storageAccountPrefix,
+		
 		/*****************************************************************************************
 		 * A Storage Account name.																 *
-		 * All OS Disk Images will be stored in this account. 									 *
-		 * If the specified account does not exist, it will be created automatically for you.	 *
+		 * This storage account will be used for the file share service							 *
+		 * If the specified account does not exist, it will be created automatically        	 *
 		******************************************************************************************/
-		"azure.storage.account" : storageAccount,
 
+		"azure.storage.account.file.service" : fileServiceStorageAccount,
+		
 		/*************************************************************************************************************************
-     * Specify whether or not to delete the network (if found) when you execute a teardown command.
+         * Specify whether or not to delete the network (if found) when you execute a teardown command.							 *
 		 * If set to 'true', the storage account, affinity group, and network specified above will be deleted upon teardown.	 *
 		 * NOTE : if you are using pre exsisting services and you dont want them to be deleted, please set this value to 'false' *
 		**************************************************************************************************************************/
 		"azure.cleanup.on.teardown" : "true",
 
     /********************************************************************
-		 * Cloud service code
+	 * Cloud service code
      * The code will be append to the machineNamePrefix/managementGroup.
      * The cloud service name will resulting to be something like :
      *   ${machineNamePrefix}${cloudServiceCode}XXX

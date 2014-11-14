@@ -1196,6 +1196,7 @@ public class MicrosoftAzureRestClient {
 			String diskName = disk.getName();
 			logger.info("Deleting OS or Data Disk : " + diskName);
 			deleteDisk(diskName, true, endTime);
+			logger.info("Deleted OS or Data Disk : " + diskName);
 		}
 	}
 
@@ -1781,7 +1782,7 @@ public class MicrosoftAzureRestClient {
 			if (error.getCode().equals(HTTP_AZURE_CONFLICT_CODE)) {
 
 				if (waitForConflict) {
-					logger.fine("Waiting for resource conflict/lease to be resolved/released...");
+					logger.fine("Waiting for resource conflict/lease to be resolved/released");
 					try {
 						conflict = true;
 						Thread.sleep(DEFAULT_POLLING_INTERVAL);

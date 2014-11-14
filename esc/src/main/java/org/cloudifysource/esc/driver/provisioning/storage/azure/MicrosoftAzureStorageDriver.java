@@ -86,7 +86,7 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 
 		String namePrefix = storageTemplate.getNamePrefix();
 		int diskSize = storageTemplate.getSize();
-		String saName = (String) storageTemplate.getCustom().get(MicrosoftAzureCloudDriver.AZURE_STORAGE_ACCOUNT);
+		String saName = (String) storageTemplate.getCustom().get(MicrosoftAzureCloudDriver.AZURE_STORAGE_ACCOUNT_PREFIX);
 
 		MicrosoftAzureRestClient azureClient = getAzureClient();
 		AzureDeploymentContext context = getAzureContext();

@@ -111,7 +111,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String AZURE_DEPLOYMENT_CUSTOMDATA = "azure.deployment.customdata";
 	private static final String AZURE_AFFINITY_LOCATION = "azure.affinity.location";
 	public static final String AZURE_AFFINITY_GROUP = "azure.affinity.group";
-	public static final String AZURE_STORAGE_ACCOUNT = "azure.storage.account";
+	public static final String AZURE_STORAGE_ACCOUNT_PREFIX = "azure.storage.account.prefix";
+	public static final String AZURE_STORAGE_ACCOUNT_FILE_SERVICE = "azure.storage.account.file.service";
 	public static final String AZURE_STORAGE_ACCOUNTS_DATA = "azure.storage.accounts.data";
 
 	// extensions
@@ -150,6 +151,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	// Azure Credentials
 	private String subscriptionId;
+	private String fileServiceStorageAccount;
 
 	// Arguments for all machines
 	private String location;
@@ -293,13 +295,19 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		}
 
 		// storage accounts
-		this.computeTemplateStorageAccountName = (List<String>) this.template.getCustom().get(AZURE_STORAGE_ACCOUNT);
+		this.computeTemplateStorageAccountName =
+				(List<String>) this.template.getCustom().get(AZURE_STORAGE_ACCOUNT_PREFIX);
 		this.computeTemplateDataStorageAccounts =
 				(List<String>) this.template.getCustom().get(AZURE_STORAGE_ACCOUNTS_DATA);
 
-		this.storageAccountName = (String) this.cloud.getCustom().get(AZURE_STORAGE_ACCOUNT);
+		this.storageAccountName = (String) this.cloud.getCustom().get(AZURE_STORAGE_ACCOUNT_PREFIX);
 		if (storageAccountName == null) {
-			throw new IllegalArgumentException("Custom field '" + AZURE_STORAGE_ACCOUNT + "' must be set");
+			throw new IllegalArgumentException("Custom field '" + AZURE_STORAGE_ACCOUNT_PREFIX + "' must be set");
+		}
+
+		String storageAccountFileStr = (String) this.cloud.getCustom().get(AZURE_STORAGE_ACCOUNT_FILE_SERVICE);
+		if (storageAccountFileStr != null && StringUtils.isNotBlank(storageAccountFileStr.trim())) {
+			this.fileServiceStorageAccount = storageAccountFileStr;
 		}
 
 		// Data disk size
@@ -541,6 +549,12 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 			// main storage account
 			desc.setStorageAccountName(this.storageAccountName);
+
+			// storage account for file service
+			if (fileServiceStorageAccount != null) {
+				logger.finer("Storage account for file service :" + fileServiceStorageAccount);
+				azureClient.createStorageAccount(affinityGroup, fileServiceStorageAccount, endTime);
+			}
 
 			// Data disk configuration
 			if (this.dataDiskSize != null) {
@@ -880,13 +894,25 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 						first = e;
 					}
 					failedDeleteDataStorageAccounts.add(storage);
-
 				}
 			}
 		}
 
+		boolean deleteFileShareStorage = true;
+
+		if (this.fileServiceStorageAccount != null) {
+
+			try {
+				logger.fine("Cleaning storage account for file share service");
+				azureClient.deleteStorageAccount(this.fileServiceStorageAccount, endTime);
+			} catch (Exception e) {
+				logger.warning("Failed cleaning storage account for file service share");
+				deleteFileShareStorage = false;
+			}
+		}
+
 		if (deletedNetwork && deletedStorage && failedDeleteOsStorageAccounts.isEmpty()
-				&& failedDeleteDataStorageAccounts.isEmpty()) {
+				&& failedDeleteDataStorageAccounts.isEmpty() && deleteFileShareStorage) {
 			try {
 				azureClient.deleteAffinityGroup(affinityGroup, endTime);
 			} catch (final Exception e) {
@@ -917,6 +943,11 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			if (!failedDeleteDataStorageAccounts.isEmpty()) {
 				msg.append(String.format(String.format("- storage accounts for data disks %s \n",
 						failedDeleteDataStorageAccounts.toString())));
+			}
+
+			if (!deleteFileShareStorage) {
+				msg.append(String.format(String.format("- storage account for file share %s \n",
+						this.fileServiceStorageAccount)));
 			}
 
 			logger.warning(msg.toString());

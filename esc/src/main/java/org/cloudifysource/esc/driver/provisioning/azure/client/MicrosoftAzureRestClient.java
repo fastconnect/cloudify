@@ -1037,11 +1037,19 @@ public class MicrosoftAzureRestClient {
 		}
 
 		logger.info("Deleting storage account : " + storageAccountName);
-		ClientResponse response = doDelete("/services/storageservices/" + storageAccountName);
-		String requestId = extractRequestId(response);
-		waitForRequestToFinish(requestId, endTime);
+		ClientResponse response;
+		try {
+			response = performHttpRequest(HttpRequestType.DELETE, "/services/storageservices/" + storageAccountName,
+					null, null, true, endTime);
+			String requestId = extractRequestId(response);
+			waitForRequestToFinish(requestId, endTime);
 
-		logger.fine("Deleted storage account : " + storageAccountName);
+			logger.fine("Deleted storage account : " + storageAccountName);
+		} catch (AzureResourceNotFoundException e) {
+			logger.finer("Storge account not found or already deleted : " + storageAccountName);
+		}
+		// doDelete("/services/storageservices/" + storageAccountName);
+
 		return true;
 
 	}
@@ -1113,7 +1121,7 @@ public class MicrosoftAzureRestClient {
 		for (String slot : slots) {
 			Deployment deployment = listDeploymentsBySlot(cloudServiceName, slot, endTime);
 			if (deployment != null) {
-				logger.fine(String.format("Existing deployment in cloud service '%s' in slot '%s'",
+				logger.finest(String.format("Existing deployment in cloud service '%s' in slot '%s'",
 						cloudServiceName, slot));
 				return true;
 			}
@@ -1137,29 +1145,37 @@ public class MicrosoftAzureRestClient {
 			throws TimeoutException, MicrosoftAzureException, InterruptedException {
 
 		logger.info("Deleting virtual machine with ip " + machineIp);
+
 		Deployment deployment = getDeploymentByIp(machineIp, isPrivateIp);
 		if (deployment == null) {
 			throw new MicrosoftAzureException("Could not find a deployment for Virtual Machine with IP " + machineIp);
 		}
 
+		String hostedServiceName = deployment.getHostedServiceName();
+		String deploymentName = deployment.getName();
+		String roleName = null;
+
 		Role role = this.getRoleByIpAddress(machineIp, deployment);
 		if (role == null) {
-			throw new MicrosoftAzureException("Could not role for Virtual Machine with IP " + machineIp);
+			throw new MicrosoftAzureException("Could not find role for Virtual Machine with IP " + machineIp);
 		}
 
-		String roleName = role.getRoleName();
-		this.deleteRoleFromDeployment(roleName, deployment, true, endTime);
+		roleName = role.getRoleName();
+		if (deployment.hasAtLeastTwoRoles()) {
+			this.deleteRoleFromDeployment(roleName, deployment, true, endTime);
+		} else {
+			deleteDeployment(hostedServiceName, deploymentName, true, endTime);
+		}
 
-		String hostedServiceName = deployment.getHostedServiceName();
 		logger.fine(String.format("Cleaning resources associated with role '%s' [%s]", roleName, machineIp));
-		logger.finest(String.format("Trying to clean associated cloud service '%s' ", hostedServiceName));
 
+		logger.finest(String.format("Trying to clean associated cloud service '%s' ", hostedServiceName));
 		this.deleteCloudService(hostedServiceName, endTime);
 
 	}
 
 	/**
-	 * This method deletes the virtual machine under the deployment specifed by deploymentName. it also deletes the
+	 * This method deletes the virtual machine under the deployment specified by deploymentName. it also deletes the
 	 * associated disk and cloud service.
 	 * 
 	 * @param cloudServiceName
@@ -1186,18 +1202,18 @@ public class MicrosoftAzureRestClient {
 		}
 
 		logger.info("Deleting Virtual Machine " + roleName);
-		deleteDeployment(cloudServiceName, deploymentName, endTime);
+		deleteDeployment(cloudServiceName, deploymentName, true, endTime);
 
 		logger.fine("Deleting cloud service : " + cloudServiceName + " that was dedicated for virtual machine "
 				+ roleName);
 		deleteCloudService(cloudServiceName, endTime);
 
-		for (Disk disk : disks) {
-			String diskName = disk.getName();
-			logger.info("Deleting OS or Data Disk : " + diskName);
-			deleteDisk(diskName, true, endTime);
-			logger.info("Deleted OS or Data Disk : " + diskName);
-		}
+		// for (Disk disk : disks) {
+		// String diskName = disk.getName();
+		// logger.info("Deleting OS or Data Disk : " + diskName);
+		// deleteDisk(diskName, true, endTime);
+		// logger.info("Deleted OS or Data Disk : " + diskName);
+		// }
 	}
 
 	private List<Disk> getDisksByAttachedCloudService(final String cloudServiceName)
@@ -1315,7 +1331,8 @@ public class MicrosoftAzureRestClient {
 	 * @throws TimeoutException .
 	 * @throws InterruptedException .
 	 */
-	public boolean deleteDeployment(final String hostedServiceName, final String deploymentName, final long endTime)
+	public boolean deleteDeployment(final String hostedServiceName, final String deploymentName, boolean deleteVhd,
+			final long endTime)
 			throws MicrosoftAzureException, TimeoutException, InterruptedException {
 
 		if (!deploymentExists(hostedServiceName, deploymentName)) {
@@ -1338,8 +1355,13 @@ public class MicrosoftAzureRestClient {
 
 				logger.fine(getThreadIdentity() + "Deleting deployment : " + deploymentName);
 
-				ClientResponse response = doDelete("/services/hostedservices/" + hostedServiceName + "/deployments/"
-						+ deploymentName);
+				String url = "/services/hostedservices/" + hostedServiceName + "/deployments/"
+						+ deploymentName;
+				if (deleteVhd) {
+					url = url + "?comp=media";
+				}
+
+				ClientResponse response = doDelete(url);
 
 				String requestId = extractRequestId(response);
 				waitForRequestToFinish(requestId, endTime);
@@ -1385,6 +1407,7 @@ public class MicrosoftAzureRestClient {
 		if (lockAcquired) {
 			try {
 
+				// https://management.core.windows.net/<subscription-id>/services/hostedservices/<cloudservice-name>/deployments/<deployment-name>/roles/<role-name>?comp=media
 				String url = "/services/hostedservices/" + deployment.getHostedServiceName() + "/deployments/" +
 						deployment.getName() + "/roles/" + roleName;
 
@@ -1392,11 +1415,7 @@ public class MicrosoftAzureRestClient {
 					url = url + "?comp=media";
 				}
 
-				// https://management.core.windows.net/<subscription-id>/services/hostedservices/<cloudservice-name>/deployments/<deployment-name>/roles/<role-name>?comp=media
-
-				ClientResponse response = doDelete("/services/hostedservices/" + deployment.getHostedServiceName()
-						+ "/deployments/" + deployment.getName() + "/roles/" + roleName);
-
+				ClientResponse response = doDelete(url);
 				String requestId = extractRequestId(response);
 				waitForRequestToFinish(requestId, endTime);
 				pendingRequest.unlock();

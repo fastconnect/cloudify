@@ -1796,6 +1796,7 @@ public class MicrosoftAzureRestClient {
 
 			// error at this point
 			Error error = (Error) MicrosoftAzureModelUtils.unmarshall(response.getEntity(String.class));
+			String errorString = ReflectionToStringBuilder.toString(error, ToStringStyle.SHORT_PREFIX_STYLE);
 
 			// a conflict error, wait and see
 			if (error.getCode().equals(HTTP_AZURE_CONFLICT_CODE)) {
@@ -1811,13 +1812,17 @@ public class MicrosoftAzureRestClient {
 						throw new MicrosoftAzureException(interruptedMsg, e);
 					}
 				} else {
-					throw new MicrosoftAzureException("Conflicted detected, but wait for resolution is disabled");
+					throw new MicrosoftAzureException("Resource conflicted detected, but wait for resolution is "
+							+ "disabled");
 				}
+
+			} else {
+				logger.severe(String.format("Error while performing REST request : %s", errorString));
+				throw new MicrosoftAzureException(errorString);
 			}
 
 			// timeout
 			if (System.currentTimeMillis() > endTime) {
-				String errorString = ReflectionToStringBuilder.toString(error, ToStringStyle.SHORT_PREFIX_STYLE);
 				String timeoutMsg = "Timeout while waiting for resource conflict/lease to be resolved/released, "
 						+ "more about the error : " + errorString;
 				logger.severe(timeoutMsg);

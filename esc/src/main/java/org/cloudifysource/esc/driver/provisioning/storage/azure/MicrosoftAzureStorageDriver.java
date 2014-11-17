@@ -86,7 +86,8 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 
 		String namePrefix = storageTemplate.getNamePrefix();
 		int diskSize = storageTemplate.getSize();
-		String saName = (String) storageTemplate.getCustom().get(MicrosoftAzureCloudDriver.AZURE_STORAGE_ACCOUNT_PREFIX);
+		String saName = (String) storageTemplate.getCustom().get(
+				MicrosoftAzureCloudDriver.AZURE_STORAGE_ACCOUNT_PREFIX);
 
 		MicrosoftAzureRestClient azureClient = getAzureClient();
 		AzureDeploymentContext context = getAzureContext();
@@ -299,5 +300,11 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 	@Override
 	public String getVolumeName(String volumeId) throws StorageProvisioningException {
 		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public void terminateAllVolumes(long duration, TimeUnit timeUnit) throws StorageProvisioningException,
+			TimeoutException {
+		logger.info("terminateAllVolumes isn't implemented yet in storage driver");
 	}
 }

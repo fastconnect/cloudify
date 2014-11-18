@@ -1048,7 +1048,6 @@ public class MicrosoftAzureRestClient {
 		} catch (AzureResourceNotFoundException e) {
 			logger.finer("Storge account not found or already deleted : " + storageAccountName);
 		}
-		// doDelete("/services/storageservices/" + storageAccountName);
 
 		return true;
 
@@ -1755,13 +1754,13 @@ public class MicrosoftAzureRestClient {
 
 		// for logging
 		boolean conflict = false;
+		Boolean activeServicesInResource = null;
 
 		while (true) {
 
-			switch (requestType) {
+			activeServicesInResource = false;
 
-			case GET:
-				break;
+			switch (requestType) {
 
 			case POST:
 				response = doPost(url, body);
@@ -1797,9 +1796,13 @@ public class MicrosoftAzureRestClient {
 			// error at this point
 			Error error = (Error) MicrosoftAzureModelUtils.unmarshall(response.getEntity(String.class));
 			String errorString = ReflectionToStringBuilder.toString(error, ToStringStyle.SHORT_PREFIX_STYLE);
+			if (errorString.contains("has some")) {
+				activeServicesInResource = true;
+				logger.warning("Can't delete the resource. It still has active services :" + errorString);
+			}
 
 			// a conflict error, wait and see
-			if (error.getCode().equals(HTTP_AZURE_CONFLICT_CODE)) {
+			if (error.getCode().equals(HTTP_AZURE_CONFLICT_CODE) || activeServicesInResource) {
 
 				if (waitForConflict) {
 					logger.fine("Waiting for resource conflict/lease to be resolved/released");
@@ -1817,6 +1820,9 @@ public class MicrosoftAzureRestClient {
 				}
 
 			} else {
+
+				// resource has some active service ? // TODO find a more elegant way to detect this kind of error
+
 				logger.severe(String.format("Error while performing REST request : %s", errorString));
 				throw new MicrosoftAzureException(errorString);
 			}

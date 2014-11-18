@@ -10,6 +10,7 @@ import org.cloudifysource.domain.cloud.Cloud;
 import org.cloudifysource.domain.cloud.storage.CloudStorage;
 import org.cloudifysource.domain.cloud.storage.StorageTemplate;
 import org.cloudifysource.esc.driver.provisioning.azure.MicrosoftAzureCloudDriver;
+import org.cloudifysource.esc.driver.provisioning.azure.MicrosoftAzureUtils;
 import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureException;
 import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureRestClient;
 import org.cloudifysource.esc.driver.provisioning.azure.client.UUIDHelper;
@@ -31,6 +32,7 @@ import org.cloudifysource.esc.driver.provisioning.storage.VolumeDetails;
 public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements StorageProvisioningDriver {
 
 	private final static Logger logger = Logger.getLogger(MicrosoftAzureStorageDriver.class.getName());
+	private final static String STORAGE_ACCOUNT_PROPERTY = "azure.storage.account";
 
 	private MicrosoftAzureCloudDriver computeDriver;
 
@@ -64,7 +66,7 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 	 * <br />
 	 * The data disk will be created into the least occupied storage account from the storage template list.
 	 * 
-	 * @param templateName
+	 * @param templateNames
 	 *            The storage template name.
 	 * @param location
 	 *            not used as we are suppose to use only 1 affinity group.
@@ -75,19 +77,27 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 	 * @return VolumeDetails where the id is the data disk name generate by Azure.
 	 */
 	@Override
-	public VolumeDetails createVolume(String templateName, String location, long duration, TimeUnit timeUnit)
+	public VolumeDetails createVolume(String templateNames, String location, long duration, TimeUnit timeUnit)
 			throws TimeoutException, StorageProvisioningException {
 		long endTime = System.currentTimeMillis() + timeUnit.toMillis(duration);
 
-		StorageTemplate storageTemplate = cloudStorage.getTemplates().get(templateName);
+		StorageTemplate storageTemplate = cloudStorage.getTemplates().get(templateNames);
 		if (storageTemplate == null) {
-			throw new StorageProvisioningException("Storage template '" + templateName + "' does not exist.");
+			throw new StorageProvisioningException("Storage template '" + templateNames + "' does not exist.");
 		}
 
-		String namePrefix = storageTemplate.getNamePrefix();
-		int diskSize = storageTemplate.getSize();
-		String saName = (String) storageTemplate.getCustom().get(
-				MicrosoftAzureCloudDriver.AZURE_STORAGE_ACCOUNT_PREFIX);
+		@SuppressWarnings("unchecked")
+		List<String> storageAccounts = (List<String>) storageTemplate.getCustom().get(STORAGE_ACCOUNT_PROPERTY);
+
+		String balancedStorageAccount = null;
+		try {
+			// TODO improve this /static / rest client
+			balancedStorageAccount = MicrosoftAzureUtils.getBalancedStorageAccount(storageAccounts,
+					getAzureContext().getAzureClient());
+		} catch (MicrosoftAzureException e1) {
+			throw new StorageProvisioningException("Failed getting a balanced storage account among " +
+					storageAccounts, e1);
+		}
 
 		MicrosoftAzureRestClient azureClient = getAzureClient();
 		AzureDeploymentContext context = getAzureContext();
@@ -95,7 +105,7 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 		String dataDiskName = null;
 		try {
 			// Make sure the storage account exists
-			azureClient.createStorageAccount(affinityGroup, saName, endTime);
+			azureClient.createStorageAccount(affinityGroup, balancedStorageAccount, endTime);
 
 			String cloudServiceName = context.getCloudServiceName();
 			String deploymentName = context.getDeploymentName();
@@ -107,14 +117,16 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 
 			// Generate the vhd filename
 			StringBuilder vhdFilename = new StringBuilder();
-			vhdFilename.append(namePrefix);
+			vhdFilename.append(storageTemplate.getNamePrefix());
 			vhdFilename.append(cloudServiceName);
 			vhdFilename.append("-data-");
 			vhdFilename.append(UUIDHelper.generateRandomUUID(4));
 
 			// Create a data disk
-			dataDiskName = azureClient.createDataDisk(cloudServiceName, deploymentName, roleName, saName,
-					vhdFilename.toString(), diskSize, endTime);
+			int diskSize = storageTemplate.getSize();
+
+			dataDiskName = azureClient.createDataDisk(cloudServiceName, deploymentName, roleName,
+					balancedStorageAccount, vhdFilename.toString(), diskSize, endTime);
 
 		} catch (MicrosoftAzureException e) {
 			throw new StorageProvisioningException(e);

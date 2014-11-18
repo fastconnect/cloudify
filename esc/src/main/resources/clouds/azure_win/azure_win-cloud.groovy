@@ -64,7 +64,7 @@ cloud {
         deviceName "2" // LUN
         deleteOnExit false
         custom ([
-          "azure.storage.account" : "${storageAccountPrefix}smallblock" as String,
+          "azure.storage.account" : ["storagesmallblock1", "storagesmallblock2"] as List,
         ])
         partitioningRequired true // If true, the driver will partition the disk (relevant with static storage)
         path "/storage"           // Used to mount (relevant with static storage)

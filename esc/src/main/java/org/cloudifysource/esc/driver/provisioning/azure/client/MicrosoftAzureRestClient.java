@@ -351,7 +351,7 @@ public class MicrosoftAzureRestClient {
 		String xmlRequest = MicrosoftAzureModelUtils.marshall(createStorageServiceInput, false);
 		ClientResponse response = doPost("/services/storageservices", xmlRequest);
 		String requestId = extractRequestId(response);
-		// waitForRequestToFinish(requestId, endTime);
+		waitForRequestToFinish(requestId, endTime);
 
 		logger.fine("Created a storage account : " + storageAccountName);
 	}

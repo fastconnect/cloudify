@@ -11,9 +11,11 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.lang.StringUtils;
 import org.cloudifysource.esc.driver.provisioning.CloudProvisioningException;
+import org.cloudifysource.esc.driver.provisioning.azure.client.AzureResourceNotFoundException;
 import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureException;
 import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureRestClient;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Disk;
+import org.cloudifysource.esc.driver.provisioning.azure.model.StorageService;
 import org.cloudifysource.esc.driver.provisioning.azure.model.StorageServices;
 
 public class MicrosoftAzureUtils {
@@ -55,12 +57,24 @@ public class MicrosoftAzureUtils {
 
 		// check if the specified storage accounts exist in the subscription
 		for (String storage : storageAccounts) {
-			if (storageServices.contains(storage)) {
-				existingStorageAccounts.add(storage);
+			StorageService storageService = storageServices.getStorageServiceByName(storage);
 
-				// init counter map
-				disksByStorageMap.put(storage, 0);
-			} else {
+			// yes it is
+			if (storageService != null) {
+
+				try {
+
+					// wait and check current existing SA status
+					azureClient.waitForStorageAccountToBeCreated(storage);
+					existingStorageAccounts.add(storage);
+
+					// init counter map
+					disksByStorageMap.put(storage, 0);
+				} catch (AzureResourceNotFoundException e) {
+					throw new MicrosoftAzureException(e);
+				}
+			}
+			else {
 				notExistingStorageAccounts.add(storage);
 			}
 		}

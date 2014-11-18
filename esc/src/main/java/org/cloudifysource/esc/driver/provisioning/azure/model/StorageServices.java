@@ -17,10 +17,12 @@ import javax.xml.bind.annotation.XmlRootElement;
 
 @XmlRootElement(name = "StorageServices")
 public class StorageServices implements Iterable<StorageService> {
-	
+
 	private List<StorageService> storageServices = new ArrayList<StorageService>();
 
-	/* (non-Javadoc)
+	/*
+	 * (non-Javadoc)
+	 * 
 	 * @see java.lang.Iterable#iterator()
 	 */
 	@Override
@@ -35,20 +37,37 @@ public class StorageServices implements Iterable<StorageService> {
 
 	public void setStorageServices(final List<StorageService> storageServices) {
 		this.storageServices = storageServices;
-	}	
-	
+	}
+
 	/**
 	 * 
-	 * @param storageServiceName .
+	 * @param storageServiceName
+	 *            .
 	 * @return .
 	 */
 	public boolean contains(final String storageServiceName) {
-		
+
 		for (StorageService service : storageServices) {
 			if (service.getServiceName().equals(storageServiceName)) {
 				return true;
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * Finds a storage service by name
+	 * 
+	 * @param storageServiceName
+	 * @return StorageService object if found, null otherwis
+	 */
+	public StorageService getStorageServiceByName(final String storageServiceName) {
+
+		for (StorageService service : storageServices) {
+			if (service.getServiceName().equals(storageServiceName)) {
+				return service;
+			}
+		}
+		return null;
 	}
 }

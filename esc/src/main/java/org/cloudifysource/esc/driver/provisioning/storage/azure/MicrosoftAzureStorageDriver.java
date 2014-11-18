@@ -79,6 +79,7 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 	@Override
 	public VolumeDetails createVolume(String templateNames, String location, long duration, TimeUnit timeUnit)
 			throws TimeoutException, StorageProvisioningException {
+
 		long endTime = System.currentTimeMillis() + timeUnit.toMillis(duration);
 
 		StorageTemplate storageTemplate = cloudStorage.getTemplates().get(templateNames);
@@ -91,7 +92,6 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 
 		String balancedStorageAccount = null;
 		try {
-			// TODO improve this /static / rest client
 			balancedStorageAccount = MicrosoftAzureUtils.getBalancedStorageAccount(storageAccounts,
 					getAzureContext().getAzureClient());
 		} catch (MicrosoftAzureException e1) {

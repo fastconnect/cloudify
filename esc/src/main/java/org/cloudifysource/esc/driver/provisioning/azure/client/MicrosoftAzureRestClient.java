@@ -66,6 +66,7 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.RoleDeploymentInfo
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleInstance;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleInstanceList;
 import org.cloudifysource.esc.driver.provisioning.azure.model.SharedKey;
+import org.cloudifysource.esc.driver.provisioning.azure.model.StorageService;
 import org.cloudifysource.esc.driver.provisioning.azure.model.StorageServices;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Subnet;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Subnets;
@@ -130,6 +131,13 @@ public class MicrosoftAzureRestClient {
 	private static String GATEWAY_STATE_NOT_PROVISIONED = "NotProvisioned";
 	private static String GATEWAY_STATE_PROVISIONING = "Provisioning";
 	private static String GATEWAY_STATE_DEPROVISIONING = "Deprovisioning";
+
+	private static String STORAGE_STATUS_CREATED = "Created";
+	private static String STORAGE_STATUS_CREATING = "Creating";
+	private static String STORAGE_STATUS_CHANGING = "Changing";
+	private static String STORAGE_STATUS_DELETED = "Deleted";
+	private static String STORAGE_STATUS_DELETING = "Deleting";
+	private static String STORAGE_STATUS_RESOLVINGDNS = "ResolvingDns";
 
 	private static final int MAX_RETRIES = 5;
 	private static final long DEFAULT_POLLING_INTERVAL = 5 * 1000; // 5 seconds
@@ -343,7 +351,7 @@ public class MicrosoftAzureRestClient {
 		String xmlRequest = MicrosoftAzureModelUtils.marshall(createStorageServiceInput, false);
 		ClientResponse response = doPost("/services/storageservices", xmlRequest);
 		String requestId = extractRequestId(response);
-		waitForRequestToFinish(requestId, endTime);
+		// waitForRequestToFinish(requestId, endTime);
 
 		logger.fine("Created a storage account : " + storageAccountName);
 	}
@@ -2583,4 +2591,41 @@ public class MicrosoftAzureRestClient {
 		return deploymentInfo;
 	}
 
+	public void waitForStorageAccountToBeCreated(String storageAccountName) throws
+			MicrosoftAzureException, TimeoutException, AzureResourceNotFoundException {
+
+		while (true) {
+			StorageServices listStorageServices = listStorageServices();
+			StorageService storageService = listStorageServices.getStorageServiceByName(storageAccountName);
+
+			if (storageService != null) {
+				String status = storageService.getStorageServiceProperties().getStatus();
+
+				if (status.equals(STORAGE_STATUS_CREATED)) {
+					logger.finest(String.format("storage account '%s' status is now created",
+							storageAccountName));
+					return;
+				}
+
+				if (status.equals(STORAGE_STATUS_CREATING) || status.equals(STORAGE_STATUS_CHANGING) ||
+						status.equals(STORAGE_STATUS_RESOLVINGDNS)) {
+					try {
+						Thread.sleep(DEFAULT_POLLING_INTERVAL);
+						logger.finest(String.format("Waiting for storage account '%s' to be created",
+								storageAccountName));
+						continue;
+					} catch (InterruptedException e) {
+						throw new MicrosoftAzureException(e);
+					}
+				}
+
+				if (status.equals(STORAGE_STATUS_DELETED) || status.equals(STORAGE_STATUS_DELETING)) {
+					throw new MicrosoftAzureException("Storage service state error : " + status);
+				}
+
+			} else {
+				throw new AzureResourceNotFoundException("Storage account not found : " + storageAccountName);
+			}
+		}
+	}
 }

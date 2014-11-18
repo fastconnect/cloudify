@@ -207,7 +207,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			+ " set rule group=\\\"File and Printer Sharing\\\" new enable=yes";
 	private static final long DEFAULT_COMMAND_TIMEOUT = 15 * 60 * 1000; // 2 minutes
 
-	private static final int DEFAULT_STOP_MANAGEMENT_TIMEOUT = 15;
+	private static final int DEFAULT_STOP_MANAGEMENT_TIMEOUT = 10 * 60 * 60 * 1000; // 60 minutes
 
 	private int stopManagementMachinesTimeoutInMinutes = DEFAULT_STOP_MANAGEMENT_TIMEOUT;
 	private ComputeTemplate template;

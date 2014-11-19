@@ -842,7 +842,8 @@ public class MicrosoftAzureRestClient {
 
 		Deployment deploymentResponse = null;
 		try {
-			logger.info("Waiting for the VM to be ready. This will take a while...");
+			logger.info(String.format(getThreadIdentity() + "Waiting for the VM role '%s' to be ready. This will "
+					+ "take a while...", roleName));
 			String deploymentSlot = deploymentDesc.getDeploymentSlot();
 			deploymentResponse = waitForDeploymentStatus("Running", cloudServiceName, deploymentSlot, endTime);
 			deploymentResponse = waitForRoleInstanceStatus("ReadyRole", cloudServiceName, deploymentSlot, roleName,
@@ -1103,11 +1104,11 @@ public class MicrosoftAzureRestClient {
 	public void deleteCloudService(final String cloudServiceName, final long endTime)
 			throws MicrosoftAzureException, TimeoutException, InterruptedException {
 		if (!cloudServiceExists(cloudServiceName)) {
-			logger.info("Cloud service " + cloudServiceName + " does not exist. No delete operation will be attempted");
+			logger.info("Can't delete cloud service " + cloudServiceName + ", it doesn't exist.");
 			return;
 		}
 
-		logger.fine("Try deleting cloud service : " + cloudServiceName);
+		logger.fine(getThreadIdentity() + "Try deleting cloud service : " + cloudServiceName);
 
 		if (!doesCloudServiceContainsDeployments(cloudServiceName, endTime)) {
 			// Delete cloud service
@@ -1164,12 +1165,18 @@ public class MicrosoftAzureRestClient {
 
 		Role role = this.getRoleByIpAddress(machineIp, deployment);
 		if (role == null) {
-			throw new MicrosoftAzureException("Could not find role for Virtual Machine with IP " + machineIp);
+			throw new MicrosoftAzureException("Could not find a role for the Virtual Machine with IP " + machineIp);
 		}
 
 		roleName = role.getRoleName();
 		if (deployment.hasAtLeastTwoRoles()) {
-			this.deleteRoleFromDeployment(roleName, deployment, true, endTime);
+			try {
+				this.deleteRoleFromDeployment(roleName, deployment, true, endTime);
+			} catch (AzureOnlyOneRoleInDeploymetException e) {
+				logger.finer(getThreadIdentity() + String.format("Not attempting to delete role '%s' because it's the "
+						+ "only one in the deployment. Tyring to delete deployment instead...", roleName));
+				deleteDeployment(hostedServiceName, deploymentName, true, endTime);
+			}
 		} else {
 			deleteDeployment(hostedServiceName, deploymentName, true, endTime);
 		}
@@ -1343,7 +1350,7 @@ public class MicrosoftAzureRestClient {
 			throws MicrosoftAzureException, TimeoutException, InterruptedException {
 
 		if (!deploymentExists(hostedServiceName, deploymentName)) {
-			logger.info("Deployment " + deploymentName + " does not exist");
+			logger.info(getThreadIdentity() + "Deployment " + deploymentName + " does not exist");
 			return true;
 		}
 
@@ -1368,12 +1375,12 @@ public class MicrosoftAzureRestClient {
 					url = url + "?comp=media";
 				}
 
-				ClientResponse response = doDelete(url);
+				ClientResponse response = performHttpRequest(HttpRequestType.DELETE, url, null, null, true, endTime);
 
 				String requestId = extractRequestId(response);
 				waitForRequestToFinish(requestId, endTime);
 
-				logger.fine(String.format("Deleted deployment '%s'", deploymentName));
+				logger.fine(String.format(getThreadIdentity() + "Deleted deployment '%s'", deploymentName));
 
 				pendingRequest.unlock();
 				logger.fine(getThreadIdentity() + "Lock unlcoked");
@@ -1392,7 +1399,8 @@ public class MicrosoftAzureRestClient {
 			}
 			return true;
 		} else {
-			throw new TimeoutException("Failed to acquire lock for deleteDeployment request after + "
+			throw new TimeoutException(getThreadIdentity()
+					+ "Failed to acquire lock for deleteDeployment request after + "
 					+ lockTimeout + " milliseconds");
 		}
 
@@ -1401,9 +1409,10 @@ public class MicrosoftAzureRestClient {
 	// TODO : refactoring with other methods that use the same process lock>->request->response->unlock
 	public boolean deleteRoleFromDeployment(final String roleName, final Deployment deployment,
 			final boolean deleteVhd, final long endTime) throws InterruptedException, MicrosoftAzureException,
-			TimeoutException {
+			TimeoutException, AzureOnlyOneRoleInDeploymetException {
 
-		logger.fine(String.format("Deleting VM Role '%s' from deployment '%s'", roleName, deployment.getName()));
+		logger.fine(getThreadIdentity() + String.format("Deleting VM Role '%s' from deployment '%s'",
+				roleName, deployment.getName()));
 
 		long currentTimeInMillis = System.currentTimeMillis();
 		long lockTimeout = endTime - currentTimeInMillis;
@@ -1421,12 +1430,19 @@ public class MicrosoftAzureRestClient {
 				if (deleteVhd) {
 					url = url + "?comp=media";
 				}
+				try {
+					ClientResponse response = performHttpRequest(HttpRequestType.DELETE, url, null, null, true,
+							endTime);
+					String requestId = extractRequestId(response);
+					waitForRequestToFinish(requestId, endTime);
+					pendingRequest.unlock();
 
-				ClientResponse response = doDelete(url);
-				String requestId = extractRequestId(response);
-				waitForRequestToFinish(requestId, endTime);
-				pendingRequest.unlock();
-				logger.fine(getThreadIdentity() + "Lock unlcoked");
+					logger.fine(getThreadIdentity() + "Lock unlcoked");
+				} catch (MicrosoftAzureException e) {
+					if (e.getMessage().contains("is the only role present in the deployment")) {
+						throw new AzureOnlyOneRoleInDeploymetException(e);
+					}
+				}
 
 			} catch (final Exception e) {
 				logger.fine(getThreadIdentity() + "About to release lock " + pendingRequest.hashCode());
@@ -1441,10 +1457,14 @@ public class MicrosoftAzureRestClient {
 				if (e instanceof InterruptedException) {
 					throw (InterruptedException) e;
 				}
+
+				if (e instanceof AzureOnlyOneRoleInDeploymetException) {
+					throw (AzureOnlyOneRoleInDeploymetException) e;
+				}
 			}
 		} else {
-			throw new TimeoutException("Failed to acquire lock for deleteRoleFromDeployment request after + "
-					+ lockTimeout + " milliseconds");
+			throw new TimeoutException(getThreadIdentity() + "Failed to acquire lock for deleteRoleFromDeployment "
+					+ "request after " + lockTimeout + " milliseconds");
 		}
 
 		return true;
@@ -1788,14 +1808,14 @@ public class MicrosoftAzureRestClient {
 
 			int status = response.getStatus();
 			if (status == HTTP_NOT_FOUND) {
-				logger.finest("Azure resource not found, it might be already deleted");
+				logger.finest(getThreadIdentity() + "Azure resource not found, it might be already deleted");
 				throw new AzureResourceNotFoundException();
 			}
 
 			// OK status
 			if (status == HTTP_OK || status == HTTP_CREATED || status == HTTP_ACCEPTED) {
 				if (conflict) {
-					logger.fine("conflict/lease is resolved/released");
+					logger.fine(getThreadIdentity() + "conflict/lease is resolved/released");
 				}
 
 				return response;
@@ -1806,7 +1826,8 @@ public class MicrosoftAzureRestClient {
 			String errorString = ReflectionToStringBuilder.toString(error, ToStringStyle.SHORT_PREFIX_STYLE);
 			if (errorString.contains("has some")) {
 				activeServicesInResource = true;
-				logger.warning("Can't delete the resource. It still has active services :" + errorString);
+				logger.warning(getThreadIdentity() + "Can't delete the resource. It still has active services :"
+						+ errorString);
 			}
 
 			// a conflict error, wait and see
@@ -1828,17 +1849,16 @@ public class MicrosoftAzureRestClient {
 				}
 
 			} else {
-
 				// resource has some active service ? // TODO find a more elegant way to detect this kind of error
-
-				logger.severe(String.format("Error while performing REST request : %s", errorString));
-				throw new MicrosoftAzureException(errorString);
+				logger.warning(getThreadIdentity() + String.format("Error while performing REST request : %s",
+						errorString));
+				throw new MicrosoftAzureException(error.getCode(), error.getMessage());
 			}
 
 			// timeout
 			if (System.currentTimeMillis() > endTime) {
-				String timeoutMsg = "Timeout while waiting for resource conflict/lease to be resolved/released, "
-						+ "more about the error : " + errorString;
+				String timeoutMsg = getThreadIdentity() + "Timeout while waiting for resource conflict/lease to be "
+						+ "resolved/released, more about the error : " + errorString;
 				logger.severe(timeoutMsg);
 				throw new MicrosoftAzureException(timeoutMsg);
 			}
@@ -2602,7 +2622,7 @@ public class MicrosoftAzureRestClient {
 				String status = storageService.getStorageServiceProperties().getStatus();
 
 				if (status.equals(STORAGE_STATUS_CREATED)) {
-					logger.finest(String.format("storage account '%s' status is now created",
+					logger.finest(String.format("storage account '%s' status is created",
 							storageAccountName));
 					return;
 				}

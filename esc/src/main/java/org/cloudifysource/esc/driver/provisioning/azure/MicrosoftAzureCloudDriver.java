@@ -649,7 +649,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 				try {
 					logger.info("Trying to open windows vm firewall ports...");
 					openFirewallPorts(machineDetails);
-					logger.info("Windows vm firewall ports opened successfully");
+					logger.info("Windows vm firewall ports operation finished");
 				} catch (Exception e) {
 					logger.warning("Failed opening windows vm firewall ports. This can be critical for Windows Vms if the required ports are not open.");
 				}

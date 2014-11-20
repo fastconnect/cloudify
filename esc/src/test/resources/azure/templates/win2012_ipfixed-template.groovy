@@ -32,10 +32,10 @@
 
 			// Endpoints definition
 			"azure.endpoints" : [
-				[name:"CIFS_SMB", protocol:"TCP", port:"445"],
-				[name:"WINRM", protocol:"TCP", port:"5985"],
-				[name:"WINRM_SSL", protocol:"TCP", port:"5986"],
-				[name:"HTTP", protocol:"TCP", port:"80"]
+				[name:"CIFS_SMB", protocol:"TCP", localPort : "445", port:"445"],
+				[name:"WINRM", protocol:"TCP", localPort : "5985", port:"5985"],
+				[name:"WINRM_SSL", protocol:"TCP", localPort : "5986", port:"5986"],
+				[name:"HTTP", protocol:"TCP", localPort:"80", port:"80"],
 			],
 			"azure.network.ipAddresses" : "10.0.0.12"
 		])

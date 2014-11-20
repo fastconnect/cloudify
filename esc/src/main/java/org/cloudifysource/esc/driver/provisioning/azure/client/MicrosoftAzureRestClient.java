@@ -254,14 +254,15 @@ public class MicrosoftAzureRestClient {
 			throws MicrosoftAzureException, TimeoutException, InterruptedException {
 
 		String cloudServiceName = createHostedService.getServiceName();
-		logger.info(String.format("Try Creating cloud service '%s'", cloudServiceName));
 
 		try {
 
 			if (this.getHostedService(cloudServiceName, false) != null) {
-				logger.info(String.format("The cloud service '%s' exists already", cloudServiceName));
+				logger.info(String.format("Using an already existing cloud service '%s' ", cloudServiceName));
 				return;
 			}
+
+			logger.info(String.format("Trying to create cloud service '%s'", cloudServiceName));
 
 			String xmlRequest = MicrosoftAzureModelUtils.marshall(createHostedService, false);
 			ClientResponse response = doPost("/services/hostedservices", xmlRequest);
@@ -288,7 +289,9 @@ public class MicrosoftAzureRestClient {
 
 	private void waitUntilCloudServiceIsCreated(String cloudServiceName, long endTime) throws MicrosoftAzureException,
 			TimeoutException, InterruptedException {
-		logger.fine("Waiting for the cloud service '" + cloudServiceName + "' to be created");
+
+		logger.fine(String.format("Waiting for the cloud service '%s' to be created", cloudServiceName));
+
 		while (true) {
 			HostedService hostedService = this.getCloudServiceByName(cloudServiceName);
 			if (hostedService != null) {
@@ -308,7 +311,8 @@ public class MicrosoftAzureRestClient {
 			Thread.sleep(DEFAULT_POLLING_INTERVAL);
 
 			if (System.currentTimeMillis() > endTime) {
-				throw new TimeoutException("Timed out waiting the creation of cloud service " + cloudServiceName);
+				throw new TimeoutException(String.format("Timed out while waiting for cloud service '%s' "
+						+ "creation to finish", cloudServiceName));
 			}
 		}
 
@@ -1108,7 +1112,7 @@ public class MicrosoftAzureRestClient {
 			return;
 		}
 
-		logger.fine(getThreadIdentity() + "Try deleting cloud service : " + cloudServiceName);
+		logger.fine(getThreadIdentity() + "Trying to delete cloud service : " + cloudServiceName);
 
 		if (!doesCloudServiceContainsDeployments(cloudServiceName, endTime)) {
 			// Delete cloud service
@@ -1880,7 +1884,7 @@ public class MicrosoftAzureRestClient {
 			} catch (ClientHandlerException e) {
 				logger.warning("Caught an exception while executing GET with url "
 						+ url + ". Message :" + e.getMessage());
-				logger.warning("Waiting for a few seconds before retrying request");
+				logger.finest("Waiting for a few seconds before retrying GET request");
 
 				try {
 					Thread.sleep(DEFAULT_POLLING_INTERVAL);
@@ -2065,9 +2069,8 @@ public class MicrosoftAzureRestClient {
 			}
 
 			if (System.currentTimeMillis() > endTime) {
-				throw new TimeoutException(
-						"Timed out waiting for operation to finish. last state was : "
-								+ status);
+				throw new TimeoutException("Timed out waiting for operation to finish. last state was : "
+						+ status);
 			}
 		}
 	}

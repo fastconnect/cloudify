@@ -113,7 +113,6 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 			this.startManagementMachine(driver, new MachineDetailsAssertion() {
 				@Override
 				public void additionalAssertions(MachineDetails md) {
-					Assert.assertEquals("10.0.0.12", md.getPrivateAddress());
 					String expectedIp = "10.0.0.12";
 					Assert.assertEquals("IP should be :" + expectedIp, expectedIp, md.getPrivateAddress());
 				}
@@ -122,9 +121,8 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 			this.startAndStopMachine("ubuntu1410_multipleFixedIPs", new MachineDetailsAssertion() {
 				@Override
 				public void additionalAssertions(MachineDetails md) {
-					Assert.assertEquals("10.0.0.13", md.getPrivateAddress());
 					String expectedIp = "10.0.0.13";
-					Assert.assertEquals("IP should be :" + expectedIp, md.getPrivateAddress());
+					Assert.assertEquals("IP should be :" + expectedIp, expectedIp, md.getPrivateAddress());
 
 				}
 			});

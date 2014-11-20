@@ -417,7 +417,7 @@ public class MicrosoftAzureRestClient {
 		VirtualNetworkSites virtualNetworkSites = virtualNetworkConfiguration.getVirtualNetworkSites();
 
 		if (virtualNetworkSites == null) {
-			logger.fine("Creating virtual network sites");
+			logger.fine("Creating virtual network sites...");
 			virtualNetworkSites = new VirtualNetworkSites();
 		}
 
@@ -453,7 +453,13 @@ public class MicrosoftAzureRestClient {
 		List<Subnet> notExistingSubnets = this.getNotExistingSubnets(networkTemplates, virtualNetworkSite.getSubnets());
 		if (!notExistingSubnets.isEmpty()) {
 			virtualNetworkSite.getSubnets().getSubnets().addAll(notExistingSubnets);
-			logger.fine("Added new subnets from network templates");
+			if (logger.isLoggable(Level.INFO)) {
+				String[] names = new String[notExistingSubnets.size()];
+				for (int i = 0; i < notExistingSubnets.size(); i++) {
+					names[i] = notExistingSubnets.get(i).getName();
+				}
+				logger.info("Adding new subnets from network templates: " + names);
+			}
 			shouldUpdateOrCreate = true;
 		}
 
@@ -542,10 +548,10 @@ public class MicrosoftAzureRestClient {
 
 		if (shouldUpdateOrCreate) {
 			setNetworkConfiguration(endTime, virtualNetworkConfiguration);
-			logger.fine("Created/Updated virtual network site : " + networkSiteName);
+			logger.info("Created/Updated virtual network site : " + networkSiteName);
 
 		} else {
-			logger.fine("Using existing virtual network site configuration: " + networkSiteName);
+			logger.info("Using existing virtual network site configuration: " + networkSiteName);
 		}
 
 		// continue with vpn gateway provisioning [after vNet creation]
@@ -842,7 +848,7 @@ public class MicrosoftAzureRestClient {
 
 		Deployment deploymentResponse = null;
 		try {
-			logger.info(String.format(getThreadIdentity() + "Waiting for the VM role '%s' to be ready. This will "
+			logger.info(String.format(getThreadIdentity() + "Waiting for the VM role '%s' to be ready. This may "
 					+ "take a while...", roleName));
 			String deploymentSlot = deploymentDesc.getDeploymentSlot();
 			deploymentResponse = waitForDeploymentStatus("Running", cloudServiceName, deploymentSlot, endTime);

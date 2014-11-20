@@ -709,29 +709,32 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			for (Map<String, String> firewallPortsMap : this.firewallPorts) {
 				String name = firewallPortsMap.get("name");
 				String protocol = firewallPortsMap.get("protocol");
+				String port = firewallPortsMap.get("port");
+
+				if (StringUtils.isBlank(name) || StringUtils.isBlank(protocol) ||
+						StringUtils.isBlank(port)) {
+					continue;
+				}
 
 				// Port could be a range à a simple one
 				// 7001 or 7001-7010 ([7001..7010])
-				String port = firewallPortsMap.get("port");
-				if (!"".equals(port) && port.contains("-")) {
+				if (port.contains("-")) {
 					String[] portsRange = port.split("-");
 					int portStart = Integer.parseInt(portsRange[0]);
 					int portEnd = Integer.parseInt(portsRange[1]);
 					if (portsRange.length == 2 && portStart <= portEnd) {
 						// Opening from port portStart -> portEnd (with +1 increment)
 						for (int i = portStart; i <= portEnd; i++) {
-							cmd = String.format(COMMAND_OPEN_FIREWALL_PORT, name + i, protocol, i);
+							cmd = String.format(COMMAND_OPEN_FIREWALL_PORT, name.trim() + i, protocol.trim(), i);
 							remoteExecutor.execute(hostAddress, details, cmd, DEFAULT_COMMAND_TIMEOUT);
 						}
 					}
 				}
 				else {
 					// No port defined : skip
-					if (!"".equals(port)) {
-						int portNumber = Integer.parseInt(port);
-						cmd = String.format(COMMAND_OPEN_FIREWALL_PORT, name, protocol, portNumber);
-						remoteExecutor.execute(hostAddress, details, cmd, DEFAULT_COMMAND_TIMEOUT);
-					}
+					int portNumber = Integer.parseInt(port);
+					cmd = String.format(COMMAND_OPEN_FIREWALL_PORT, name.trim(), protocol.trim(), portNumber);
+					remoteExecutor.execute(hostAddress, details, cmd, DEFAULT_COMMAND_TIMEOUT);
 				}
 			}
 		}

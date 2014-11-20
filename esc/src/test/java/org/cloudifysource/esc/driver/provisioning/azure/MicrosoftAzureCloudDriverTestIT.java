@@ -301,10 +301,12 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 			Assert.assertNotNull(managementRole);
 
 			String mediaLink = managementRole.getOsVirtualHardDisk().getMediaLink();
-			Assert.assertTrue(mediaLink.contains("cfytestitos1"));
+			Assert.assertTrue("OS disk should have been saved in storage account 'cfytestitos1'",
+					mediaLink.contains("cfytestitos1"));
 
 			mediaLink = managementRole.getDataVirtualHardDisks().getDataVirtualHardDisks().get(0).getMediaLink();
-			Assert.assertTrue(mediaLink.contains("cfytestitdata1"));
+			Assert.assertTrue("Data disk should have been saved in storage account 'cfytestitdata1'",
+					mediaLink.contains("cfytestitdata1"));
 
 			this.startAndStopMachine(computeTemplate, new MachineDetailsAssertion() {
 
@@ -320,10 +322,12 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 					Role role = deployment.getRoleList().getRoleByName(roleName);
 					Assert.assertNotNull(role);
 					String mediaLink = role.getOsVirtualHardDisk().getMediaLink();
-					Assert.assertTrue(mediaLink.contains("cfytestitos2"));
+					Assert.assertTrue("Os disk should have been saved in storage account 'cfytestitos2'",
+							mediaLink.contains("cfytestitos2"));
 
 					mediaLink = role.getDataVirtualHardDisks().getDataVirtualHardDisks().get(0).getMediaLink();
-					Assert.assertTrue(mediaLink.contains("cfytestitdata2"));
+					Assert.assertTrue("Data disk should have been saved in storage account 'cfytestitdata2'",
+							mediaLink.contains("cfytestitdata2"));
 				}
 			});
 		}

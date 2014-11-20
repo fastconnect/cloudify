@@ -116,6 +116,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String AZURE_DEPLOYMENT_CUSTOMDATA = "azure.deployment.customdata";
 	private static final String AZURE_AFFINITY_LOCATION = "azure.affinity.location";
 	public static final String AZURE_AFFINITY_GROUP = "azure.affinity.group";
+
+	public static final String AZURE_STORAGE_ACCOUNT = "azure.storage.account";
 	public static final String AZURE_STORAGE_ACCOUNT_PREFIX = "azure.storage.account.prefix";
 	public static final String AZURE_STORAGE_ACCOUNT_FILE_SERVICE = "azure.storage.account.file.service";
 	public static final String AZURE_STORAGE_ACCOUNTS_DATA = "azure.storage.accounts.data";
@@ -293,10 +295,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		}
 
 		// storage accounts
-		this.computeTemplateStorageAccountName =
-				(List<String>) this.template.getCustom().get(AZURE_STORAGE_ACCOUNT_PREFIX);
-		this.computeTemplateDataStorageAccounts =
-				(List<String>) this.template.getCustom().get(AZURE_STORAGE_ACCOUNTS_DATA);
+		this.computeTemplateStorageAccountName = (List<String>) this.template.getCustom().get(AZURE_STORAGE_ACCOUNT);
+		this.computeTemplateDataStorageAccounts = (List<String>) this.template.getCustom()
+				.get(AZURE_STORAGE_ACCOUNTS_DATA);
 
 		this.storageAccountName = (String) this.cloud.getCustom().get(AZURE_STORAGE_ACCOUNT_PREFIX);
 		if (storageAccountName == null) {

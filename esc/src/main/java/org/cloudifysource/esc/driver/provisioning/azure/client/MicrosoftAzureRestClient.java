@@ -462,7 +462,8 @@ public class MicrosoftAzureRestClient {
 				for (int i = 0; i < notExistingSubnets.size(); i++) {
 					names[i] = notExistingSubnets.get(i).getName();
 				}
-				logger.info("Adding new subnets from network templates: " + names);
+				String templatesStr = ReflectionToStringBuilder.toString(names, ToStringStyle.SIMPLE_STYLE);
+				logger.info("Adding new subnets from network templates: " + templatesStr);
 			}
 			shouldUpdateOrCreate = true;
 		}

@@ -78,6 +78,8 @@ import org.cloudifysource.esc.installer.remoteExec.RemoteExecutor;
 import org.cloudifysource.esc.installer.remoteExec.RemoteExecutorFactory;
 import org.cloudifysource.esc.util.Utils;
 
+import com.google.common.base.Joiner;
+
 /***************************************************************************************
  * A custom Cloud Driver implementation for provisioning machines on Azure.
  * 
@@ -712,6 +714,12 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 				if (StringUtils.isBlank(name) || StringUtils.isBlank(protocol) ||
 						StringUtils.isBlank(port)) {
+
+					Joiner.MapJoiner mapJoiner = Joiner.on(", ").withKeyValueSeparator("=");
+					String firewallPortString = mapJoiner.join(firewallPortsMap);
+
+					logger.warning("Firewall port ignored, its properties aren't valid : " + firewallPortString);
+
 					continue;
 				}
 

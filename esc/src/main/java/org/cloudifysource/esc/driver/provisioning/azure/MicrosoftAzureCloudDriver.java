@@ -85,7 +85,12 @@ import org.cloudifysource.esc.util.Utils;
  ***************************************************************************************/
 public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
-	// TODO set dynamic value for manager name if necessary
+	private static final Logger logger = Logger.getLogger(MicrosoftAzureCloudDriver.class.getName());
+	private static final long CLEANUP_DEFAULT_TIMEOUT = 60 * 1000 * 15; // 15 minutes
+	private static final long DEFAULT_COMMAND_TIMEOUT = 15 * 60 * 1000L; // 15 minutes
+	private static final int DEFAULT_STOP_MANAGEMENT_TIMEOUT_IN_MINUTES = 30; // 30 minutes
+	private int stopManagementMachinesTimeoutInMinutes = DEFAULT_STOP_MANAGEMENT_TIMEOUT_IN_MINUTES;
+
 	protected static final String CLOUDIFY_MANAGER_NAME = "CFYM";
 	private static final String STRING_SEPERATOR = ",";
 
@@ -205,15 +210,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			+ " add rule name=\"%s\" dir=in action=allow protocol=%s localport=%d";
 	private static final String COMMAND_ACTIVATE_SHARING = "netsh advfirewall firewall"
 			+ " set rule group=\\\"File and Printer Sharing\\\" new enable=yes";
-	private static final long DEFAULT_COMMAND_TIMEOUT = 15 * 60 * 1000; // 2 minutes
 
-	private static final int DEFAULT_STOP_MANAGEMENT_TIMEOUT = 10 * 60 * 60 * 1000; // 60 minutes
-
-	private int stopManagementMachinesTimeoutInMinutes = DEFAULT_STOP_MANAGEMENT_TIMEOUT;
 	private ComputeTemplate template;
-
-	private static final Logger logger = Logger.getLogger(MicrosoftAzureCloudDriver.class.getName());
-	private static final long CLEANUP_TIMEOUT = 60 * 1000 * 5; // five minutes
 
 	private static MicrosoftAzureRestClient azureClient;
 
@@ -252,7 +250,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		this.verifyManagementNetworkConfiguration(configuration.getCloud());
 
 		this.stopManagementMachinesTimeoutInMinutes = Utils.getInteger(cloud.getCustom().get(CloudifyConstants
-				.STOP_MANAGEMENT_TIMEOUT_IN_MINUTES), DEFAULT_STOP_MANAGEMENT_TIMEOUT);
+				.STOP_MANAGEMENT_TIMEOUT_IN_MINUTES), DEFAULT_STOP_MANAGEMENT_TIMEOUT_IN_MINUTES);
 
 		// null value for code causes problem while deploying, therefore it is set to an empty string if it's the case
 		String availability = (String) this.template.getCustom().get(AZURE_AVAILABILITY_SET);
@@ -359,7 +357,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 			if (endpoints != null) {
 				if (!doesEndpointsContainsPort(endpoints, remoteExecution.getDefaultPort())) {
-					logger.warning("Missing remote execution endpoint, the drive will create one.");
+					logger.info("No remote execution endpoint, the drive will create one.");
 					String portStr = Integer.toString(remoteExecution.getDefaultPort());
 					HashMap<String, String> newEndpoint = new HashMap<String, String>();
 					newEndpoint.put("name", remoteExecution.name());
@@ -369,7 +367,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 					endpoints.add(newEndpoint);
 				}
 				if (!doesEndpointsContainsPort(endpoints, fileTransfer.getDefaultPort())) {
-					logger.warning("Missing file transfert endpoint, the drive will create one.");
+					logger.info("No file transfert endpoint, the drive will create one.");
 					String portStr = Integer.toString(fileTransfer.getDefaultPort());
 					HashMap<String, String> newEndpoint = new HashMap<String, String>();
 					newEndpoint.put("name", fileTransfer.name());
@@ -770,8 +768,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 					logger.info("Cleaning up any services that may have already been started.");
 					cleanup();
 				} catch (final CloudProvisioningException e1) {
-					// we catch this because we want to throw the original exception. not the one that happened on
-					// cleanup.
+					// catch this because we want to throw the original exception. not the one that happened on cleanup.
 					logger.warning("Failed to cleanup some management services. Please shut them down manually or use the teardown-cloud command.");
 					logger.fine(ExceptionUtils.getFullStackTrace(e1));
 				}
@@ -831,8 +828,10 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	}
 
 	private void cleanup() throws CloudProvisioningException {
+		cleanup(CLEANUP_DEFAULT_TIMEOUT);
+	}
 
-		final long endTime = System.currentTimeMillis() + CLEANUP_TIMEOUT;
+	private void cleanup(long endTime) throws CloudProvisioningException {
 
 		boolean deletedNetwork = false;
 		boolean deletedStorage = false;
@@ -1025,7 +1024,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 		if (cleanup) {
 			logger.info("Cleaning up management services");
-			cleanup();
+			cleanup(endTime);
 		}
 	}
 

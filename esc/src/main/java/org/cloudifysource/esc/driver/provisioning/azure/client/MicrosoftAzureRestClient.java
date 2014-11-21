@@ -370,7 +370,7 @@ public class MicrosoftAzureRestClient {
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
 
-		logger.fine("Created a storage account : " + storageAccountName);
+		logger.info("Created a storage account : " + storageAccountName);
 	}
 
 	/**
@@ -866,7 +866,7 @@ public class MicrosoftAzureRestClient {
 
 		Deployment deploymentResponse = null;
 		try {
-			logger.info(String.format(getThreadIdentity() + "Waiting for the VM role '%s' to be ready. This may "
+			logger.info(String.format(getThreadIdentity() + "Waiting for the VM role '%s' to be ready. This might "
 					+ "take a while...", roleName));
 			String deploymentSlot = deploymentDesc.getDeploymentSlot();
 			deploymentResponse = waitForDeploymentStatus("Running", cloudServiceName, deploymentSlot, endTime);

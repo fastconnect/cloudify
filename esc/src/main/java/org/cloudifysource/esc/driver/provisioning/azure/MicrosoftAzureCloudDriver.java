@@ -909,9 +909,10 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 		List<String> failedDeleteOsStorageAccounts = new ArrayList<String>();
 
-		if (this.computeTemplateStorageAccountName != null) {
+		Set<String> storageAccountsForOsDisks = getAllStorageAccountsByDiskType(AZURE_STORAGE_ACCOUNT);
+		if (!storageAccountsForOsDisks.isEmpty()) {
 			logger.fine("Cleaning storage accounts of OS disks ");
-			for (String storage : this.computeTemplateStorageAccountName) {
+			for (String storage : storageAccountsForOsDisks) {
 				try {
 					azureClient.deleteStorageAccount(storage, endTime);
 
@@ -926,12 +927,16 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 					failedDeleteOsStorageAccounts.add(storage);
 				}
 			}
+		} else {
+			logger.fine("Not attempting to delete storage account for os disks");
 		}
 
+		Set<String> storageAccountsForDataDisks = getAllStorageAccountsByDiskType(AZURE_STORAGE_ACCOUNTS_DATA);
+
 		List<String> failedDeleteDataStorageAccounts = new ArrayList<String>();
-		if (this.computeTemplateDataStorageAccounts != null) {
+		if (!storageAccountsForDataDisks.isEmpty()) {
 			logger.fine("Cleaning storage accounts for data disks");
-			for (String storage : this.computeTemplateDataStorageAccounts) {
+			for (String storage : storageAccountsForDataDisks) {
 				try {
 					azureClient.deleteStorageAccount(storage, endTime);
 
@@ -945,6 +950,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 					failedDeleteDataStorageAccounts.add(storage);
 				}
 			}
+		} else {
+			logger.fine("Not attempting to delete storage account for data disks");
 		}
 
 		boolean deleteFileShareStorage = true;
@@ -958,6 +965,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 				logger.warning("Failed cleaning storage account for file service share");
 				deleteFileShareStorage = false;
 			}
+
+		} else {
+			logger.fine("Not attempting to delete storage account for file service");
 		}
 
 		if (deletedNetwork && deletedStorage && failedDeleteOsStorageAccounts.isEmpty()
@@ -1000,11 +1010,29 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			}
 
 			logger.warning(msg.toString());
-
 		}
+
 		if (first != null) {
 			throw new CloudProvisioningException(first);
 		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private Set<String> getAllStorageAccountsByDiskType(String property) {
+
+		Set<String> storages = new HashSet<String>();
+
+		Map<String, ComputeTemplate> computeTemplates = this.cloud.getCloudCompute().getTemplates();
+		if (!computeTemplates.isEmpty()) {
+
+			for (ComputeTemplate template : computeTemplates.values()) {
+				List<String> templateStorages = (List<String>) template.getCustom().get(property);
+				if (templateStorages != null && !templateStorages.isEmpty()) {
+					storages.addAll(templateStorages);
+				}
+			}
+		}
+		return storages;
 	}
 
 	/*********

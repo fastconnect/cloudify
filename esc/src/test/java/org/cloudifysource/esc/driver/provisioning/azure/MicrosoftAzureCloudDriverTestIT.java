@@ -126,13 +126,6 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 
 				}
 			});
-
-			this.startAndStopMachine("ubuntu1410_multipleFixedIPs", new MachineDetailsAssertion() {
-				@Override
-				public void additionalAssertions(MachineDetails md) {
-					Assert.assertEquals("10.0.0.13", md.getPrivateAddress());
-				}
-			});
 		} finally {
 			stopManagementMachines(driver);
 		}

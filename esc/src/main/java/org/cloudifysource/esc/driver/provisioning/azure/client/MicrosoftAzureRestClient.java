@@ -33,7 +33,7 @@ import org.apache.commons.lang.exception.ExceptionUtils;
 import org.cloudifysource.domain.cloud.network.NetworkConfiguration;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.esc.driver.provisioning.azure.MicrosoftAzureUtils;
-import org.cloudifysource.esc.driver.provisioning.azure.StrorageCallable;
+import org.cloudifysource.esc.driver.provisioning.azure.StorageCallable;
 import org.cloudifysource.esc.driver.provisioning.azure.model.AddressAvailability;
 import org.cloudifysource.esc.driver.provisioning.azure.model.AddressSpace;
 import org.cloudifysource.esc.driver.provisioning.azure.model.AffinityGroups;
@@ -923,7 +923,7 @@ public class MicrosoftAzureRestClient {
 					List<Future<?>> futures = new ArrayList<Future<?>>();
 
 					for (String storage : dataStorageAccounts) {
-						Future<?> f = executorService.submit(new StrorageCallable(this,
+						Future<?> f = executorService.submit(new StorageCallable(this,
 								deploymentDesc.getAffinityGroup(), storage, endTime));
 						futures.add(f);
 					}

@@ -595,7 +595,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 					List<Future<?>> futures = new ArrayList<Future<?>>();
 
 					for (String storage : this.computeTemplateStorageAccountName) {
-						Future<?> f = executorService.submit(new StrorageCallable(azureClient,
+						Future<?> f = executorService.submit(new StorageCallable(azureClient,
 								affinityGroup, storage, endTime));
 						futures.add(f);
 					}

@@ -6,14 +6,14 @@ import java.util.concurrent.TimeoutException;
 import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureException;
 import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureRestClient;
 
-public class StrorageCallable implements Callable<Boolean> {
+public class StorageCallable implements Callable<Boolean> {
 
 	private MicrosoftAzureRestClient restClient;
 	private String affinityGroup;
 	private String name;
 	private long endTime;
 
-	public StrorageCallable(MicrosoftAzureRestClient restClient, String affinityGroup, String name, long endTime) {
+	public StorageCallable(MicrosoftAzureRestClient restClient, String affinityGroup, String name, long endTime) {
 		this.restClient = restClient;
 		this.affinityGroup = affinityGroup;
 		this.name = name;

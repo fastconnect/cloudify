@@ -1,9 +1,15 @@
 package org.cloudifysource.esc.driver.provisioning.storage.azure;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Logger;
 
 import org.cloudifysource.domain.cloud.Cloud;
@@ -11,6 +17,7 @@ import org.cloudifysource.domain.cloud.storage.CloudStorage;
 import org.cloudifysource.domain.cloud.storage.StorageTemplate;
 import org.cloudifysource.esc.driver.provisioning.azure.MicrosoftAzureCloudDriver;
 import org.cloudifysource.esc.driver.provisioning.azure.MicrosoftAzureUtils;
+import org.cloudifysource.esc.driver.provisioning.azure.StorageCallable;
 import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureException;
 import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureRestClient;
 import org.cloudifysource.esc.driver.provisioning.azure.client.UUIDHelper;
@@ -30,6 +37,8 @@ import org.cloudifysource.esc.driver.provisioning.storage.VolumeDetails;
  * 
  */
 public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements StorageProvisioningDriver {
+
+	private Lock driverPendingRequest = new ReentrantLock(true);
 
 	private final static Logger logger = Logger.getLogger(MicrosoftAzureStorageDriver.class.getName());
 	private final static String STORAGE_ACCOUNT_PROPERTY = "azure.storage.account";
@@ -87,29 +96,67 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 			throw new StorageProvisioningException("Storage template '" + templateNames + "' does not exist.");
 		}
 
+		String balancedStorageAccount = null;
 		@SuppressWarnings("unchecked")
 		List<String> storageAccounts = (List<String>) storageTemplate.getCustom().get(STORAGE_ACCOUNT_PROPERTY);
+		if (storageAccounts == null || storageAccounts.isEmpty()) {
+			throw new StorageProvisioningException("No storage templates were definied in cloud");
+		}
 
-		String balancedStorageAccount = null;
+		long currentTimeInMillis = System.currentTimeMillis();
+		long lockTimeout = endTime - currentTimeInMillis;
+		if (lockTimeout < 0) {
+			throw new StorageProvisioningException("Timeout. Abord request to configurate storage accounts");
+		}
+		logger.fine("Waiting for pending storage driver request lock for lock "
+				+ driverPendingRequest.hashCode());
+
 		try {
+			boolean lockAcquired = driverPendingRequest.tryLock(lockTimeout, TimeUnit.MILLISECONDS);
+			if (!lockAcquired) {
+				throw new TimeoutException("Failed to acquire lock for configurating storage accounts for "
+						+ "volumes after " + lockTimeout + " milliseconds");
+			}
+			logger.fine("Configurating storage accounts for volumes");
+
+			ExecutorService executorService = Executors.newFixedThreadPool(storageAccounts.size());
+			List<Future<?>> futures = new ArrayList<Future<?>>();
+
+			for (String storage : storageAccounts) {
+				Future<?> f = executorService.submit(new StorageCallable(
+						getAzureContext().getAzureClient(), affinityGroup, storage, endTime));
+				futures.add(f);
+			}
+
+			logger.finest("Waiting for storage accounts configuration to finish");
+			for (Future<?> f : futures) {
+				f.get();
+			}
+			executorService.shutdownNow();
+
 			balancedStorageAccount = MicrosoftAzureUtils.getBalancedStorageAccount(storageAccounts,
 					getAzureContext().getAzureClient());
-		} catch (MicrosoftAzureException e1) {
-			throw new StorageProvisioningException("Failed getting a balanced storage account among " +
-					storageAccounts, e1);
+
+			driverPendingRequest.unlock();
+			logger.fine("Configuration of storage accounts for volumes finished");
+
+		} catch (Exception e) {
+			logger.warning("Failed configurating storage accounts for volumes : " + e.getMessage());
+			logger.warning("Selecting a storage account instead : " + storageAccounts.get(0));
+			balancedStorageAccount = storageAccounts.get(0);
+			driverPendingRequest.unlock();
 		}
 
 		MicrosoftAzureRestClient azureClient = getAzureClient();
 		AzureDeploymentContext context = getAzureContext();
 
+		logger.info("Creating a new volume");
 		String dataDiskName = null;
 		try {
-			// Make sure the storage account exists
-			azureClient.createStorageAccount(affinityGroup, balancedStorageAccount, endTime);
 
-			String cloudServiceName = context.getCloudServiceName();
-			String deploymentName = context.getDeploymentName();
 			// Get the deployment to retrieve the role name
+			String deploymentName = context.getDeploymentName();
+			String cloudServiceName = context.getCloudServiceName();
 			Deployment deployment = azureClient.getDeploymentByDeploymentName(cloudServiceName, deploymentName);
 			Role role = deployment.getRoleList().getRoles().get(0);
 
@@ -137,6 +184,7 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 
 		// Return the data disk name as id.
 		VolumeDetails volumeDetails = new VolumeDetails();
+		logger.fine("Created volume : " + dataDiskName);
 		volumeDetails.setId(dataDiskName);
 		return volumeDetails;
 	}
@@ -317,6 +365,8 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 	@Override
 	public void terminateAllVolumes(long duration, TimeUnit timeUnit) throws StorageProvisioningException,
 			TimeoutException {
-		logger.info("terminateAllVolumes isn't implemented yet in storage driver");
+
+		logger.finest("deleting volumes is done in the cleaning process of the azure compute driver");
 	}
+
 }

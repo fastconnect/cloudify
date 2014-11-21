@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -44,6 +45,7 @@ import org.cloudifysource.domain.cloud.compute.ComputeTemplate;
 import org.cloudifysource.domain.cloud.network.CloudNetwork;
 import org.cloudifysource.domain.cloud.network.NetworkConfiguration;
 import org.cloudifysource.domain.cloud.network.Subnet;
+import org.cloudifysource.domain.cloud.storage.StorageTemplate;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.dsl.utils.ServiceUtils;
 import org.cloudifysource.dsl.utils.ServiceUtils.FullServiceName;
@@ -970,6 +972,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			logger.fine("Not attempting to delete storage account for file service");
 		}
 
+		List<String> failedDeleteVolumesStorageAccounts = this.cleanStorageAccountsOfVolumes(endTime);
+
 		if (deletedNetwork && deletedStorage && failedDeleteOsStorageAccounts.isEmpty()
 				&& failedDeleteDataStorageAccounts.isEmpty() && deleteFileShareStorage) {
 			try {
@@ -1004,6 +1008,11 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 						failedDeleteDataStorageAccounts.toString())));
 			}
 
+			if (!failedDeleteVolumesStorageAccounts.isEmpty()) {
+				msg.append(String.format(String.format("- storage accounts for volumes disks %s \n",
+						failedDeleteVolumesStorageAccounts.toString())));
+			}
+
 			if (!deleteFileShareStorage) {
 				msg.append(String.format(String.format("- storage account for file share %s \n",
 						this.fileServiceStorageAccount)));
@@ -1033,6 +1042,36 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			}
 		}
 		return storages;
+	}
+
+	private List<String> cleanStorageAccountsOfVolumes(long endTime) throws CloudProvisioningException {
+
+		List<String> failedDeletedStorageAccounts = new ArrayList<String>();
+
+		Map<String, StorageTemplate> storageTemplates = cloud.getCloudStorage().getTemplates();
+		if (storageTemplates == null || storageTemplates.isEmpty()) {
+			logger.info("Skipping Cleaning volumes because no storage templates were defined in cloud configuration");
+		} else {
+
+			for (Entry<String, StorageTemplate> entry : storageTemplates.entrySet()) {
+				StorageTemplate storageTemplate = entry.getValue();
+
+				@SuppressWarnings("unchecked")
+				List<String> storageAccounts = (List<String>) storageTemplate.getCustom().get(AZURE_STORAGE_ACCOUNT);
+				if (storageAccounts != null) {
+					for (String storage : storageAccounts) {
+						try {
+							azureClient.deleteStorageAccount(storage, endTime);
+						} catch (Exception e) {
+							failedDeletedStorageAccounts.add(storage);
+							logger.warning("Failed deleting storage account " + storage);
+						}
+					}
+				}
+			}
+		}
+
+		return failedDeletedStorageAccounts;
 	}
 
 	/*********

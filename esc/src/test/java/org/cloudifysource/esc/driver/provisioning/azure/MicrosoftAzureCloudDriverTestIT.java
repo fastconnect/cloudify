@@ -580,9 +580,11 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 		this.startAndStopManagementMachine(computeTemplateName, new MachineDetailsAssertion() {
 			@Override
 			public void additionalAssertions(MachineDetails md) throws TimeoutException, MicrosoftAzureException {
-				Assert.assertTrue(String.format("Storage account '%s' should be creatd ", fileServiceStorageAccount),
-						azureRestClient.listStorageServices().contains(fileServiceStorageAccount));
+				Assert.assertTrue(String.format("Storage account '%s' should have been creatd ",
+						fileServiceStorageAccount), azureRestClient.listStorageServices().
+						contains(fileServiceStorageAccount));
 			}
 		});
 	}
+
 }

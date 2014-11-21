@@ -1768,6 +1768,7 @@ public class MicrosoftAzureRestClient {
 		}
 		virtualNetworkSites.getVirtualNetworkSites().remove(index);
 		logger.info("Deleting virtual network site : " + virtualNetworkSite);
+		logger.fine(String.format("Waiting for virtual network site '%s' to be deleted", virtualNetworkSite));
 		setNetworkConfiguration(endTime, virtualNetworkConfiguration);
 		logger.fine("Deleted virtual network site : " + virtualNetworkSite);
 		return true;
@@ -1893,7 +1894,7 @@ public class MicrosoftAzureRestClient {
 			String errorString = ReflectionToStringBuilder.toString(error, ToStringStyle.SHORT_PREFIX_STYLE);
 			if (errorString.contains("has some")) {
 				activeServicesInResource = true;
-				logger.warning(getThreadIdentity() + "Can't delete the resource. It still has active services :"
+				logger.finest(getThreadIdentity() + "Can't delete the resource. It still has active services :"
 						+ errorString);
 			}
 

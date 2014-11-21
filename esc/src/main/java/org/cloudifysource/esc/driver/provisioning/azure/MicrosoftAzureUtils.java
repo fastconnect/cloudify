@@ -144,4 +144,17 @@ public class MicrosoftAzureUtils {
 		return list;
 	}
 
+	public static boolean stringContainsAny(String string, List<String> strings) {
+
+		if (StringUtils.isNotBlank(string) && !strings.isEmpty()) {
+			for (String s : strings) {
+				if (string.contains(s)) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
 }

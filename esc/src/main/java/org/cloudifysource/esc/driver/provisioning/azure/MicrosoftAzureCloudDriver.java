@@ -975,7 +975,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		List<String> failedDeleteVolumesStorageAccounts = this.cleanStorageAccountsOfVolumes(endTime);
 
 		if (deletedNetwork && deletedStorage && failedDeleteOsStorageAccounts.isEmpty()
-				&& failedDeleteDataStorageAccounts.isEmpty() && deleteFileShareStorage) {
+				&& failedDeleteDataStorageAccounts.isEmpty() && failedDeleteVolumesStorageAccounts.isEmpty()
+				&& deleteFileShareStorage) {
 			try {
 				azureClient.deleteAffinityGroup(affinityGroup, endTime);
 			} catch (final Exception e) {
@@ -1052,7 +1053,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		if (storageTemplates == null || storageTemplates.isEmpty()) {
 			logger.info("Skipping Cleaning volumes because no storage templates were defined in cloud configuration");
 		} else {
-
+			logger.fine("Cleaning storage accounts of volumes");
 			for (Entry<String, StorageTemplate> entry : storageTemplates.entrySet()) {
 				StorageTemplate storageTemplate = entry.getValue();
 
@@ -1176,7 +1177,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 						proceeded.add(hostedServiceName + deploymentName);
 					}
 				}
-			} else {
+			}
+			else {
 				if (disk.getName().contains(serverNamePrefix)) {
 					try {
 						logger.info("Detected a zombie OS Disk with name " + disk.getName() + ", Deleting it.");
@@ -1184,6 +1186,19 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 					} catch (final Exception e) {
 						throw new CloudProvisioningException(e);
 					}
+				}
+			}
+
+			// delete disks (volumes) created by the Storage Driver
+			List<String> prefixes = this.getStorageAccountsPrefixesInStorageTemplates(cloud.getCloudStorage()
+					.getTemplates());
+
+			if (MicrosoftAzureUtils.stringContainsAny(disk.getMediaLink(), prefixes)) {
+				try {
+					logger.info("Detected a volume Disk with name " + disk.getName() + ", Deleting it.");
+					azureClient.deleteDisk(disk.getName(), true, endTime);
+				} catch (final Exception e) {
+					throw new CloudProvisioningException(e);
 				}
 			}
 		}
@@ -1218,6 +1233,22 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		}
 	}
 
+	private List<String> getStorageAccountsPrefixesInStorageTemplates(Map<String, StorageTemplate> storageTemplates) {
+
+		if (storageTemplates != null && !storageTemplates.isEmpty()) {
+			List<String> prefixes = new ArrayList<String>();
+
+			for (Entry<String, StorageTemplate> entry : storageTemplates.entrySet()) {
+				StorageTemplate storageTemplate = entry.getValue();
+				prefixes.add(storageTemplate.getNamePrefix());
+			}
+
+			return prefixes;
+		}
+
+		return null;
+	}
+
 	@Override
 	public String getCloudName() {
 		return "azure";
@@ -1225,7 +1256,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	@Override
 	public void close() {
-		// TODO Auto-generated method stub
 	}
 
 	/**

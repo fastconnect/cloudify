@@ -29,6 +29,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -92,6 +94,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final long DEFAULT_COMMAND_TIMEOUT = 15 * 60 * 1000L; // 15 minutes
 	private static final int DEFAULT_STOP_MANAGEMENT_TIMEOUT_IN_MINUTES = 30; // 30 minutes
 	private int stopManagementMachinesTimeoutInMinutes = DEFAULT_STOP_MANAGEMENT_TIMEOUT_IN_MINUTES;
+
+	private Lock driverPendingRequest = new ReentrantLock(true);
 
 	protected static final String CLOUDIFY_MANAGER_NAME = "CFYM";
 	private static final String STRING_SEPERATOR = ",";
@@ -570,17 +574,51 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			String osStorageAccountName = null;
 			try {
 				if (this.computeTemplateStorageAccountName != null) {
+
+					long currentTimeInMillis = System.currentTimeMillis();
+					long lockTimeout = endTime - currentTimeInMillis;
+					if (lockTimeout < 0) {
+						throw new MicrosoftAzureException("Timeout. Abord request to configurate storage accounts");
+					}
+					logger.fine("Waiting for pending driver request lock for lock "
+							+ driverPendingRequest.hashCode());
+
+					boolean lockAcquired = driverPendingRequest.tryLock(lockTimeout, TimeUnit.MILLISECONDS);
+					if (!lockAcquired) {
+						throw new TimeoutException("Failed to acquire lock for configurating storage accounts after + "
+								+ lockTimeout + " milliseconds");
+					}
+					logger.fine("Configurating storage accounts for os disks");
+					ExecutorService executorService =
+							Executors.newFixedThreadPool(computeTemplateStorageAccountName.size());
+
+					List<Future<?>> futures = new ArrayList<Future<?>>();
+
+					for (String storage : this.computeTemplateStorageAccountName) {
+						Future<?> f = executorService.submit(new StrorageCallable(azureClient,
+								affinityGroup, storage, endTime));
+						futures.add(f);
+					}
+
+					for (Future<?> f : futures) {
+						f.get();
+					}
+
+					executorService.shutdownNow();
+
 					osStorageAccountName = MicrosoftAzureUtils.getBalancedStorageAccount(
 							this.computeTemplateStorageAccountName, azureClient);
-					azureClient.createStorageAccount(this.affinityGroup, osStorageAccountName, endTime);
-
+					logger.fine("Configuration of storage accounts for os disks finished");
+					driverPendingRequest.unlock();
 				} else {
 					osStorageAccountName = this.storageAccountName;
 				}
+
 			} catch (Exception e) {
 				logger.warning("Failed selecting balanced storage account from the specified storage accounts : "
 						+ this.computeTemplateStorageAccountName.toString());
 				osStorageAccountName = this.storageAccountName;
+				logger.warning("Selecting a storage account instead : " + osStorageAccountName);
 			}
 
 			logger.fine(String.format("Using '%s' as balanced storage account for OS disk", osStorageAccountName));

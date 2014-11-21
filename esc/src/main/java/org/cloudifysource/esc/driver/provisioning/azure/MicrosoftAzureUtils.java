@@ -65,7 +65,7 @@ public class MicrosoftAzureUtils {
 				try {
 
 					// wait and check current existing SA status
-					azureClient.waitForStorageAccountToBeCreated(storage);
+					azureClient.waitForStorageAccountToBeCreated(storage, false);
 					existingStorageAccounts.add(storage);
 
 					// init counter map

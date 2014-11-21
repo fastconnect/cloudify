@@ -15,6 +15,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
@@ -30,6 +33,7 @@ import org.apache.commons.lang.exception.ExceptionUtils;
 import org.cloudifysource.domain.cloud.network.NetworkConfiguration;
 import org.cloudifysource.dsl.internal.CloudifyConstants;
 import org.cloudifysource.esc.driver.provisioning.azure.MicrosoftAzureUtils;
+import org.cloudifysource.esc.driver.provisioning.azure.StrorageCallable;
 import org.cloudifysource.esc.driver.provisioning.azure.model.AddressAvailability;
 import org.cloudifysource.esc.driver.provisioning.azure.model.AddressSpace;
 import org.cloudifysource.esc.driver.provisioning.azure.model.AffinityGroups;
@@ -110,6 +114,8 @@ public class MicrosoftAzureRestClient {
 	private Lock pendingRequest = new ReentrantLock(true);
 	private Lock pendingNetworkRequest = new ReentrantLock(true);
 	private Lock pendingStorageRequest = new ReentrantLock(true);
+
+	private Lock pendingDataStorageRequest = new ReentrantLock(true);
 
 	private MicrosoftAzureRequestBodyBuilder requestBodyBuilder;
 
@@ -259,6 +265,7 @@ public class MicrosoftAzureRestClient {
 
 			if (this.getHostedService(cloudServiceName, false) != null) {
 				logger.info(String.format("Using an already existing cloud service '%s' ", cloudServiceName));
+				this.waitUntilCloudServiceIsCreated(cloudServiceName, endTime);
 				return;
 			}
 
@@ -347,12 +354,18 @@ public class MicrosoftAzureRestClient {
 
 		if (storageExists(storageAccountName)) {
 			logger.info("Using an already existing storage account : " + storageAccountName);
+			try {
+				waitForStorageAccountToBeCreated(storageAccountName, true);
+			} catch (AzureResourceNotFoundException e) {
+				throw new MicrosoftAzureException(e);
+			}
 			return;
 		}
 
 		logger.info("Creating a storage account : " + storageAccountName);
 
 		String xmlRequest = MicrosoftAzureModelUtils.marshall(createStorageServiceInput, false);
+
 		ClientResponse response = doPost("/services/storageservices", xmlRequest);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
@@ -883,16 +896,59 @@ public class MicrosoftAzureRestClient {
 		// Add a data disk when creating a new VM
 		String storageAccountName = null;
 		if (deploymentDesc.getDataDiskSize() != null) {
+			List<String> dataStorageAccounts = deploymentDesc.getDataStorageAccounts();
 
 			// choose balanced storage account for the current data disk
-			if (deploymentDesc.getDataStorageAccounts() != null) {
-				storageAccountName = MicrosoftAzureUtils.getBalancedStorageAccount(deploymentDesc.
-						getDataStorageAccounts(), this);
+			if (dataStorageAccounts != null) {
+
+				currentTimeInMillis = System.currentTimeMillis();
+				lockTimeout = endTime - currentTimeInMillis;
+				if (lockTimeout < 0) {
+					throw new MicrosoftAzureException("Timeout. Abord request to configurate storage accounts");
+				}
+				logger.fine("Waiting for pending driver request lock for lock "
+						+ pendingDataStorageRequest.hashCode());
+
+				lockAcquired = pendingDataStorageRequest.tryLock(lockTimeout, TimeUnit.MILLISECONDS);
+
+				if (!lockAcquired) {
+					throw new TimeoutException(
+							"Failed to acquire lock for configurating storage accounts for os data disks"
+									+ " after " + lockTimeout + " milliseconds");
+				}
+				logger.fine("Configurating storage accounts for data disks");
+				try {
+					ExecutorService executorService =
+							Executors.newFixedThreadPool(dataStorageAccounts.size());
+					List<Future<?>> futures = new ArrayList<Future<?>>();
+
+					for (String storage : dataStorageAccounts) {
+						Future<?> f = executorService.submit(new StrorageCallable(this,
+								deploymentDesc.getAffinityGroup(), storage, endTime));
+						futures.add(f);
+					}
+
+					for (Future<?> f : futures) {
+						f.get();
+					}
+
+					executorService.shutdownNow();
+
+					storageAccountName = MicrosoftAzureUtils.getBalancedStorageAccount(dataStorageAccounts, this);
+					logger.fine("Configuration of storage accounts for data disks finished");
+					pendingDataStorageRequest.unlock();
+
+				} catch (final Exception e) {
+					logger.severe("Failed configurating storage accounts for data disks : " + e.getMessage());
+					storageAccountName = deploymentDesc.getStorageAccountName();
+					logger.warning("Selecting a storage account instead : " + storageAccountName);
+					pendingDataStorageRequest.unlock();
+				}
+
 			} else {
 				storageAccountName = deploymentDesc.getStorageAccountName();
 			}
 
-			this.createStorageAccount(deploymentDesc.getAffinityGroup(), storageAccountName, endTime);
 			logger.fine(String.format("Using '%s' as balanced storage account for data disk", storageAccountName));
 
 			this.addDataDiskToVM(deploymentDesc.getHostedServiceName(), deploymentDesc.getDeploymentName(),
@@ -2621,7 +2677,7 @@ public class MicrosoftAzureRestClient {
 		return deploymentInfo;
 	}
 
-	public void waitForStorageAccountToBeCreated(String storageAccountName) throws
+	public void waitForStorageAccountToBeCreated(String storageAccountName, boolean ignoreDeletingState) throws
 			MicrosoftAzureException, TimeoutException, AzureResourceNotFoundException {
 
 		while (true) {
@@ -2650,7 +2706,19 @@ public class MicrosoftAzureRestClient {
 				}
 
 				if (status.equals(STORAGE_STATUS_DELETED) || status.equals(STORAGE_STATUS_DELETING)) {
-					throw new MicrosoftAzureException("Storage service state error : " + status);
+					if (ignoreDeletingState) {
+						try {
+							Thread.sleep(DEFAULT_POLLING_INTERVAL);
+							logger.finest(String.format("Waiting for storage account '%s' to be deleted",
+									storageAccountName));
+							continue;
+						} catch (InterruptedException e) {
+							throw new MicrosoftAzureException(e);
+						}
+
+					} else {
+						throw new MicrosoftAzureException("Storage service state error : " + status);
+					}
 				}
 
 			} else {

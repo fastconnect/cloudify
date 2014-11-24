@@ -65,6 +65,7 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.NetworkConfigurati
 import org.cloudifysource.esc.driver.provisioning.azure.model.Operation;
 import org.cloudifysource.esc.driver.provisioning.azure.model.PersistentVMRole;
 import org.cloudifysource.esc.driver.provisioning.azure.model.ResourceExtensionReferences;
+import org.cloudifysource.esc.driver.provisioning.azure.model.ResourceExtensionStatus;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Role;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleDeploymentInfo;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleInstance;
@@ -144,6 +145,9 @@ public class MicrosoftAzureRestClient {
 	private static String STORAGE_STATUS_DELETED = "Deleted";
 	private static String STORAGE_STATUS_DELETING = "Deleting";
 	private static String STORAGE_STATUS_RESOLVINGDNS = "ResolvingDns";
+
+	private static String EXTENSIONS_STATUS_INSTALLING = "Installing";
+	private static String EXTENSIONS_STATUS_NOTREADY = "NotReady";
 
 	private static final int MAX_RETRIES = 5;
 	private static final long DEFAULT_POLLING_INTERVAL = 5 * 1000; // 5 seconds
@@ -784,9 +788,8 @@ public class MicrosoftAzureRestClient {
 
 				// extensions
 				List<Map<String, String>> extensions = deploymentDesc.getExtensions();
-				logger.fine(String.format("Setting extensions..."));
-				ResourceExtensionReferences extensionReferences =
-						requestBodyBuilder.buildResourceExtensionReferences(extensions, isWindows);
+				ResourceExtensionReferences extensionReferences = requestBodyBuilder.buildResourceExtensionReferences(
+						extensions, isWindows);
 				deploymentDesc.setExtensionReferences(extensionReferences);
 
 				boolean addToDeployment = deploymentInfo.isAddToDeployment();
@@ -813,7 +816,7 @@ public class MicrosoftAzureRestClient {
 					waitForRequestToFinish(requestId, endTime);
 
 				} else {
-					// regular deployment
+					// create a new deployment
 					logger.fine(String.format("Creating a new deployment '%s' for the current VM Role.",
 							deploymentDesc.getDeploymentName()));
 					Deployment deployment = requestBodyBuilder.buildDeployment(deploymentDesc, isWindows);
@@ -2042,7 +2045,7 @@ public class MicrosoftAzureRestClient {
 
 	}
 
-	private Deployment waitForRoleInstanceStatus(final String state,
+	public Deployment waitForRoleInstanceStatus(final String state,
 			final String hostedServiceName, final String deploymentSlot, final String roleName,
 			final long endTime) throws TimeoutException,
 			MicrosoftAzureException, InterruptedException {
@@ -2059,14 +2062,32 @@ public class MicrosoftAzureRestClient {
 						+ " was provisioned but found in status " + status);
 			}
 			if (status.equals(state)) {
-				return deployment;
-			} else {
-				Thread.sleep(DEFAULT_POLLING_INTERVAL);
+
+				boolean extensionsInstallationsFinished = true;
+				// check extensions status
+				if (roleInstance.getResourceExtensionStatusList() != null) {
+
+					for (ResourceExtensionStatus ris : roleInstance.getResourceExtensionStatusList()
+							.getResourceExtensionStatusList()) {
+
+						if (ris.getStatus().equals(EXTENSIONS_STATUS_INSTALLING) ||
+								ris.getStatus().equals(EXTENSIONS_STATUS_NOTREADY)) {
+
+							extensionsInstallationsFinished = false;
+							break;
+						}
+					}
+				}
+
+				if (extensionsInstallationsFinished) {
+					return deployment;
+				}
 			}
+
+			Thread.sleep(DEFAULT_POLLING_INTERVAL);
+
 			if (System.currentTimeMillis() > endTime) {
-				throw new TimeoutException(
-						"Timed out waiting for operation to finish. last state was : "
-								+ status);
+				throw new TimeoutException("Timed out waiting for operation to finish. last state was : " + status);
 			}
 		}
 	}

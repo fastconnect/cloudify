@@ -83,6 +83,8 @@ public final class ModelContextFactory {
 		CLASSES.add(ResourceExtensionParameterValue.class);
 		CLASSES.add(ResourceExtensionParameterValues.class);
 		CLASSES.add(StorageServiceProperties.class);
+		CLASSES.add(ResourceExtensionStatusList.class);
+		CLASSES.add(ResourceExtensionStatus.class);
 	}
 
 	private static Class<?>[] getClasses() {

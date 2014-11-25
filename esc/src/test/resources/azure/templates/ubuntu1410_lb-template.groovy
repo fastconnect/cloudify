@@ -17,8 +17,6 @@
 			"azure.cloud.service" : "cfytestitloadblancer",
 			"azure.endpoints" : [
 				[name:"HTTP_LB", protocol:"TCP", localPort: "80", port:"80", loadBalancedSet: "lbSetTest", probePort : "80", probeProtocol:"TCP"],
-				// SSH should be automatically generated for manager
-				[name:"SSH", protocol:"TCP", localPort: "22", port:"22"],
 			],
 		])
 	}

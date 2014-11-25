@@ -17,5 +17,5 @@
 			"azure.pfx.password" : pfxPassword,
 			"azure.availability.set" : "AVITTEST"
 		])
-  }
+	}
 ]

@@ -62,7 +62,7 @@ cloud {
 				deviceName "2" // LUN
 				deleteOnExit false
 				custom ([
-          "azure.storage.account" : ["storagesmallblock1", "storagesmallblock2"] as List,
+					"azure.storage.account" : [	"storagesmallblock1", "storagesmallblock2"] as List,
 				])
 				partitioningRequired true // If true, the driver will partition the disk (relevant with static storage)
 				path "/storage"           // Used to mount (relevant with static storage)
@@ -97,13 +97,13 @@ cloud {
 			 ***************************************************************************************/
 
 			/*
-			"azure.vpn.localsite.name" : vpnLocalSiteName,
-			"azure.vpn.gateway.address" : vpnGatewayAddress,
-			"azure.vpn.gateway.type" : vpnGatewayType, // StaticRouting or DynamicRouting
-			"azure.vpn.gateway.key" : vpnGatwayKey,
-			"azure.vpn.address.space" : vpnAddressSpace,
-			"azure.vpn.subnet.address.prefix" : vpnSubnetAddressPrefix,
-			*/
+			 "azure.vpn.localsite.name" : vpnLocalSiteName,
+			 "azure.vpn.gateway.address" : vpnGatewayAddress,
+			 "azure.vpn.gateway.type" : vpnGatewayType, // StaticRouting or DynamicRouting
+			 "azure.vpn.gateway.key" : vpnGatwayKey,
+			 "azure.vpn.address.space" : vpnAddressSpace,
+			 "azure.vpn.subnet.address.prefix" : vpnSubnetAddressPrefix,
+			 */
 
 		])
 
@@ -333,13 +333,13 @@ cloud {
 		 ******************************************************************************************/
 
 		"azure.storage.account.file.service" : fileServiceStorageAccount,
-		
+
 		/******************************************************************************************
 		 * A global availability set															  *
 		 * if a compute template doesn't set an availability set, this one will be used     	  *
 		 ******************************************************************************************/
-	
-			"azure.availability.set" : availabilitySet,
+
+		"azure.availability.set" : availabilitySet,
 
 		/*************************************************************************************************************************
 		 * Specify whether or not to delete the network (if found) when you execute a teardown command.							 *

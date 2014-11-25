@@ -30,7 +30,7 @@
 			],
 
 			// join a domain
-			"azure.domain.join" : 	[domain:"victor", userName:"administrateur", password: "Azerty@01", joinDomain: "victor.local" ]		
+			"azure.domain.join" : 	[domain:"cdiscount", userName:"administrateur", password: "Azerty@01", joinDomain: "cdiscount.local" ]
 		])
 	}
 ]

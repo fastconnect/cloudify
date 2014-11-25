@@ -263,7 +263,6 @@ public class MicrosoftAzureRestClient {
 	public void createCloudService(final CreateHostedService createHostedService,
 			final long endTime)
 			throws MicrosoftAzureException, TimeoutException, InterruptedException {
-		System.out.println();
 		String cloudServiceName = createHostedService.getServiceName();
 
 		try {
@@ -588,7 +587,6 @@ public class MicrosoftAzureRestClient {
 					waitForGatewayOperationToFinish(networkSiteName, endTime);
 
 				} else {
-					System.out.println();
 					if (gateway.isReadyForProvisioning()) {
 
 						logger.info(String.format("Creating gateway between vNet '%s' and local network '%s'. This "

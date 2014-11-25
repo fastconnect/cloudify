@@ -187,6 +187,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private String pfxPassword;
 	private String availabilitySet;
 	private Integer dataDiskSize;
+	private String ipAddresses;
 
 	private List<String> computeTemplateStorageAccountName;
 	private List<String> computeTemplateDataStorageAccounts;
@@ -340,6 +341,12 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 		// extensions
 		extensions = (List<Map<String, String>>) this.template.getCustom().get(AZURE_EXTENSIONS);
+
+		// ipAddresses
+		String ips = (String) this.template.getCustom().get(VM_IP_ADDRESSES);
+		if (StringUtils.isNotBlank(ips)) {
+			ipAddresses = ips;
+		}
 
 		// Prefixes
 		if (this.management) {
@@ -658,7 +665,10 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			desc.setUserName(userName);
 			desc.setNetworkName(networkName);
 			desc.setSubnetName(subnetName);
-			desc.setIpAddresses(this.getIpAddressesList(this.template.getCustom()));
+
+			List<String> listFromSplitedString = MicrosoftAzureUtils.getListFromSplitedString(this.ipAddresses,
+					STRING_SEPERATOR);
+			desc.setIpAddresses(listFromSplitedString);
 
 			logger.info("Launching a new virtual machine");
 
@@ -1394,21 +1404,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	@Override
 	public void onServiceUninstalled(long duration, TimeUnit unit) {
-	}
-
-	private List<String> getIpAddressesList(Map<String, Object> map) {
-		List<String> ipAddressesList = null;
-
-		if (map != null && !map.isEmpty()) {
-			if (map.get(VM_IP_ADDRESSES) != null) {
-				String ipAddressesString = (String) map.get(VM_IP_ADDRESSES);
-				if (ipAddressesString != null && !ipAddressesString.trim().isEmpty()) {
-					String[] split = ipAddressesString.split(",");
-					ipAddressesList = Arrays.asList(split);
-				}
-			}
-		}
-		return ipAddressesList;
 	}
 
 	@SuppressWarnings("unchecked")

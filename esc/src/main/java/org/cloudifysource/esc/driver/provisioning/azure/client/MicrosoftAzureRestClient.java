@@ -260,9 +260,10 @@ public class MicrosoftAzureRestClient {
 	 * @throws TimeoutException .
 	 * @throws InterruptedException .
 	 */
-	public void createCloudService(final CreateHostedService createHostedService, final long endTime)
+	public void createCloudService(final CreateHostedService createHostedService,
+			final long endTime)
 			throws MicrosoftAzureException, TimeoutException, InterruptedException {
-
+		System.out.println();
 		String cloudServiceName = createHostedService.getServiceName();
 
 		try {
@@ -581,17 +582,26 @@ public class MicrosoftAzureRestClient {
 			logger.info("Starting gateway configuration");
 			GatewayInfo gateway = this.getGatewayInfo(networkSiteName, endTime);
 			if (gateway != null) {
-				if (gateway.isReadyForProvisioning()) {
 
-					logger.info(String.format("Creating gateway between vNet '%s' and local network '%s'. This "
-							+ "operation will take a while, " + "so please wait...", networkSiteName,
-							newLocalNetworkSite.getName()));
-
-					this.createVirtualNetworkGateway(vpnConfiguration.getGatewayType(), virtualNetworkSite.getName(),
-							endTime);
+				if (gateway.isInProvisioninig()) {
+					logger.info("The gateway is already in provisioning state, waiting until the operation finishes");
+					waitForGatewayOperationToFinish(networkSiteName, endTime);
 
 				} else {
-					logger.warning("Can't provision gateway, current state is " + gateway.getState());
+					System.out.println();
+					if (gateway.isReadyForProvisioning()) {
+
+						logger.info(String.format("Creating gateway between vNet '%s' and local network '%s'. This "
+								+ "operation will take a while, " + "so please wait...", networkSiteName,
+								newLocalNetworkSite.getName()));
+
+						this.createVirtualNetworkGateway(vpnConfiguration.getGatewayType(),
+								virtualNetworkSite.getName(),
+								endTime);
+
+					} else {
+						logger.warning("Can't provision gateway, current state is " + gateway.getState());
+					}
 				}
 
 				// refresh gateway state
@@ -608,7 +618,7 @@ public class MicrosoftAzureRestClient {
 
 				// something went wrong
 			} else {
-				logger.warning("Failed getting current gateway state, it will not be provisioned");
+				logger.warning("Failed getting current gateway state, it will not be configured");
 			}
 		}
 	}
@@ -2547,7 +2557,7 @@ public class MicrosoftAzureRestClient {
 			waitForRequestToFinish(requestId, endTime);
 
 		} catch (TimeoutException e) {
-			logger.warning("Timed out while waiting for setting gateway key.");
+			logger.warning("Timed out while waiting for gateway key to be set.");
 			throw e;
 		}
 	}

@@ -11,6 +11,7 @@ public class GatewayInfo {
 
 	private final static String GATEWAY_STATE_PROVISIONED = "Provisioned";
 	private final static String GATEWAY_STATE_NOT_PROVISIONED = "NotProvisioned";
+	private static String GATEWAY_STATE_PROVISIONING = "Provisioning";
 
 	private String state;
 
@@ -36,6 +37,15 @@ public class GatewayInfo {
 	public boolean isReadyToConnect() {
 		if (state != null) {
 			if (state.equals(GATEWAY_STATE_PROVISIONED)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public boolean isInProvisioninig() {
+		if (state != null) {
+			if (state.equals(GATEWAY_STATE_PROVISIONING)) {
 				return true;
 			}
 		}

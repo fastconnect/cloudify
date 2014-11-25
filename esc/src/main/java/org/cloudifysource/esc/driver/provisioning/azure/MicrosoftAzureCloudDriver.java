@@ -159,10 +159,10 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	private static String cloudServicePrefix = "cloudifycloudservice";
 
-	private AtomicInteger availabilitySetCounter = new AtomicInteger(1);
 	private AtomicInteger serviceCounter = new AtomicInteger(1);
 
 	private boolean cleanup;
+	private String globalAvailabilitySet;
 
 	// Azure Credentials
 	private String subscriptionId;
@@ -262,10 +262,18 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		this.stopManagementMachinesTimeoutInMinutes = Utils.getInteger(cloud.getCustom().get(CloudifyConstants
 				.STOP_MANAGEMENT_TIMEOUT_IN_MINUTES), DEFAULT_STOP_MANAGEMENT_TIMEOUT_IN_MINUTES);
 
-		// null value for code causes problem while deploying, therefore it is set to an empty string if it's the case
+		// availability
+		this.globalAvailabilitySet = (String) cloud.getCustom().get(AZURE_AVAILABILITY_SET);
+		if (StringUtils.isNotBlank(globalAvailabilitySet)) {
+			this.globalAvailabilitySet = globalAvailabilitySet.trim();
+		} else {
+			throw new IllegalArgumentException(AZURE_AVAILABILITY_SET + " property must be set");
+		}
 		String availability = (String) this.template.getCustom().get(AZURE_AVAILABILITY_SET);
 		if (StringUtils.isNotBlank(availability)) {
-			this.availabilitySet = ((String) this.template.getCustom().get(AZURE_AVAILABILITY_SET)).trim();
+			this.availabilitySet = availability.trim();
+		} else {
+			this.availabilitySet = this.globalAvailabilitySet;
 		}
 
 		this.deploymentSlot = (String) this.template.getCustom().get(AZURE_DEPLOYMENT_SLOT);
@@ -528,14 +536,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			desc.setDeploymentSlot(deploymentSlot);
 			desc.setImageName(imageName);
 
-			// verify availability set and avoid name concatenation if itsn't
-			String availabilitySetName = null;
-			if (StringUtils.isNotBlank(availabilitySet)) {
-				availabilitySetName = this.cloud.getProvider().getManagementGroup() + availabilitySet +
-						String.format("%03d", availabilitySetCounter.getAndIncrement());
-			}
-
-			desc.setAvailabilitySetName(availabilitySetName);
+			// availability set
+			desc.setAvailabilitySetName(this.availabilitySet);
 
 			// verify whether a CS is set or not in the compute template
 			String cloudServiceInCompute = (String) template.getCustom().get(AZURE_CLOUD_SERVICE);

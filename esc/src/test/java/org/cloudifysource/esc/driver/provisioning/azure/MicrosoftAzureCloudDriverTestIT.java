@@ -66,7 +66,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 				// Check availabilitySet
 				String availabilitySet = deployment.getRoleList().getRoleByName(machineName).getAvailabilitySetName();
 				Assert.assertNotNull(availabilitySet);
-				Assert.assertTrue(availabilitySet.startsWith(codeCountry + codeEnvironment + "AVITTEST"));
+				Assert.assertTrue(availabilitySet.contains("AVITTEST"));
 
 			}
 
@@ -144,6 +144,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 		final ComputeTemplate computeTemplate = cloud.getCloudCompute().getTemplates().get(computeTemplateName);
 		final String cloudServiceName = (String) computeTemplate.getCustom().get("azure.cloud.service");
 		String affinityPrefix = (String) cloud.getCustom().get("azure.affinity.group");
+		final String globalAvailability = (String) cloud.getCustom().get("azure.availability.set");
 
 		final MicrosoftAzureRestClient azureRestClient =
 				AzureTestUtils.createMicrosoftAzureRestClient(cloudServiceName, affinityPrefix);
@@ -162,6 +163,12 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 					// TODO make dynamic roleName
 					String roleName = String.format("%sCFYM1", cloud.getProvider().getManagementGroup());
 					Assert.assertNotNull(deployment.getRoleInstanceList().getRoleInstanceByRoleName(roleName));
+
+					Role role = deployment.getRoleList().getRoleByName(roleName);
+					String availabilitySet = role.getAvailabilitySetName();
+					Assert.assertNotNull(availabilitySet);
+					Assert.assertTrue(availabilitySet.equals(globalAvailability));
+
 				} catch (Exception e) {
 					Assert.fail(e.getMessage());
 				}

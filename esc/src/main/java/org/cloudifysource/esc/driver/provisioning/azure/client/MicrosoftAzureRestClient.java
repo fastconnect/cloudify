@@ -1992,11 +1992,13 @@ public class MicrosoftAzureRestClient {
 			throws MicrosoftAzureException, TimeoutException {
 
 		HostedService service = getHostedService(cloudServiceName, true);
-		if ((service.getDeployments() != null) && (service.getDeployments().contains(deploymentName))) {
-			return true;
-		} else {
-			return false;
+		if (service != null) {
+			if ((service.getDeployments() != null) && (service.getDeployments().contains(deploymentName))) {
+				return true;
+			}
 		}
+
+		return false;
 	}
 
 	private boolean storageExists(final String storageAccouhtName)

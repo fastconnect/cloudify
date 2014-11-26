@@ -2471,6 +2471,7 @@ public class MicrosoftAzureRestClient {
 		String url = String.format("/services/hostedservices/%s/deployments/%s/roles/%s/DataDisks/%d", serviceName,
 				deploymentName, roleName, lun);
 		ClientResponse response = doDelete(url);
+		checkForError(response);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
 		waitForDiskToDetach(dataDisk.getDiskName(), roleName, endTime);
@@ -2501,6 +2502,7 @@ public class MicrosoftAzureRestClient {
 				deploymentName, roleName, lun);
 		ClientResponse response = doGet(url);
 		String responseBody = response.getEntity(String.class);
+		checkForError(response);
 		return (DataVirtualHardDisk) MicrosoftAzureModelUtils.unmarshall(responseBody);
 	}
 
@@ -2659,6 +2661,7 @@ public class MicrosoftAzureRestClient {
 			if (response.getStatus() != HTTP_NOT_FOUND) {
 
 				String requestId = extractRequestId(response);
+				checkForError(response);
 				this.waitForRequestToFinish(requestId, endTime);
 				String responseBody = response.getEntity(String.class);
 				gatewayInfo = (GatewayInfo) MicrosoftAzureModelUtils.unmarshall(responseBody);

@@ -2,7 +2,7 @@
 
 	win2012_extensions : computeTemplate {
 
-		imageId "a699494373c04fc0bc8f2bb1389d6106__Windows-Server-2012-R2-201408.01-en.us-127GB.vhd"
+		imageId "a699494373c04fc0bc8f2bb1389d6106__Windows-Server-2012-R2-201411.01-en.us-127GB.vhd"
 		machineMemoryMB 3500
 		hardwareId "Medium"
 		username username

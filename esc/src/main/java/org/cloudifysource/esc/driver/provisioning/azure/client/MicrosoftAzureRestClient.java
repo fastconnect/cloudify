@@ -332,6 +332,7 @@ public class MicrosoftAzureRestClient {
 	public HostedService getCloudServiceByName(String cloudServiceName) throws MicrosoftAzureException,
 			TimeoutException {
 		ClientResponse response = this.doGet("/services/hostedservices/" + cloudServiceName);
+		checkForError(response);
 		String responseBody = response.getEntity(String.class);
 		return (HostedService) MicrosoftAzureModelUtils.unmarshall(responseBody);
 	}
@@ -870,19 +871,20 @@ public class MicrosoftAzureRestClient {
 				throw new MicrosoftAzureException(e);
 			}
 		} else {
-			throw new TimeoutException(
-					"Failed to acquire lock for deleteDeployment request after + "
-							+ lockTimeout + " milliseconds");
+			throw new TimeoutException("Failed to acquire lock for deleteDeployment request after + "
+					+ lockTimeout + " milliseconds");
 		}
 
 		Deployment deploymentResponse = null;
 		try {
 			logger.info(String.format(getThreadIdentity() + "Waiting for the VM role '%s' to be ready. This might "
 					+ "take a while...", roleName));
+
 			String deploymentSlot = deploymentDesc.getDeploymentSlot();
 			deploymentResponse = waitForDeploymentStatus("Running", cloudServiceName, deploymentSlot, endTime);
 			deploymentResponse = waitForRoleInstanceStatus("ReadyRole", cloudServiceName, deploymentSlot, roleName,
 					endTime);
+
 			logger.fine(String.format("VM '%s' provisioning finished successfully. Starting Role configuration",
 					roleName));
 
@@ -1064,9 +1066,8 @@ public class MicrosoftAzureRestClient {
 					if (isSubnetExist(subnetName, virtualNetwork, endTime)) {
 						return ip;
 					} else {
-						String subnetNotExistString =
-								String.format("The specified subnet '%s' doesn't exist in network '%s' ",
-										subnetName, virtualNetwork);
+						String subnetNotExistString = String.format("The specified subnet '%s' doesn't exist in "
+								+ "network '%s' ", subnetName, virtualNetwork);
 
 						logger.severe(subnetNotExistString);
 						throw new MicrosoftAzureException("Can't provision VM :" + subnetNotExistString);
@@ -1086,20 +1087,6 @@ public class MicrosoftAzureRestClient {
 				|| vmStatus.equals("FailedStartingVM")
 				|| vmStatus.equals("UnresponsiveRole")
 				|| vmStatus.equals("CyclingRole"));
-	}
-
-	/**
-	 * 
-	 * @return - the response body listing every available OS Image that belongs to the subscription
-	 * @throws MicrosoftAzureException
-	 *             - indicates an exception was caught during the API call
-	 * @throws TimeoutException .
-	 */
-	public String listOsImages() throws MicrosoftAzureException, TimeoutException {
-		ClientResponse response = doGet("/services/images");
-		checkForError(response);
-		return response.getEntity(String.class);
-
 	}
 
 	/**
@@ -1251,8 +1238,10 @@ public class MicrosoftAzureRestClient {
 			try {
 				this.deleteRoleFromDeployment(roleName, deployment, true, endTime);
 			} catch (AzureOnlyOneRoleInDeploymetException e) {
-				logger.finer(getThreadIdentity() + String.format("Not attempting to delete role '%s' because it's the "
-						+ "only one in the deployment. Tyring to delete deployment instead...", roleName));
+				logger.finer(getThreadIdentity() + String.format("Not attempting to delete role '%s' because it's the"
+						+ " only one in deployment '%s'. Tyring to delete the entire deployment instead...", roleName,
+						deploymentName));
+
 				deleteDeployment(hostedServiceName, deploymentName, true, endTime);
 			}
 		} else {
@@ -1260,10 +1249,9 @@ public class MicrosoftAzureRestClient {
 		}
 
 		logger.fine(String.format("Cleaning resources associated with role '%s' [%s]", roleName, machineIp));
-
 		logger.finest(String.format("Trying to clean associated cloud service '%s' ", hostedServiceName));
-		this.deleteCloudService(hostedServiceName, endTime);
 
+		this.deleteCloudService(hostedServiceName, endTime);
 	}
 
 	/**
@@ -1300,12 +1288,6 @@ public class MicrosoftAzureRestClient {
 				+ roleName);
 		deleteCloudService(cloudServiceName, endTime);
 
-		// for (Disk disk : disks) {
-		// String diskName = disk.getName();
-		// logger.info("Deleting OS or Data Disk : " + diskName);
-		// deleteDisk(diskName, true, endTime);
-		// logger.info("Deleted OS or Data Disk : " + diskName);
-		// }
 	}
 
 	private List<Disk> getDisksByAttachedCloudService(final String cloudServiceName)
@@ -1454,14 +1436,15 @@ public class MicrosoftAzureRestClient {
 				}
 
 				ClientResponse response = performHttpRequest(HttpRequestType.DELETE, url, null, null, true, endTime);
-
 				String requestId = extractRequestId(response);
 				waitForRequestToFinish(requestId, endTime);
 
 				logger.fine(String.format(getThreadIdentity() + "Deleted deployment '%s'", deploymentName));
 
 				pendingRequest.unlock();
+
 				logger.fine(getThreadIdentity() + "Lock unlcoked");
+
 			} catch (final Exception e) {
 				logger.fine(getThreadIdentity() + "About to release lock " + pendingRequest.hashCode());
 				pendingRequest.unlock();
@@ -1586,6 +1569,7 @@ public class MicrosoftAzureRestClient {
 	 */
 	public StorageServices listStorageServices() throws MicrosoftAzureException, TimeoutException {
 		ClientResponse response = doGet("/services/storageservices");
+		checkForError(response);
 		String responseBody = response.getEntity(String.class);
 		return (StorageServices) MicrosoftAzureModelUtils.unmarshall(responseBody);
 	}
@@ -1645,22 +1629,20 @@ public class MicrosoftAzureRestClient {
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
 	 */
-	public Deployment getDeploymentBySlot(
-			final String hostedServiceName, final String deploymentSlot)
+	public Deployment getDeploymentBySlot(final String hostedServiceName, final String deploymentSlot)
 			throws MicrosoftAzureException, TimeoutException {
 
-		ClientResponse response = null;
-		try {
-			response = doGet("/services/hostedservices/" + hostedServiceName
-					+ "/deploymentslots/" + deploymentSlot);
-			checkForError(response);
-		} catch (TimeoutException e) {
-			logger.warning("Timed out while waiting for deployment details. This may cause a leaking node");
-			throw e;
-		}
-
+		ClientResponse response = doGet("/services/hostedservices/" + hostedServiceName + "/deploymentslots/" +
+				deploymentSlot);
+		checkForError(response);
 		String responseBody = response.getEntity(String.class);
-		return (Deployment) MicrosoftAzureModelUtils.unmarshall(responseBody);
+
+		Deployment deployment = (Deployment) MicrosoftAzureModelUtils.unmarshall(responseBody);
+		if (deployment == null) {
+			throw new MicrosoftAzureException(String.format("Cant find a deployment in hosted service '%s' "
+					+ "in slot '%s'", hostedServiceName, deploymentSlot));
+		}
+		return deployment;
 	}
 
 	/**
@@ -1673,18 +1655,13 @@ public class MicrosoftAzureRestClient {
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
 	 */
-	public Deployment getDeploymentByDeploymentName(
-			final String hostedServiceName, final String deploymentName)
+	public Deployment getDeploymentByName(final String hostedServiceName, final String deploymentName)
 			throws MicrosoftAzureException, TimeoutException {
 
-		ClientResponse response = null;
-		try {
-			response = doGet("/services/hostedservices/" + hostedServiceName + "/deployments/" + deploymentName);
-			checkForError(response);
-		} catch (TimeoutException e) {
-			logger.warning("Timed out while waiting for deployment details. this may cause a leaking node");
-			throw e;
-		}
+		ClientResponse response = doGet("/services/hostedservices/" + hostedServiceName + "/deployments/" +
+				deploymentName);
+
+		checkForError(response);
 
 		String responseBody = response.getEntity(String.class);
 		Deployment deployment = (Deployment) MicrosoftAzureModelUtils.unmarshall(responseBody);
@@ -1717,7 +1694,6 @@ public class MicrosoftAzureRestClient {
 					// skip other networks
 					if (this.virtualNetwork.equals(deployment.getVirtualNetworkName())) {
 
-						// TODO checking with privateIp, checks also with publicIp
 						for (RoleInstance ri : deployment.getRoleInstanceList()) {
 							if (machineIp.equals(ri.getIpAddress())) {
 								deployment.setHostedServiceName(cloudServiceName);
@@ -1822,8 +1798,8 @@ public class MicrosoftAzureRestClient {
 		return response.getHeaders().getFirst("x-ms-request-id");
 	}
 
-	private ClientResponse doPut(final String url, final String body,
-			final String contentType) throws MicrosoftAzureException {
+	private ClientResponse doPut(final String url, final String body, final String contentType)
+			throws MicrosoftAzureException {
 		ClientResponse response = resource.path(subscriptionId + url)
 				.header(X_MS_VERSION_HEADER_NAME, X_MS_VERSION_HEADER_VALUE)
 				.header(CONTENT_TYPE_HEADER_NAME, contentType)
@@ -1831,26 +1807,20 @@ public class MicrosoftAzureRestClient {
 		return response;
 	}
 
-	private ClientResponse doPost(final String url, final String body)
-			throws MicrosoftAzureException {
-
+	private ClientResponse doPost(final String url, final String body) throws MicrosoftAzureException {
 		ClientResponse response = resource.path(subscriptionId + url)
 				.header(X_MS_VERSION_HEADER_NAME, X_MS_VERSION_HEADER_VALUE)
 				.header(CONTENT_TYPE_HEADER_NAME, CONTENT_TYPE_HEADER_VALUE)
 				.post(ClientResponse.class, body);
-
 		return response;
 	}
 
-	private ClientResponse doDelete(final String url)
-			throws MicrosoftAzureException {
-
+	private ClientResponse doDelete(final String url) throws MicrosoftAzureException {
 		ClientResponse response = null;
 		response = resource.path(subscriptionId + url)
 				.header(X_MS_VERSION_HEADER_NAME, X_MS_VERSION_HEADER_VALUE)
 				.header(CONTENT_TYPE_HEADER_NAME, CONTENT_TYPE_HEADER_VALUE)
 				.delete(ClientResponse.class);
-
 		return response;
 	}
 
@@ -1861,6 +1831,7 @@ public class MicrosoftAzureRestClient {
 
 		// for logging
 		boolean conflict = false;
+
 		Boolean activeServicesInResource = null;
 
 		while (true) {
@@ -2001,20 +1972,18 @@ public class MicrosoftAzureRestClient {
 		return false;
 	}
 
-	private boolean storageExists(final String storageAccouhtName)
-			throws MicrosoftAzureException, TimeoutException {
+	private boolean storageExists(final String storageAccouhtName) throws MicrosoftAzureException, TimeoutException {
 		StorageServices storageServices = listStorageServices();
 		return (storageServices.contains(storageAccouhtName));
 	}
 
-	private boolean isDiskExists(final String osDiskName)
-			throws MicrosoftAzureException, TimeoutException {
+	private boolean isDiskExists(final String osDiskName) throws MicrosoftAzureException, TimeoutException {
 		Disks disks = listDisks();
 		return (disks.contains(osDiskName));
 	}
 
-	private boolean virtualNetworkExists(final String virtualNetworkName)
-			throws MicrosoftAzureException, TimeoutException {
+	private boolean virtualNetworkExists(final String virtualNetworkName) throws MicrosoftAzureException,
+			TimeoutException {
 		VirtualNetworkSites sites = getVirtualNetworkConfiguration().getVirtualNetworkSites();
 		return (sites.contains(virtualNetworkName));
 	}
@@ -2033,10 +2002,9 @@ public class MicrosoftAzureRestClient {
 		return error;
 	}
 
-	private Deployment waitForDeploymentStatus(final String state,
-			final String hostedServiceName, final String deploymentSlot,
-			final long endTime) throws TimeoutException,
-			MicrosoftAzureException, InterruptedException {
+	private Deployment waitForDeploymentStatus(final String state, final String hostedServiceName,
+			final String deploymentSlot, final long endTime) throws TimeoutException, MicrosoftAzureException,
+			InterruptedException {
 
 		while (true) {
 			Deployment deployment = getDeploymentBySlot(hostedServiceName, deploymentSlot);
@@ -2063,13 +2031,17 @@ public class MicrosoftAzureRestClient {
 		while (true) {
 			Deployment deployment = getDeploymentBySlot(hostedServiceName, deploymentSlot);
 			RoleInstance roleInstance = deployment.getRoleInstanceList().getRoleInstanceByRoleName(roleName);
-			String status = roleInstance.getInstanceStatus();
+			if (roleInstance == null) {
+				throw new MicrosoftAzureException(String.format("Cant find a role Instance with role name '%s' in "
+						+ "deployment '%s'", roleName, deployment.getName()));
+			}
 
+			String status = roleInstance.getInstanceStatus();
 			boolean error = checkVirtualMachineStatusForError(status);
 			if (error) {
 				// bad status of VM.
-				throw new MicrosoftAzureException("Virtual Machine " + roleName
-						+ " was provisioned but found in status " + status);
+				throw new MicrosoftAzureException("Virtual Machine " + roleName + " was provisioned but found in "
+						+ "status " + status);
 			}
 			if (status.equals(state)) {
 
@@ -2174,6 +2146,7 @@ public class MicrosoftAzureRestClient {
 			throws MicrosoftAzureException, TimeoutException {
 
 		ClientResponse response = doGet("/operations/" + requestId);
+		checkForError(response);
 		return (Operation) MicrosoftAzureModelUtils.unmarshall(response.getEntity(String.class));
 	}
 
@@ -2283,8 +2256,8 @@ public class MicrosoftAzureRestClient {
 				this.addDataDiskToVM(cloudServiceName, deploymentName, roleName, storageAccountName,
 						vhdFilename.toString(), diskSize, lun, endTime);
 				// Detach the data disk we just created.
-				DataVirtualHardDisk dataDisk = this.getDataDisk(cloudServiceName,
-						deploymentName, roleName, lun, endTime);
+				DataVirtualHardDisk dataDisk = this.getDataDisk(cloudServiceName, deploymentName, roleName, lun,
+						endTime);
 				String dataDiskName = dataDisk.getDiskName();
 				this.removeDataDisk(cloudServiceName, deploymentName, roleName, lun, endTime);
 				return dataDiskName;
@@ -2615,8 +2588,7 @@ public class MicrosoftAzureRestClient {
 	 * @throws InterruptedException
 	 */
 	public void waitForGatewayDeleteOperationToFinish(final String virtualNetwork, final long endTime)
-			throws MicrosoftAzureException,
-			TimeoutException, InterruptedException {
+			throws MicrosoftAzureException, TimeoutException, InterruptedException {
 
 		while (true) {
 

@@ -52,7 +52,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 
 				// Check Cloud service name
 				String cloudServiceName = String.format("%s%s%s001", codeCountry, codeEnvironment, cloudServiceCode);
-				Deployment deployment = client.getDeploymentByDeploymentName(cloudServiceName, cloudServiceName);
+				Deployment deployment = client.getDeploymentByName(cloudServiceName, cloudServiceName);
 				Assert.assertEquals("Cloud service name is not correct", cloudServiceName,
 						deployment.getHostedServiceName());
 

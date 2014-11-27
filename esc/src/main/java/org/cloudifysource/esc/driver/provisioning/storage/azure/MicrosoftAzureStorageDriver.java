@@ -157,7 +157,7 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 			// Get the deployment to retrieve the role name
 			String deploymentName = context.getDeploymentName();
 			String cloudServiceName = context.getCloudServiceName();
-			Deployment deployment = azureClient.getDeploymentByDeploymentName(cloudServiceName, deploymentName);
+			Deployment deployment = azureClient.getDeploymentByName(cloudServiceName, deploymentName);
 			Role role = deployment.getRoleList().getRoles().get(0);
 
 			String roleName = role.getRoleName();
@@ -219,7 +219,7 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 
 		try {
 			// Get the deployment to retrieve the role name
-			Deployment deployment = azureClient.getDeploymentByDeploymentName(cloudServiceName, deploymentName);
+			Deployment deployment = azureClient.getDeploymentByName(cloudServiceName, deploymentName);
 			for (RoleInstance role : deployment.getRoleInstanceList().getRoleInstances()) {
 				if (role.getIpAddress().equals(ip)) {
 					roleName = role.getRoleName();
@@ -268,7 +268,7 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 
 		try {
 			// Get the deployment to retrieve the role name
-			Deployment deployment = azureClient.getDeploymentByDeploymentName(cloudServiceName, deploymentName);
+			Deployment deployment = azureClient.getDeploymentByName(cloudServiceName, deploymentName);
 			for (RoleInstance role : deployment.getRoleInstanceList().getRoleInstances()) {
 				if (role.getIpAddress().equals(ip)) {
 					roleName = role.getRoleName();

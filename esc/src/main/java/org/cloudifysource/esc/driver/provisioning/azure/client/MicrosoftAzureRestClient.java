@@ -877,7 +877,7 @@ public class MicrosoftAzureRestClient {
 
 		Deployment deploymentResponse = null;
 		try {
-			logger.info(String.format(getThreadIdentity() + "Waiting for the VM role '%s' to be ready. This might "
+			logger.info(String.format("Waiting for the VM role '%s' to be ready. This might "
 					+ "take a while...", roleName));
 
 			String deploymentSlot = deploymentDesc.getDeploymentSlot();
@@ -2043,25 +2043,42 @@ public class MicrosoftAzureRestClient {
 				throw new MicrosoftAzureException("Virtual Machine " + roleName + " was provisioned but found in "
 						+ "status " + status);
 			}
+
 			if (status.equals(state)) {
 
-				boolean extensionsInstallationsFinished = true;
-				// check extensions status
-				if (roleInstance.getResourceExtensionStatusList() != null) {
+				boolean isSkipExtensionsConfiguration = true;
+				Role role = deployment.getRoleList().getRoleByName(roleName);
 
-					for (ResourceExtensionStatus ris : roleInstance.getResourceExtensionStatusList()
-							.getResourceExtensionStatusList()) {
+				// if != null this means that there are some extensions to install
+				if (role.getResourceExtensionReferences() != null) {
 
-						if (ris.getStatus().equals(EXTENSIONS_STATUS_INSTALLING) ||
-								ris.getStatus().equals(EXTENSIONS_STATUS_NOTREADY)) {
+					// is ResourceExtensionStatusList available ?
+					if (roleInstance.getResourceExtensionStatusList() != null) {
+						for (ResourceExtensionStatus rExt : roleInstance.getResourceExtensionStatusList()
+								.getResourceExtensionStatusList()) {
 
-							extensionsInstallationsFinished = false;
-							break;
+							// installing state
+							if (rExt.getStatus().equals(EXTENSIONS_STATUS_INSTALLING) ||
+
+									// Don't wait for 'Not Ready' state caused by an extension installation failure
+									(rExt.getStatus().equals(EXTENSIONS_STATUS_NOTREADY) && rExt.getCode() == null)) {
+
+								isSkipExtensionsConfiguration = false;
+								logger.finest(String.format(
+										"Waiting for Vm Role '%s' extensions configuration to finish", roleName));
+								break;
+							}
 						}
+
+					} else {
+						// we have to wait for the ResourceExtensionStatusList to be there before checking status
+						isSkipExtensionsConfiguration = false;
+						logger.finest(String.format("Waiting for Vm Role '%s' extensions to be available for "
+								+ "configuration", roleName));
 					}
 				}
 
-				if (extensionsInstallationsFinished) {
+				if (isSkipExtensionsConfiguration) {
 					return deployment;
 				}
 			}

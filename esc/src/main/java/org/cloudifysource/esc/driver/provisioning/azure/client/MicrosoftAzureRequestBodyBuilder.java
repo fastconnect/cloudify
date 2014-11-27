@@ -277,7 +277,11 @@ public class MicrosoftAzureRequestBodyBuilder {
 			// Windows Specific : roleName de la forme cloudify_manager_roled57f => ROLED57F (15 car limit size limit)
 			String[] computerNameArray = roleName.split("_");
 			String computerName =
-					(computerNameArray.length > 1 ? computerNameArray[2] : computerNameArray[0]).toUpperCase();
+					(computerNameArray.length > 1 ? computerNameArray[1] : computerNameArray[0]).toUpperCase();
+
+			if (computerName.length() > 15) {
+				computerName = computerName.substring(0, 14);
+			}
 
 			WindowsProvisioningConfigurationSet windowsProvisioningSet = new WindowsProvisioningConfigurationSet();
 			windowsProvisioningSet.setAdminUsername(userName);

@@ -246,6 +246,9 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 			@Override
 			public void additionalAssertions(MachineDetails md) throws TimeoutException {
 				try {
+
+					logger.info("Sleeping to check");
+					Thread.sleep(10000000);
 					Utils.executeSSHCommand(md.getPublicAddress(),
 							"ls -l /home/administrateur/hello.txt",
 							md.getRemoteUsername(),

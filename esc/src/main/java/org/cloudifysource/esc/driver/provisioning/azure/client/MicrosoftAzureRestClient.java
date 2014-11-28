@@ -66,6 +66,7 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.Operation;
 import org.cloudifysource.esc.driver.provisioning.azure.model.PersistentVMRole;
 import org.cloudifysource.esc.driver.provisioning.azure.model.ResourceExtensionReferences;
 import org.cloudifysource.esc.driver.provisioning.azure.model.ResourceExtensionStatus;
+import org.cloudifysource.esc.driver.provisioning.azure.model.ResourceExtensionStatusList;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Role;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleDeploymentInfo;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleInstance;
@@ -878,7 +879,7 @@ public class MicrosoftAzureRestClient {
 		Deployment deploymentResponse = null;
 		try {
 			logger.info(String.format("Waiting for the VM role '%s' to be ready. This might "
-					+ "take a while...", roleName));
+					+ "take a few minutes...", roleName));
 
 			String deploymentSlot = deploymentDesc.getDeploymentSlot();
 			deploymentResponse = waitForDeploymentStatus("Running", cloudServiceName, deploymentSlot, endTime);
@@ -2028,11 +2029,14 @@ public class MicrosoftAzureRestClient {
 			final long endTime) throws TimeoutException,
 			MicrosoftAzureException, InterruptedException {
 
+		// just for user logging
+		boolean firstLog = false;
+
 		while (true) {
 			Deployment deployment = getDeploymentBySlot(hostedServiceName, deploymentSlot);
 			RoleInstance roleInstance = deployment.getRoleInstanceList().getRoleInstanceByRoleName(roleName);
 			if (roleInstance == null) {
-				throw new MicrosoftAzureException(String.format("Cant find a role Instance with role name '%s' in "
+				throw new MicrosoftAzureException(String.format("Can't find a role Instance with role name '%s' in "
 						+ "deployment '%s'", roleName, deployment.getName()));
 			}
 
@@ -2049,13 +2053,25 @@ public class MicrosoftAzureRestClient {
 				boolean isSkipExtensionsConfiguration = true;
 				Role role = deployment.getRoleList().getRoleByName(roleName);
 
-				// if != null this means that there are some extensions to install
-				if (role.getResourceExtensionReferences() != null) {
+				if (role == null) {
+					throw new MicrosoftAzureException(String.format("Can't find a role with name '%s' in "
+							+ "deployment '%s'", roleName, deployment.getName()));
+				}
+
+				// if extensionReferences != null this means that there are extensions to install
+				ResourceExtensionReferences extReferences = role.getResourceExtensionReferences();
+				if (extReferences != null && !extReferences.getResourceExtensionReferences().isEmpty()) {
+
+					if (!firstLog) {
+						logger.info(String.format("Waiting for VM Role '%s' extensions configuration operation "
+								+ "to finish", roleName));
+						firstLog = true;
+					}
 
 					// is ResourceExtensionStatusList available ?
-					if (roleInstance.getResourceExtensionStatusList() != null) {
-						for (ResourceExtensionStatus rExt : roleInstance.getResourceExtensionStatusList()
-								.getResourceExtensionStatusList()) {
+					ResourceExtensionStatusList statusList = roleInstance.getResourceExtensionStatusList();
+					if (statusList != null && !statusList.getResourceExtensionStatusList().isEmpty()) {
+						for (ResourceExtensionStatus rExt : statusList) {
 
 							// installing state
 							if (rExt.getStatus().equals(EXTENSIONS_STATUS_INSTALLING) ||
@@ -2064,8 +2080,6 @@ public class MicrosoftAzureRestClient {
 									(rExt.getStatus().equals(EXTENSIONS_STATUS_NOTREADY) && rExt.getCode() == null)) {
 
 								isSkipExtensionsConfiguration = false;
-								logger.finest(String.format(
-										"Waiting for Vm Role '%s' extensions configuration to finish", roleName));
 								break;
 							}
 						}
@@ -2073,12 +2087,14 @@ public class MicrosoftAzureRestClient {
 					} else {
 						// we have to wait for the ResourceExtensionStatusList to be there before checking status
 						isSkipExtensionsConfiguration = false;
-						logger.finest(String.format("Waiting for Vm Role '%s' extensions to be available for "
-								+ "configuration", roleName));
 					}
 				}
 
 				if (isSkipExtensionsConfiguration) {
+					if (firstLog) {
+						logger.info(
+								(String.format("Vm Role '%s' extensions configuration operation finished", roleName)));
+					}
 					return deployment;
 				}
 			}

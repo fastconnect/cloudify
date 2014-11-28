@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.cloudifysource.domain.cloud.Cloud;
@@ -248,7 +249,6 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 				try {
 
 					logger.info("Sleeping to check");
-					Thread.sleep(10000000);
 					Utils.executeSSHCommand(md.getPublicAddress(),
 							"ls -l /home/administrateur/hello.txt",
 							md.getRemoteUsername(),
@@ -256,6 +256,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 							null,
 							30L, TimeUnit.SECONDS);
 				} catch (Exception e) {
+					logger.log(Level.SEVERE, "executeSSHCommand error : ", e);
 					Assert.fail("Failed to find the file '/home/administrateur/hello.txt' which should have been created by the custom data.");
 				}
 			}

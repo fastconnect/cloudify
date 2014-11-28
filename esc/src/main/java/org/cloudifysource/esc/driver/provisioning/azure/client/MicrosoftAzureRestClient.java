@@ -1885,7 +1885,7 @@ public class MicrosoftAzureRestClient {
 			if (error.getCode().equals(HTTP_AZURE_CONFLICT_CODE) || activeServicesInResource) {
 
 				if (waitForConflict) {
-					logger.fine("Waiting for resource conflict/lease to be resolved/released");
+					logger.fine("Waiting for resource conflict/lease to be resolved/released : " + error.getMessage());
 					try {
 						conflict = true;
 						Thread.sleep(DEFAULT_POLLING_INTERVAL);

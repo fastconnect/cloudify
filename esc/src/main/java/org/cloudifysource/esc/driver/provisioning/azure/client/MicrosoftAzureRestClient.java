@@ -444,10 +444,9 @@ public class MicrosoftAzureRestClient {
 			virtualNetworkSites = new VirtualNetworkSites();
 		}
 
-		logger.info("Starting configuration of the virtual network site : " + networkSiteName);
-
 		VirtualNetworkSite virtualNetworkSite = null;
 		if (!virtualNetworkSites.contains(networkSiteName)) {
+			logger.info("Starting configuration of the new virtual network site : " + networkSiteName);
 			VirtualNetworkSite newSite = new VirtualNetworkSite();
 			newSite.setAddressSpace(new AddressSpace());
 			newSite.setAffinityGroup(affinityGroup);
@@ -1826,18 +1825,23 @@ public class MicrosoftAzureRestClient {
 	}
 
 	private ClientResponse performHttpRequest(HttpRequestType requestType, String url, String body, String contentType,
-			boolean waitForConflict, long endTime) throws MicrosoftAzureException, AzureResourceNotFoundException {
+			boolean waitForConflict, long endTime) throws MicrosoftAzureException, AzureResourceNotFoundException,
+			TimeoutException {
 
 		ClientResponse response = null;
 
 		// for logging
-		boolean conflict = false;
+		boolean conflictLog = false;
 
-		Boolean activeServicesInResource = null;
+		Boolean isConflictError = null;
+		Boolean isActiveServicesInResource = null;
+		Boolean isNetworkInUse = null;
 
 		while (true) {
 
-			activeServicesInResource = false;
+			isActiveServicesInResource = false;
+			isNetworkInUse = false;
+			isConflictError = false;
 
 			switch (requestType) {
 
@@ -1857,37 +1861,51 @@ public class MicrosoftAzureRestClient {
 				break;
 			}
 
-			int status = response.getStatus();
-			if (status == HTTP_NOT_FOUND) {
-				logger.finest(getThreadIdentity() + "Azure resource not found, it might be already deleted");
-				throw new AzureResourceNotFoundException();
-			}
+			String extractRequestId = extractRequestId(response);
+			Operation operation = getOperation(extractRequestId);
+			String status = operation.getStatus();
 
-			// OK status
-			if (status == HTTP_OK || status == HTTP_CREATED || status == HTTP_ACCEPTED) {
-				if (conflict) {
+			// status succeed or in progress, just return response
+			if (status.equals(SUCCEEDED) || status.equals(IN_PROGRESS)) {
+				if (conflictLog) {
 					logger.fine(getThreadIdentity() + "conflict/lease is resolved/released");
 				}
 
 				return response;
 			}
 
-			// error at this point
-			Error error = (Error) MicrosoftAzureModelUtils.unmarshall(response.getEntity(String.class));
-			String errorString = ReflectionToStringBuilder.toString(error, ToStringStyle.SHORT_PREFIX_STYLE);
-			if (errorString.contains("has some")) {
-				activeServicesInResource = true;
-				logger.finest(getThreadIdentity() + "Can't delete the resource. It still has active services :"
-						+ errorString);
+			// not found 404
+			if (response.getStatus() == HTTP_NOT_FOUND) {
+				logger.finest(getThreadIdentity() + "Azure resource not found, it might be already deleted");
+				throw new AzureResourceNotFoundException();
 			}
 
+			// network in use
+			if (status.equals(FAILED) && operation.getError().getMessage().contains("in use")) {
+				isNetworkInUse = true;
+			}
+
+			// resource has active services
+			if (status.equals(FAILED) && operation.getError().getMessage().contains("has some")) {
+				isActiveServicesInResource = true;
+			}
+
+			// conflict error / lease
+			if (status.equals(FAILED) && operation.getError().getCode().equals(HTTP_AZURE_CONFLICT_CODE)) {
+				isConflictError = true;
+			}
+
+			// error at this point
+			Error error = operation.getError();
+			String errorString = ReflectionToStringBuilder.toString(error, ToStringStyle.SHORT_PREFIX_STYLE);
+
 			// a conflict error, wait and see
-			if (error.getCode().equals(HTTP_AZURE_CONFLICT_CODE) || activeServicesInResource) {
+			if (isConflictError || isActiveServicesInResource || isNetworkInUse) {
 
 				if (waitForConflict) {
 					logger.fine("Waiting for resource conflict/lease to be resolved/released : " + error.getMessage());
 					try {
-						conflict = true;
+						conflictLog = true;
 						Thread.sleep(DEFAULT_POLLING_INTERVAL);
 					} catch (InterruptedException e) {
 						String interruptedMsg = "Interrupted while waiting for conflict to be resolved";

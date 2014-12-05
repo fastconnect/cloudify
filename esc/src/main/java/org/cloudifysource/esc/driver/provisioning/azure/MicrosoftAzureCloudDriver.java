@@ -704,7 +704,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 					openFirewallPorts(machineDetails);
 					logger.info("Windows vm firewall ports operation finished");
 				} catch (Exception e) {
-					logger.warning("Failed opening windows vm firewall ports. This can be critical for Windows Vms if the required ports are not open.");
+					logger.log(Level.WARNING,
+							"Failed opening windows vm firewall ports. This can be critical for Windows Vms if the "
+									+ "required ports are not open.", e);
 				}
 			}
 

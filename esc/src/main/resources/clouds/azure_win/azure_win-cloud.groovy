@@ -63,6 +63,7 @@ cloud {
 				deleteOnExit false
 				custom ([
 					"azure.storage.account" : [	"storagesmallblock1", "storagesmallblock2"] as List,
+          "azure.storage.hostcaching" : "None" // or ReadOnly or ReadWrite
 				])
 				partitioningRequired true // If true, the driver will partition the disk (relevant with static storage)
 				path "/storage"           // Used to mount (relevant with static storage)
@@ -320,7 +321,7 @@ cloud {
 
 		/************************************************************************************************************
 		 * A (defaut) Storage Account prefix name.																    *
-		 * All OS/Data Disk Images will be stored in this account if thery weren't defined in the compute template. * 	
+		 * All OS/Data Disk Images will be stored in this account if thery weren't defined in the compute template. *
 		 * If the specified account does not exist, it will be created automatically for you.	 				    *
 		 ************************************************************************************************************/
 

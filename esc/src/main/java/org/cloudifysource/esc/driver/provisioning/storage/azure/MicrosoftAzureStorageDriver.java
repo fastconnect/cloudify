@@ -12,6 +12,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Logger;
 
+import org.apache.commons.lang.StringUtils;
 import org.cloudifysource.domain.cloud.Cloud;
 import org.cloudifysource.domain.cloud.storage.CloudStorage;
 import org.cloudifysource.domain.cloud.storage.StorageTemplate;
@@ -38,10 +39,16 @@ import org.cloudifysource.esc.driver.provisioning.storage.VolumeDetails;
  */
 public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements StorageProvisioningDriver {
 
-	private Lock driverPendingRequest = new ReentrantLock(true);
+	private static final Logger logger = Logger.getLogger(MicrosoftAzureStorageDriver.class.getName());
 
-	private final static Logger logger = Logger.getLogger(MicrosoftAzureStorageDriver.class.getName());
-	private final static String STORAGE_ACCOUNT_PROPERTY = "azure.storage.account";
+	private static final String STORAGE_ACCOUNT_PROPERTY = "azure.storage.account";
+	private static final String DATADISK_HOSTCACHING = "azure.storage.hostcaching";
+
+	private static final String HOSTCACHING_NONE = "None";
+	private static final String HOSTCACHING_READ_WRITE = "ReadWrite";
+	private static final String HOSTCACHING_READ_ONLY = "ReadOnly";
+
+	private Lock driverPendingRequest = new ReentrantLock(true);
 
 	private MicrosoftAzureCloudDriver computeDriver;
 
@@ -171,9 +178,9 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 
 			// Create a data disk
 			int diskSize = storageTemplate.getSize();
-
+			String hostCaching = this.getHostCaching(storageTemplate);
 			dataDiskName = azureClient.createDataDisk(cloudServiceName, deploymentName, roleName,
-					balancedStorageAccount, vhdFilename.toString(), diskSize, endTime);
+					balancedStorageAccount, vhdFilename.toString(), diskSize, hostCaching, endTime);
 
 		} catch (MicrosoftAzureException e) {
 			throw new StorageProvisioningException(e);
@@ -187,6 +194,25 @@ public class MicrosoftAzureStorageDriver extends BaseStorageDriver implements St
 		logger.fine("Created volume : " + dataDiskName);
 		volumeDetails.setId(dataDiskName);
 		return volumeDetails;
+	}
+
+	private String getHostCaching(StorageTemplate storageTemplate) {
+		String hostCaching = (String) storageTemplate.getCustom().get(DATADISK_HOSTCACHING);
+		hostCaching = StringUtils.isBlank(hostCaching) ? HOSTCACHING_NONE : hostCaching.trim();
+
+		if (StringUtils.equalsIgnoreCase(hostCaching, HOSTCACHING_READ_ONLY)) {
+			hostCaching = HOSTCACHING_READ_ONLY;
+		} else if (StringUtils.equalsIgnoreCase(hostCaching, HOSTCACHING_READ_WRITE)) {
+			hostCaching = HOSTCACHING_READ_WRITE;
+		} else {
+			if (!StringUtils.equalsIgnoreCase(hostCaching, HOSTCACHING_NONE)) {
+				logger.warning("Unknown host caching value " + hostCaching + ". Using default (" + HOSTCACHING_NONE
+						+ ")");
+			}
+			hostCaching = HOSTCACHING_NONE;
+		}
+
+		return hostCaching;
 	}
 
 	/**

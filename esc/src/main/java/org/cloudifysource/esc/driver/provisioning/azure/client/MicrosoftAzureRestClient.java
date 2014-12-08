@@ -2263,7 +2263,7 @@ public class MicrosoftAzureRestClient {
 		vhdName.append(".vhd");
 
 		this.addDataDiskToVM(serviceName, deploymentName, roleName,
-				storageAccountName, vhdName.toString(), diskSize, 0, endTime);
+				storageAccountName, vhdName.toString(), diskSize, 0, "None", endTime);
 	}
 
 	/**
@@ -2280,13 +2280,14 @@ public class MicrosoftAzureRestClient {
 	 * @param diskSize
 	 * @param lun
 	 * @param endTime
+	 * @param hostCaching
 	 * @return
 	 * @throws MicrosoftAzureException
 	 * @throws TimeoutException
 	 * @throws InterruptedException
 	 */
 	public String createDataDisk(String cloudServiceName, String deploymentName, String roleName,
-			String storageAccountName, String vhdFilename, int diskSize, long endTime)
+			String storageAccountName, String vhdFilename, int diskSize, String hostCaching, long endTime)
 			throws MicrosoftAzureException, TimeoutException, InterruptedException {
 
 		int lun = 15; // The default LUN number to create a data disk
@@ -2305,7 +2306,7 @@ public class MicrosoftAzureRestClient {
 				// /!\ We use this trick to create a data disk in Microsoft Azure as it appear that no API is provided
 				// to create a data disk with no attach /!\
 				this.addDataDiskToVM(cloudServiceName, deploymentName, roleName, storageAccountName,
-						vhdFilename.toString(), diskSize, lun, endTime);
+						vhdFilename.toString(), diskSize, lun, hostCaching, endTime);
 				// Detach the data disk we just created.
 				DataVirtualHardDisk dataDisk = this.getDataDisk(cloudServiceName, deploymentName, roleName, lun,
 						endTime);
@@ -2341,12 +2342,13 @@ public class MicrosoftAzureRestClient {
 	 *            The LUN number.
 	 * @param endTime
 	 *            The timeout for the operation.
+	 * @param hostCaching
 	 * @throws MicrosoftAzureException
 	 * @throws TimeoutException
 	 * @throws InterruptedException
 	 */
 	public void addDataDiskToVM(String serviceName, String deploymentName, String roleName,
-			String storageAccountName, String vhdFilename, int diskSize, int lun, long endTime)
+			String storageAccountName, String vhdFilename, int diskSize, int lun, String hostCaching, long endTime)
 			throws MicrosoftAzureException, TimeoutException, InterruptedException {
 
 		logger.finest(String.format("Trying to add disk to vm role '%s' ", roleName));
@@ -2357,6 +2359,7 @@ public class MicrosoftAzureRestClient {
 		dataMediaLinkBuilder.append(".blob.core.windows.net/vhds/");
 		dataMediaLinkBuilder.append(vhdFilename);
 		DataVirtualHardDisk dataVirtualHardDisk = new DataVirtualHardDisk();
+		dataVirtualHardDisk.setHostCaching(hostCaching);
 		dataVirtualHardDisk.setLogicalDiskSizeInGB(diskSize);
 		dataVirtualHardDisk.setMediaLink(dataMediaLinkBuilder.toString());
 		dataVirtualHardDisk.setDiskLabel("Data");

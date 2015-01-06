@@ -1,6 +1,15 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
+
+	<artifactId>utility-domain</artifactId>
+	<name>utility-domain</name>
+	<version>${utilitydomain.version}</version>
+	<properties>
+		<cloudifyVersion>${project.parent.version}</cloudifyVersion>
+		<utilitydomain.version>2.7.1-6300-RELEASE-Azure-s7</utilitydomain.version>
+	</properties>
+
 	<parent>
 		<groupId>org.cloudifysource</groupId>
 		<artifactId>cloudify</artifactId>
@@ -8,19 +17,19 @@
 		<relativePath>../cloudify</relativePath>
 	</parent>
 	<dependencies>
-    <dependency>
-      <groupId>commons-lang</groupId>
-      <artifactId>commons-lang</artifactId>
-    </dependency>    
-    <dependency>
-      <groupId>com.gigaspaces</groupId>
-      <artifactId>gs-runtime</artifactId>
-    </dependency>    
-    <dependency>
-      <groupId>org.apache.commons</groupId>
-      <artifactId>commons-exec</artifactId>
-      <version>1.1</version>
-    </dependency>
+		<dependency>
+			<groupId>commons-lang</groupId>
+			<artifactId>commons-lang</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.gigaspaces</groupId>
+			<artifactId>gs-runtime</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-exec</artifactId>
+			<version>1.1</version>
+		</dependency>
 		<dependency>
 			<groupId>org.codehaus.groovy</groupId>
 			<artifactId>groovy</artifactId>
@@ -62,8 +71,6 @@
 			<scope>provided</scope>
 		</dependency>
 	</dependencies>
-	<artifactId>utility-domain</artifactId>
-	<name>utility-domain</name>
 	<build>
 		<finalName>utility-domain</finalName>
 		<plugins>

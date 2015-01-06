@@ -1,11 +1,11 @@
 /*******************************************************************************
  * Copyright (c) 2012 GigaSpaces Technologies Ltd. All rights reserved
- *
+ * 
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
- *
+ * 
  * http://www.apache.org/licenses/LICENSE-2.0
- *
+ * 
  * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
@@ -27,9 +27,9 @@ import org.openspaces.core.GigaSpace;
 import com.gigaspaces.client.ChangeSet;
 
 /**
- *
+ * 
  * @author elip
- *
+ * 
  */
 public class StorageFacadeImpl implements StorageFacade {
 
@@ -53,7 +53,8 @@ public class StorageFacadeImpl implements StorageFacade {
 	@Override
 	public void attachVolume(final String volumeId, final String device)
 			throws RemoteStorageOperationException, LocalStorageOperationException {
-		validateNotWindows();
+		// [FastConnect] Should not prevent this operation for windows
+		// validateNotWindows();
 		logger.info("Attaching volume with id " + volumeId + " to device " + device);
 		safeGetRemoteStorageProvisioningDriver().attachVolume(volumeId, device, serviceContext.getBindAddress());
 		changeStateOfVolumeWithId(volumeId, VolumeState.ATTACHED);
@@ -91,14 +92,16 @@ public class StorageFacadeImpl implements StorageFacade {
 	@Override
 	public void detachVolume(final String volumeId)
 			throws RemoteStorageOperationException, LocalStorageOperationException {
-		validateNotWindows();
+		// [FastConnect] Should not prevent this operation for windows
+		// validateNotWindows();
 		logger.info("Detaching volume with id " + volumeId);
 		safeGetRemoteStorageProvisioningDriver().detachVolume(volumeId, serviceContext.getBindAddress());
 	}
 
 	@Override
 	public void deleteVolume(final String volumeId) throws RemoteStorageOperationException {
-		validateNotWindows();
+		// [FastConnect] Should not prevent this operation for windows
+		// validateNotWindows();
 		logger.info("Deleting volume with id " + volumeId);
 		safeGetRemoteStorageProvisioningDriver().deleteVolume(serviceContext.getLocationId(), volumeId);
 		deleteVolumeWithId(volumeId);
@@ -136,7 +139,7 @@ public class StorageFacadeImpl implements StorageFacade {
 			changeStateOfVolumeWithDevice(device, VolumeState.MOUNTED);
 		}
 	}
-	
+
 	@Override
 	public void mount(final String device, final String path, final long timeoutInMillis)
 			throws LocalStorageOperationException, TimeoutException {
@@ -175,7 +178,7 @@ public class StorageFacadeImpl implements StorageFacade {
 	public StorageTemplate getTemplate(final String templateName) {
 		return safeGetRemoteStorageProvisioningDriver().getTemplate(templateName);
 	}
-	
+
 	@Override
 	public void partition(final String volumeId, final String device, final long timeoutInMillis)
 			throws LocalStorageOperationException, TimeoutException {
@@ -192,7 +195,7 @@ public class StorageFacadeImpl implements StorageFacade {
 		}
 
 	}
-	
+
 	@Override
 	public void partition(final String device, final long timeoutInMillis)
 			throws LocalStorageOperationException, TimeoutException {
@@ -232,7 +235,6 @@ public class StorageFacadeImpl implements StorageFacade {
 		}
 	}
 
-
 	@Override
 	public void format(final String volumeId, final String device, final String fileSystem, final long timeoutInMillis)
 			throws LocalStorageOperationException, TimeoutException {
@@ -265,7 +267,7 @@ public class StorageFacadeImpl implements StorageFacade {
 			changeStateOfVolumeWithDevice(device, VolumeState.FORMATTED);
 		}
 	}
-	
+
 	@Override
 	public void format(final String device, final String fileSystem, long timeoutInMillis)
 			throws LocalStorageOperationException, TimeoutException {

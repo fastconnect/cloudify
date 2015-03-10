@@ -39,7 +39,7 @@ public class NovaServerResquest {
 	 */
 	@JsonProperty("key_name")
 	private String keyName;
-	
+
 	@JsonProperty("availability_zone")
 	private String availabilityZone;
 

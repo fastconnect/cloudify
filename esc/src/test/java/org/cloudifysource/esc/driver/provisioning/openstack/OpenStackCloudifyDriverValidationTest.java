@@ -371,26 +371,25 @@ public class OpenStackCloudifyDriverValidationTest {
 			throw e;
 		}
 	}
-	
+
 	@Test(expected = CloudProvisioningException.class)
 	public void instanceQuotaValidator() throws Exception {
 		try {
 			OpenStackCloudifyDriver newDriverInstance = this.newDriverInstance("ok", true);
-			newDriverInstance.validateCloudConfiguration(new ValidationContextStub());
-			
+
 			// Setting server list to return on 'computeApi.getServers()'
 			final List<NovaServer> existingServers = new ArrayList<NovaServer>();
 			final NovaServer server = new NovaServer();
 			existingServers.add(server);
 			Mockito.when(computeApi.getServers()).thenReturn(existingServers);
-			
+
 			// setting total instance limit to 1.
 			final ComputeLimits computeLimits = new ComputeLimits();
 			final Limits limits = new Limits();
 			limits.setMaxTotalInstances(1);
 			computeLimits.setLimits(limits);
 			Mockito.when(computeApi.getLimits()).thenReturn(computeLimits);
-			
+
 			newDriverInstance.validateCloudConfiguration(new ValidationContextStub());
 		} catch (final CloudProvisioningException e) {
 			if (!e.getMessage().contains("server instances quota limit exceeded")) {
@@ -400,20 +399,19 @@ public class OpenStackCloudifyDriverValidationTest {
 			throw e;
 		}
 	}
-	
+
 	@Test(expected = CloudProvisioningException.class)
 	public void instanceCoreQuotaValidator() throws Exception {
 		try {
 			final OpenStackCloudifyDriver newDriverInstance = this.newDriverInstance("ok", true);
-			newDriverInstance.validateCloudConfiguration(new ValidationContextStub());
-			
+
 			// Setting existing server list mock
 			final List<NovaServer> existingServers = new ArrayList<NovaServer>();
 			final NovaServer server = new NovaServer();
 			server.setId("ServerID");
 			existingServers.add(server);
 			Mockito.when(computeApi.getServers()).thenReturn(existingServers);
-			
+
 			// setting server details mock to match flavor.
 			final NovaServer serverDetails = new NovaServer();
 			serverDetails.setId("ServerID");
@@ -421,7 +419,7 @@ public class OpenStackCloudifyDriverValidationTest {
 			flavor.setId("hardwareId");
 			serverDetails.setFlavor(flavor);
 			Mockito.when(computeApi.getServerDetails("ServerID")).thenReturn(serverDetails);
-			
+
 			// setting existing flavors list mock.
 			final Flavor existingFlavor = new Flavor();
 			existingFlavor.setId("hardwareId");
@@ -429,14 +427,14 @@ public class OpenStackCloudifyDriverValidationTest {
 			List<Flavor> existingFlavors = new ArrayList<Flavor>();
 			existingFlavors.add(existingFlavor);
 			Mockito.when(computeApi.getFlavors()).thenReturn(existingFlavors);
-			
+
 			// setting total core limit to 1.
 			final ComputeLimits computeLimits = new ComputeLimits();
 			final Limits limits = new Limits();
 			limits.setMaxTotalCores(1);
 			computeLimits.setLimits(limits);
 			Mockito.when(computeApi.getLimits()).thenReturn(computeLimits);
-			
+
 			newDriverInstance.validateCloudConfiguration(new ValidationContextStub());
 		} catch (final CloudProvisioningException e) {
 			if (!e.getMessage().contains("virtual CPUs quota limit exceeded")) {
@@ -446,20 +444,19 @@ public class OpenStackCloudifyDriverValidationTest {
 			throw e;
 		}
 	}
-	
+
 	@Test(expected = CloudProvisioningException.class)
 	public void ramQuotaValidator() throws Exception {
 		try {
 			final OpenStackCloudifyDriver newDriverInstance = this.newDriverInstance("ok", true);
-			newDriverInstance.validateCloudConfiguration(new ValidationContextStub());
-			
+
 			// Setting existing server list mock
 			final List<NovaServer> existingServers = new ArrayList<NovaServer>();
 			final NovaServer server = new NovaServer();
 			server.setId("ServerID");
 			existingServers.add(server);
 			Mockito.when(computeApi.getServers()).thenReturn(existingServers);
-			
+
 			// setting server details mock to match flavor.
 			final NovaServer serverDetails = new NovaServer();
 			serverDetails.setId("ServerID");
@@ -467,7 +464,7 @@ public class OpenStackCloudifyDriverValidationTest {
 			flavor.setId("hardwareId");
 			serverDetails.setFlavor(flavor);
 			Mockito.when(computeApi.getServerDetails("ServerID")).thenReturn(serverDetails);
-			
+
 			// setting existing flavors list mock.
 			final Flavor existingFlavor = new Flavor();
 			existingFlavor.setId("hardwareId");
@@ -475,14 +472,14 @@ public class OpenStackCloudifyDriverValidationTest {
 			List<Flavor> existingFlavors = new ArrayList<Flavor>();
 			existingFlavors.add(existingFlavor);
 			Mockito.when(computeApi.getFlavors()).thenReturn(existingFlavors);
-			
+
 			// setting total ram limit to 512.
 			final ComputeLimits computeLimits = new ComputeLimits();
 			final Limits limits = new Limits();
 			limits.setMaxTotalRAMSize(512);
 			computeLimits.setLimits(limits);
 			Mockito.when(computeApi.getLimits()).thenReturn(computeLimits);
-			
+
 			newDriverInstance.validateCloudConfiguration(new ValidationContextStub());
 		} catch (final CloudProvisioningException e) {
 			if (!e.getMessage().contains("RAM quota limit exceeded")) {
@@ -492,13 +489,12 @@ public class OpenStackCloudifyDriverValidationTest {
 			throw e;
 		}
 	}
-	
+
 	@Test(expected = CloudProvisioningException.class)
 	public void securityGroupQuotaValidator() throws Exception {
 		try {
 			final OpenStackCloudifyDriver newDriverInstance = this.newDriverInstance("ok", true);
-			newDriverInstance.validateCloudConfiguration(new ValidationContextStub());
-			
+
 			// setting total security-group limit.
 			final Quota quota = new Quota();
 			quota.setSecurityGroup(20);
@@ -510,9 +506,9 @@ public class OpenStackCloudifyDriverValidationTest {
 			final List<SecurityGroup> existingSecurityGroups = new ArrayList<SecurityGroup>();
 			for (int i = 0; i < 20; i++) {
 				existingSecurityGroups.add(new SecurityGroup());
-			} 
+			}
 			Mockito.when(networkApi.getSecurityGroupsByTenantId("tenantId")).thenReturn(existingSecurityGroups);
-			
+
 			newDriverInstance.validateCloudConfiguration(new ValidationContextStub());
 		} catch (final CloudProvisioningException e) {
 			if (!e.getMessage().contains("Security-groups quota limit exceeded")) {
@@ -522,13 +518,12 @@ public class OpenStackCloudifyDriverValidationTest {
 			throw e;
 		}
 	}
-	
+
 	@Test(expected = CloudProvisioningException.class)
 	public void securityGroupRulesQuotaValidator() throws Exception {
 		try {
 			final OpenStackCloudifyDriver newDriverInstance = this.newDriverInstance("ok", true);
-			newDriverInstance.validateCloudConfiguration(new ValidationContextStub());
-			
+
 			final Quota quota = new Quota();
 			// set security-group quota limit.
 			quota.setSecurityGroupRule(20);
@@ -540,9 +535,9 @@ public class OpenStackCloudifyDriverValidationTest {
 			final List<SecurityGroupRule> existingSecurityGroupRules = new ArrayList<SecurityGroupRule>();
 			for (int i = 0; i < 20; i++) {
 				existingSecurityGroupRules.add(new SecurityGroupRule());
-			} 
+			}
 			Mockito.when(networkApi.getSecurityGroupRulesByTenantId("tenantId")).thenReturn(existingSecurityGroupRules);
-			
+
 			newDriverInstance.validateCloudConfiguration(new ValidationContextStub());
 		} catch (final CloudProvisioningException e) {
 			if (!e.getMessage().contains("Security-group rules quota limit exceeded")) {
@@ -552,13 +547,12 @@ public class OpenStackCloudifyDriverValidationTest {
 			throw e;
 		}
 	}
-	
+
 	@Test(expected = CloudProvisioningException.class)
 	public void routersQuotaValidator() throws Exception {
 		try {
 			final OpenStackCloudifyDriver newDriverInstance = this.newDriverInstance("ok", true);
-			newDriverInstance.validateCloudConfiguration(new ValidationContextStub());
-			
+
 			// setting total routers limit.
 			final Quota quota = new Quota();
 			// set router limit
@@ -567,13 +561,13 @@ public class OpenStackCloudifyDriverValidationTest {
 			Mockito.when(computeApi.getTenantId()).thenReturn("tenantId");
 			// set quotas mocking
 			Mockito.when(networkApi.getQuotasForTenant("tenantId")).thenReturn(quota);
-			
+
 			// init the existing router list
 			final List<Router> existingRouters = new ArrayList<Router>();
 			existingRouters.add(new Router());
-			
+
 			Mockito.when(networkApi.getRoutersByTenantId("tenantId")).thenReturn(existingRouters);
-			
+
 			newDriverInstance.validateCloudConfiguration(new ValidationContextStub());
 		} catch (final CloudProvisioningException e) {
 			if (!e.getMessage().contains("routers quota limit exceeded")) {
@@ -583,13 +577,12 @@ public class OpenStackCloudifyDriverValidationTest {
 			throw e;
 		}
 	}
-	
+
 	@Test(expected = CloudProvisioningException.class)
 	public void networksQuotaValidator() throws Exception {
 		try {
 			final OpenStackCloudifyDriver newDriverInstance = this.newDriverInstance("ok", true);
-			newDriverInstance.validateCloudConfiguration(new ValidationContextStub());
-			
+
 			// setting total networks quota.
 			final Quota quota = new Quota();
 			// set network limit
@@ -598,13 +591,13 @@ public class OpenStackCloudifyDriverValidationTest {
 			Mockito.when(computeApi.getTenantId()).thenReturn("tenantId");
 			// set quotas mocking
 			Mockito.when(networkApi.getQuotasForTenant("tenantId")).thenReturn(quota);
-			
+
 			// init the existing network list
 			final List<Network> existingNetworks = new ArrayList<Network>();
 			existingNetworks.add(new Network());
-			
+
 			Mockito.when(networkApi.getNetworksByTenantId("tenantId")).thenReturn(existingNetworks);
-			
+
 			newDriverInstance.validateCloudConfiguration(new ValidationContextStub());
 		} catch (final CloudProvisioningException e) {
 			if (!e.getMessage().contains("networks quota limit exceeded")) {
@@ -614,13 +607,12 @@ public class OpenStackCloudifyDriverValidationTest {
 			throw e;
 		}
 	}
-	
+
 	@Test(expected = CloudProvisioningException.class)
 	public void subnetsQuotaValidator() throws Exception {
 		try {
 			final OpenStackCloudifyDriver newDriverInstance = this.newDriverInstance("ok", true);
-			newDriverInstance.validateCloudConfiguration(new ValidationContextStub());
-			
+
 			// setting total subnet quota.
 			final Quota quota = new Quota();
 			// set subnet limit
@@ -629,13 +621,13 @@ public class OpenStackCloudifyDriverValidationTest {
 			Mockito.when(computeApi.getTenantId()).thenReturn("tenantId");
 			// set quotas mocking
 			Mockito.when(networkApi.getQuotasForTenant("tenantId")).thenReturn(quota);
-			
+
 			// init the existing subnet list
 			final List<Subnet> existingSubnets = new ArrayList<Subnet>();
 			existingSubnets.add(new Subnet());
-			
+
 			Mockito.when(networkApi.getSubnetsByTenantId("tenantId")).thenReturn(existingSubnets);
-			
+
 			newDriverInstance.validateCloudConfiguration(new ValidationContextStub());
 		} catch (final CloudProvisioningException e) {
 			if (!e.getMessage().contains("subnets quota limit exceeded")) {
@@ -645,13 +637,12 @@ public class OpenStackCloudifyDriverValidationTest {
 			throw e;
 		}
 	}
-	
+
 	@Test(expected = CloudProvisioningException.class)
 	public void floatingIpQuotaValidator() throws Exception {
 		try {
 			final OpenStackCloudifyDriver newDriverInstance = this.newDriverInstance("ok", true);
-			newDriverInstance.validateCloudConfiguration(new ValidationContextStub());
-			
+
 			// setting total floating-ips quota.
 			final Quota quota = new Quota();
 			// set floating-ip limit
@@ -660,16 +651,32 @@ public class OpenStackCloudifyDriverValidationTest {
 			Mockito.when(computeApi.getTenantId()).thenReturn("tenantId");
 			// set quotas mocking
 			Mockito.when(networkApi.getQuotasForTenant("tenantId")).thenReturn(quota);
-			
+
 			// init the existing floating-ip list
 			final List<FloatingIp> existingFloatingIps = new ArrayList<FloatingIp>();
 			existingFloatingIps.add(new FloatingIp());
-			
+
 			Mockito.when(networkApi.getFloatingIps()).thenReturn(existingFloatingIps);
-			
+
 			newDriverInstance.validateCloudConfiguration(new ValidationContextStub());
 		} catch (final CloudProvisioningException e) {
 			if (!e.getMessage().contains("floating IPs quota limit exceeded")) {
+				e.printStackTrace();
+				Assert.fail("Validation must fail: " + e.getMessage());
+			}
+			throw e;
+		}
+	}
+
+	@Test(expected = CloudProvisioningException.class)
+	public void wrongServerGroupValueValidator() throws Exception {
+		try {
+			final OpenStackCloudifyDriver newDriverInstance = this.newDriverInstance("wrongServerGroupValue", true);
+
+			newDriverInstance.validateCloudConfiguration(new ValidationContextStub());
+		} catch (final CloudProvisioningException e) {
+			if (!e.getMessage().contains("Expected values for option '"
+					+ OpenStackCloudifyDriver.OPT_SERVER_GROUPS + "': ")) {
 				e.printStackTrace();
 				Assert.fail("Validation must fail: " + e.getMessage());
 			}

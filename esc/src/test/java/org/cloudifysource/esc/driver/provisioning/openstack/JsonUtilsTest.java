@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.apache.commons.io.FileUtils;
 import org.cloudifysource.esc.driver.provisioning.openstack.rest.Network;
+import org.cloudifysource.esc.driver.provisioning.openstack.rest.NovaServerRequestWithServerGroup;
 import org.cloudifysource.esc.driver.provisioning.openstack.rest.Port;
 import org.junit.Assert;
 import org.junit.Test;
@@ -42,6 +43,13 @@ public class JsonUtilsTest {
 			Assert.assertFalse(port.getFixedIps().isEmpty());
 			Assert.assertNotNull(port.getFixedIps().get(0).getIpAddress());
 		}
+	}
+
+	@Test
+	public void testToJsonUnwrapRoot() throws OpenstackJsonSerializationException {
+		String json = JsonUtils.toJson(new NovaServerRequestWithServerGroup(), false, false);
+		Assert.assertFalse("The json output should not contains 'NovaServerRequestWithServerGroup'",
+				json.contains("NovaServerRequestWithServerGroup"));
 
 	}
 }

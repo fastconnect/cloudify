@@ -12,7 +12,7 @@
 		<relativePath>../cloudify</relativePath>
 	</parent>
 	<repositories>
-		<!-- Apache snapshots repo is required for commons-vfs-sandbox, which contains 
+		<!-- Apache snapshots repo is required for commons-vfs-sandbox, which contains
 			the smb provider -->
 		<repository>
 			<id>apache-snapshots</id>
@@ -26,12 +26,12 @@
 	</repositories>
 
 	<dependencies>
-        <dependency>
-            <groupId>org.apache.jclouds.provider</groupId>
-            <artifactId>softlayer-all</artifactId>
-            <version>${jcloudsVersion}</version>
-        </dependency>
-        <dependency>
+		<dependency>
+			<groupId>org.apache.jclouds.provider</groupId>
+			<artifactId>softlayer-all</artifactId>
+			<version>${jcloudsVersion}</version>
+		</dependency>
+		<dependency>
 			<groupId>commons-lang</groupId>
 			<artifactId>commons-lang</artifactId>
 		</dependency>
@@ -53,10 +53,10 @@
 					<artifactId>ant</artifactId>
 					<groupId>org.apache.ant</groupId>
 				</exclusion>
-                <exclusion>
-                    <groupId>commons-httpclient</groupId>
-                    <artifactId>commons-httpclient</artifactId>
-                </exclusion>
+				<exclusion>
+					<groupId>commons-httpclient</groupId>
+					<artifactId>commons-httpclient</artifactId>
+				</exclusion>
 			</exclusions>
 		</dependency>
 		<dependency>
@@ -99,12 +99,12 @@
 			<groupId>org.apache.jclouds</groupId>
 			<artifactId>jclouds-allcompute</artifactId>
 			<version>${jcloudsVersion}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.apache.jclouds.provider</groupId>
-                    <artifactId>softlayer</artifactId>
-                </exclusion>
-            </exclusions>
+			<exclusions>
+				<exclusion>
+					<groupId>org.apache.jclouds.provider</groupId>
+					<artifactId>softlayer</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>org.cloudifysource</groupId>
@@ -214,7 +214,7 @@
 				<version>2.3.1</version>
 			</plugin>
 			<plugin>
-				<!-- NOTE: We don't need a groupId specification because the group is 
+				<!-- NOTE: We don't need a groupId specification because the group is
 					org.apache.maven.plugins ...which is assumed by default. -->
 				<artifactId>maven-assembly-plugin</artifactId>
 				<version>2.2.1</version>
@@ -229,6 +229,21 @@
 							<appendAssemblyId>false</appendAssemblyId>
 							<descriptors>
 								<descriptor>assembly-jar.xml</descriptor>
+							</descriptors>
+						</configuration>
+					</execution>
+					<!-- added assembly-openstack-silca to ease our project packaging -->
+					<execution>
+						<id>package-zip-openstack-silca</id>
+						<phase>package</phase>
+						<goals>
+							<goal>single</goal>
+						</goals>
+						<configuration>
+							<finalName>esc-${project.version}-${maven.build.timestamp}</finalName>
+							<appendAssemblyId>false</appendAssemblyId>
+							<descriptors>
+								<descriptor>assembly-openstack-silca.xml</descriptor>
 							</descriptors>
 						</configuration>
 					</execution>

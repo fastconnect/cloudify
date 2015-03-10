@@ -20,12 +20,14 @@ import java.util.logging.Logger;
 import org.apache.commons.lang.StringUtils;
 import org.cloudifysource.esc.driver.provisioning.openstack.rest.ComputeLimits;
 import org.cloudifysource.esc.driver.provisioning.openstack.rest.Flavor;
+import org.cloudifysource.esc.driver.provisioning.openstack.rest.Hypervisor;
 import org.cloudifysource.esc.driver.provisioning.openstack.rest.Image;
 import org.cloudifysource.esc.driver.provisioning.openstack.rest.NovaServer;
 import org.cloudifysource.esc.driver.provisioning.openstack.rest.NovaServerAddress;
+import org.cloudifysource.esc.driver.provisioning.openstack.rest.NovaServerRequestWithServerGroup;
 import org.cloudifysource.esc.driver.provisioning.openstack.rest.NovaServerResquest;
 import org.cloudifysource.esc.driver.provisioning.openstack.rest.NovaServerSecurityGroup;
-
+import org.cloudifysource.esc.driver.provisioning.openstack.rest.ServerGroup;
 
 /**
  * A client for Openstack Nova.
@@ -95,7 +97,6 @@ public class OpenStackComputeClient extends OpenStackBaseClient {
 		return image;
 	}
 
-
 	/**
 	 * Returns the Openstack flavor.
 	 * 
@@ -138,6 +139,16 @@ public class OpenStackComputeClient extends OpenStackBaseClient {
 			logger.fine("Launch instance=" + request);
 		}
 		final String computeRequest = JsonUtils.toJson(request, false);
+		final String response = this.doPost("servers", computeRequest);
+		final NovaServer nsr = JsonUtils.unwrapRootToObject(NovaServer.class, response);
+		return nsr;
+	}
+
+	public NovaServer createServer(final NovaServerRequestWithServerGroup request) throws OpenstackException {
+		if (logger.isLoggable(Level.FINE)) {
+			logger.fine("Launch instance=" + request);
+		}
+		final String computeRequest = JsonUtils.toJson(request, false, false);
 		final String response = this.doPost("servers", computeRequest);
 		final NovaServer nsr = JsonUtils.unwrapRootToObject(NovaServer.class, response);
 		return nsr;
@@ -293,14 +304,13 @@ public class OpenStackComputeClient extends OpenStackBaseClient {
 		}
 		this.doDelete("servers/" + serverId, CODE_OK_204);
 	}
-	
+
 	/**
-	 * Returns the compute resource limit such as 
-	 * 					max total cores and max total memory. 
-	 * @return
-	 * 		An object containing compute resource limit data. 
+	 * Returns the compute resource limit such as max total cores and max total memory.
+	 * 
+	 * @return An object containing compute resource limit data.
 	 * @throws OpenstackException
-	 * 			 Thrown when something went wrong with the request.
+	 *             Thrown when something went wrong with the request.
 	 */
 	public ComputeLimits getLimits() throws OpenstackException {
 		final String response;
@@ -315,5 +325,72 @@ public class OpenStackComputeClient extends OpenStackBaseClient {
 
 		final ComputeLimits limits = JsonUtils.unwrapRootToObject(ComputeLimits.class, response, false);
 		return limits;
+	}
+
+	public List<Hypervisor> getHypervisors() throws OpenstackException {
+		final String response;
+		try {
+			response = doGet("os-hypervisors");
+		} catch (final OpenstackServerException e) {
+			if (RESOURCE_NOT_FOUND_STATUS == e.getStatusCode()) {
+				return null;
+			}
+			throw e;
+		}
+
+		final List<Hypervisor> hypervisors = JsonUtils.unwrapRootToList(Hypervisor.class, response);
+		return hypervisors;
+	}
+
+	public List<ServerGroup> getServerGroups() throws OpenstackException {
+		final String response;
+		try {
+			response = doGet("os-server-groups");
+		} catch (final OpenstackServerException e) {
+			if (RESOURCE_NOT_FOUND_STATUS == e.getStatusCode()) {
+				return null;
+			}
+			throw e;
+		}
+
+		final List<ServerGroup> serverGroups = JsonUtils.unwrapRootToList(ServerGroup.class, response);
+		return serverGroups;
+	}
+
+	public ServerGroup getServerGroupByName(String serverGroupName) throws OpenstackException {
+		List<ServerGroup> serverGroups = this.getServerGroups();
+		for (ServerGroup serverGroup : serverGroups) {
+			String name = serverGroup.getName();
+			if (serverGroupName.equals(name)) {
+				return serverGroup;
+			}
+		}
+		return null;
+	}
+
+	public ServerGroup getServerGroup(String serverGroupId) throws OpenstackException {
+		final String response;
+		try {
+			response = doGet("os-server-groups/" + serverGroupId);
+		} catch (final OpenstackServerException e) {
+			if (RESOURCE_NOT_FOUND_STATUS == e.getStatusCode()) {
+				return null;
+			}
+			throw e;
+		}
+
+		final ServerGroup serverGroup = JsonUtils.unwrapRootToObject(ServerGroup.class, response);
+		return serverGroup;
+	}
+
+	public ServerGroup createServerGroup(String name, String policy) throws OpenstackException {
+		String input = String.format("{\"server_group\":{\"name\": \"%s\",\"policies\": [\"%s\"]}}", name, policy);
+		String response = doPost("os-server-groups", input);
+		final ServerGroup serverGroup = JsonUtils.unwrapRootToObject(ServerGroup.class, response);
+		return serverGroup;
+	}
+
+	public void deleteServerGroup(String serverGroupId) throws OpenstackException {
+		this.doDelete("os-server-groups/" + serverGroupId, CODE_OK_204);
 	}
 }

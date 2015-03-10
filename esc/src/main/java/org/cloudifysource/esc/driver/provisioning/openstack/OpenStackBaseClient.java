@@ -143,8 +143,7 @@ public abstract class OpenStackBaseClient {
 		this.renewTokenIfNeeded();
 		return this.token.getToken().getId();
 	}
-	
-	
+
 	/**
 	 * Get the tenant id, if token not null.
 	 * 
@@ -157,12 +156,12 @@ public abstract class OpenStackBaseClient {
 		if (token != null) {
 			tenantId = token.getToken().getTenant().getId();
 		}
-		
+
 		return tenantId;
 	}
-	
 
-	/**
+
+		/**
 	 * Return the WebResource pre configured with the endpoint.
 	 * 
 	 * @return The pre configured WebResource.

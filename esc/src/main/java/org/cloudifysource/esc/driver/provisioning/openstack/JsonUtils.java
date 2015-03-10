@@ -193,7 +193,7 @@ public final class JsonUtils {
 	 *             If the javabean could not be deserialized.
 	 */
 	public static String toJson(final Object javabean) throws OpenstackJsonSerializationException {
-		return toJson(javabean, true);
+		return toJson(javabean, true, true);
 	}
 
 	/**
@@ -209,6 +209,11 @@ public final class JsonUtils {
 	 */
 	public static String toJson(final Object javabean, final boolean translateCamelCase)
 			throws OpenstackJsonSerializationException {
+		return toJson(javabean, translateCamelCase, true);
+	}
+
+	public static String toJson(final Object javabean, final boolean translateCamelCase, final boolean wrapRoot)
+			throws OpenstackJsonSerializationException {
 		if (javabean == null) {
 			return null;
 		}
@@ -219,7 +224,11 @@ public final class JsonUtils {
 				mapper.setPropertyNamingStrategy(PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES);
 			}
 			mapper.setSerializationInclusion(Inclusion.NON_EMPTY);
-			mapper.configure(SerializationConfig.Feature.WRAP_ROOT_VALUE, true);
+			if (wrapRoot) {
+				mapper.configure(SerializationConfig.Feature.WRAP_ROOT_VALUE, true);
+			} else {
+				mapper.configure(SerializationConfig.Feature.WRAP_ROOT_VALUE, false);
+			}
 			// mapper.configure(SerializationConfig.Feature.INDENT_OUTPUT, true);
 			mapper.configure(SerializationConfig.Feature.AUTO_DETECT_FIELDS, true);
 			mapper.setVisibilityChecker(mapper.getSerializationConfig().getDefaultVisibilityChecker()

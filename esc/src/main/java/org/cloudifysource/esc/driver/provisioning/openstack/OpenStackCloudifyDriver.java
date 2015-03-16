@@ -62,7 +62,6 @@ import org.cloudifysource.esc.driver.provisioning.context.ValidationContext;
 import org.cloudifysource.esc.driver.provisioning.openstack.rest.ComputeLimits;
 import org.cloudifysource.esc.driver.provisioning.openstack.rest.Flavor;
 import org.cloudifysource.esc.driver.provisioning.openstack.rest.FloatingIp;
-import org.cloudifysource.esc.driver.provisioning.openstack.rest.Hypervisor;
 import org.cloudifysource.esc.driver.provisioning.openstack.rest.Network;
 import org.cloudifysource.esc.driver.provisioning.openstack.rest.NovaServer;
 import org.cloudifysource.esc.driver.provisioning.openstack.rest.NovaServerNetwork;
@@ -86,10 +85,10 @@ import com.j_spaces.kernel.Environment;
 
 /**
  * Openstack Driver which creates security groups and networks.
- * 
+ *
  * @author victor
  * @since 2.7.0
- * 
+ *
  */
 public class OpenStackCloudifyDriver extends BaseProvisioningDriver {
 
@@ -2621,6 +2620,12 @@ public class OpenStackCloudifyDriver extends BaseProvisioningDriver {
 	 * Specify a server group policy. Policies can be "affinity" or "anti-affinity"<br />
 	 */
 	public static final String OPT_SERVER_GROUPS = "serverGroups";
+	/**
+	 * Determine the maximum of members inside server groups with an anti-affinity policy. This property aims to
+	 * workaround the fact that the request to get the number of hypervisors needs admin rights. The cloud user usually
+	 * won't have admin rights.
+	 */
+	public static final String OPT_SERVER_GROUPS_MEMBERS_LIMIT = "serverGroupsMembersLimit";
 
 	private OpenStackComputeClient computeApi;
 	private OpenStackNetworkClient networkApi;
@@ -2630,6 +2635,9 @@ public class OpenStackCloudifyDriver extends BaseProvisioningDriver {
 	private OpenStackResourcePrefixes openstackPrefixes;
 
 	private String applicationName;
+
+	/** Mutex to create servergroups policy (to handle anti-affinity since IceHouse version) */
+	final byte[] servergroupMutex = new byte[0];
 
 	public static String getDefaultMangementPrefix() {
 		return MANAGMENT_MACHINE_PREFIX;
@@ -3243,6 +3251,7 @@ public class OpenStackCloudifyDriver extends BaseProvisioningDriver {
 		final String hardwareId = template.getHardwareId().split("/")[1];
 		final String keyName = (String) template.getOptions().get(OPT_KEY_PAIR);
 		final String serverGroupPolicy = (String) template.getOptions().get(OPT_SERVER_GROUPS);
+		final Integer serverGroupMembersLimit = (Integer) template.getOptions().get(OPT_SERVER_GROUPS_MEMBERS_LIMIT);
 
 		String serverId = null;
 		final List<String> reservedPortIds = new ArrayList<String>();
@@ -3330,30 +3339,8 @@ public class OpenStackCloudifyDriver extends BaseProvisioningDriver {
 			// ServerGroup support
 			if (serverGroupConfig.isServerGroupConfigured()) {
 				logger.info("Start new server included in a server group policy");
-				// Check existence of server group
-				String serverGroupName = serverGroupConfig.getServerGroupName();
-				ServerGroup serverGroup = computeApi.getServerGroupByName(serverGroupName);
-				if (serverGroup == null) {
-					// Create if the server group does not exist
-					logger.info(String.format("Creating server '%s' in the new server group policy '%s'", serverName,
-							serverGroupName));
-					serverGroup = computeApi.createServerGroup(serverGroupName, serverGroupPolicy);
-				} else {
-					List<Hypervisor> hypervisors = computeApi.getHypervisors();
-					List<String> members = serverGroup.getMembers();
-					if (members != null && members.size() >= hypervisors.size()) {
-						// Create new policy group if we reach the limit
-						serverGroupName = serverGroupConfig.increaseServerGroupNameCounter();
-						logger.info(String.format("Old server group name is full (%s members > %s hypervisors)."
-								+ " Creating server '%s' in the new server group policy '%s'",
-								members.size(), hypervisors.size(), serverName, serverGroupName));
-						serverGroup = computeApi.createServerGroup(serverGroupName, serverGroupPolicy);
-					} else {
-						logger.info(String.format("Creating server '%s' using the server group policy '%s'",
-								serverName,serverGroupName));
-					}
-				}
-
+				ServerGroup serverGroup =
+						this.getServerGroupToJoin(serverName, serverGroupPolicy, serverGroupMembersLimit);
 				NovaServerRequestWithServerGroup serverGroupRequest = new NovaServerRequestWithServerGroup();
 				serverGroupRequest.setServer(request);
 				serverGroupRequest.setGroup(serverGroup.getId());
@@ -3426,6 +3413,41 @@ public class OpenStackCloudifyDriver extends BaseProvisioningDriver {
 			}
 			throw new CloudProvisioningException(e);
 		}
+	}
+
+	public ServerGroup getServerGroupToJoin(final String serverName, final String serverGroupPolicy,
+			Integer serverGroupMembersLimit) throws OpenstackException {
+		ServerGroup serverGroupToJoin = null;
+		synchronized (servergroupMutex) {
+			// Check the existence of a free servergroup to join
+			if (serverGroupMembersLimit != null) {
+				String serverGroupPrefix = serverGroupConfig.getServerGroupPrefixName();
+				List<ServerGroup> serverGroups = computeApi.getServerGroupByPrefix(serverGroupPrefix);
+				for (ServerGroup sg : serverGroups) {
+					if (sg.getMembers() != null && sg.getMembers().size() < serverGroupMembersLimit) {
+						logger.info(String.format(
+								"Creating server '%s' using the existing server group policy '%s' (members: %s/%s)",
+								serverName, sg.getName(), sg.getMembers().size(), serverGroupMembersLimit));
+						serverGroupToJoin = sg;
+						break;
+					}
+				}
+			} else {
+				String serverGroupName = serverGroupConfig.getServerGroupName();
+				logger.info(String.format("Creating server '%s' using the existing server group policy '%s'",
+						serverName, serverGroupName));
+				serverGroupToJoin = computeApi.getServerGroupByName(serverGroupName);
+			}
+
+			if (serverGroupToJoin == null) {
+				// Create new policy group if none of the existing group are free
+				String serverGroupName = serverGroupConfig.increaseServerGroupNameCounter();
+				logger.info(String.format("Creating server '%s' in the new server group policy '%s'", serverName,
+						serverGroupName));
+				serverGroupToJoin = computeApi.createServerGroup(serverGroupName, serverGroupPolicy);
+			}
+		}
+		return serverGroupToJoin;
 	}
 
 	/**

@@ -361,11 +361,23 @@ public class OpenStackComputeClient extends OpenStackBaseClient {
 		List<ServerGroup> serverGroups = this.getServerGroups();
 		for (ServerGroup serverGroup : serverGroups) {
 			String name = serverGroup.getName();
-			if (serverGroupName.equals(name)) {
+			if (name != null && serverGroupName.equals(name)) {
 				return serverGroup;
 			}
 		}
 		return null;
+	}
+
+	public List<ServerGroup> getServerGroupByPrefix(String serverGroupPrefix) throws OpenstackException {
+		List<ServerGroup> results = new ArrayList<ServerGroup>();
+		List<ServerGroup> serverGroups = this.getServerGroups();
+		for (ServerGroup serverGroup : serverGroups) {
+			String name = serverGroup.getName();
+			if (name != null && name.startsWith(serverGroupPrefix)) {
+				results.add(serverGroup);
+			}
+		}
+		return results;
 	}
 
 	public ServerGroup getServerGroup(String serverGroupId) throws OpenstackException {

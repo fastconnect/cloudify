@@ -379,69 +379,31 @@ public class MicrosoftAzureRestClient {
 		logger.info("Created a storage account : " + storageAccountName);
 	}
 
-	/**
-	 * this method creates a virtual network with the given name, or does nothing if the network exists.
-	 * 
-	 * @param addressSpace
-	 *            - CIDR notation specifying the address space for the virtual network.
-	 * @param affinityGroup
-	 *            - the affinity group for this virtual network
-	 * @param networkSiteName
-	 *            - the name for the network to create
-	 * @param endTime
-	 *            .
-	 * 
-	 * @throws InterruptedException .
-	 * @throws MicrosoftAzureException .
-	 * @throws TimeoutException .
-	 */
-	public void createVirtualNetworkSite(final String addressSpace, final String affinityGroup,
-			final String networkSiteName, final String vpnGatewayAddress, final String addressSpaces, final long endTime)
-			throws MicrosoftAzureException, TimeoutException, InterruptedException {
-
-		VirtualNetworkConfiguration virtualNetworkConfiguration = getVirtualNetworkConfiguration();
-		VirtualNetworkSites virtualNetworkSites = virtualNetworkConfiguration.getVirtualNetworkSites();
-		if (virtualNetworkSites != null && virtualNetworkSites.contains(networkSiteName)) {
-			logger.info("Using an already existing virtual netowrk site : " + networkSiteName);
-			return;
-		} else {
-			if (virtualNetworkSites == null) {
-				virtualNetworkSites = new VirtualNetworkSites();
-			}
-		}
-
-		logger.info("Creating virtual network site : " + networkSiteName);
-
-		VirtualNetworkSite newSite = new VirtualNetworkSite();
-		AddressSpace address = new AddressSpace();
-		address.getAddressPrefix().add(addressSpace);
-		newSite.setAddressSpace(address);
-		newSite.setAffinityGroup(affinityGroup);
-		newSite.setName(networkSiteName);
-		Subnet subnet = new Subnet();
-		subnet.setName("subnet-" + networkSiteName);
-		subnet.getAddressPrefix().add(addressSpace);
-		Subnets subnets = new Subnets();
-		subnets.getSubnets().add(subnet);
-		newSite.setSubnets(subnets);
-
-		virtualNetworkSites.getVirtualNetworkSites().add(newSite);
-
-		setNetworkConfiguration(endTime, virtualNetworkConfiguration);
-		logger.fine("Created virtual network site : " + networkSiteName);
-	}
-
 	public void createVirtualNetworkSite(List<String> addressSpace, String affinityGroup, String networkSiteName,
 			String subnetName, String subnetAddr, Map<String, NetworkConfiguration> networkTemplates,
 			Map<String, String> dnsServers, VpnConfiguration vpnConfiguration,
 			long endTime) throws MicrosoftAzureException, TimeoutException, InterruptedException {
 
+		boolean shouldUpdateOrCreate = false;
+
 		VirtualNetworkConfiguration virtualNetworkConfiguration = getVirtualNetworkConfiguration();
-		VirtualNetworkSites virtualNetworkSites = virtualNetworkConfiguration.getVirtualNetworkSites();
+
+		VirtualNetworkSites virtualNetworkSites = null;
+
+		if (virtualNetworkConfiguration == null) {
+			virtualNetworkConfiguration = new VirtualNetworkConfiguration();
+			// just for logging
+			logger.fine("The Network configuration was not found.");
+			shouldUpdateOrCreate = true;
+		} else {
+			virtualNetworkSites = virtualNetworkConfiguration.getVirtualNetworkSites();
+		}
 
 		if (virtualNetworkSites == null) {
+			shouldUpdateOrCreate = true;
 			logger.fine("Creating virtual network sites...");
 			virtualNetworkSites = new VirtualNetworkSites();
+			virtualNetworkConfiguration.setVirtualNetworkSites(virtualNetworkSites);
 		}
 
 		VirtualNetworkSite virtualNetworkSite = null;
@@ -461,8 +423,6 @@ public class MicrosoftAzureRestClient {
 			logger.info("Creating subnets for virtual network site : " + networkSiteName);
 			virtualNetworkSite.setSubnets(new Subnets());
 		}
-
-		boolean shouldUpdateOrCreate = false;
 
 		// checking address
 		for (String addressPrefix : addressSpace) {
@@ -1576,6 +1536,9 @@ public class MicrosoftAzureRestClient {
 
 	public VirtualNetworkConfiguration getVirtualNetworkConfiguration() throws MicrosoftAzureException,
 			TimeoutException {
+
+		GlobalNetworkConfiguration globalNetowrkConfiguration = null;
+
 		ClientResponse response = doGet("/services/networking/media");
 		if (response.getStatus() == HTTP_NOT_FOUND) {
 			return null;
@@ -1585,7 +1548,7 @@ public class MicrosoftAzureRestClient {
 			responseBody = responseBody.substring(1);
 		}
 
-		GlobalNetworkConfiguration globalNetowrkConfiguration = (GlobalNetworkConfiguration) MicrosoftAzureModelUtils
+		globalNetowrkConfiguration = (GlobalNetworkConfiguration) MicrosoftAzureModelUtils
 				.unmarshall(responseBody);
 		return globalNetowrkConfiguration.getVirtualNetworkConfiguration();
 
@@ -1968,14 +1931,26 @@ public class MicrosoftAzureRestClient {
 	}
 
 	private boolean cloudServiceExists(final String cloudServiceName) throws MicrosoftAzureException, TimeoutException {
+
 		HostedServices cloudServices = listHostedServices();
-		return (cloudServices.contains(cloudServiceName));
+
+		boolean isContain = false;
+		if (cloudServices != null) {
+			isContain = cloudServices.contains(cloudServiceName);
+		}
+
+		return isContain;
 	}
 
 	private boolean affinityExists(final String affinityGroupName)
 			throws MicrosoftAzureException, TimeoutException {
 		AffinityGroups affinityGroups = listAffinityGroups();
-		return (affinityGroups.contains(affinityGroupName));
+
+		boolean isContain = false;
+		if (affinityGroups != null) {
+			isContain = affinityGroups.contains(affinityGroupName);
+		}
+		return isContain;
 	}
 
 	private boolean deploymentExists(final String cloudServiceName, final String deploymentName)
@@ -1993,18 +1968,32 @@ public class MicrosoftAzureRestClient {
 
 	private boolean storageExists(final String storageAccouhtName) throws MicrosoftAzureException, TimeoutException {
 		StorageServices storageServices = listStorageServices();
-		return (storageServices.contains(storageAccouhtName));
+
+		boolean isContain = false;
+		if (storageServices != null) {
+			isContain = storageServices.contains(storageAccouhtName);
+		}
+		return isContain;
 	}
 
 	private boolean isDiskExists(final String osDiskName) throws MicrosoftAzureException, TimeoutException {
 		Disks disks = listDisks();
-		return (disks.contains(osDiskName));
+		boolean isContain = false;
+		if (disks != null) {
+			isContain = disks.contains(osDiskName);
+		}
+		return isContain;
 	}
 
 	private boolean virtualNetworkExists(final String virtualNetworkName) throws MicrosoftAzureException,
 			TimeoutException {
 		VirtualNetworkSites sites = getVirtualNetworkConfiguration().getVirtualNetworkSites();
-		return (sites.contains(virtualNetworkName));
+
+		boolean isContain = false;
+		if (sites != null) {
+			isContain = sites.contains(virtualNetworkName);
+		}
+		return isContain;
 	}
 
 	private Error checkForError(final ClientResponse response)

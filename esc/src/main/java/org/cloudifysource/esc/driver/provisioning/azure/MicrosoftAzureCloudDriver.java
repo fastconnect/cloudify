@@ -483,6 +483,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			throw new IllegalArgumentException("Custom field '" + AZURE_NETWORK_NAME + "' must be set");
 		}
 		azureClient.setVirtualNetwork(this.networkName);
+
 	}
 
 	@Override
@@ -884,7 +885,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			vpnConfiguration = new VpnConfiguration(localNetworkSites, subnet, gateway, vpnGatewayType, vpnGatewayKey);
 
 		} else {
-			logger.fine("VPN configuration will be skipped, please check its properties");
+			logger.fine("VPN configuration is skipped");
 		}
 
 		return vpnConfiguration;

@@ -5,11 +5,17 @@ import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.apache.commons.lang.StringUtils;
 import org.cloudifysource.domain.cloud.Cloud;
 import org.cloudifysource.esc.driver.provisioning.CloudProvisioningException;
 import org.cloudifysource.esc.driver.provisioning.ProvisioningContext;
 import org.cloudifysource.esc.driver.provisioning.azure.MicrosoftAzureCloudDriver;
+import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureException;
 import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureRestClient;
+import org.cloudifysource.esc.driver.provisioning.azure.model.DataVirtualHardDisk;
+import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
+import org.cloudifysource.esc.driver.provisioning.azure.model.Role;
+import org.cloudifysource.esc.driver.provisioning.azure.model.RoleInstance;
 import org.cloudifysource.esc.driver.provisioning.storage.AzureStorageProvisioningDriver;
 import org.cloudifysource.esc.driver.provisioning.storage.StorageProvisioningException;
 
@@ -17,6 +23,9 @@ public class AzureStorageProvisioningDriverImpl implements AzureStorageProvision
 
 	private static final Logger logger = Logger.getLogger(AzureStorageProvisioningDriverImpl.class.getName());
 
+	private static final String HOSTCACHING_NONE = "None";
+	private static final String HOSTCACHING_READ_WRITE = "ReadWrite";
+	private static final String HOSTCACHING_READ_ONLY = "ReadOnly";
 	private static final long STORAGE_CREATION_SLEEP_TIMEOUT = 30000L;
 
 	private MicrosoftAzureCloudDriver computeDriver;
@@ -30,6 +39,7 @@ public class AzureStorageProvisioningDriverImpl implements AzureStorageProvision
 			throw new IllegalArgumentException("Custom field '" + MicrosoftAzureCloudDriver.AZURE_AFFINITY_GROUP
 					+ "' must be set");
 		}
+		logger.info("Initializing azure storage driver with affinity group: " + affinityGroup);
 	}
 
 	private AzureDeploymentContext getAzureContext() {
@@ -62,8 +72,11 @@ public class AzureStorageProvisioningDriverImpl implements AzureStorageProvision
 
 	@Override
 	public void close() {
-		// TODO Auto-generated method stub
 
+	}
+
+	private String getThreadId() {
+		return "[" + Thread.currentThread().getId() + "] ";
 	}
 
 	@Override
@@ -74,44 +87,147 @@ public class AzureStorageProvisioningDriverImpl implements AzureStorageProvision
 
 		boolean created = false;
 		while (!created) {
+			if (System.currentTimeMillis() > endTime) {
+				throw new TimeoutException(getThreadId() + "Timeout creating the storage account " + storageAccountName);
+			}
 			try {
+				logger.info(getThreadId() + "Creating Azure storage " + storageAccountName);
 				getAzureClient().createStorageAccount(affinityGroup, storageAccountName, endTime);
 				created = true;
 			} catch (Exception e) {
 				try {
-					logger.log(Level.WARNING, "Error creating the storage account '" + storageAccountName
-							+ "'. Sleeping " + STORAGE_CREATION_SLEEP_TIMEOUT + " ms before reattempt",
-							e.getMessage());
+					logger.log(Level.WARNING, getThreadId() + "Error creating the storage account '"
+							+ storageAccountName + "'. Sleeping " + STORAGE_CREATION_SLEEP_TIMEOUT
+							+ " ms before reattempt", e.getMessage());
 					Thread.sleep(STORAGE_CREATION_SLEEP_TIMEOUT);
 				} catch (InterruptedException e1) {
 					Thread.currentThread().interrupt();
-					logger.warning("Sleep interrupted");
+					logger.warning(getThreadId() + "Sleep interrupted");
 				}
-			}
-			if (System.currentTimeMillis() > endTime) {
-				throw new TimeoutException("Timeout creating the storage account " + storageAccountName);
 			}
 		}
 	}
 
 	@Override
-	public void createContainer(String storageAccountName, String containerName) {
-		logger.info(String.format("storageAccountName=%s, containerName=%s", storageAccountName, containerName));
+	public String createDataDisk(String storageAccountName, String ipAddress, int diskSize, int lun,
+			String hostCachingValue, long duration, TimeUnit timeUnit) throws StorageProvisioningException,
+			TimeoutException {
+
+		this.validateLun(lun);
+		final String hostCaching = this.handleHostCachingValue(hostCachingValue);
+
+		long endTime = System.currentTimeMillis() + timeUnit.toMillis(duration);
+
+		logger.info(String.format("%sCreating a new data disk in storage account '%s' on '%s'", getThreadId(),
+				storageAccountName, ipAddress));
+
+		String dataDiskName = null;
+		AzureDeploymentContext context = getAzureContext();
+		MicrosoftAzureRestClient azureClient = getAzureClient();
+		try {
+
+			// Get the deployment to retrieve the role name
+			String deploymentName = context.getDeploymentName();
+			String cloudServiceName = context.getCloudServiceName();
+			Deployment deployment = azureClient.getDeploymentByName(cloudServiceName, deploymentName);
+			Role role = deployment.getRoleList().getRoles().get(0);
+
+			String roleName = role.getRoleName();
+
+			logger.info(String.format("%sCreating data disk in storage account %s for %s on lun %s", getThreadId(),
+					storageAccountName, roleName, lun));
+
+			// Generate the vhd filename
+			StringBuilder vhdFilename = new StringBuilder();
+			vhdFilename.append(roleName.toLowerCase());
+			vhdFilename.append("data");
+			vhdFilename.append(String.format("%02d", lun));
+
+			// Create a data disk
+			azureClient.addDataDiskToVM(cloudServiceName, deploymentName, roleName, storageAccountName,
+					vhdFilename.toString(), diskSize, lun, hostCaching, endTime);
+			DataVirtualHardDisk dataDisk = azureClient.getDataDisk(cloudServiceName, deploymentName, roleName, lun,
+					endTime);
+			dataDiskName = dataDisk.getDiskName();
+
+		} catch (MicrosoftAzureException e) {
+			throw new StorageProvisioningException(e);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new StorageProvisioningException(e);
+		}
+		return dataDiskName;
+	}
+
+	private void validateLun(int lun) throws StorageProvisioningException {
+		// TODO
+	}
+
+	private String handleHostCachingValue(String hostCaching) {
+		hostCaching = StringUtils.isBlank(hostCaching) ? HOSTCACHING_NONE : hostCaching.trim();
+		if (StringUtils.equalsIgnoreCase(hostCaching, HOSTCACHING_READ_ONLY)) {
+			hostCaching = HOSTCACHING_READ_ONLY;
+		} else if (StringUtils.equalsIgnoreCase(hostCaching, HOSTCACHING_READ_WRITE)) {
+			hostCaching = HOSTCACHING_READ_WRITE;
+		} else {
+			if (!StringUtils.equalsIgnoreCase(hostCaching, HOSTCACHING_NONE)) {
+				logger.warning("Unknown host caching value " + hostCaching + ". Using default (" + HOSTCACHING_NONE
+						+ ")");
+			}
+			hostCaching = HOSTCACHING_NONE;
+		}
+		return hostCaching;
 	}
 
 	@Override
-	public void createFileService(String storageAccountName) {
-		logger.info(String.format("storageAccountName=%s", storageAccountName));
+	public void deleteDataDisk(String diskName, long duration, TimeUnit timeUnit) throws StorageProvisioningException,
+			TimeoutException {
+		logger.info(getThreadId() + "Deleting datadisk " + diskName);
+		long endTime = System.currentTimeMillis() + timeUnit.toMillis(duration);
+		try {
+			getAzureClient().deleteDisk(diskName, true, endTime);
+		} catch (MicrosoftAzureException e) {
+			throw new StorageProvisioningException(e);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new StorageProvisioningException(e);
+		}
 	}
 
 	@Override
-	public void createDataDisk(String containerName, String vhdFileName) {
-		logger.info(String.format("containerName=%s, vhdFileName=%s", containerName, vhdFileName));
-	}
+	public void attachDataDisk(String diskName, String ipAddress, int lun, long duration, TimeUnit timeUnit)
+			throws StorageProvisioningException,
+			TimeoutException {
+		long endTime = System.currentTimeMillis() + timeUnit.toMillis(duration);
 
-	@Override
-	public void attachDataDisk(String diskName) {
-		logger.info(String.format("diskName=%s", diskName));
+		MicrosoftAzureRestClient azureClient = getAzureClient();
+		AzureDeploymentContext context = getAzureContext();
+
+		String cloudServiceName = context.getCloudServiceName();
+		String deploymentName = context.getDeploymentName();
+		String roleName = null;
+
+		try {
+			// Get the deployment to retrieve the role name
+			Deployment deployment = azureClient.getDeploymentByName(cloudServiceName, deploymentName);
+			for (RoleInstance role : deployment.getRoleInstanceList().getRoleInstances()) {
+				if (role.getIpAddress().equals(ipAddress)) {
+					roleName = role.getRoleName();
+				}
+			}
+
+			logger.info(String.format("%sAttaching data disk %s to %s on lun %d", getThreadId(), diskName, roleName,
+					lun));
+
+			// Attach the existing data disk to the VM
+			azureClient.addExistingDataDiskToVM(cloudServiceName, deploymentName, roleName,
+					diskName, lun, endTime);
+		} catch (MicrosoftAzureException e) {
+			throw new StorageProvisioningException(e);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new StorageProvisioningException(e);
+		}
 	}
 
 }

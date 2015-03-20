@@ -69,12 +69,12 @@ public interface AzureStorageProvisioningDriver {
 	void createStorageAccount(String name, long duration, TimeUnit timeUnit) throws StorageProvisioningException,
 			TimeoutException;
 
-	void createContainer(String storageAccountName, String containerName) throws StorageProvisioningException;
+	String createDataDisk(String storageAccountName, String ipAddress, int size, int lun, String hostCaching,
+			long duration, TimeUnit timeUnit) throws StorageProvisioningException, TimeoutException;
 
-	void createFileService(String storageAccountName) throws StorageProvisioningException;
+	void deleteDataDisk(String diskName, long duration, TimeUnit timeUnit) throws StorageProvisioningException,
+			TimeoutException;
 
-	void createDataDisk(String containerName, String vhdFileName) throws StorageProvisioningException;
-
-	void attachDataDisk(String diskName) throws StorageProvisioningException;
-
+	void attachDataDisk(String diskName, String ipAddress, int lun, long duration, TimeUnit timeUnit)
+			throws StorageProvisioningException, TimeoutException;
 }

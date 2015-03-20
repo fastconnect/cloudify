@@ -13,13 +13,21 @@ public interface AzureRemoteStorageProvisioningDriver extends Remote {
 
 	void createStorageAccount(String name) throws RemoteStorageOperationException;
 
-	void createStorageAccount(String name, final long timeoutInMillis) throws RemoteStorageOperationException;
+	void createStorageAccount(String name, long timeoutInMillis) throws RemoteStorageOperationException;
 
-	void createContainer(String storageAccountName, String containerName) throws RemoteStorageOperationException;
+	String createDataDisk(String storageAccountName, String ipAddress, int size, int lun, String hostCaching)
+			throws RemoteStorageOperationException;
 
-	void createFileService(String storageAccountName) throws RemoteStorageOperationException;
+	String createDataDisk(String storageAccountName, String ipAddress, int size, int lun, String hostCaching,
+			long timeoutInMillis) throws RemoteStorageOperationException;
 
-	void createDataDisk(String containerName, String vhdFileName) throws RemoteStorageOperationException;
+	void deleteDataDisk(String diskName) throws RemoteStorageOperationException;
 
-	void attachDataDisk(String diskName) throws RemoteStorageOperationException;
+	void deleteDataDisk(String diskName, long timeoutInMillis) throws RemoteStorageOperationException;
+
+	void attachDataDisk(String diskName, String ipAddress, int lun)
+			throws RemoteStorageOperationException;
+
+	void attachDataDisk(String diskName, String ipAddress, int lun, long timeoutInMillis)
+			throws RemoteStorageOperationException;
 }

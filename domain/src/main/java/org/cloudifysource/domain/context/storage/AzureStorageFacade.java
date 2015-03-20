@@ -7,18 +7,24 @@ public interface AzureStorageFacade {
 
 	void createStorageAccount(String name) throws RemoteStorageOperationException, LocalStorageOperationException;
 
-	void createStorageAccount(String name, final long timeoutInMillis) throws RemoteStorageOperationException,
+	void createStorageAccount(String name, long timeoutInMillis) throws RemoteStorageOperationException,
 			LocalStorageOperationException;
 
-	void createContainer(String storageAccountName, String containerName) throws RemoteStorageOperationException,
+	String createDataDisk(String storageAccountName, String ipAddress, int size, int lun, String hostCaching)
+			throws RemoteStorageOperationException, LocalStorageOperationException;
+
+	String createDataDisk(String storageAccountName, String ipAddress, int size, int lun, String hostCaching,
+			long timeoutInMillis) throws RemoteStorageOperationException, LocalStorageOperationException;
+
+	void deleteDataDisk(String diskName) throws RemoteStorageOperationException, LocalStorageOperationException;
+
+	void deleteDataDisk(String diskName, long timeoutInMillis) throws RemoteStorageOperationException,
 			LocalStorageOperationException;
 
-	void createFileService(String storageAccountName) throws RemoteStorageOperationException,
-			LocalStorageOperationException;
+	void attachDataDisk(String diskName, String ipAddress, int lun)
+			throws RemoteStorageOperationException, LocalStorageOperationException;
 
-	void createDataDisk(String containerName, String vhdFileName) throws RemoteStorageOperationException,
-			LocalStorageOperationException;
-
-	void attachDataDisk(String diskName) throws RemoteStorageOperationException, LocalStorageOperationException;
+	void attachDataDisk(String diskName, String ipAddress, int lun, long timeoutInMillis)
+			throws RemoteStorageOperationException, LocalStorageOperationException;
 
 }

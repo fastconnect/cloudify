@@ -26,21 +26,18 @@ service {
   }
 
   customCommands([
-    "createStorageAccount": {
+    "createStorageAccount": { storageAccountName ->
         AzureStorageFacade storage = context.getAzureStorage()
-        storage.createStorageAccount("storageAccountName")
+        storage.createStorageAccount(storageAccountName, 60000L*30)
     },
-    "createContainer": {
-        context.azureStorage.createContainer("storageAccountName", "containerName")
+    "createDataDisk": { storageAccountName, ipAddress, size, lun, hostCaching ->
+        return context.azureStorage.createDataDisk(storageAccountName, ipAddress, size as Integer, lun as Integer, hostCaching, 60000L*30)
     },
-    "createFileService": {
-        context.azureStorage.createFileService("storageAccountName")
+    "attachDataDisk": { dataDiskName, ipAddress, lun ->
+        context.azureStorage.attachDataDisk(dataDiskName, ipAddress, lun as Integer, 60000L*30)
     },
-    "createDataDisk": {
-        context.azureStorage.createDataDisk("containerName", "path_to_vhd")
-    },
-    "attachDataDisk": {
-        context.azureStorage.attachDataDisk("attachDataDisk")
+    "deleteDataDisk": { dataDiskName ->
+        context.azureStorage.deleteDataDisk(dataDiskName, 60000L*30)
     }
   ])
 }

@@ -98,36 +98,48 @@ public class AzureRemoteStorageProvisioningDriverAdapter implements AzureRemoteS
 	}
 
 	@Override
-	public void createContainer(String storageAccountName, String containerName) throws RemoteStorageOperationException {
+	public String createDataDisk(String storageAccountName, String ipAddress, int size, int lun, String hostCaching)
+			throws RemoteStorageOperationException {
+		return createDataDisk(storageAccountName, ipAddress, size, lun, hostCaching, DEFAULT_STORAGE_OPERATION_TIMEOUT);
+	}
+
+	@Override
+	public String createDataDisk(String storageAccountName, String ipAddress, int size, int lun, String hostCaching,
+			long timeoutInMillis) throws RemoteStorageOperationException {
 		try {
-			storageProvisioningDriver.createContainer(storageAccountName, containerName);
+			return storageProvisioningDriver.createDataDisk(storageAccountName, ipAddress, size, lun, hostCaching,
+					timeoutInMillis, TimeUnit.MILLISECONDS);
+		} catch (final Exception e) {
+			logSevereAndThrow(e.getMessage(), e);
+			return "null";
+		}
+	}
+
+	@Override
+	public void deleteDataDisk(String diskName) throws RemoteStorageOperationException {
+		deleteDataDisk(diskName, DEFAULT_STORAGE_OPERATION_TIMEOUT);
+
+	}
+
+	@Override
+	public void deleteDataDisk(String diskName, long timeoutInMillis) throws RemoteStorageOperationException {
+		try {
+			storageProvisioningDriver.deleteDataDisk(diskName, timeoutInMillis, TimeUnit.MILLISECONDS);
 		} catch (final Exception e) {
 			logSevereAndThrow(e.getMessage(), e);
 		}
 	}
 
 	@Override
-	public void createFileService(String storageAccountName) throws RemoteStorageOperationException {
-		try {
-			storageProvisioningDriver.createFileService(storageAccountName);
-		} catch (final Exception e) {
-			logSevereAndThrow(e.getMessage(), e);
-		}
+	public void attachDataDisk(String diskName, String ipAddress, int lun) throws RemoteStorageOperationException {
+		attachDataDisk(diskName, ipAddress, lun, DEFAULT_STORAGE_OPERATION_TIMEOUT);
 	}
 
 	@Override
-	public void createDataDisk(String containerName, String vhdFileName) throws RemoteStorageOperationException {
+	public void attachDataDisk(String diskName, String ipAddress, int lun, long timeoutInMillis)
+			throws RemoteStorageOperationException {
 		try {
-			storageProvisioningDriver.createDataDisk(containerName, vhdFileName);
-		} catch (final Exception e) {
-			logSevereAndThrow(e.getMessage(), e);
-		}
-	}
-
-	@Override
-	public void attachDataDisk(String diskName) throws RemoteStorageOperationException {
-		try {
-			storageProvisioningDriver.attachDataDisk(diskName);
+			storageProvisioningDriver.attachDataDisk(diskName, ipAddress, lun, timeoutInMillis, TimeUnit.MILLISECONDS);
 		} catch (final Exception e) {
 			logSevereAndThrow(e.getMessage(), e);
 		}

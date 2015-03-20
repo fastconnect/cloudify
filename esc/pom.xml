@@ -271,6 +271,6 @@
 	<properties>
 		<jcloudsVersion>1.6.2-incubating</jcloudsVersion>
 		<cloudifyVersion>${project.parent.version}</cloudifyVersion>
-		<projectVersion>2.7.1-6300-RELEASE-Azure-s7</projectVersion>
+		<projectVersion>2.7.1-6300-RELEASE</projectVersion>
 	</properties>
 </project>

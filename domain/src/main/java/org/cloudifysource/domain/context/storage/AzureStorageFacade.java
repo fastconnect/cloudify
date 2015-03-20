@@ -7,6 +7,9 @@ public interface AzureStorageFacade {
 
 	void createStorageAccount(String name) throws RemoteStorageOperationException, LocalStorageOperationException;
 
+	void createStorageAccount(String name, final long timeoutInMillis) throws RemoteStorageOperationException,
+			LocalStorageOperationException;
+
 	void createContainer(String storageAccountName, String containerName) throws RemoteStorageOperationException,
 			LocalStorageOperationException;
 

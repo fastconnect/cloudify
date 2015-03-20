@@ -1403,7 +1403,7 @@ public class MicrosoftAzureRestClient {
 
 				pendingRequest.unlock();
 
-				logger.fine(getThreadIdentity() + "Lock unlcoked");
+				logger.fine(getThreadIdentity() + "Lock unlocked");
 
 			} catch (final Exception e) {
 				logger.fine(getThreadIdentity() + "About to release lock " + pendingRequest.hashCode());
@@ -1458,7 +1458,7 @@ public class MicrosoftAzureRestClient {
 					waitForRequestToFinish(requestId, endTime);
 					pendingRequest.unlock();
 
-					logger.fine(getThreadIdentity() + "Lock unlcoked");
+					logger.fine(getThreadIdentity() + "Lock unlocked");
 				} catch (MicrosoftAzureException e) {
 					if (e.getMessage().contains("is the only role present in the deployment")) {
 						throw new AzureOnlyOneRoleInDeploymetException(e);

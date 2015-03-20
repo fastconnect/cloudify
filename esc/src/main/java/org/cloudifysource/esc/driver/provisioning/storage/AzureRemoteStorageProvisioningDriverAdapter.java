@@ -15,6 +15,7 @@ package org.cloudifysource.esc.driver.provisioning.storage;
 
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutputStream;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -32,6 +33,8 @@ public class AzureRemoteStorageProvisioningDriverAdapter implements AzureRemoteS
 			.getLogger(AzureRemoteStorageProvisioningDriverAdapter.class.getName());
 
 	private static final long DEFAULT_STORAGE_OPERATION_TIMEOUT = 60 * 1000;
+
+	private static final long DEFAULT_STORAGE_ACCOUNT_OPERATION_TIMEOUT = 60 * 1000 * 15L; // 15 minutes
 
 	private AzureStorageProvisioningDriver storageProvisioningDriver;
 
@@ -82,8 +85,13 @@ public class AzureRemoteStorageProvisioningDriverAdapter implements AzureRemoteS
 
 	@Override
 	public void createStorageAccount(String name) throws RemoteStorageOperationException {
+		createStorageAccount(name, DEFAULT_STORAGE_ACCOUNT_OPERATION_TIMEOUT);
+	}
+
+	@Override
+	public void createStorageAccount(String name, long timeoutInMillis) throws RemoteStorageOperationException {
 		try {
-			storageProvisioningDriver.createStorageAccount(name);
+			storageProvisioningDriver.createStorageAccount(name, timeoutInMillis, TimeUnit.MILLISECONDS);
 		} catch (final Exception e) {
 			logSevereAndThrow(e.getMessage(), e);
 		}
@@ -124,4 +132,5 @@ public class AzureRemoteStorageProvisioningDriverAdapter implements AzureRemoteS
 			logSevereAndThrow(e.getMessage(), e);
 		}
 	}
+
 }

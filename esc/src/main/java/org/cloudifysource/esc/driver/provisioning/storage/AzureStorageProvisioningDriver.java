@@ -12,7 +12,12 @@
  *******************************************************************************/
 package org.cloudifysource.esc.driver.provisioning.storage;
 
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
 import org.cloudifysource.domain.cloud.Cloud;
+import org.cloudifysource.esc.driver.provisioning.CloudProvisioningException;
+import org.cloudifysource.esc.driver.provisioning.ProvisioningContext;
 
 /**
  * This interface provides an entry point to provision block storage devices and attach them to specific compute
@@ -51,11 +56,18 @@ public interface AzureStorageProvisioningDriver {
 	void setComputeContext(final Object context) throws StorageProvisioningException;
 
 	/**
+	 * This method is used when using cloudify storage static attachment
+	 */
+	void onMachineFailure(final ProvisioningContext context, final String templateName, final long duration,
+			final TimeUnit unit) throws TimeoutException, CloudProvisioningException, StorageProvisioningException;
+
+	/**
 	 * Close all resources.
 	 */
 	void close();
 
-	void createStorageAccount(String name) throws StorageProvisioningException;
+	void createStorageAccount(String name, long duration, TimeUnit timeUnit) throws StorageProvisioningException,
+			TimeoutException;
 
 	void createContainer(String storageAccountName, String containerName) throws StorageProvisioningException;
 
@@ -64,4 +76,5 @@ public interface AzureStorageProvisioningDriver {
 	void createDataDisk(String containerName, String vhdFileName) throws StorageProvisioningException;
 
 	void attachDataDisk(String diskName) throws StorageProvisioningException;
+
 }

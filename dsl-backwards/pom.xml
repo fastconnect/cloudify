@@ -9,7 +9,7 @@
 	<version>${utilitydomain.version}</version>
 
 	<properties>
-		<utilitydomain.version>2.7.1-6300-RELEASE-Azure-s7</utilitydomain.version>
+		<utilitydomain.version>2.7.1-6300-RELEASE</utilitydomain.version>
 	</properties>
 
 	<parent>

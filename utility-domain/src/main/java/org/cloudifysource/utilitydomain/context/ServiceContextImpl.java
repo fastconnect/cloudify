@@ -161,7 +161,7 @@ public class ServiceContextImpl implements ServiceContext {
 			} else if (CloudifyConstants.NETWORK_REMOTE_API_KEY.equals(apiName)) {
 				return new NetworkFacadeImpl((RemoteNetworkProvisioningDriver) remoteApi);
 			} else if (CloudifyConstants.AZURE_REMOTE_API_KEY.equals(apiName)) {
-				return new AzureStorageFacadeImpl((AzureRemoteStorageProvisioningDriver) remoteApi);
+				return new AzureStorageFacadeImpl(this, (AzureRemoteStorageProvisioningDriver) remoteApi);
 			}
 		}
 		return null;

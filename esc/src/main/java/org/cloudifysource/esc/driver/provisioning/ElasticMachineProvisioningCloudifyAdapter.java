@@ -1133,6 +1133,11 @@ public class ElasticMachineProvisioningCloudifyAdapter implements ElasticMachine
 			networkConfig.setCloud(cloud);
 			this.networkProvisioning.setConfig(networkConfig);
 		}
+		if (this.azureStorageProvisioning != null) {
+			((AzureStorageProvisioningDriver) this.azureStorageProvisioning).setComputeContext(cloudifyProvisioning
+					.getComputeContext());
+			this.azureStorageProvisioning.setConfig(cloud, this.cloudTemplateName);
+		}
 	}
 
 	private ServiceNetwork createNetworkObject() throws ElasticMachineProvisioningException {
@@ -1303,6 +1308,9 @@ public class ElasticMachineProvisioningCloudifyAdapter implements ElasticMachine
 		if (isStorageTemplateUsed()) {
 			this.storageProvisioning.close();
 		}
+		if (azureStorageProvisioning != null) {
+			this.azureStorageProvisioning.close();
+		}
 		// not closing globalAdminMutex, it's a static object, and this is intentional.
 	}
 
@@ -1389,6 +1397,9 @@ public class ElasticMachineProvisioningCloudifyAdapter implements ElasticMachine
 			if (storageProvisioning != null && storageProvisioning instanceof BaseStorageDriver) {
 				((BaseStorageDriver) storageProvisioning).onMachineFailure(ctx, storageTemplateName, duration,
 						timeUnit);
+			}
+			if (azureStorageProvisioning != null) {
+				azureStorageProvisioning.onMachineFailure(ctx, storageTemplateName, duration, timeUnit);
 			}
 
 			// handling compute resources

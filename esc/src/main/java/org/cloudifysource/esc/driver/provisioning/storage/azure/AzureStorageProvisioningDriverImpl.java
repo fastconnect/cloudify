@@ -1,11 +1,15 @@
 package org.cloudifysource.esc.driver.provisioning.storage.azure;
 
-import java.util.LinkedList;
-import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.cloudifysource.domain.cloud.Cloud;
-import org.cloudifysource.esc.driver.provisioning.ProvisioningDriverListener;
+import org.cloudifysource.esc.driver.provisioning.CloudProvisioningException;
+import org.cloudifysource.esc.driver.provisioning.ProvisioningContext;
+import org.cloudifysource.esc.driver.provisioning.azure.MicrosoftAzureCloudDriver;
+import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureRestClient;
 import org.cloudifysource.esc.driver.provisioning.storage.AzureStorageProvisioningDriver;
 import org.cloudifysource.esc.driver.provisioning.storage.StorageProvisioningException;
 
@@ -13,40 +17,47 @@ public class AzureStorageProvisioningDriverImpl implements AzureStorageProvision
 
 	private static final Logger logger = Logger.getLogger(AzureStorageProvisioningDriverImpl.class.getName());
 
-	private static final String EVENT_ATTEMPT_CONNECTION_TO_CLOUD_API = "try_to_connect_to_cloud_api";
-	private static final String EVENT_ACCOMPLISHED_CONNECTION_TO_CLOUD_API = "connection_to_cloud_api_succeeded";
+	private static final long STORAGE_CREATION_SLEEP_TIMEOUT = 30000L;
 
-	private Cloud cloud;
+	private MicrosoftAzureCloudDriver computeDriver;
 
-	protected final List<ProvisioningDriverListener> eventsListenersList = new LinkedList<ProvisioningDriverListener>();
+	private String affinityGroup;
 
 	@Override
 	public void setConfig(Cloud cloud, String computeTemplateName) {
-		logger.info("Initializing Azure storage provisioning on Microsoft Azure");
-		this.cloud = cloud;
-		final String provider = cloud.getProvider().getProvider();
-
-		publishEvent(EVENT_ATTEMPT_CONNECTION_TO_CLOUD_API, provider);
-		logger.info("Creating Azure storage driver context");
-		initDeployer();
-		publishEvent(EVENT_ACCOMPLISHED_CONNECTION_TO_CLOUD_API, provider);
-	}
-
-	private void initDeployer() {
-		logger.finest("TODO initialize deployer");
-
-	}
-
-	protected void publishEvent(final String eventName, final Object... args) {
-		for (final ProvisioningDriverListener listener : this.eventsListenersList) {
-			listener.onProvisioningEvent(eventName, args);
+		this.affinityGroup = (String) cloud.getCustom().get(MicrosoftAzureCloudDriver.AZURE_AFFINITY_GROUP);
+		if (affinityGroup == null) {
+			throw new IllegalArgumentException("Custom field '" + MicrosoftAzureCloudDriver.AZURE_AFFINITY_GROUP
+					+ "' must be set");
 		}
 	}
 
-	@Override
-	public void setComputeContext(Object context) throws StorageProvisioningException {
-		// TODO Auto-generated method stub
+	private AzureDeploymentContext getAzureContext() {
+		return computeDriver.getAzureContext();
+	}
 
+	private MicrosoftAzureRestClient getAzureClient() {
+		return computeDriver.getAzureContext().getAzureClient();
+	}
+
+	@Override
+	public void setComputeContext(Object computeContext) throws StorageProvisioningException {
+		if (computeContext != null) {
+			if (!(computeContext instanceof MicrosoftAzureCloudDriver)) {
+				throw new StorageProvisioningException("Incompatible context class "
+						+ computeContext.getClass().getName());
+			}
+			this.computeDriver = (MicrosoftAzureCloudDriver) computeContext;
+		}
+		logger.info("Initialize Azure storage driver with context: " + computeDriver.getAzureContext());
+	}
+
+	@Override
+	public void onMachineFailure(final ProvisioningContext context, final String templateName, final long duration,
+			final TimeUnit unit) throws TimeoutException, CloudProvisioningException, StorageProvisioningException {
+		String machineId = context.getPreviousMachineDetails().getMachineId();
+		logger.warning("Machine id '" + machineId
+				+ "'has failed and might have create volumes which are not cleaned propertly");
 	}
 
 	@Override
@@ -56,9 +67,31 @@ public class AzureStorageProvisioningDriverImpl implements AzureStorageProvision
 	}
 
 	@Override
-	public void createStorageAccount(String name) {
-		logger.info(String.format("name=%s", name));
+	public void createStorageAccount(String storageAccountName, long duration, TimeUnit timeUnit)
+			throws StorageProvisioningException, TimeoutException {
 
+		long endTime = System.currentTimeMillis() + timeUnit.toMillis(duration);
+
+		boolean created = false;
+		while (!created) {
+			try {
+				getAzureClient().createStorageAccount(affinityGroup, storageAccountName, endTime);
+				created = true;
+			} catch (Exception e) {
+				try {
+					logger.log(Level.WARNING, "Error creating the storage account '" + storageAccountName
+							+ "'. Sleeping " + STORAGE_CREATION_SLEEP_TIMEOUT + " ms before reattempt",
+							e.getMessage());
+					Thread.sleep(STORAGE_CREATION_SLEEP_TIMEOUT);
+				} catch (InterruptedException e1) {
+					Thread.currentThread().interrupt();
+					logger.warning("Sleep interrupted");
+				}
+			}
+			if (System.currentTimeMillis() > endTime) {
+				throw new TimeoutException("Timeout creating the storage account " + storageAccountName);
+			}
+		}
 	}
 
 	@Override

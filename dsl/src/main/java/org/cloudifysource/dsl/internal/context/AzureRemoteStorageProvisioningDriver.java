@@ -13,6 +13,8 @@ public interface AzureRemoteStorageProvisioningDriver extends Remote {
 
 	void createStorageAccount(String name) throws RemoteStorageOperationException;
 
+	void createStorageAccount(String name, final long timeoutInMillis) throws RemoteStorageOperationException;
+
 	void createContainer(String storageAccountName, String containerName) throws RemoteStorageOperationException;
 
 	void createFileService(String storageAccountName) throws RemoteStorageOperationException;

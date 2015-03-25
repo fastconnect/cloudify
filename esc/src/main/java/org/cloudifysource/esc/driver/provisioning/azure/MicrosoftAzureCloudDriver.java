@@ -206,6 +206,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String DOMAIN_USERNAME = "userName";
 	private static final String DOMAIN_PASSWORD = "password";
 	private static final String JOIN_DOMAIN = "joinDomain";
+	private static final String MACHINE_OBJECT_OU = "machineObjectOU";
 
 	private static final String ENDPOINT_NAME = "name";
 	private static final String ENDPOINT_LOCALPORT = "localPort";
@@ -1420,6 +1421,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			String userName = domainJoinMap.get(DOMAIN_USERNAME);
 			String password = domainJoinMap.get(DOMAIN_PASSWORD);
 			String joinDomain = domainJoinMap.get(JOIN_DOMAIN);
+			String machineObjectOU = domainJoinMap.get(MACHINE_OBJECT_OU);
 
 			if (StringUtils.isNotBlank(domain) && StringUtils.isNotBlank(userName)
 					&& StringUtils.isNotBlank(password) && StringUtils.isNotBlank(joinDomain)) {
@@ -1432,6 +1434,9 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 				domainJoin = new DomainJoin();
 				domainJoin.setCredentials(jc);
 				domainJoin.setJoinDomain(joinDomain);
+				if (StringUtils.isNotEmpty(machineObjectOU)) {
+					domainJoin.setMachineObjectOU(machineObjectOU);
+				}
 			}
 		}
 		return domainJoin;

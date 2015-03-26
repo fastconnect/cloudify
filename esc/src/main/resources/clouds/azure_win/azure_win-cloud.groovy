@@ -195,6 +195,11 @@ cloud {
 					// Optional. each availability set represents a different fault domain.
 					// "azure.availability.set" : "ENTER_AVAILABILITY_SET",
 
+                    // Optional. If the property "azure.availability.set" is configured for this compute template.
+                    // The driver will create availability sets with a maximum of "azure.availability.set.max.members" members in it.
+                    // When the maximum members is reached in the availability set, the driver will create a new one.
+                    // "azure.availability.set.max.members" : 2,
+
 					// Optional. Cloud service. If not exist, it will create one.
 					//"azure.cloud.service" : "CLOUD_SERVICE_NAME",
 
@@ -284,7 +289,8 @@ cloud {
 					 domain:"DOMAIN_NAME",  // ex: victor
 					 userName:"DOMAIN_USER",  // ex: administrateur
 					 password: "DOMAIN_USER_PASSWORD",  // ex: Azerty@01
-					 joinDomain: "DOMAIN" // ex: victor.local
+					 joinDomain: "DOMAIN", // ex: victor.local
+                     machineObjectOU: "MEMBER_OU"
 					 ]
 					 */
 

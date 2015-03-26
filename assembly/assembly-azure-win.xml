@@ -14,7 +14,7 @@
 			<scope>runtime</scope>
 			<fileMode>0440</fileMode>
 			<directoryMode>0755</directoryMode>
-			<outputDirectory>/clouds/azure/upload/cloudify-overrides/lib/platform/esm</outputDirectory>
+			<outputDirectory>/lib/platform/esm</outputDirectory>
 			<outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
 		</dependencySet>
 		<dependencySet>
@@ -27,7 +27,7 @@
 			<scope>runtime</scope>
 			<fileMode>0440</fileMode>
 			<directoryMode>0755</directoryMode>
-			<outputDirectory>/clouds/azure/upload/cloudify-overrides/lib/platform/cloudify</outputDirectory>
+			<outputDirectory>/lib/platform/cloudify</outputDirectory>
 			<outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
 		</dependencySet>
 	</dependencySets>

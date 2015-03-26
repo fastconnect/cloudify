@@ -1,5 +1,5 @@
 /******************************************************************************
- * 
+ *
  * Copyright (c) 2012 GigaSpaces Technologies Ltd. All rights reserved * * Licensed under the Apache License, Version
  * 2.0 (the "License"); * you may not use this file except in compliance with the License. * You may obtain a copy of
  * the License at * * http://www.apache.org/licenses/LICENSE-2.0 * * Unless required by applicable law or agreed to in
@@ -11,6 +11,7 @@
 package org.cloudifysource.esc.driver.provisioning.azure.client;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -24,9 +25,11 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 import javax.net.ssl.SSLContext;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.ReflectionToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -95,10 +98,9 @@ import com.sun.jersey.client.urlconnection.HTTPSProperties;
  * IaaS. each VM is provisioned onto a separate cloud service that belong to the same virtual network site. this way all
  * VM's are assigned public and private IP. and all VM's can be either a back end of a front end of you application.
  * authentication is achieved by using self-signed certificates (OpenSSL, makecert)
- * 
+ *
  * @author elip
  ********************************************************************************/
-
 public class MicrosoftAzureRestClient {
 
 	private static final int HTTP_NOT_FOUND = 404;
@@ -220,7 +222,7 @@ public class MicrosoftAzureRestClient {
 	}
 
 	/**
-	 * 
+	 *
 	 * @param logger
 	 *            - the logger to add to the client
 	 */
@@ -252,8 +254,8 @@ public class MicrosoftAzureRestClient {
 	}
 
 	/**
-	 * 
-	 * 
+	 *
+	 *
 	 * @param endTime
 	 *            .
 	 * @return - the newly created cloud service name.
@@ -340,14 +342,14 @@ public class MicrosoftAzureRestClient {
 
 	/**
 	 * this method creates a storage account with the given name, or does nothing if the account exists.
-	 * 
+	 *
 	 * @param affinityGroup
 	 *            - the affinity group for the storage account.
 	 * @param storageAccountName
 	 *            - the name for the storage account to create.
 	 * @param endTime
 	 *            .
-	 * 
+	 *
 	 * @throws InterruptedException .
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
@@ -654,14 +656,14 @@ public class MicrosoftAzureRestClient {
 
 	/**
 	 * this method creates an affinity group with the given name, or does nothing if the group exists.
-	 * 
+	 *
 	 * @param affinityGroup
 	 *            - the name of the affinity group to create
 	 * @param location
 	 *            - one of MS Data Centers locations.
 	 * @param endTime
 	 *            .
-	 * 
+	 *
 	 * @throws InterruptedException .
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
@@ -691,9 +693,9 @@ public class MicrosoftAzureRestClient {
 	 * This method creates a virtual machine and a corresponding cloud service. the cloud service will use the affinity
 	 * group specified by deploymentDesc.getAffinityGroup(); If another request was made this method will wait until the
 	 * pending request is finished.
-	 * 
+	 *
 	 * If a failure happened after the cloud service was created, this method will delete it and throw.
-	 * 
+	 *
 	 * @param deplyomentDesc
 	 *            .
 	 * @param endTime
@@ -737,6 +739,32 @@ public class MicrosoftAzureRestClient {
 
 				cloudServiceName = createHostedService.getServiceName();
 				deploymentDesc.setHostedServiceName(cloudServiceName);
+
+				if (StringUtils.isNotEmpty(deploymentDesc.getAvailabilitySetName())
+						&& deploymentDesc.getAvailabilitySetMaxMember() > 0) {
+
+					Map<String, Integer> availabilitySetMap =
+							this.getAvailabilitySetLike(cloudServiceName, deploymentDesc.getAvailabilitySetName()
+									+ "[0-9]{3}");
+
+					String newAvailabilityName = null;
+					for (Entry<String, Integer> entry : availabilitySetMap.entrySet()) {
+						if (entry.getValue() < deploymentDesc.getAvailabilitySetMaxMember()) {
+							newAvailabilityName = entry.getKey();
+							logger.info(String.format("Existing availability set '%s' with %s/%s members",
+									newAvailabilityName, entry.getValue(), deploymentDesc.getAvailabilitySetMaxMember()));
+							break;
+						}
+					}
+
+					if (newAvailabilityName == null) {
+						newAvailabilityName = String.format("%s%03d",
+								deploymentDesc.getAvailabilitySetName(), availabilitySetMap.size());
+					}
+
+					logger.info("Using availability set : " + newAvailabilityName);
+					deploymentDesc.setAvailabilitySetName(newAvailabilityName);
+				}
 
 				// check static IP(s) availability
 				// which is skipped if no private ip was defined in the current compute template
@@ -1052,12 +1080,12 @@ public class MicrosoftAzureRestClient {
 	/**
 	 * This method deletes the storage account with the specified name. or does nothing if the storage account does not
 	 * exist.
-	 * 
+	 *
 	 * @param storageAccountName
 	 *            .
 	 * @param endTime
 	 *            .
-	 * 
+	 *
 	 * @return - true if the operation was successful, throws otherwise.
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
@@ -1090,7 +1118,7 @@ public class MicrosoftAzureRestClient {
 	/**
 	 * This method deletes the affinity group with the specified name. or does nothing if the affinity group does not
 	 * exist.
-	 * 
+	 *
 	 * @param affinityGroupName
 	 *            .
 	 * @param endTime
@@ -1116,7 +1144,7 @@ public class MicrosoftAzureRestClient {
 	/**
 	 * This method deletes the cloud service with the specified name. or does nothing if the cloud service does not
 	 * exist.
-	 * 
+	 *
 	 * @param cloudServiceName
 	 *            .
 	 * @param endTime
@@ -1163,7 +1191,7 @@ public class MicrosoftAzureRestClient {
 	}
 
 	/**
-	 * 
+	 *
 	 * @param machineIp
 	 *            - the machine ip.
 	 * @param isPrivateIp
@@ -1217,7 +1245,7 @@ public class MicrosoftAzureRestClient {
 	/**
 	 * This method deletes the virtual machine under the deployment specified by deploymentName. it also deletes the
 	 * associated disk and cloud service.
-	 * 
+	 *
 	 * @param cloudServiceName
 	 *            .
 	 * @param deploymentName
@@ -1297,7 +1325,7 @@ public class MicrosoftAzureRestClient {
 	/**
 	 * this method return all disks that are currently being used by this subscription. NOTE : disks that are not
 	 * attached to any deployment are also returned. this means that {@code Disk.getAttachedTo} might return null.
-	 * 
+	 *
 	 * @return .
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
@@ -1312,11 +1340,11 @@ public class MicrosoftAzureRestClient {
 	/**
 	 * This method deletes a disk with the specified name. or does nothing if the disk does not exist. if the parameter
 	 * deleteVhd is true, this will delete also the .vhd file
-	 * 
+	 *
 	 * @param diskName
-	 * 
+	 *
 	 * @param deleteVhd
-	 * 
+	 *
 	 * @param endTime
 	 *            .
 	 * @return - true if the operation was successful, throws otherwise.
@@ -1353,7 +1381,7 @@ public class MicrosoftAzureRestClient {
 	/**
 	 * This method deletes just the virtual machine from the specified cloud service. associated OS Disk and cloud
 	 * service are not removed.
-	 * 
+	 *
 	 * @param hostedServiceName
 	 *            .
 	 * @param deploymentName
@@ -1492,7 +1520,7 @@ public class MicrosoftAzureRestClient {
 	}
 
 	/**
-	 * 
+	 *
 	 * @return .
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
@@ -1506,7 +1534,7 @@ public class MicrosoftAzureRestClient {
 	}
 
 	/**
-	 * 
+	 *
 	 * @return .
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
@@ -1522,7 +1550,7 @@ public class MicrosoftAzureRestClient {
 	}
 
 	/**
-	 * 
+	 *
 	 * @return .
 	 * @throws MicrosoftAzureException .
 	 * @throws TimeoutException .
@@ -1583,7 +1611,7 @@ public class MicrosoftAzureRestClient {
 	}
 
 	/**
-	 * 
+	 *
 	 * @param hostedServiceName
 	 *            .
 	 * @param deploymentSlot
@@ -1609,7 +1637,7 @@ public class MicrosoftAzureRestClient {
 	}
 
 	/**
-	 * 
+	 *
 	 * @param hostedServiceName
 	 *            .
 	 * @param deploymentName
@@ -1633,7 +1661,7 @@ public class MicrosoftAzureRestClient {
 	}
 
 	/**
-	 * 
+	 *
 	 * @param machineIp
 	 *            .
 	 * @param isPrivateIp
@@ -1684,7 +1712,7 @@ public class MicrosoftAzureRestClient {
 
 	/**
 	 * This method deletes the virtual network specified. or does nothing if the virtual network does not exist.
-	 * 
+	 *
 	 * @param virtualNetworkSite
 	 *            - virtual network site name to delete .
 	 * @param endTime
@@ -2224,7 +2252,7 @@ public class MicrosoftAzureRestClient {
 	/**
 	 * Create and attach a new data disk to a VM.<br />
 	 * This method generate a vhd filename and use LUN 0.
-	 * 
+	 *
 	 * @param serviceName
 	 *            The cloud service name.
 	 * @param deploymentName
@@ -2260,7 +2288,7 @@ public class MicrosoftAzureRestClient {
 	 * <br />
 	 * We trick Microsoft Azure to create a data disk with no attachment.<br />
 	 * Have to put a lock to ensure that the LUN is free on the temporary attached VM.
-	 * 
+	 *
 	 * @param cloudServiceName
 	 * @param deploymentName
 	 * @param roleName
@@ -2314,7 +2342,7 @@ public class MicrosoftAzureRestClient {
 
 	/**
 	 * Create and attach a new data disk to a VM.
-	 * 
+	 *
 	 * @param serviceName
 	 *            The cloud service name.
 	 * @param deploymentName
@@ -2387,7 +2415,7 @@ public class MicrosoftAzureRestClient {
 
 	/**
 	 * Update a label of a data disk.
-	 * 
+	 *
 	 * @param diskName
 	 *            The data disk name.
 	 * @param newLabel
@@ -2423,7 +2451,7 @@ public class MicrosoftAzureRestClient {
 
 	/**
 	 * Attach a data disk to a VM.
-	 * 
+	 *
 	 * @param serviceName
 	 *            The cloud service name.
 	 * @param deploymentName
@@ -2464,7 +2492,7 @@ public class MicrosoftAzureRestClient {
 
 	/**
 	 * Detach a data disk from a VM.
-	 * 
+	 *
 	 * @param serviceName
 	 *            The cloud service name.
 	 * @param deploymentName
@@ -2475,7 +2503,7 @@ public class MicrosoftAzureRestClient {
 	 *            The LUN number where the disk is attached to.
 	 * @param endTime
 	 *            The timeout for the operation.
-	 * 
+	 *
 	 * @throws MicrosoftAzureException
 	 * @throws TimeoutException
 	 * @throws InterruptedException
@@ -2496,7 +2524,7 @@ public class MicrosoftAzureRestClient {
 
 	/**
 	 * Get a data disk.
-	 * 
+	 *
 	 * @param serviceName
 	 *            The cloud service name.
 	 * @param deploymentName
@@ -2507,7 +2535,7 @@ public class MicrosoftAzureRestClient {
 	 *            The LUN number where the disk is attached to.
 	 * @param endTime
 	 *            The timeout for the operation.
-	 * 
+	 *
 	 * @throws MicrosoftAzureException
 	 * @throws TimeoutException
 	 * @throws InterruptedException
@@ -2582,7 +2610,7 @@ public class MicrosoftAzureRestClient {
 
 	/**
 	 * TODO investigate gateway operation status
-	 * 
+	 *
 	 * @param virtualNetwork
 	 * @param endTime
 	 * @throws MicrosoftAzureException
@@ -2623,7 +2651,7 @@ public class MicrosoftAzureRestClient {
 	}
 
 	/**
-	 * 
+	 *
 	 * @param virtualNetwork
 	 * @param endTime
 	 * @throws MicrosoftAzureException
@@ -2775,5 +2803,43 @@ public class MicrosoftAzureRestClient {
 				throw new AzureResourceNotFoundException("Storage account not found : " + storageAccountName);
 			}
 		}
+	}
+
+	public Map<String, Integer> getAvailabilitySet(String cloudServiceName)
+			throws MicrosoftAzureException, TimeoutException {
+		Map<String, Integer> availabilitySetMap = new HashMap<String, Integer>();
+		HostedService hostedService = getHostedService(cloudServiceName, true);
+		if (hostedService != null) {
+			Deployments deployments = hostedService.getDeployments();
+			for (Deployment deployment : deployments.getDeployments()) {
+				for (Role role : deployment.getRoleList().getRoles()) {
+					String availabilitySetName = role.getAvailabilitySetName();
+					if (StringUtils.isNotEmpty(availabilitySetName)) {
+						if (!availabilitySetMap.containsKey(availabilitySetName)) {
+							availabilitySetMap.put(availabilitySetName, 1);
+						} else {
+							Integer count = availabilitySetMap.get(availabilitySetName);
+							availabilitySetMap.put(availabilitySetName, count + 1);
+						}
+					}
+				}
+			}
+		}
+		return availabilitySetMap;
+	}
+
+	public Map<String, Integer> getAvailabilitySetLike(String cloudServiceName, String regex)
+			throws MicrosoftAzureException, TimeoutException {
+		Pattern pattern = Pattern.compile(regex);
+		Map<String, Integer> availabilitySetMap = this.getAvailabilitySet(cloudServiceName);
+		Iterator<Entry<String, Integer>> it = availabilitySetMap.entrySet().iterator();
+		while (it.hasNext()) {
+			Entry<String, Integer> next = it.next();
+			if (!pattern.matcher(next.getKey()).matches()) {
+				it.remove();
+			}
+		}
+		return availabilitySetMap;
+
 	}
 }

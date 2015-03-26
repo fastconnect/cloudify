@@ -139,6 +139,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String AZURE_STORAGE_DATADISK_SIZE = "azure.storage.datadisk.size";
 
 	private static final String AZURE_AVAILABILITY_SET = "azure.availability.set";
+	private static final String AZURE_AVAILABILITY_SET_MAX_MEMBERS = "azure.availability.set.max.members";
 	private static final String AZURE_CLEANUP_ON_TEARDOWN = "azure.cleanup.on.teardown";
 
 	// Networks properties
@@ -186,6 +187,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private String pathToPfxFile;
 	private String pfxPassword;
 	private String availabilitySet;
+	private Integer availabilitySetMaxMember;
 	private Integer dataDiskSize;
 	private String ipAddresses;
 
@@ -276,6 +278,16 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			this.availabilitySet = availability.trim();
 		} else {
 			this.availabilitySet = this.globalAvailabilitySet;
+		}
+
+		// availability members limit
+		Object asmm = this.template.getCustom().get(AZURE_AVAILABILITY_SET_MAX_MEMBERS);
+		if (asmm != null) {
+			if (asmm instanceof Integer) {
+				this.availabilitySetMaxMember = (Integer) asmm;
+			} else {
+				throw new IllegalArgumentException(AZURE_AVAILABILITY_SET_MAX_MEMBERS + " must be an Integer");
+			}
 		}
 
 		this.deploymentSlot = (String) this.template.getCustom().get(AZURE_DEPLOYMENT_SLOT);
@@ -547,6 +559,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 			// availability set
 			desc.setAvailabilitySetName(this.availabilitySet);
+			desc.setAvailabilitySetMaxMember(this.availabilitySetMaxMember);
 
 			// verify whether a CS is set or not in the compute template
 			String cloudServiceInCompute = (String) template.getCustom().get(AZURE_CLOUD_SERVICE);

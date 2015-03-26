@@ -408,7 +408,7 @@ public class MicrosoftAzureRequestBodyBuilder {
 		Role role = deployment.getRoleList().getRoles().get(0);
 
 		PersistentVMRole persistentVMRole = new PersistentVMRole();
-		persistentVMRole.setAvailabilitySetName(role.getAvailabilitySetName());
+		persistentVMRole.setAvailabilitySetName(deplyomentDesc.getAvailabilitySetName());
 		persistentVMRole.setConfigurationSets(role.getConfigurationSets());
 		persistentVMRole.setOsVirtualHardDisk(role.getOsVirtualHardDisk());
 

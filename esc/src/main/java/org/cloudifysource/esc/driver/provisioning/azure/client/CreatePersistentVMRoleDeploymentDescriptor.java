@@ -28,6 +28,7 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 	private String size;
 	private String networkName;
 	private String availabilitySetName;
+	private int availabilitySetMaxMember = -1;
 	private String roleName;
 	private String affinityGroup;
 	private String hostedServiceName;
@@ -79,6 +80,14 @@ public class CreatePersistentVMRoleDeploymentDescriptor {
 
 	public void setAvailabilitySetName(final String availabilitySetName) {
 		this.availabilitySetName = availabilitySetName;
+	}
+
+	public int getAvailabilitySetMaxMember() {
+		return availabilitySetMaxMember;
+	}
+
+	public void setAvailabilitySetMaxMember(int availabilitySetMaxMember) {
+		this.availabilitySetMaxMember = availabilitySetMaxMember;
 	}
 
 	public String getNetworkName() {

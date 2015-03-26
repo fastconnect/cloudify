@@ -1,6 +1,7 @@
 package org.cloudifysource.esc.driver.provisioning.azure.client;
 
 import java.net.MalformedURLException;
+import java.util.Map;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Logger;
 
@@ -61,5 +62,17 @@ public class MicrosoftAzureRestClientTestIT {
 				LOGGER.warning("The affinity group '" + affinityGroupName + "' has not been deleted.");
 			}
 		}
+	}
+
+	@Test
+	public void testAvailabilitySet() throws Exception {
+		Map<String, Integer> availabilitySet = client.getAvailabilitySet("vk7cfy001");
+		System.out.println(availabilitySet);
+	}
+
+	@Test
+	public void testAvailabilitySetLike() throws Exception {
+		Map<String, Integer> availabilitySet = client.getAvailabilitySetLike("vk7cfy001", "vicos[0-9]{3}");
+		System.out.println(availabilitySet);
 	}
 }

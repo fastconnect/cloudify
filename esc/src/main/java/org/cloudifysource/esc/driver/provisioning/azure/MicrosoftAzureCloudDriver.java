@@ -259,7 +259,6 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	@Override
 	public void setConfig(ComputeDriverConfiguration configuration) throws CloudProvisioningException {
 		super.setConfig(configuration);
-		logger.setLevel(Level.ALL);
 
 		this.verifyManagementNetworkConfiguration(configuration.getCloud());
 
@@ -275,19 +274,26 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		}
 		String availability = (String) this.template.getCustom().get(AZURE_AVAILABILITY_SET);
 		if (StringUtils.isNotBlank(availability)) {
+			logger.fine("Using compute template configuration for " + AZURE_AVAILABILITY_SET + " settings");
 			this.availabilitySet = availability.trim();
 		} else {
 			this.availabilitySet = this.globalAvailabilitySet;
 		}
 
 		// availability members limit
-		Object asmm = this.template.getCustom().get(AZURE_AVAILABILITY_SET_MAX_MEMBERS);
+		Object asmm = cloud.getCustom().get(AZURE_AVAILABILITY_SET_MAX_MEMBERS);
+		if (asmm == null) {
+			logger.fine("Using compute template configuration for " + AZURE_AVAILABILITY_SET_MAX_MEMBERS + " settings");
+			asmm = this.template.getCustom().get(AZURE_AVAILABILITY_SET_MAX_MEMBERS);
+		}
 		if (asmm != null) {
 			if (asmm instanceof Integer) {
 				this.availabilitySetMaxMember = (Integer) asmm;
 			} else {
 				throw new IllegalArgumentException(AZURE_AVAILABILITY_SET_MAX_MEMBERS + " must be an Integer");
 			}
+		} else {
+			this.availabilitySetMaxMember = -1;
 		}
 
 		this.deploymentSlot = (String) this.template.getCustom().get(AZURE_DEPLOYMENT_SLOT);

@@ -747,23 +747,24 @@ public class MicrosoftAzureRestClient {
 							this.getAvailabilitySetLike(cloudServiceName, deploymentDesc.getAvailabilitySetName()
 									+ "[0-9]{3}");
 
-					String newAvailabilityName = null;
+					String availabilityName = null;
 					for (Entry<String, Integer> entry : availabilitySetMap.entrySet()) {
 						if (entry.getValue() < deploymentDesc.getAvailabilitySetMaxMember()) {
-							newAvailabilityName = entry.getKey();
+							availabilityName = entry.getKey();
 							logger.info(String.format("Existing availability set '%s' with %s/%s members",
-									newAvailabilityName, entry.getValue(), deploymentDesc.getAvailabilitySetMaxMember()));
+									availabilityName, entry.getValue(), deploymentDesc.getAvailabilitySetMaxMember()));
 							break;
 						}
 					}
 
-					if (newAvailabilityName == null) {
-						newAvailabilityName = String.format("%s%03d",
-								deploymentDesc.getAvailabilitySetName(), availabilitySetMap.size());
+					if (availabilityName == null) {
+						// Create new availability set
+						availabilityName = String.format("%s%03d",
+								deploymentDesc.getAvailabilitySetName(), availabilitySetMap.size() + 1);
 					}
 
-					logger.info("Using availability set : " + newAvailabilityName);
-					deploymentDesc.setAvailabilitySetName(newAvailabilityName);
+					logger.info("Using availability set : " + availabilityName);
+					deploymentDesc.setAvailabilitySetName(availabilityName);
 				}
 
 				// check static IP(s) availability

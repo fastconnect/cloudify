@@ -14,7 +14,6 @@ import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureExc
 import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureRestClient;
 import org.cloudifysource.esc.driver.provisioning.azure.model.DataVirtualHardDisk;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
-import org.cloudifysource.esc.driver.provisioning.azure.model.Role;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleInstance;
 import org.cloudifysource.esc.driver.provisioning.storage.AzureStorageProvisioningDriver;
 import org.cloudifysource.esc.driver.provisioning.storage.StorageProvisioningException;
@@ -130,9 +129,16 @@ public class AzureStorageProvisioningDriverImpl implements AzureStorageProvision
 			String deploymentName = context.getDeploymentName();
 			String cloudServiceName = context.getCloudServiceName();
 			Deployment deployment = azureClient.getDeploymentByName(cloudServiceName, deploymentName);
-			Role role = deployment.getRoleList().getRoles().get(0);
-
-			String roleName = role.getRoleName();
+			String roleName = null;
+			for (RoleInstance role : deployment.getRoleInstanceList().getRoleInstances()) {
+				if (role.getIpAddress().equals(ipAddress)) {
+					roleName = role.getRoleName();
+				}
+			}
+			if (roleName == null) {
+				throw new StorageProvisioningException(String.format("%sCouldn't find role with ip address %s",
+						getThreadId(), ipAddress));
+			}
 
 			logger.info(String.format("%sCreating data disk in storage account %s for %s on lun %s", getThreadId(),
 					storageAccountName, roleName, lun));
@@ -171,7 +177,8 @@ public class AzureStorageProvisioningDriverImpl implements AzureStorageProvision
 			hostCaching = HOSTCACHING_READ_WRITE;
 		} else {
 			if (!StringUtils.equalsIgnoreCase(hostCaching, HOSTCACHING_NONE)) {
-				logger.warning("Unknown host caching value " + hostCaching + ". Using default (" + HOSTCACHING_NONE
+				logger.warning(getThreadId() + "Unknown host caching value " + hostCaching + ". Using default ("
+						+ HOSTCACHING_NONE
 						+ ")");
 			}
 			hostCaching = HOSTCACHING_NONE;

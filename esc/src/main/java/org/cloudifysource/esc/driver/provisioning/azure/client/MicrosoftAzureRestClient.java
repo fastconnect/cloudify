@@ -111,10 +111,6 @@ public class MicrosoftAzureRestClient {
 
 	private static final char BAD_CHAR = 65279;
 
-	private String affinityPrefix;
-	private String cloudServicePrefix;
-	private String storagePrefix;
-
 	private Lock pendingRequest = new ReentrantLock(true);
 	private Lock pendingNetworkRequest = new ReentrantLock(true);
 	private Lock pendingStorageRequest = new ReentrantLock(true);
@@ -171,9 +167,6 @@ public class MicrosoftAzureRestClient {
 			final String affinityPrefix, final String cloudServicePrefix,
 			final String storagePrefix) {
 		this.subscriptionId = subscriptionId;
-		this.affinityPrefix = affinityPrefix;
-		this.cloudServicePrefix = cloudServicePrefix;
-		this.storagePrefix = storagePrefix;
 		this.init(pathToPfx, pfxPassword, affinityPrefix, cloudServicePrefix,
 				storagePrefix);
 	}
@@ -187,30 +180,6 @@ public class MicrosoftAzureRestClient {
 
 	public void setSubscriptionId(final String subscriptionId) {
 		this.subscriptionId = subscriptionId;
-	}
-
-	public String getAffinityPrefix() {
-		return affinityPrefix;
-	}
-
-	public void setAffinityPrefix(final String affinityPrefix) {
-		this.affinityPrefix = affinityPrefix;
-	}
-
-	public String getCloudServicePrefix() {
-		return cloudServicePrefix;
-	}
-
-	public void setCloudServicePrefix(final String cloudServicePrefix) {
-		this.cloudServicePrefix = cloudServicePrefix;
-	}
-
-	public String getStoragePrefix() {
-		return storagePrefix;
-	}
-
-	public void setStoragePrefix(final String storagePrefix) {
-		this.storagePrefix = storagePrefix;
 	}
 
 	public String getVirtualNetwork() {

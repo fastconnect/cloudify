@@ -136,8 +136,9 @@ public class AzureStorageProvisioningDriverImpl implements AzureStorageProvision
 				}
 			}
 			if (roleName == null) {
-				throw new StorageProvisioningException(String.format("%sCouldn't find role with ip address %s",
-						getThreadId(), ipAddress));
+				throw new StorageProvisioningException(String.format(
+						"%sCouldn't find role with ip address %s (cloudService=%s, deploymentName=%s)",
+						getThreadId(), ipAddress, cloudServiceName, deploymentName));
 			}
 
 			logger.info(String.format("%sCreating data disk in storage account %s for %s on lun %s", getThreadId(),
@@ -221,6 +222,11 @@ public class AzureStorageProvisioningDriverImpl implements AzureStorageProvision
 				if (role.getIpAddress().equals(ipAddress)) {
 					roleName = role.getRoleName();
 				}
+			}
+			if (roleName == null) {
+				throw new StorageProvisioningException(String.format(
+						"%sCouldn't find role with ip address %s (cloudService=%s, deploymentName=%s)",
+						getThreadId(), ipAddress, cloudServiceName, deploymentName));
 			}
 
 			logger.info(String.format("%sAttaching data disk %s to %s on lun %d", getThreadId(), diskName, roleName,

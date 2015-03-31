@@ -735,8 +735,11 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 			// For storage driver
 			if (azureDeploymentContext == null) {
-				this.azureDeploymentContext = new AzureDeploymentContext(roleAddressDetails.getCloudServiceName(),
-						roleAddressDetails.getDeploymentName(), azureClient);
+				String cloudServiceName = roleAddressDetails.getCloudServiceName();
+				String deploymentName = roleAddressDetails.getDeploymentName();
+				logger.info(String.format("Create AzureDeploymentContext(%s,%s)/%s", cloudServiceName,
+						deploymentName, serverName));
+				this.azureDeploymentContext = new AzureDeploymentContext(cloudServiceName, deploymentName, azureClient);
 			}
 			return machineDetails;
 		} catch (final Exception e) {

@@ -2812,4 +2812,10 @@ public class MicrosoftAzureRestClient {
 		return availabilitySetMap;
 
 	}
+
+	public void destroy() {
+		if (this.client != null) {
+			this.client.destroy();
+		}
+	}
 }

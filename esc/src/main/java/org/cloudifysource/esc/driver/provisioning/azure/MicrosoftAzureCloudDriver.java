@@ -1,11 +1,11 @@
 /*******************************************************************************
  * Copyright (c) 2012 GigaSpaces Technologies Ltd. All rights reserved
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
@@ -86,7 +86,7 @@ import com.google.common.base.Joiner;
 
 /***************************************************************************************
  * A custom Cloud Driver implementation for provisioning machines on Azure.
- * 
+ *
  * @author elip
  ***************************************************************************************/
 public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
@@ -227,7 +227,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	private ComputeTemplate template;
 
-	private static MicrosoftAzureRestClient azureClient;
+	private MicrosoftAzureRestClient azureClient;
 
 	private final Map<String, Long> stoppingMachines = new ConcurrentHashMap<String, Long>();
 
@@ -241,7 +241,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		return azureDeploymentContext;
 	}
 
-	private static synchronized void initRestClient(
+	private synchronized void initRestClient(
 			final String subscriptionId, final String pathToPfxFile,
 			final String pfxPassword, final boolean enableWireLog) {
 		if (azureClient == null) {
@@ -379,7 +379,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	/**
 	 * Add configuration for FileTransfer endpoint (22/445) or winrm endpoint (22/445) if doesn't exist.
-	 * 
+	 *
 	 * @throws CloudProvisioningException
 	 */
 	private void ensureEndpointForManagementMachine() throws CloudProvisioningException {
@@ -865,10 +865,10 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	}
 
 	/**
-	 * 
+	 *
 	 * TODO remove fields strict verification and make them optional like it's mentioned in azure api site <br />
 	 * Supports only one local site
-	 * 
+	 *
 	 */
 	private VpnConfiguration getVpnConfiguration(CloudNetwork cloudNetwork) {
 
@@ -1112,7 +1112,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	/*********
 	 * Checks if a stop request for this machine was already requested recently.
-	 * 
+	 *
 	 * @param ip
 	 *            the IP address of the machine.
 	 * @return true if there was a recent request, false otherwise.
@@ -1291,12 +1291,15 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	@Override
 	public void close() {
+		if (azureClient != null) {
+			azureClient.destroy();
+		}
 	}
 
 	/**
-	 * 
+	 *
 	 * @author elip
-	 * 
+	 *
 	 */
 	private class StopManagementMachineCallable implements Callable<Boolean> {
 		private final String deploymentName;

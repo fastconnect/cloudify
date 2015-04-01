@@ -147,7 +147,7 @@ public class AzureStorageProvisioningDriverImpl implements AzureStorageProvision
 			// Generate the vhd filename
 			StringBuilder vhdFilename = new StringBuilder();
 			vhdFilename.append(roleName.toLowerCase());
-			vhdFilename.append("data");
+			vhdFilename.append("_data");
 			vhdFilename.append(String.format("%02d", lun));
 
 			// Create a data disk

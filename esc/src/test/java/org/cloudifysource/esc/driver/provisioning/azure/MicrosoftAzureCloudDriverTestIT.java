@@ -39,6 +39,23 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 	protected static final Logger logger = Logger.getLogger(MicrosoftAzureCloudDriverTestIT.class.getName());
 
 	@Test
+	public void test2Managers() throws Exception {
+		String computeTemplate = "ubuntu1410";
+
+		final AzureDriverTestBuilder driverBuilder = new AzureDriverTestBuilder();
+		MicrosoftAzureCloudDriver driver = driverBuilder.createDriverAndSetConfig(computeTemplate);
+		final Cloud cloud = driverBuilder.getConfiguration().getCloud();
+		cloud.getProvider().setNumberOfManagementMachines(2);
+
+		try {
+			MachineDetails[] mds = this.startManagementMachine(driver);
+			Assert.assertEquals(2, mds.length);
+		} finally {
+			stopManagementMachines(driver);
+		}
+	}
+
+	@Test
 	public void testNamingConvention() throws Exception {
 
 		this.startAndStopManagementMachine("ubuntu1410", new MachineDetailsAssertion() {

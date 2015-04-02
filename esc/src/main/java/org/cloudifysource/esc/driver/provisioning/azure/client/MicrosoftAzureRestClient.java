@@ -114,6 +114,7 @@ public class MicrosoftAzureRestClient {
 	private Lock pendingRequest = new ReentrantLock(true);
 	private Lock pendingNetworkRequest = new ReentrantLock(true);
 	private Lock pendingStorageRequest = new ReentrantLock(true);
+	private Lock pendingStorageAccountRequest = new ReentrantLock(true);
 
 	private Lock pendingDataStorageRequest = new ReentrantLock(true);
 
@@ -209,7 +210,7 @@ public class MicrosoftAzureRestClient {
 			this.requestBodyBuilder = new MicrosoftAzureRequestBodyBuilder(
 					affinityPrefix, cloudServicePrefix, storagePrefix);
 		} catch (final Exception e) {
-			throw new RuntimeException("Failed initializing rest client : " + e.getMessage(), e);
+			throw new RuntimeException(getThreadIdentity() + "Failed initializing rest client : " + e.getMessage(), e);
 		}
 	}
 
@@ -240,12 +241,13 @@ public class MicrosoftAzureRestClient {
 		try {
 
 			if (this.getHostedService(cloudServiceName, false) != null) {
-				logger.info(String.format("Using an already existing cloud service '%s' ", cloudServiceName));
+				logger.info(getThreadIdentity() + String.format("Using an already existing cloud service '%s' ",
+						cloudServiceName));
 				this.waitUntilCloudServiceIsCreated(cloudServiceName, endTime);
 				return;
 			}
 
-			logger.info(String.format("Trying to create cloud service '%s'", cloudServiceName));
+			logger.info(getThreadIdentity() + String.format("Trying to create cloud service '%s'", cloudServiceName));
 
 			String xmlRequest = MicrosoftAzureModelUtils.marshall(createHostedService, false);
 			ClientResponse response = doPost("/services/hostedservices", xmlRequest);
@@ -255,9 +257,9 @@ public class MicrosoftAzureRestClient {
 
 			this.waitUntilCloudServiceIsCreated(cloudServiceName, endTime);
 
-			logger.info("Cloud service created : " + cloudServiceName);
+			logger.info(getThreadIdentity() + "Cloud service created : " + cloudServiceName);
 		} catch (final Exception e) {
-			logger.warning("Failed to create cloud service : " + e.getMessage());
+			logger.warning(getThreadIdentity() + "Failed to create cloud service : " + e.getMessage());
 			if (e instanceof MicrosoftAzureException) {
 				throw (MicrosoftAzureException) e;
 			}
@@ -273,7 +275,8 @@ public class MicrosoftAzureRestClient {
 	private void waitUntilCloudServiceIsCreated(String cloudServiceName, long endTime) throws MicrosoftAzureException,
 			TimeoutException, InterruptedException {
 
-		logger.fine(String.format("Waiting for the cloud service '%s' to be created", cloudServiceName));
+		logger.fine(getThreadIdentity() + String.format("Waiting for the cloud service '%s' to be created",
+				cloudServiceName));
 
 		while (true) {
 			HostedService hostedService = this.getCloudServiceByName(cloudServiceName);
@@ -282,7 +285,7 @@ public class MicrosoftAzureRestClient {
 						&& "Created".equals(hostedService.getHostedServiceProperties().getStatus())) {
 					return;
 				} else if (hostedService.getHostedServiceProperties() != null) {
-					logger.info("Cloud service '" + cloudServiceName
+					logger.info(getThreadIdentity() + "Cloud service '" + cloudServiceName
 							+ "' has not reach Created status yet (current status="
 							+ hostedService.getHostedServiceProperties().getStatus() + ")");
 				} else {
@@ -326,28 +329,49 @@ public class MicrosoftAzureRestClient {
 	public void createStorageAccount(final String affinityGroup, final String storageAccountName, final long endTime)
 			throws MicrosoftAzureException, TimeoutException, InterruptedException {
 
-		CreateStorageServiceInput createStorageServiceInput =
-				requestBodyBuilder.buildCreateStorageAccount(affinityGroup, storageAccountName);
-
-		if (storageExists(storageAccountName)) {
-			logger.info("Using an already existing storage account : " + storageAccountName);
-			try {
-				waitForStorageAccountToBeCreated(storageAccountName, true);
-			} catch (AzureResourceNotFoundException e) {
-				throw new MicrosoftAzureException(e);
-			}
-			return;
+		long lockTimeout = endTime - System.currentTimeMillis();
+		if (lockTimeout < 0) {
+			throw new MicrosoftAzureException(getThreadIdentity() + "Timeout. Abord request to create storage account");
 		}
+		logger.fine(getThreadIdentity() + "Waiting for pending storage account request lock for lock "
+				+ pendingStorageAccountRequest.hashCode());
+		boolean lockAcquired = pendingStorageAccountRequest.tryLock(lockTimeout, TimeUnit.MILLISECONDS);
 
-		logger.info("Creating a storage account : " + storageAccountName);
+		if (lockAcquired) {
+			ClientResponse response = null;
+			try {
+				CreateStorageServiceInput createStorageServiceInput =
+						requestBodyBuilder.buildCreateStorageAccount(affinityGroup, storageAccountName);
 
-		String xmlRequest = MicrosoftAzureModelUtils.marshall(createStorageServiceInput, false);
+				if (storageExists(storageAccountName)) {
+					logger.info(getThreadIdentity() + "Using an already existing storage account : "
+							+ storageAccountName);
+					try {
+						waitForStorageAccountToBeCreated(storageAccountName, true);
+					} catch (AzureResourceNotFoundException e) {
+						throw new MicrosoftAzureException(e);
+					}
+					return;
+				}
 
-		ClientResponse response = doPost("/services/storageservices", xmlRequest);
-		String requestId = extractRequestId(response);
-		waitForRequestToFinish(requestId, endTime);
+				logger.info(getThreadIdentity() + "Creating a storage account : " + storageAccountName);
 
-		logger.info("Created a storage account : " + storageAccountName);
+				String xmlRequest = MicrosoftAzureModelUtils.marshall(createStorageServiceInput, false);
+				response = doPost("/services/storageservices", xmlRequest);
+
+				logger.info(getThreadIdentity() + "Created a storage account : " + storageAccountName);
+
+			} finally {
+				pendingStorageAccountRequest.unlock();
+			}
+			if (response != null) {
+				String requestId = extractRequestId(response);
+				this.waitForRequestToFinish(requestId, endTime);
+			}
+		} else {
+			throw new TimeoutException("Failed to acquire lock to create storage account after "
+					+ lockTimeout + " milliseconds");
+		}
 	}
 
 	public void createVirtualNetworkSite(List<String> addressSpace, String affinityGroup, String networkSiteName,
@@ -364,7 +388,7 @@ public class MicrosoftAzureRestClient {
 		if (virtualNetworkConfiguration == null) {
 			virtualNetworkConfiguration = new VirtualNetworkConfiguration();
 			// just for logging
-			logger.fine("The Network configuration was not found.");
+			logger.fine(getThreadIdentity() + "The Network configuration was not found.");
 			shouldUpdateOrCreate = true;
 		} else {
 			virtualNetworkSites = virtualNetworkConfiguration.getVirtualNetworkSites();
@@ -372,26 +396,27 @@ public class MicrosoftAzureRestClient {
 
 		if (virtualNetworkSites == null) {
 			shouldUpdateOrCreate = true;
-			logger.fine("Creating virtual network sites...");
+			logger.fine(getThreadIdentity() + "Creating virtual network sites...");
 			virtualNetworkSites = new VirtualNetworkSites();
 			virtualNetworkConfiguration.setVirtualNetworkSites(virtualNetworkSites);
 		}
 
 		VirtualNetworkSite virtualNetworkSite = null;
 		if (!virtualNetworkSites.contains(networkSiteName)) {
-			logger.info("Starting configuration of the new virtual network site : " + networkSiteName);
+			logger.info(getThreadIdentity() + "Starting configuration of the new virtual network site : "
+					+ networkSiteName);
 			VirtualNetworkSite newSite = new VirtualNetworkSite();
 			newSite.setAddressSpace(new AddressSpace());
 			newSite.setAffinityGroup(affinityGroup);
 			newSite.setName(networkSiteName);
 			virtualNetworkSites.getVirtualNetworkSites().add(newSite);
 		} else {
-			logger.info("Using an already existing virtual network site : " + networkSiteName);
+			logger.info(getThreadIdentity() + "Using an already existing virtual network site : " + networkSiteName);
 		}
 
 		virtualNetworkSite = virtualNetworkSites.getVirtualNetworkSite(networkSiteName);
 		if (virtualNetworkSite.getSubnets() == null) {
-			logger.info("Creating subnets for virtual network site : " + networkSiteName);
+			logger.info(getThreadIdentity() + "Creating subnets for virtual network site : " + networkSiteName);
 			virtualNetworkSite.setSubnets(new Subnets());
 		}
 
@@ -412,20 +437,21 @@ public class MicrosoftAzureRestClient {
 					names[i] = notExistingSubnets.get(i).getName();
 				}
 				String templatesStr = ReflectionToStringBuilder.toString(names, ToStringStyle.SIMPLE_STYLE);
-				logger.info("Adding new subnets from network templates: " + templatesStr);
+				logger.info(getThreadIdentity() + "Adding new subnets from network templates: " + templatesStr);
 			}
 			shouldUpdateOrCreate = true;
 		}
 
 		if (!virtualNetworkSite.getSubnets().contains(subnetName)) {
-			logger.info("Creating the subnet: " + subnetName);
+			logger.info(getThreadIdentity() + "Creating the subnet: " + subnetName);
 			Subnet subnet = new Subnet();
 			subnet.setName(subnetName);
 			subnet.getAddressPrefix().add(subnetAddr);
 			virtualNetworkSite.getSubnets().getSubnets().add(subnet);
 			shouldUpdateOrCreate = true;
 		} else {
-			logger.info("Using an already existing management subnet '" + subnetName + "' from virtual network site '"
+			logger.info(getThreadIdentity() + "Using an already existing management subnet '" + subnetName
+					+ "' from virtual network site '"
 					+ networkSiteName + "'");
 		}
 
@@ -451,7 +477,7 @@ public class MicrosoftAzureRestClient {
 			// add gateway subnet if does't already exist in vNet
 			String gatewaySubnetName = vpnConfiguration.getSubnet().getName();
 			if (!virtualNetworkSite.getSubnets().contains(gatewaySubnetName)) {
-				logger.info("Creating the gateway subnet: " + gatewaySubnetName);
+				logger.info(getThreadIdentity() + "Creating the gateway subnet: " + gatewaySubnetName);
 				Subnet subnet = new Subnet();
 				subnet.setName(gatewaySubnetName);
 				subnet.getAddressPrefix().add(vpnConfiguration.getSubnet().getAddressPrefix().get(0));
@@ -502,35 +528,38 @@ public class MicrosoftAzureRestClient {
 
 		if (shouldUpdateOrCreate) {
 			setNetworkConfiguration(endTime, virtualNetworkConfiguration);
-			logger.info("Created/Updated virtual network site : " + networkSiteName);
+			logger.info(getThreadIdentity() + "Created/Updated virtual network site : " + networkSiteName);
 
 		} else {
-			logger.info("Using existing virtual network site configuration: " + networkSiteName);
+			logger.info(getThreadIdentity() + "Using existing virtual network site configuration: " + networkSiteName);
 		}
 
 		// continue with vpn gateway provisioning [after vNet creation]
 		if (vpnConfiguration != null) {
-			logger.info("Starting gateway configuration");
+			logger.info(getThreadIdentity() + "Starting gateway configuration");
 			GatewayInfo gateway = this.getGatewayInfo(networkSiteName, endTime);
 			if (gateway != null) {
 
 				if (gateway.isInProvisioninig()) {
-					logger.info("The gateway is already in provisioning state, waiting until the operation finishes");
+					logger.info(getThreadIdentity()
+							+ "The gateway is already in provisioning state, waiting until the operation finishes");
 					waitForGatewayOperationToFinish(networkSiteName, endTime);
 
 				} else {
 					if (gateway.isReadyForProvisioning()) {
 
-						logger.info(String.format("Creating gateway between vNet '%s' and local network '%s'. This "
-								+ "operation will take a while, " + "so please wait...", networkSiteName,
-								newLocalNetworkSite.getName()));
+						logger.info(getThreadIdentity()
+								+ String.format("Creating gateway between vNet '%s' and local network '%s'. This "
+										+ "operation will take a while, " + "so please wait...", networkSiteName,
+										newLocalNetworkSite.getName()));
 
 						this.createVirtualNetworkGateway(vpnConfiguration.getGatewayType(),
 								virtualNetworkSite.getName(),
 								endTime);
 
 					} else {
-						logger.warning("Can't provision gateway, current state is " + gateway.getState());
+						logger.warning(getThreadIdentity() + "Can't provision gateway, current state is "
+								+ gateway.getState());
 					}
 				}
 
@@ -542,13 +571,14 @@ public class MicrosoftAzureRestClient {
 						this.setVirtualNetworktGatewayKey(vpnConfiguration.getGatewaykey(), networkSiteName,
 								newLocalNetworkSite.getName(), endTime);
 					} else {
-						logger.warning("Can't connect gateway, current state is " + gateway.getState());
+						logger.warning(getThreadIdentity() + "Can't connect gateway, current state is "
+								+ gateway.getState());
 					}
 				}
 
 				// something went wrong
 			} else {
-				logger.warning("Failed getting current gateway state, it will not be configured");
+				logger.warning(getThreadIdentity() + "Failed getting current gateway state, it will not be configured");
 			}
 		}
 	}
@@ -576,21 +606,22 @@ public class MicrosoftAzureRestClient {
 		VirtualNetworkSites virtualNetworkSites = virtualNetworkConfiguration.getVirtualNetworkSites();
 
 		if (!virtualNetworkSites.contains(networkSiteName)) {
-			throw new IllegalStateException("Missing network '" + networkSiteName + "' in Microsoft Azure");
+			throw new IllegalStateException(getThreadIdentity() + "Missing network '" + networkSiteName
+					+ "' in Microsoft Azure");
 		}
 
 		VirtualNetworkSite virtualNetworkSite = virtualNetworkSites.getVirtualNetworkSite(networkSiteName);
 		if (virtualNetworkSite.getSubnets().contains(subnetName)) {
 			// The subnet already exist
-			logger.info("Subnet '" + subnetName + "' already exist");
+			logger.info(getThreadIdentity() + "Subnet '" + subnetName + "' already exist");
 		} else {
-			logger.info("Creating the subnet: " + subnetName);
+			logger.info(getThreadIdentity() + "Creating the subnet: " + subnetName);
 			Subnet subnet = new Subnet();
 			subnet.setName(subnetName);
 			subnet.getAddressPrefix().add(subnetAddr);
 			virtualNetworkSite.getSubnets().getSubnets().add(subnet);
 			this.setNetworkConfiguration(endTime, virtualNetworkConfiguration);
-			logger.fine("Updated virtual network site : " + networkSiteName);
+			logger.fine(getThreadIdentity() + "Updated virtual network site : " + networkSiteName);
 		}
 	}
 
@@ -615,11 +646,12 @@ public class MicrosoftAzureRestClient {
 			if (shouldUpdate) {
 				this.setNetworkConfiguration(endTime, virtualNetworkConfiguration);
 			} else {
-				logger.warning("Couln't delete subnet '" + subnetName + "'. Not found in network '" + networkSiteName
-						+ "'");
+				logger.warning(getThreadIdentity() + "Couln't delete subnet '" + subnetName
+						+ "'. Not found in network '" + networkSiteName + "'");
 			}
 		} else {
-			logger.warning("Couldn't delete network '" + networkSiteName + "' because it does not exist");
+			logger.warning(getThreadIdentity() + "Couldn't delete network '" + networkSiteName
+					+ "' because it does not exist");
 		}
 	}
 
@@ -644,18 +676,18 @@ public class MicrosoftAzureRestClient {
 				.buildCreateAffinity(affinityGroup, location);
 
 		if (affinityExists(affinityGroup)) {
-			logger.info("Using an already existing affinity group : " + affinityGroup);
+			logger.info(getThreadIdentity() + "Using an already existing affinity group : " + affinityGroup);
 			return;
 		}
 
-		logger.info("Creating affinity group : " + affinityGroup);
+		logger.info(getThreadIdentity() + "Creating affinity group : " + affinityGroup);
 
 		String xmlRequest = MicrosoftAzureModelUtils.marshall(createAffinityGroup, false);
 		ClientResponse response = doPost("/affinitygroups", xmlRequest);
 		checkForError(response);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
-		logger.fine("Created affinity group : " + affinityGroup);
+		logger.fine(getThreadIdentity() + "Created affinity group : " + affinityGroup);
 	}
 
 	/**
@@ -697,7 +729,7 @@ public class MicrosoftAzureRestClient {
 
 			logger.fine(getThreadIdentity() + "Lock acquired : " + pendingRequest.hashCode());
 			logger.fine(getThreadIdentity() + "Executing a request to provision a new virtual machine");
-			logger.info("Preparing VM deployment...");
+			logger.info(getThreadIdentity() + "Preparing VM deployment...");
 			try {
 
 				deploymentInfo = this.getRoleDeploymentInfo(deploymentDesc, endTime);
@@ -720,8 +752,10 @@ public class MicrosoftAzureRestClient {
 					for (Entry<String, Integer> entry : availabilitySetMap.entrySet()) {
 						if (entry.getValue() < deploymentDesc.getAvailabilitySetMaxMember()) {
 							availabilityName = entry.getKey();
-							logger.info(String.format("Existing availability set '%s' with %s/%s members",
-									availabilityName, entry.getValue(), deploymentDesc.getAvailabilitySetMaxMember()));
+							logger.info(getThreadIdentity()
+									+ String.format("Existing availability set '%s' with %s/%s members",
+											availabilityName, entry.getValue(),
+											deploymentDesc.getAvailabilitySetMaxMember()));
 							break;
 						}
 					}
@@ -732,7 +766,7 @@ public class MicrosoftAzureRestClient {
 								deploymentDesc.getAvailabilitySetName(), availabilitySetMap.size() + 1);
 					}
 
-					logger.info("Using availability set : " + availabilityName);
+					logger.info(getThreadIdentity() + "Using availability set : " + availabilityName);
 					deploymentDesc.setAvailabilitySetName(availabilityName);
 				}
 
@@ -746,7 +780,7 @@ public class MicrosoftAzureRestClient {
 						String noIpAvailableString = String.format("The specified Ip addresses '%s' are not available",
 								deploymentDesc.getIpAddresses().toString());
 
-						logger.severe(noIpAvailableString);
+						logger.severe(getThreadIdentity() + noIpAvailableString);
 						throw new MicrosoftAzureException("Can't provision VM :" + noIpAvailableString);
 
 					}
@@ -768,7 +802,7 @@ public class MicrosoftAzureRestClient {
 							isWindows);
 					roleName = persistentVMRole.getRoleName();
 
-					logger.info(String.format("Adding VM Role '%s' in deployment '%s'",
+					logger.info(getThreadIdentity() + String.format("Adding VM Role '%s' in deployment '%s'",
 							roleName, deploymentDesc.getDeploymentName()));
 
 					String xmlRequest = MicrosoftAzureModelUtils.marshall(persistentVMRole, false);
@@ -784,8 +818,9 @@ public class MicrosoftAzureRestClient {
 
 				} else {
 					// create a new deployment
-					logger.fine(String.format("Creating a new deployment '%s' for the current VM Role.",
-							deploymentDesc.getDeploymentName()));
+					logger.fine(getThreadIdentity()
+							+ String.format("Creating a new deployment '%s' for the current VM Role.",
+									deploymentDesc.getDeploymentName()));
 					Deployment deployment = requestBodyBuilder.buildDeployment(deploymentDesc, isWindows);
 					roleName = deployment.getRoleList().getRoles().get(0).getRoleName();
 					String xmlRequest = MicrosoftAzureModelUtils.marshall(deployment, false);
@@ -804,7 +839,7 @@ public class MicrosoftAzureRestClient {
 				pendingRequest.unlock();
 
 			} catch (final Exception e) {
-				logger.severe("The deployment of the VM Role has failed. " + e.getMessage());
+				logger.severe(getThreadIdentity() + "The deployment of the VM Role has failed. " + e.getMessage());
 				logger.log(Level.FINE, getThreadIdentity() + "A failure occured : about to release lock "
 						+ pendingRequest.hashCode(), e);
 				if (cloudServiceName != null) {
@@ -812,8 +847,9 @@ public class MicrosoftAzureRestClient {
 						// delete the dedicated cloud service that was created for the virtual machine.
 						deleteCloudService(cloudServiceName, endTime);
 					} catch (final Exception e1) {
-						logger.warning("Failed deleting cloud service " + cloudServiceName + " : " + e1.getMessage());
-						logger.finest(ExceptionUtils.getFullStackTrace(e1));
+						logger.warning(getThreadIdentity() + "Failed deleting cloud service " + cloudServiceName
+								+ " : " + e1.getMessage());
+						logger.finest(getThreadIdentity() + ExceptionUtils.getFullStackTrace(e1));
 					}
 				}
 				pendingRequest.unlock();
@@ -835,7 +871,7 @@ public class MicrosoftAzureRestClient {
 
 		Deployment deploymentResponse = null;
 		try {
-			logger.info(String.format("Waiting for the VM role '%s' to be ready. This might "
+			logger.info(getThreadIdentity() + String.format("Waiting for the VM role '%s' to be ready. This might "
 					+ "take a few minutes...", roleName));
 
 			String deploymentSlot = deploymentDesc.getDeploymentSlot();
@@ -843,11 +879,12 @@ public class MicrosoftAzureRestClient {
 			deploymentResponse = waitForRoleInstanceStatus("ReadyRole", cloudServiceName, deploymentSlot, roleName,
 					endTime);
 
-			logger.fine(String.format("VM '%s' provisioning finished successfully. Starting Role configuration",
-					roleName));
+			logger.fine(getThreadIdentity()
+					+ String.format("VM '%s' provisioning finished successfully. Starting Role configuration",
+							roleName));
 
 		} catch (final Exception e) {
-			logger.fine("Error while waiting for VM status : " + e.getMessage());
+			logger.fine(getThreadIdentity() + "Error while waiting for VM status : " + e.getMessage());
 			// the VM was created but with a bad status
 			// TODO clean the current VM
 			// deleteVirtualMachineByDeploymentName(serviceName, deployment.getName(), endTime);
@@ -877,7 +914,7 @@ public class MicrosoftAzureRestClient {
 				if (lockTimeout < 0) {
 					throw new MicrosoftAzureException("Timeout. Abord request to configurate storage accounts");
 				}
-				logger.fine("Waiting for pending driver request lock for lock "
+				logger.fine(getThreadIdentity() + "Waiting for pending driver request lock for lock "
 						+ pendingDataStorageRequest.hashCode());
 
 				lockAcquired = pendingDataStorageRequest.tryLock(lockTimeout, TimeUnit.MILLISECONDS);
@@ -887,7 +924,7 @@ public class MicrosoftAzureRestClient {
 							"Failed to acquire lock for configurating storage accounts for os data disks"
 									+ " after " + lockTimeout + " milliseconds");
 				}
-				logger.fine("Configurating storage accounts for data disks");
+				logger.fine(getThreadIdentity() + "Configurating storage accounts for data disks");
 				try {
 					ExecutorService executorService =
 							Executors.newFixedThreadPool(dataStorageAccounts.size());
@@ -906,13 +943,14 @@ public class MicrosoftAzureRestClient {
 					executorService.shutdownNow();
 
 					storageAccountName = MicrosoftAzureUtils.getBalancedStorageAccount(dataStorageAccounts, this);
-					logger.fine("Configuration of storage accounts for data disks finished");
+					logger.fine(getThreadIdentity() + "Configuration of storage accounts for data disks finished");
 					pendingDataStorageRequest.unlock();
 
 				} catch (final Exception e) {
-					logger.severe("Failed configurating storage accounts for data disks : " + e.getMessage());
+					logger.severe(getThreadIdentity() + "Failed configurating storage accounts for data disks : "
+							+ e.getMessage());
 					storageAccountName = deploymentDesc.getStorageAccountName();
-					logger.warning("Selecting a storage account instead : " + storageAccountName);
+					logger.warning(getThreadIdentity() + "Selecting a storage account instead : " + storageAccountName);
 					pendingDataStorageRequest.unlock();
 				}
 
@@ -920,7 +958,8 @@ public class MicrosoftAzureRestClient {
 				storageAccountName = deploymentDesc.getStorageAccountName();
 			}
 
-			logger.fine(String.format("Using '%s' as balanced storage account for data disk", storageAccountName));
+			logger.fine(getThreadIdentity()
+					+ String.format("Using '%s' as balanced storage account for data disk", storageAccountName));
 
 			this.addDataDiskToVM(deploymentDesc.getHostedServiceName(), deploymentDesc.getDeploymentName(),
 					deploymentDesc.getRoleName(), storageAccountName,
@@ -1027,7 +1066,7 @@ public class MicrosoftAzureRestClient {
 						String subnetNotExistString = String.format("The specified subnet '%s' doesn't exist in "
 								+ "network '%s' ", subnetName, virtualNetwork);
 
-						logger.severe(subnetNotExistString);
+						logger.severe(getThreadIdentity() + subnetNotExistString);
 						throw new MicrosoftAzureException("Can't provision VM :" + subnetNotExistString);
 					}
 				}
@@ -1068,7 +1107,7 @@ public class MicrosoftAzureRestClient {
 			return true;
 		}
 
-		logger.info("Deleting storage account : " + storageAccountName);
+		logger.info(getThreadIdentity() + "Deleting storage account : " + storageAccountName);
 		ClientResponse response;
 		try {
 			response = performHttpRequest(HttpRequestType.DELETE, "/services/storageservices/" + storageAccountName,
@@ -1076,9 +1115,9 @@ public class MicrosoftAzureRestClient {
 			String requestId = extractRequestId(response);
 			waitForRequestToFinish(requestId, endTime);
 
-			logger.fine("Deleted storage account : " + storageAccountName);
+			logger.fine(getThreadIdentity() + "Deleted storage account : " + storageAccountName);
 		} catch (AzureResourceNotFoundException e) {
-			logger.finer("Storge account not found or already deleted : " + storageAccountName);
+			logger.finer(getThreadIdentity() + "Storge account not found or already deleted : " + storageAccountName);
 		}
 
 		return true;
@@ -1103,11 +1142,11 @@ public class MicrosoftAzureRestClient {
 		if (!affinityExists(affinityGroupName)) {
 			return true;
 		}
-		logger.info("Deleting affinity group : " + affinityGroupName);
+		logger.info(getThreadIdentity() + "Deleting affinity group : " + affinityGroupName);
 		ClientResponse response = doDelete("/affinitygroups/" + affinityGroupName);
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
-		logger.fine("Deleted affinity group : " + affinityGroupName);
+		logger.fine(getThreadIdentity() + "Deleted affinity group : " + affinityGroupName);
 		return true;
 	}
 
@@ -1127,7 +1166,7 @@ public class MicrosoftAzureRestClient {
 	public void deleteCloudService(final String cloudServiceName, final long endTime)
 			throws MicrosoftAzureException, TimeoutException, InterruptedException {
 		if (!cloudServiceExists(cloudServiceName)) {
-			logger.info("Can't delete cloud service " + cloudServiceName + ", it doesn't exist.");
+			logger.info(getThreadIdentity() + "Can't delete cloud service " + cloudServiceName + ", it doesn't exist.");
 			return;
 		}
 
@@ -1138,11 +1177,12 @@ public class MicrosoftAzureRestClient {
 			ClientResponse response = doDelete("/services/hostedservices/" + cloudServiceName);
 			String requestId = extractRequestId(response);
 			waitForRequestToFinish(requestId, endTime);
-			logger.fine(String.format("Deleted cloud service '%s'", cloudServiceName));
+			logger.fine(getThreadIdentity() + String.format("Deleted cloud service '%s'", cloudServiceName));
 
 		} else {
-			logger.warning(String.format("Can't delete cloud service '%s', it still contains deployment(s)",
-					cloudServiceName));
+			logger.warning(getThreadIdentity()
+					+ String.format("Can't delete cloud service '%s', it still contains deployment(s)",
+							cloudServiceName));
 		}
 	}
 
@@ -1152,8 +1192,9 @@ public class MicrosoftAzureRestClient {
 		for (String slot : slots) {
 			Deployment deployment = listDeploymentsBySlot(cloudServiceName, slot, endTime);
 			if (deployment != null) {
-				logger.finest(String.format("Existing deployment in cloud service '%s' in slot '%s'",
-						cloudServiceName, slot));
+				logger.finest(getThreadIdentity()
+						+ String.format("Existing deployment in cloud service '%s' in slot '%s'",
+								cloudServiceName, slot));
 				return true;
 			}
 		}
@@ -1175,7 +1216,7 @@ public class MicrosoftAzureRestClient {
 	public void deleteVirtualMachineByIp(final String machineIp, final boolean isPrivateIp, final long endTime)
 			throws TimeoutException, MicrosoftAzureException, InterruptedException {
 
-		logger.info("Deleting virtual machine with ip " + machineIp);
+		logger.info(getThreadIdentity() + "Deleting virtual machine with ip " + machineIp);
 
 		Deployment deployment = getDeploymentByIp(machineIp, isPrivateIp);
 		if (deployment == null) {
@@ -1206,8 +1247,10 @@ public class MicrosoftAzureRestClient {
 			deleteDeployment(hostedServiceName, deploymentName, true, endTime);
 		}
 
-		logger.fine(String.format("Cleaning resources associated with role '%s' [%s]", roleName, machineIp));
-		logger.finest(String.format("Trying to clean associated cloud service '%s' ", hostedServiceName));
+		logger.fine(getThreadIdentity()
+				+ String.format("Cleaning resources associated with role '%s' [%s]", roleName, machineIp));
+		logger.finest(getThreadIdentity()
+				+ String.format("Trying to clean associated cloud service '%s' ", hostedServiceName));
 
 		this.deleteCloudService(hostedServiceName, endTime);
 	}
@@ -1239,10 +1282,11 @@ public class MicrosoftAzureRestClient {
 					+ " in cloud service " + cloudServiceName);
 		}
 
-		logger.info("Deleting Virtual Machine " + roleName);
+		logger.info(getThreadIdentity() + "Deleting Virtual Machine " + roleName);
 		deleteDeployment(cloudServiceName, deploymentName, true, endTime);
 
-		logger.fine("Deleting cloud service : " + cloudServiceName + " that was dedicated for virtual machine "
+		logger.fine(getThreadIdentity() + "Deleting cloud service : " + cloudServiceName
+				+ " that was dedicated for virtual machine "
 				+ roleName);
 		deleteCloudService(cloudServiceName, endTime);
 
@@ -1277,7 +1321,7 @@ public class MicrosoftAzureRestClient {
 				if (osDisk.getAttachedTo() == null) {
 					return;
 				} else {
-					logger.fine("Disk " + diskName + " is still attached to role "
+					logger.fine(getThreadIdentity() + "Disk " + diskName + " is still attached to role "
 							+ osDisk.getAttachedTo().getRoleName());
 					Thread.sleep(DEFAULT_POLLING_INTERVAL);
 				}
@@ -1327,7 +1371,7 @@ public class MicrosoftAzureRestClient {
 			InterruptedException {
 
 		if (!isDiskExists(diskName)) {
-			logger.info("Disk " + diskName + " does not exist");
+			logger.info(getThreadIdentity() + "Disk " + diskName + " does not exist");
 			return true;
 		}
 
@@ -1342,7 +1386,7 @@ public class MicrosoftAzureRestClient {
 			String requestId = extractRequestId(response);
 			waitForRequestToFinish(requestId, endTime);
 		} catch (AzureResourceNotFoundException e) {
-			logger.fine(String.format("Disk '%s' seems already deleted", diskName));
+			logger.fine(getThreadIdentity() + String.format("Disk '%s' seems already deleted", diskName));
 		}
 
 		return true;
@@ -1397,7 +1441,7 @@ public class MicrosoftAzureRestClient {
 				String requestId = extractRequestId(response);
 				waitForRequestToFinish(requestId, endTime);
 
-				logger.fine(String.format(getThreadIdentity() + "Deleted deployment '%s'", deploymentName));
+				logger.fine(getThreadIdentity() + String.format("Deleted deployment '%s'", deploymentName));
 
 				pendingRequest.unlock();
 
@@ -1418,8 +1462,7 @@ public class MicrosoftAzureRestClient {
 			}
 			return true;
 		} else {
-			throw new TimeoutException(getThreadIdentity()
-					+ "Failed to acquire lock for deleteDeployment request after + "
+			throw new TimeoutException("Failed to acquire lock for deleteDeployment request after + "
 					+ lockTimeout + " milliseconds");
 		}
 
@@ -1482,7 +1525,7 @@ public class MicrosoftAzureRestClient {
 				}
 			}
 		} else {
-			throw new TimeoutException(getThreadIdentity() + "Failed to acquire lock for deleteRoleFromDeployment "
+			throw new TimeoutException("Failed to acquire lock for deleteRoleFromDeployment "
 					+ "request after " + lockTimeout + " milliseconds");
 		}
 
@@ -1600,7 +1643,7 @@ public class MicrosoftAzureRestClient {
 
 		Deployment deployment = (Deployment) MicrosoftAzureModelUtils.unmarshall(responseBody);
 		if (deployment == null) {
-			throw new MicrosoftAzureException(String.format("Cant find a deployment in hosted service '%s' "
+			throw new MicrosoftAzureException(String.format("Can't find a deployment in hosted service '%s' "
 					+ "in slot '%s'", hostedServiceName, deploymentSlot));
 		}
 		return deployment;
@@ -1675,7 +1718,7 @@ public class MicrosoftAzureRestClient {
 				}
 			}
 		}
-		logger.info("Could not find roles with ip :" + machineIp);
+		logger.info(getThreadIdentity() + "Could not find roles with ip :" + machineIp);
 		return null;
 
 	}
@@ -1706,19 +1749,20 @@ public class MicrosoftAzureRestClient {
 			VirtualNetworkSite site = virtualNetworkSites.getVirtualNetworkSites().get(i);
 			if (site.getName().equals(virtualNetworkSite)) {
 				if (site.getGateway() != null) {
-					logger.info("Deleting virtual network gateway...");
+					logger.info(getThreadIdentity() + "Deleting virtual network gateway...");
 					deleteVirtualNetworkGateway(virtualNetworkSite, endTime);
-					logger.info("Deleted virtual network gateway.");
+					logger.info(getThreadIdentity() + "Deleted virtual network gateway.");
 				}
 				index = i;
 				break;
 			}
 		}
 		virtualNetworkSites.getVirtualNetworkSites().remove(index);
-		logger.info("Deleting virtual network site : " + virtualNetworkSite);
-		logger.fine(String.format("Waiting for virtual network site '%s' to be deleted", virtualNetworkSite));
+		logger.info(getThreadIdentity() + "Deleting virtual network site : " + virtualNetworkSite);
+		logger.fine(String.format("Waiting for virtual network site '%s' to be deleted",
+				virtualNetworkSite));
 		setNetworkConfiguration(endTime, virtualNetworkConfiguration);
-		logger.fine("Deleted virtual network site : " + virtualNetworkSite);
+		logger.fine(getThreadIdentity() + "Deleted virtual network site : " + virtualNetworkSite);
 		return true;
 
 	}
@@ -1730,7 +1774,8 @@ public class MicrosoftAzureRestClient {
 		long currentTimeInMillis = System.currentTimeMillis();
 		long lockTimeout = endTime - currentTimeInMillis;
 		if (lockTimeout < 0) {
-			throw new MicrosoftAzureException("Timeout. Abord request to update network configuration");
+			throw new MicrosoftAzureException(getThreadIdentity()
+					+ "Timeout. Abord request to update network configuration");
 		}
 		logger.fine(getThreadIdentity() + "Waiting for pending network request lock for lock "
 				+ pendingRequest.hashCode());
@@ -1750,7 +1795,7 @@ public class MicrosoftAzureRestClient {
 				pendingNetworkRequest.unlock();
 			}
 		} else {
-			throw new TimeoutException("Failed to acquire lock to set network request after + "
+			throw new TimeoutException(getThreadIdentity() + "Failed to acquire lock to set network request after + "
 					+ lockTimeout + " milliseconds");
 		}
 	}
@@ -1864,17 +1909,19 @@ public class MicrosoftAzureRestClient {
 			if (isConflictError || isActiveServicesInResource || isNetworkInUse) {
 
 				if (waitForConflict) {
-					logger.fine("Waiting for resource conflict/lease to be resolved/released : " + error.getMessage());
+					logger.fine(getThreadIdentity() + "Waiting for resource conflict/lease to be resolved/released : "
+							+ error.getMessage());
 					try {
 						conflictLog = true;
 						Thread.sleep(DEFAULT_POLLING_INTERVAL);
 					} catch (InterruptedException e) {
 						String interruptedMsg = "Interrupted while waiting for conflict to be resolved";
-						logger.severe(interruptedMsg);
+						logger.severe(getThreadIdentity() + interruptedMsg);
 						throw new MicrosoftAzureException(interruptedMsg, e);
 					}
 				} else {
-					throw new MicrosoftAzureException("Resource conflicted detected, but wait for resolution is "
+					throw new MicrosoftAzureException(getThreadIdentity()
+							+ "Resource conflicted detected, but wait for resolution is "
 							+ "disabled");
 				}
 
@@ -1908,21 +1955,22 @@ public class MicrosoftAzureRestClient {
 						.get(ClientResponse.class);
 				break;
 			} catch (ClientHandlerException e) {
-				logger.warning("Caught an exception while executing GET with url "
+				logger.warning(getThreadIdentity() + "Caught an exception while executing GET with url "
 						+ url + ". Message :" + e.getMessage());
-				logger.finest("Waiting for a few seconds before retrying GET request");
+				logger.finest(getThreadIdentity() + "Waiting for a few seconds before retrying GET request");
 
 				try {
 					Thread.sleep(DEFAULT_POLLING_INTERVAL);
 				} catch (InterruptedException e1) {
-					logger.warning("Interrupted while waiting before trying to send a new request.");
+					logger.warning(getThreadIdentity()
+							+ "Interrupted while waiting before trying to send a new request.");
 				}
 				continue;
 			}
 		}
 
 		if (response == null) {
-			throw new TimeoutException("Timed out while executing GET after " + MAX_RETRIES);
+			throw new TimeoutException(getThreadIdentity() + "Timed out while executing GET after " + MAX_RETRIES);
 		}
 
 		return response;
@@ -2022,7 +2070,8 @@ public class MicrosoftAzureRestClient {
 			}
 
 			if (System.currentTimeMillis() > endTime) {
-				throw new TimeoutException("Timed out waiting for operation to finish. last state was : "
+				throw new TimeoutException(getThreadIdentity()
+						+ "Timed out waiting for operation to finish. last state was : "
 						+ status);
 			}
 		}
@@ -2049,7 +2098,8 @@ public class MicrosoftAzureRestClient {
 			boolean error = checkVirtualMachineStatusForError(status);
 			if (error) {
 				// bad status of VM.
-				throw new MicrosoftAzureException("Virtual Machine " + roleName + " was provisioned but found in "
+				throw new MicrosoftAzureException(getThreadIdentity() + "Virtual Machine " + roleName
+						+ " was provisioned but found in "
 						+ "status " + status);
 			}
 
@@ -2068,8 +2118,9 @@ public class MicrosoftAzureRestClient {
 				if (extReferences != null && !extReferences.getResourceExtensionReferences().isEmpty()) {
 
 					if (!firstLog) {
-						logger.info(String.format("Waiting for VM Role '%s' extensions configuration operation "
-								+ "to finish", roleName));
+						logger.info(getThreadIdentity()
+								+ String.format("Waiting for VM Role '%s' extensions configuration operation "
+										+ "to finish", roleName));
 						firstLog = true;
 					}
 
@@ -2097,8 +2148,9 @@ public class MicrosoftAzureRestClient {
 
 				if (isSkipExtensionsConfiguration) {
 					if (firstLog) {
-						logger.info(
-								(String.format("Vm Role '%s' extensions configuration operation finished", roleName)));
+						logger.info(getThreadIdentity() +
+								String.format("Vm Role '%s' extensions configuration operation finished",
+										roleName));
 					}
 					return deployment;
 				}
@@ -2212,8 +2264,9 @@ public class MicrosoftAzureRestClient {
 
 			// no deployment found (404)
 		} else {
-			logger.finest(String.format("The cloud service '%s' doesn't have any deployment in slot '%s'.",
-					cloudService, deploymentSlot));
+			logger.finest(getThreadIdentity()
+					+ String.format("The cloud service '%s' doesn't have any deployment in slot '%s'.",
+							cloudService, deploymentSlot));
 		}
 
 		return deployment;
@@ -2304,7 +2357,7 @@ public class MicrosoftAzureRestClient {
 				pendingStorageRequest.unlock();
 			}
 		} else {
-			throw new TimeoutException("Failed to acquire lock to set storage request after + "
+			throw new TimeoutException("Failed to acquire lock to set storage request after "
 					+ lockTimeout + " milliseconds");
 		}
 
@@ -2338,7 +2391,7 @@ public class MicrosoftAzureRestClient {
 			String storageAccountName, String vhdFilename, int diskSize, int lun, String hostCaching, long endTime)
 			throws MicrosoftAzureException, TimeoutException, InterruptedException {
 
-		logger.finest(String.format("Trying to add disk to vm role '%s' ", roleName));
+		logger.finest(getThreadIdentity() + String.format("Trying to add disk to vm role '%s' ", roleName));
 
 		StringBuilder dataMediaLinkBuilder = new StringBuilder();
 		dataMediaLinkBuilder.append("https://");
@@ -2361,10 +2414,10 @@ public class MicrosoftAzureRestClient {
 			String requestId = extractRequestId(response);
 			waitForRequestToFinish(requestId, endTime);
 			waitUntilDataDiskIsAttached(serviceName, deploymentName, roleName, lun, endTime);
-			logger.fine("Added a data disk to " + roleName);
+			logger.fine(getThreadIdentity() + "Added a data disk to " + roleName);
 
 		} catch (AzureResourceNotFoundException e) {
-			logger.warning("Failed adding disk to VM, the associated resource was not found");
+			logger.warning(getThreadIdentity() + "Failed adding disk to VM, the associated resource was not found");
 		}
 	}
 
@@ -2414,7 +2467,7 @@ public class MicrosoftAzureRestClient {
 
 		} catch (AzureResourceNotFoundException e) {
 			String diskResourceNotFoundStr = String.format("Disk '%s' resource not found", diskName);
-			logger.warning(diskResourceNotFoundStr);
+			logger.warning(getThreadIdentity() + diskResourceNotFoundStr);
 			throw new MicrosoftAzureException(diskResourceNotFoundStr);
 		}
 	}
@@ -2453,9 +2506,9 @@ public class MicrosoftAzureRestClient {
 			String requestId = extractRequestId(response);
 			waitForRequestToFinish(requestId, endTime);
 			waitUntilDataDiskIsAttached(serviceName, deploymentName, roleName, lun, endTime);
-			logger.fine("Added a data disk to " + roleName);
+			logger.fine(getThreadIdentity() + "Added a data disk to " + roleName);
 		} catch (AzureResourceNotFoundException e) {
-			logger.warning("Failed to added existing disk, the associated resource was not found");
+			logger.warning(getThreadIdentity() + "Failed to added existing disk, the associated resource was not found");
 		}
 
 	}
@@ -2480,7 +2533,7 @@ public class MicrosoftAzureRestClient {
 	 */
 	public void removeDataDisk(String serviceName, String deploymentName, String roleName, int lun, long endTime)
 			throws MicrosoftAzureException, TimeoutException, InterruptedException {
-		logger.fine("Removing/detaching data disk from role " + roleName);
+		logger.fine(getThreadIdentity() + "Removing/detaching data disk from role " + roleName);
 		DataVirtualHardDisk dataDisk = this.getDataDisk(serviceName, deploymentName, roleName, lun, endTime);
 		String url = String.format("/services/hostedservices/%s/deployments/%s/roles/%s/DataDisks/%d", serviceName,
 				deploymentName, roleName, lun);
@@ -2489,7 +2542,7 @@ public class MicrosoftAzureRestClient {
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
 		waitForDiskToDetach(dataDisk.getDiskName(), roleName, endTime);
-		logger.fine("Removed data disk from role " + roleName);
+		logger.fine(getThreadIdentity() + "Removed data disk from role " + roleName);
 	}
 
 	/**
@@ -2532,7 +2585,8 @@ public class MicrosoftAzureRestClient {
 			}
 
 		} catch (Exception e) {
-			logger.warning(String.format("Can't find role for machine with ip address '%s'", ipAddress));
+			logger.warning(getThreadIdentity()
+					+ String.format("Can't find role for machine with ip address '%s'", ipAddress));
 		}
 		return role;
 	}
@@ -2554,7 +2608,7 @@ public class MicrosoftAzureRestClient {
 			waitForGatewayOperationToFinish(virtualNetworkName, endTime);
 
 		} catch (TimeoutException e) {
-			logger.warning("Timed out while waiting for gateway creation");
+			logger.warning(getThreadIdentity() + "Timed out while waiting for gateway creation");
 			throw e;
 		}
 	}
@@ -2573,7 +2627,7 @@ public class MicrosoftAzureRestClient {
 			waitForRequestToFinish(requestId, endTime);
 
 		} catch (TimeoutException e) {
-			logger.warning("Timed out while waiting for gateway key to be set.");
+			logger.warning(getThreadIdentity() + "Timed out while waiting for gateway key to be set.");
 			throw e;
 		}
 	}
@@ -2635,7 +2689,7 @@ public class MicrosoftAzureRestClient {
 
 			GatewayInfo gatewayInfo = this.getGatewayInfo(virtualNetwork, endTime);
 			if (gatewayInfo == null) {
-				logger.warning("Gateway not found, it might be already deleted.");
+				logger.warning(getThreadIdentity() + "Gateway not found, it might be already deleted.");
 				return;
 			}
 
@@ -2681,11 +2735,13 @@ public class MicrosoftAzureRestClient {
 
 				// no gateway found (404)
 			} else {
-				logger.warning(String.format("The network '%s' doesn't have any gateway", virtualNetwork));
+				logger.warning(getThreadIdentity()
+						+ String.format("The network '%s' doesn't have any gateway", virtualNetwork));
 			}
 
 		} catch (Exception e) {
-			logger.warning(String.format("Failed getting gateway information from network '%s'", virtualNetwork));
+			logger.warning(getThreadIdentity()
+					+ String.format("Failed getting gateway information from network '%s'", virtualNetwork));
 		}
 
 		return gatewayInfo;
@@ -2736,7 +2792,7 @@ public class MicrosoftAzureRestClient {
 				String status = storageService.getStorageServiceProperties().getStatus();
 
 				if (status.equals(STORAGE_STATUS_CREATED)) {
-					logger.finest(String.format("storage account '%s' status is created",
+					logger.finest(getThreadIdentity() + String.format("storage account '%s' status is created",
 							storageAccountName));
 					return;
 				}
@@ -2745,8 +2801,9 @@ public class MicrosoftAzureRestClient {
 						status.equals(STORAGE_STATUS_RESOLVINGDNS)) {
 					try {
 						Thread.sleep(DEFAULT_POLLING_INTERVAL);
-						logger.finest(String.format("Waiting for storage account '%s' to be created",
-								storageAccountName));
+						logger.finest(getThreadIdentity()
+								+ String.format("Waiting for storage account '%s' to be created",
+										storageAccountName));
 						continue;
 					} catch (InterruptedException e) {
 						throw new MicrosoftAzureException(e);
@@ -2757,8 +2814,9 @@ public class MicrosoftAzureRestClient {
 					if (ignoreDeletingState) {
 						try {
 							Thread.sleep(DEFAULT_POLLING_INTERVAL);
-							logger.finest(String.format("Waiting for storage account '%s' to be deleted",
-									storageAccountName));
+							logger.finest(getThreadIdentity()
+									+ String.format("Waiting for storage account '%s' to be deleted",
+											storageAccountName));
 							continue;
 						} catch (InterruptedException e) {
 							throw new MicrosoftAzureException(e);

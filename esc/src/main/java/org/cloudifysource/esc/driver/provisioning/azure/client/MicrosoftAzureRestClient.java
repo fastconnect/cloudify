@@ -772,18 +772,9 @@ public class MicrosoftAzureRestClient {
 
 				// check static IP(s) availability
 				// which is skipped if no private ip was defined in the current compute template
-				if (deploymentDesc.getIpAddresses() != null) {
-					String availableIp = setAvailableIpIfExist(deploymentDesc.getIpAddresses(),
+				if (deploymentDesc.getIpAddresses() != null && !deploymentDesc.getIpAddresses().isEmpty()) {
+					String availableIp = this.getAvailableIpAddressOrFail(deploymentDesc.getIpAddresses(),
 							deploymentDesc.getNetworkName(), deploymentDesc.getSubnetName(), endTime);
-
-					if (availableIp == null) {
-						String noIpAvailableString = String.format("The specified Ip addresses '%s' are not available",
-								deploymentDesc.getIpAddresses().toString());
-
-						logger.severe(getThreadIdentity() + noIpAvailableString);
-						throw new MicrosoftAzureException("Can't provision VM :" + noIpAvailableString);
-
-					}
 					deploymentDesc.setAvailableIp(availableIp);
 				}
 
@@ -1035,45 +1026,44 @@ public class MicrosoftAzureRestClient {
 		return exist;
 	}
 
-	private String setAvailableIpIfExist(List<String> ips, String virtualNetwork, String subnetName, long endTime)
-			throws MicrosoftAzureException,
-			TimeoutException, InterruptedException {
+	private String getAvailableIpAddressOrFail(List<String> ips, String virtualNetwork, String subnetName, long endTime)
+			throws MicrosoftAzureException, TimeoutException, InterruptedException {
 
-		if (ips != null && !ips.isEmpty()) {
-			ClientResponse response;
+		logger.info(getThreadIdentity() + "Looking for availability of IPs address " + ips);
+		for (String ip : ips) {
 
-			for (String ip : ips) {
+			StringBuilder sb = new StringBuilder();
+			sb.append("/services/networking/");
+			sb.append(virtualNetwork);
+			sb.append("?op=checkavailability");
+			sb.append("&address=");
+			sb.append(ip);
+			ClientResponse response = doGet(sb.toString());
+			checkForError(response);
+			String requestId = extractRequestId(response);
+			waitForRequestToFinish(requestId, endTime);
 
-				StringBuilder sb = new StringBuilder();
-				sb.append("/services/networking/");
-				sb.append(virtualNetwork);
-				sb.append("?op=checkavailability");
-				sb.append("&address=");
-				sb.append(ip);
-				response = doGet(sb.toString());
-				checkForError(response);
-				String requestId = extractRequestId(response);
-				waitForRequestToFinish(requestId, endTime);
+			AddressAvailability aa = (AddressAvailability) MicrosoftAzureModelUtils.
+					unmarshall(response.getEntity(String.class));
 
-				AddressAvailability aa = (AddressAvailability) MicrosoftAzureModelUtils.
-						unmarshall(response.getEntity(String.class));
+			if (aa.isAvailable()) {
+				// check subnet availability
+				if (isSubnetExist(subnetName, virtualNetwork, endTime)) {
+					logger.info(getThreadIdentity() + "The ip address " + ip + " is available");
+					return ip;
+				} else {
+					String subnetNotExistString = String.format("The specified subnet '%s' doesn't exist in "
+							+ "network '%s' ", subnetName, virtualNetwork);
 
-				if (aa.isAvailable()) {
-					// check subnet availability
-					if (isSubnetExist(subnetName, virtualNetwork, endTime)) {
-						return ip;
-					} else {
-						String subnetNotExistString = String.format("The specified subnet '%s' doesn't exist in "
-								+ "network '%s' ", subnetName, virtualNetwork);
-
-						logger.severe(getThreadIdentity() + subnetNotExistString);
-						throw new MicrosoftAzureException("Can't provision VM :" + subnetNotExistString);
-					}
+					logger.severe(getThreadIdentity() + subnetNotExistString);
+					throw new MicrosoftAzureException("Can't provision VM :" + subnetNotExistString);
 				}
 			}
 		}
 
-		return null;
+		String noIpAvailableString = String.format("The specified Ip addresses '%s' are not available", ips);
+		logger.severe(getThreadIdentity() + noIpAvailableString);
+		throw new MicrosoftAzureException("Can't provision VM :" + noIpAvailableString);
 	}
 
 	/**

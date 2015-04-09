@@ -614,4 +614,10 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 		});
 	}
 
+	@Test
+	@Ignore("Issue with windows tests. Powershell can't be executed on Linux machines. Reactivate the test once the custom data feature is implemented")
+	public void testStartWindowsMachineWithoutEndpoints() throws Exception {
+		this.startAndStopManagementMachine("win2012_without_endpoints");
+	}
+
 }

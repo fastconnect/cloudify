@@ -156,9 +156,13 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String AZURE_VPN_GATEWAY_TYPE = "azure.vpn.gateway.type";
 	private static final String AZURE_VPN_GATEWAY_KEY = "azure.vpn.gateway.key";
 
+	private static final String AZURE_GENERATE_ENDPOINTS = "azure.generate.endpoints";
+
 	private static final String AZURE_CLOUD_SERVICE_CODE = "azure.cloud.service.code";
 
 	private static String cloudServicePrefix = "cloudifycloudservice";
+
+	private boolean generateEndpoints;
 
 	private AtomicInteger serviceCounter = new AtomicInteger(1);
 
@@ -315,7 +319,16 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		this.remoteExecutionMode = this.template.getRemoteExecution();
 		this.scriptLanguage = this.template.getScriptLanguage();
 
-		this.ensureEndpointForManagementMachine();
+		// check cfy endpoints generation
+		try {
+			this.generateEndpoints = (Boolean) this.template.getCustom().get(AZURE_GENERATE_ENDPOINTS);
+		} catch (Exception e) {
+			this.generateEndpoints = false;
+		}
+
+		if (this.generateEndpoints) {
+			this.ensureEndpointForManagementMachine();
+		}
 
 		this.firewallPorts = (List<Map<String, String>>) this.template.getCustom().get(AZURE_FIREWALL_PORTS);
 
@@ -383,6 +396,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	 * @throws CloudProvisioningException
 	 */
 	private void ensureEndpointForManagementMachine() throws CloudProvisioningException {
+
 		if (management) {
 			final String managementMachineTemplate = this.cloud.getConfiguration().getManagementMachineTemplate();
 			final ComputeTemplate template = this.cloud.getCloudCompute().getTemplates().get(managementMachineTemplate);
@@ -1421,23 +1435,26 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		}
 
 		// Open WEBUI and REST ports for management machines
-		if (this.management) {
+		if (this.generateEndpoints) {
+			if (this.management) {
 
-			InputEndpoint webuiEndpoint = new InputEndpoint();
-			webuiEndpoint.setLocalPort(WEBUI_PORT);
-			webuiEndpoint.setPort(WEBUI_PORT);
-			webuiEndpoint.setName("Webui");
-			webuiEndpoint.setProtocol("TCP");
-			inputEndpoints.getInputEndpoints().add(webuiEndpoint);
+				InputEndpoint webuiEndpoint = new InputEndpoint();
+				webuiEndpoint.setLocalPort(WEBUI_PORT);
+				webuiEndpoint.setPort(WEBUI_PORT);
+				webuiEndpoint.setName("Webui");
+				webuiEndpoint.setProtocol("TCP");
+				inputEndpoints.getInputEndpoints().add(webuiEndpoint);
 
-			InputEndpoint restEndpoint = new InputEndpoint();
-			restEndpoint.setLocalPort(REST_PORT);
-			restEndpoint.setPort(REST_PORT);
-			restEndpoint.setName("Rest");
-			restEndpoint.setProtocol("TCP");
-			inputEndpoints.getInputEndpoints().add(restEndpoint);
+				InputEndpoint restEndpoint = new InputEndpoint();
+				restEndpoint.setLocalPort(REST_PORT);
+				restEndpoint.setPort(REST_PORT);
+				restEndpoint.setName("Rest");
+				restEndpoint.setProtocol("TCP");
+				inputEndpoints.getInputEndpoints().add(restEndpoint);
+			}
 		}
 		return inputEndpoints;
+
 	}
 
 	private Boolean isWindowsVM() {

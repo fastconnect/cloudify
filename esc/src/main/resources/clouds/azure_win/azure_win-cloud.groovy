@@ -251,6 +251,9 @@ cloud {
 
 					// Password that was used to create the certificate
 					"azure.pfx.password" : pfxPassword,
+					
+					// auto generate cfy endpoints (webui, rest)
+					"azure.generate.endpoints" : true,
 
 					// Endpoints definition
 					"azure.endpoints" : [
@@ -265,7 +268,7 @@ cloud {
 					"azure.firewall.ports" : [
 						[name:"EVENTS", protocol:"TCP", port:"8081"]
 					]
-
+					
 
 					// Optional. each availability set represents a different fault domain.
 					// "azure.availability.set" : "ENTER_AVAILABILITY_SET",

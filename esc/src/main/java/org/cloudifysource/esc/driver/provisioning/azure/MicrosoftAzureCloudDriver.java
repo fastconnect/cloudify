@@ -320,11 +320,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		this.scriptLanguage = this.template.getScriptLanguage();
 
 		// check cfy endpoints generation
-		try {
-			this.generateEndpoints = (Boolean) this.template.getCustom().get(AZURE_GENERATE_ENDPOINTS);
-		} catch (Exception e) {
-			this.generateEndpoints = false;
-		}
+		this.generateEndpoints =
+				Boolean.parseBoolean((String) this.template.getCustom().get(AZURE_GENERATE_ENDPOINTS));
 
 		if (this.generateEndpoints) {
 			this.ensureEndpointForManagementMachine();

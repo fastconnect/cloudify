@@ -18,7 +18,7 @@
 			"azure.deployment.slot": "Production",
 			"azure.pfx.file": pfxFile,
 			"azure.pfx.password" : pfxPassword,
-			"azure.generate.endpoints" : false,			
+			"azure.generate.endpoints" : "false",			
 
 			// no Endpoints definition
 		

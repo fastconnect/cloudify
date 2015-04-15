@@ -29,6 +29,9 @@ public final class ModelContextFactory {
 		CLASSES.add(Deployment.class);
 		CLASSES.add(InputEndpoint.class);
 		CLASSES.add(InputEndpoints.class);
+		CLASSES.add(EndpointAcl.class);
+		CLASSES.add(Rules.class);
+		CLASSES.add(Rule.class);
 		CLASSES.add(LinuxProvisioningConfigurationSet.class);
 		CLASSES.add(WindowsProvisioningConfigurationSet.class);
 		CLASSES.add(WinRM.class);

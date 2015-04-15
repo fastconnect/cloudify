@@ -18,6 +18,7 @@ public class InputEndpoint {
 	private Integer port;
 	private LoadBalancerProbe loadBalancerProbe;
 	private String protocol;
+	private EndpointAcl endpointAcl;
 	private String vIp;
 
 	/**
@@ -86,6 +87,15 @@ public class InputEndpoint {
 
 	public void setPort(Integer port) {
 		this.port = port;
+	}
+
+	@XmlElement(name = "EndpointACL")
+	public EndpointAcl getEndpointAcl() {
+		return endpointAcl;
+	}
+
+	public void setEndpointAcl(EndpointAcl endpointAcl) {
+		this.endpointAcl = endpointAcl;
 	}
 
 	@Override

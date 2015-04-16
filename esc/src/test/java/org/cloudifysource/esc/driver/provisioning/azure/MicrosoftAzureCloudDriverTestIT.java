@@ -20,13 +20,16 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.Dns;
 import org.cloudifysource.esc.driver.provisioning.azure.model.DnsServer;
 import org.cloudifysource.esc.driver.provisioning.azure.model.DnsServers;
 import org.cloudifysource.esc.driver.provisioning.azure.model.DnsServersRef;
+import org.cloudifysource.esc.driver.provisioning.azure.model.EndpointAcl;
 import org.cloudifysource.esc.driver.provisioning.azure.model.HostedServices;
 import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoint;
 import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoints;
 import org.cloudifysource.esc.driver.provisioning.azure.model.LoadBalancerProbe;
 import org.cloudifysource.esc.driver.provisioning.azure.model.NetworkConfigurationSet;
+import org.cloudifysource.esc.driver.provisioning.azure.model.PersistentVMRole;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Role;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleInstanceList;
+import org.cloudifysource.esc.driver.provisioning.azure.model.Rule;
 import org.cloudifysource.esc.driver.provisioning.azure.model.VirtualNetworkConfiguration;
 import org.cloudifysource.esc.driver.provisioning.azure.model.VirtualNetworkSite;
 import org.cloudifysource.esc.util.Utils;
@@ -247,6 +250,67 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 				}
 			}
 
+		});
+	}
+
+	@Test
+	public void testStartUbuntuManagementMachineEndPointswithAcl() throws Exception {
+
+		String computeTemplateName = "ubuntu1410_acl_endpoints";
+		final Cloud cloud =
+				AzureTestUtils.createCloud("./src/main/resources/clouds", "azure_win", null, computeTemplateName);
+
+		// Retrieve the cloud service name
+		final ComputeTemplate computeTemplate = cloud.getCloudCompute().getTemplates().get(computeTemplateName);
+		final String cloudServiceName = (String) computeTemplate.getCustom().get("azure.cloud.service");
+		String affinityPrefix = (String) cloud.getCustom().get("azure.affinity.group");
+
+		final MicrosoftAzureRestClient azureRestClient =
+				AzureTestUtils.createMicrosoftAzureRestClient(cloudServiceName, affinityPrefix);
+
+		this.startAndStopManagementMachine(computeTemplateName, new MachineDetailsAssertion() {
+			@Override
+			public void additionalAssertions(MachineDetails md) {
+				try {
+					HostedServices cloudServices = azureRestClient.listHostedServices();
+					Assert.assertTrue(cloudServices.contains(cloudServiceName));
+					String deploymentSlot = (String) computeTemplate.getCustom().get("azure.deployment.slot");
+
+					Deployment deployment = azureRestClient.getDeploymentBySlot(
+							cloudServiceName, deploymentSlot);
+
+					Assert.assertNotNull(deployment);
+
+					// TODO make dynamic roleName
+					String roleName = String.format("%sCFYM1", cloud.getProvider().getManagementGroup());
+
+					// get role full details
+					final long endTime = 10000000;
+					PersistentVMRole persistentVMRole =
+							azureRestClient.getPersistentVMRole(cloudServiceName, deployment.getName(), roleName,
+									endTime);
+					Assert.assertNotNull(persistentVMRole);
+
+					NetworkConfigurationSet netConfigSet =
+							persistentVMRole.getConfigurationSets().getNetworkConfigurationSet();
+					InputEndpoints inputEndpoints = netConfigSet.getInputEndpoints();
+
+					InputEndpoint httpEndpoint = inputEndpoints.getInputEndpointByName("HTTP");
+					Assert.assertNotNull("Missing HTTP endpoint", httpEndpoint);
+					Assert.assertEquals("Endpoint port should be 8080", new Integer(8080), httpEndpoint.getPort());
+
+					EndpointAcl endpointAcl = httpEndpoint.getEndpointAcl();
+					Assert.assertNotNull("Missing endpoint ACL", endpointAcl);
+					Rule rule = endpointAcl.getRules().getRules().get(0);
+					Assert.assertNotNull("Missing Acl rule 1", rule);
+					Assert.assertEquals("order should be 1", new Integer(1), rule.getOrder());
+
+					Assert.assertNotNull("Missing Acl rule 2", endpointAcl.getRules().getRules().get(1));
+
+				} catch (Exception e) {
+					Assert.fail(e.getMessage());
+				}
+			}
 		});
 	}
 
@@ -615,7 +679,7 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 	}
 
 	@Test
-	@Ignore("Issue with windows tests. Powershell can't be executed on Linux machines. Reactivate the test once the custom data feature is implemented")
+	// @Ignore("Issue with windows tests. Powershell can't be executed on Linux machines. Reactivate the test once the custom data feature is implemented")
 	public void testStartWindowsMachineWithoutEndpoints() throws Exception {
 		this.startAndStopManagementMachine("win2012_without_endpoints");
 	}

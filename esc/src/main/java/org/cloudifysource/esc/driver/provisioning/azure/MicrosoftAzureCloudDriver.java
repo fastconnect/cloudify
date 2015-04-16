@@ -66,6 +66,7 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.ConnectionsToLocal
 import org.cloudifysource.esc.driver.provisioning.azure.model.Disk;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Disks;
 import org.cloudifysource.esc.driver.provisioning.azure.model.DomainJoin;
+import org.cloudifysource.esc.driver.provisioning.azure.model.EndpointAcl;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Gateway;
 import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoint;
 import org.cloudifysource.esc.driver.provisioning.azure.model.InputEndpoints;
@@ -74,6 +75,8 @@ import org.cloudifysource.esc.driver.provisioning.azure.model.LoadBalancerProbe;
 import org.cloudifysource.esc.driver.provisioning.azure.model.LocalNetworkSite;
 import org.cloudifysource.esc.driver.provisioning.azure.model.LocalNetworkSiteRef;
 import org.cloudifysource.esc.driver.provisioning.azure.model.LocalNetworkSites;
+import org.cloudifysource.esc.driver.provisioning.azure.model.Rule;
+import org.cloudifysource.esc.driver.provisioning.azure.model.Rules;
 import org.cloudifysource.esc.driver.provisioning.azure.model.VpnConfiguration;
 import org.cloudifysource.esc.driver.provisioning.storage.azure.AzureDeploymentContext;
 import org.cloudifysource.esc.installer.InstallationDetails;
@@ -222,6 +225,18 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	private static final String ENDPOINT_LOADBALANCEDSET = "loadBalancedSet";
 	private static final String ENDPOINT_PROBE_PORT = "probePort";
 	private static final String ENDPOINT_PROBE_PROTOCOL = "probeProtocol";
+
+	private static final String ENDPOINT_BASIC = "basic";
+	private static final String ENDPOINT_LB = "lb";
+	private static final String ENDPOINT_ACL = "acl";
+
+	private static final String ENDPOINT_ORDER = "order";
+	private static final String ENDPOINT_ACTION = "action";
+	private static final String ENDPOINT_SUBNET = "subnet";
+	private static final String ENDPOINT_DESCRIPTION = "description";
+
+	private static final String ENDPOINT_ACTION_PERMIT = "permit";
+	private static final String ENDPOINT_ACTION_DENY = "deny";
 
 	// Commands template
 	private static final String COMMAND_OPEN_FIREWALL_PORT = "netsh advfirewall firewall"
@@ -409,9 +424,10 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			// Ensure that WinRM endpoint exists.
 			Object objects = this.template.getCustom().get(AZURE_ENDPOINTS);
 			@SuppressWarnings("unchecked")
-			List<Map<String, String>> endpoints = (List<Map<String, String>>) objects;
+			List<Map<String, Object>> endpoints = (List<Map<String, Object>>) objects;
+
 			if (endpoints == null) {
-				endpoints = new ArrayList<Map<String, String>>(1);
+				endpoints = new ArrayList<Map<String, Object>>(1);
 				this.template.getCustom().put(AZURE_ENDPOINTS, endpoints);
 			}
 
@@ -419,41 +435,58 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 				if (!doesEndpointsContainsPort(endpoints, remoteExecution.getDefaultPort())) {
 					logger.info("No remote execution endpoint, the drive will create one.");
 					String portStr = Integer.toString(remoteExecution.getDefaultPort());
+
 					HashMap<String, String> newEndpoint = new HashMap<String, String>();
 					newEndpoint.put("name", remoteExecution.name());
 					newEndpoint.put("protocol", "TCP");
 					newEndpoint.put("localPort", portStr);
 					newEndpoint.put("port", portStr);
-					endpoints.add(newEndpoint);
+
+					Map<String, Object> newEndpointMap = new HashMap<String, Object>();
+					newEndpointMap.put(ENDPOINT_BASIC, newEndpoint);
+					endpoints.add(newEndpointMap);
 				}
 				if (!doesEndpointsContainsPort(endpoints, fileTransfer.getDefaultPort())) {
 					logger.info("No file transfert endpoint, the drive will create one.");
 					String portStr = Integer.toString(fileTransfer.getDefaultPort());
-					HashMap<String, String> newEndpoint = new HashMap<String, String>();
+					HashMap<String, Object> newEndpoint = new HashMap<String, Object>();
 					newEndpoint.put("name", fileTransfer.name());
 					newEndpoint.put("protocol", "TCP");
 					newEndpoint.put("localPort", portStr);
 					newEndpoint.put("port", portStr);
-					endpoints.add(newEndpoint);
+
+					Map<String, Object> newEndpointMap = new HashMap<String, Object>();
+					newEndpointMap.put(ENDPOINT_BASIC, newEndpoint);
+					endpoints.add(newEndpointMap);
+
 				}
 			}
 		}
 	}
 
-	private boolean doesEndpointsContainsPort(List<Map<String, String>> endpoints, int port2check)
+	@SuppressWarnings("unchecked")
+	private boolean doesEndpointsContainsPort(List<Map<String, Object>> endpoints, int port2check)
 			throws CloudProvisioningException {
-		for (Map<String, String> endpointMap : endpoints) {
-			String port = endpointMap.get("port");
-			String localPort = endpointMap.get("localPort");
-			if (port2check == Integer.parseInt(localPort)) {
-				if (!localPort.equals(port)) {
-					throw new CloudProvisioningException("The endpoint '" + endpointMap.get("name")
-							+ "' should have the same value on localPort and port");
+
+		for (Map<String, Object> endpointMap : endpoints) {
+			Object endPointBasicObject = endpointMap.get(ENDPOINT_BASIC);
+			if (endPointBasicObject != null) {
+
+				Map<String, String> endPointBasic = (Map<String, String>) endPointBasicObject;
+
+				String port = endPointBasic.get("port");
+				String localPort = endPointBasic.get("localPort");
+				if (port2check == Integer.parseInt(localPort)) {
+					if (!localPort.equals(port)) {
+						throw new CloudProvisioningException("The endpoint '" + endPointBasic.get("name")
+								+ "' should have the same value on localPort and port");
+					}
+					return true;
 				}
-				return true;
 			}
 		}
 		return false;
+
 	}
 
 	private void verifyManagementNetworkConfiguration(Cloud cloud) throws CloudProvisioningException {
@@ -1370,71 +1403,49 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	private InputEndpoints createInputEndPoints() throws MicrosoftAzureException {
 
 		InputEndpoints inputEndpoints = new InputEndpoints();
 
 		// Add End Point for each port
 		Object objects = this.template.getCustom().get(AZURE_ENDPOINTS);
-		@SuppressWarnings("unchecked")
-		List<Map<String, String>> endpoints = (List<Map<String, String>>) objects;
-		if (endpoints != null) {
-			for (Map<String, String> endpointMap : endpoints) {
-				String name = endpointMap.get(ENDPOINT_NAME);
-				String protocol = endpointMap.get(ENDPOINT_PROTOCOL);
-				String portStr = endpointMap.get(ENDPOINT_PORT);
-				String localPortStr = endpointMap.get(ENDPOINT_LOCALPORT);
+		if (objects != null) {
+			List<Map<String, Object>> endpoints = (List<Map<String, Object>>) objects;
+			if (endpoints != null) {
+				for (Map<String, Object> endpointMap : endpoints) {
 
-				// skip endPoint, strict verification
-				if (StringUtils.isNotBlank(localPortStr) && StringUtils.isNotBlank(protocol)
-						&& StringUtils.isNotBlank(name)) {
+					try {
 
-					InputEndpoint endpoint = new InputEndpoint();
+						// set endpoint basic information
+						if (endpointMap.get(ENDPOINT_BASIC) != null) {
+							Map<String, String> endPointBasic = (Map<String, String>) endpointMap.get(ENDPOINT_BASIC);
+							InputEndpoint inputEndpoint = getEndPointBasic(endPointBasic);
 
-					if (StringUtils.isNotBlank(portStr)) {
-						endpoint.setPort(Integer.parseInt(portStr));
-					} // otherwise, public port number will be generated by azure
+							// set lb endpoint
+							Object endPointLbObject = endpointMap.get(ENDPOINT_LB);
+							if (endPointLbObject != null) {
+								Map<String, String> endPointLb = (Map<String, String>) endPointLbObject;
+								this.setEndPointLb(endPointLb, inputEndpoint);
+							}
 
-					endpoint.setLocalPort(Integer.parseInt(localPortStr));
-					endpoint.setName(name);
-					endpoint.setProtocol(protocol);
+							// set Acl rules
+							Object endPointAclObject = endpointMap.get(ENDPOINT_ACL);
+							if (endPointAclObject != null) {
+								List<Map<String, String>> endPointAcl = (List<Map<String, String>>) endPointAclObject;
+								setEndPointAcl(endPointAcl, inputEndpoint);
+							}
 
-					// manage load balancer,
-					// protocol, port probe are required
-					String loadBalancedSet = endpointMap.get(ENDPOINT_LOADBALANCEDSET);
-					String probePort = endpointMap.get(ENDPOINT_PROBE_PORT);
-					String probeProtocol = endpointMap.get(ENDPOINT_PROBE_PROTOCOL);
-
-					if (StringUtils.isNotBlank(loadBalancedSet) && StringUtils.isNotBlank(probePort)
-							&& StringUtils.isNotBlank(probeProtocol)) {
-
-						if (loadBalancedSet.trim().length() > 15 || loadBalancedSet.trim().length() < 3) {
-							String loadbanacedNameLenghtError =
-									String.format(
-											"Failed provisioning VM,"
-													+ " please check load balancer name lenght in compute template '%s'. It should be"
-													+ " between 3 and 15 characters",
-											this.configuration.getCloudTemplate(), name, protocol, localPortStr);
-							logger.severe(loadbanacedNameLenghtError);
-							throw new MicrosoftAzureException(loadbanacedNameLenghtError);
+							inputEndpoints.getInputEndpoints().add(inputEndpoint);
 						}
 
-						LoadBalancerProbe lbp = new LoadBalancerProbe(probePort.trim(), probeProtocol.trim());
-						endpoint.setLoadBalancedEndpointSetName(loadBalancedSet);
-						endpoint.setLoadBalancerProbe(lbp);
+					} catch (Exception e) {
+						throw new MicrosoftAzureException("Failed processing endpoints, please chack template "
+								+ cloudTemplateName, e);
 					}
-
-					inputEndpoints.getInputEndpoints().add(endpoint);
-
-				} else {
-					String endPointValuesError = String.format("Failed provisioning VM, please check"
-							+ " endPoint required elements in compute template '%s' : [name: '%s', protocol: '%s', "
-							+ "localPort: '%s']", this.configuration.getCloudTemplate(), name, protocol, localPortStr);
-					logger.severe(endPointValuesError);
-					throw new MicrosoftAzureException(endPointValuesError);
 				}
-
 			}
+
 		}
 
 		// Open WEBUI and REST ports for management machines
@@ -1457,6 +1468,128 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			}
 		}
 		return inputEndpoints;
+
+	}
+
+	private InputEndpoint getEndPointBasic(Map<String, String> endpointMap) throws MicrosoftAzureException {
+
+		String name = endpointMap.get(ENDPOINT_NAME);
+		String protocol = endpointMap.get(ENDPOINT_PROTOCOL);
+		String portStr = endpointMap.get(ENDPOINT_PORT);
+		String localPortStr = endpointMap.get(ENDPOINT_LOCALPORT);
+
+		// skip endPoint, strict verification
+		if (StringUtils.isNotBlank(localPortStr) && StringUtils.isNotBlank(protocol)
+				&& StringUtils.isNotBlank(name)) {
+
+			InputEndpoint endpoint = new InputEndpoint();
+
+			if (StringUtils.isNotBlank(portStr)) {
+				endpoint.setPort(Integer.parseInt(portStr));
+			} // otherwise, public port number will be generated by azure
+
+			endpoint.setLocalPort(Integer.parseInt(localPortStr));
+			endpoint.setName(name);
+			endpoint.setProtocol(protocol);
+
+			return endpoint;
+
+		} else {
+			String endPointValuesError = String.format("Failed provisioning VM, please check"
+					+ " endPoint required elements in compute template '%s' : [name: '%s', protocol: '%s', "
+					+ "localPort: '%s']", this.configuration.getCloudTemplate(), name, protocol, localPortStr);
+			logger.severe(endPointValuesError);
+			throw new MicrosoftAzureException(endPointValuesError);
+		}
+
+	}
+
+	private void setEndPointLb(Map<String, String> endpointMap, InputEndpoint endpoint)
+			throws MicrosoftAzureException {
+
+		// manage load balancer, protocol, port probe are required
+		String loadBalancedSet = endpointMap.get(ENDPOINT_LOADBALANCEDSET);
+		String probePort = endpointMap.get(ENDPOINT_PROBE_PORT);
+		String probeProtocol = endpointMap.get(ENDPOINT_PROBE_PROTOCOL);
+
+		if (StringUtils.isNotBlank(loadBalancedSet) && StringUtils.isNotBlank(probePort)
+				&& StringUtils.isNotBlank(probeProtocol)) {
+
+			if (loadBalancedSet.trim().length() > 15 || loadBalancedSet.trim().length() < 3) {
+				String loadbanacedNameLenghtError =
+						String.format(
+								"Failed provisioning VM,"
+										+ " please check load balancer name lenght in compute template '%s'. It should be"
+										+ " between 3 and 15 characters",
+								this.configuration.getCloudTemplate(), loadBalancedSet);
+				logger.severe(loadbanacedNameLenghtError);
+				throw new MicrosoftAzureException(loadbanacedNameLenghtError);
+			}
+
+			LoadBalancerProbe lbp = new LoadBalancerProbe(probePort.trim(), probeProtocol.trim());
+			endpoint.setLoadBalancedEndpointSetName(loadBalancedSet);
+			endpoint.setLoadBalancerProbe(lbp);
+		}
+
+	}
+
+	private void setEndPointAcl(List<Map<String, String>> endpointRulesList, InputEndpoint endpoint)
+			throws MicrosoftAzureException {
+
+		if (endpointRulesList != null) {
+
+			EndpointAcl acl = new EndpointAcl();
+			Rules rules = new Rules();
+			for (Map<String, String> rule : endpointRulesList) {
+
+				String order = String.valueOf(rule.get(ENDPOINT_ORDER));
+				String action = rule.get(ENDPOINT_ACTION);
+				String subnet = rule.get(ENDPOINT_SUBNET);
+				String description = rule.get(ENDPOINT_DESCRIPTION);
+
+				if (StringUtils.isNotBlank(order) && StringUtils.isNotBlank(action)
+						&& StringUtils.isNotBlank(subnet)) {
+
+					// check action value (should be : permit or deny)
+					if (!action.equalsIgnoreCase(ENDPOINT_ACTION_DENY)
+							&& !action.equalsIgnoreCase(ENDPOINT_ACTION_PERMIT)) {
+
+						String actionError =
+								String.format(
+										"Failed provisioning VM,"
+												+ " please check action value for endpoint '%' in compute template '%s'. Possible values are: permit, deny",
+										endpoint.getName(), this.configuration.getCloudTemplate());
+						logger.severe(actionError);
+						throw new MicrosoftAzureException(actionError);
+					}
+
+					try {
+						int parseInt = Integer.parseInt(order);
+						rules.getRules().add(new Rule(parseInt, action, subnet, description));
+
+					} catch (Exception e) {
+						String invalidValue =
+								String.format(
+										"Invalid value for ACL order "
+												+ " please check endpoint '%' in compute template '%s'. Possible values are: permit, deny",
+										endpoint.getName(), this.configuration.getCloudTemplate());
+						logger.severe(invalidValue);
+						throw new MicrosoftAzureException(invalidValue);
+					}
+
+				} else {
+					String actionError =
+							String.format(
+									"Failed provisioning VM,"
+											+ " please check required values for endpoint ACL '%' in compute template '%s'.",
+									endpoint.getName(), this.configuration.getCloudTemplate());
+					logger.severe(actionError);
+					throw new MicrosoftAzureException(actionError);
+				}
+			}
+			acl.setRules(rules);
+			endpoint.setEndpointAcl(acl);
+		}
 
 	}
 

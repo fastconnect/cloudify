@@ -2861,6 +2861,38 @@ public class MicrosoftAzureRestClient {
 
 	}
 
+	public PersistentVMRole getPersistentVMRole(String cloudService, String deploymentName, String roleName,
+			long endTime)
+			throws TimeoutException, MicrosoftAzureException, InterruptedException {
+
+		PersistentVMRole persistentVMRole = null;
+
+		// GET
+		// https://management.core.windows.net/<subscription-id>/services/hostedservices/<cloudservice-name>/deployments/<deployment-name>/roles/<role-name>
+
+		String getRoleUrl =
+				String.format("/services/hostedservices/%s/deployments/%s/roles/%s", cloudService, deploymentName,
+						roleName);
+
+		ClientResponse response = doGet(getRoleUrl);
+
+		if (response.getStatus() != HTTP_NOT_FOUND) {
+
+			String requestId = extractRequestId(response);
+			this.waitForRequestToFinish(requestId, endTime);
+			String responseBody = response.getEntity(String.class);
+			persistentVMRole = (PersistentVMRole) MicrosoftAzureModelUtils.unmarshall(responseBody);
+
+			// no role (PersistentVMRole) found (404)
+		} else {
+			logger.finest(getThreadIdentity()
+					+ String.format("The role '%s' can't be found in deployment '%' (cloud service '%').",
+							roleName, deploymentName, cloudService));
+		}
+
+		return persistentVMRole;
+	}
+
 	public void destroy() {
 		if (this.client != null) {
 			this.client.destroy();

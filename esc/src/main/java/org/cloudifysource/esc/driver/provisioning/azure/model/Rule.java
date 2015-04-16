@@ -6,17 +6,27 @@ import javax.xml.bind.annotation.XmlType;
 @XmlType(name = "Rule", propOrder = { "order", "action", "remoteSubnet", "description" })
 public class Rule {
 
-	private int order;
+	private Integer order;
 	private String action;
 	private String remoteSubnet;
 	private String description;
 
+	public Rule() {
+	}
+
+	public Rule(Integer order, String action, String remoteSubnet, String description) {
+		this.order = order;
+		this.action = action;
+		this.remoteSubnet = remoteSubnet;
+		this.description = description;
+	}
+
 	@XmlElement(name = "Order")
-	public int getOrder() {
+	public Integer getOrder() {
 		return order;
 	}
 
-	public void setOrder(int order) {
+	public void setOrder(Integer order) {
 		this.order = order;
 	}
 

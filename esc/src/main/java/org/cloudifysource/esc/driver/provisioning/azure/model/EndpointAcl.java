@@ -3,7 +3,7 @@ package org.cloudifysource.esc.driver.provisioning.azure.model;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 
-@XmlType(name = "EndpointACL")
+@XmlType(name = "EndpointAcl")
 public class EndpointAcl {
 
 	private Rules rules;

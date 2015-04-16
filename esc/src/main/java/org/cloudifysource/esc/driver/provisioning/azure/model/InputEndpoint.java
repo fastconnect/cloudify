@@ -9,11 +9,11 @@ import javax.xml.bind.annotation.XmlType;
  * 
  */
 @XmlType(name = "InputEndpoint", propOrder = { "loadBalancedEndpointSetName",
-		"localPort", "name", "port", "loadBalancerProbe", "protocol", "vIp" })
+		"localPort", "name", "port", "loadBalancerProbe", "protocol", "endpointAcl", "vIp" })
 public class InputEndpoint {
 
 	private String loadBalancedEndpointSetName;
-	private int localPort;
+	private Integer localPort;
 	private String name;
 	private Integer port;
 	private LoadBalancerProbe loadBalancerProbe;
@@ -45,11 +45,11 @@ public class InputEndpoint {
 	}
 
 	@XmlElement(name = "LocalPort")
-	public int getLocalPort() {
+	public Integer getLocalPort() {
 		return localPort;
 	}
 
-	public void setLocalPort(final int localPort) {
+	public void setLocalPort(final Integer localPort) {
 		this.localPort = localPort;
 	}
 
@@ -89,7 +89,7 @@ public class InputEndpoint {
 		this.port = port;
 	}
 
-	@XmlElement(name = "EndpointACL")
+	@XmlElement(name = "EndpointAcl")
 	public EndpointAcl getEndpointAcl() {
 		return endpointAcl;
 	}

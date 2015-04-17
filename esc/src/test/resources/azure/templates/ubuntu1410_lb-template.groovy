@@ -16,7 +16,12 @@
 			"azure.pfx.password" : pfxPassword,
 			"azure.cloud.service" : "cfytestitloadblancer",
 			"azure.endpoints" : [
-				[name:"HTTP_LB", protocol:"TCP", localPort: "80", port:"80", loadBalancedSet: "lbSetTest", probePort : "80", probeProtocol:"TCP"],
+						
+				[
+					"basic" :[name:"HTTP_LB", protocol:"TCP", localPort: "80", port:"80"],
+					"lb": [loadBalancedSet: "lbSetTest", probePort : "80", probeProtocol:"TCP"]
+				]
+				
 			],
 		])
 	}

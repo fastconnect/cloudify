@@ -22,11 +22,25 @@
 
 			// Endpoints definition
 			"azure.endpoints" : [
-				[name:"CIFS_SMB", protocol:"TCP", localPort : "445", port:"445"],
-				[name:"WINRM", protocol:"TCP", localPort : "5985", port:"5985"],
-				[name:"WINRM_SSL", protocol:"TCP", localPort : "5986", port:"5986"],
-				[name:"HTTP", protocol:"TCP", localPort:"80", port:"80"],
-				[name:"RemoteDesktop", protocol:"TCP", localPort:"3389", port:"3389"]
+				[
+					"basic": [name:"CIFS_SMB", protocol:"TCP", localPort : "445", port:"445"]	
+				],
+			
+				[
+					"basic": [name:"WINRM", protocol:"TCP", localPort : "5985", port:"5985"],	
+				],
+				
+				[
+					"basic": [name:"WINRM_SSL", protocol:"TCP", localPort : "5986", port:"5986"],
+				],
+				
+				[
+					"basic": [name:"HTTP", protocol:"TCP", localPort:"80", port:"80"],	
+				],
+				
+				[
+					 "basic":[name:"RemoteDesktop", protocol:"TCP", localPort:"3389", port:"3389"],	
+				]
 			],
 
 			// join a domain

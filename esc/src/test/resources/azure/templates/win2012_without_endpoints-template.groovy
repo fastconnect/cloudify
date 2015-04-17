@@ -19,9 +19,7 @@
 			"azure.pfx.file": pfxFile,
 			"azure.pfx.password" : pfxPassword,
 			"azure.generate.endpoints" : "false",			
-
-			// no Endpoints definition
-		
+	
 			"azure.firewall.ports" : [
 				[name:"SOMEPORT", protocol:"TCP", port:"8999"],
 				[name:"NOTVALIDPORT", protocol:"TCP"],

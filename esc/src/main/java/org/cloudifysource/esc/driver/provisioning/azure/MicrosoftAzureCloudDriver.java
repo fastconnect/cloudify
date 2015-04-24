@@ -102,7 +102,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	private Lock driverPendingRequest = new ReentrantLock(true);
 
-	protected static final String CLOUDIFY_MANAGER_NAME = "CFYM";
+	protected static final String CLOUDIFY_MANAGER_NAME = "cfym";
 	private static final String STRING_SEPERATOR = ",";
 
 	private static final String CLOUDIFY_AFFINITY_PREFIX = "cloudifyaffinity";
@@ -406,6 +406,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			this.serverNamePrefix = this.cloud.getProvider().getMachineNamePrefix() + fullServiceName.getServiceName();
 		}
 
+		this.serverNamePrefix = serverNamePrefix.toUpperCase();
+
 	}
 
 	/**
@@ -597,7 +599,8 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 		// underscore character in hostname might cause deployment to fail
 		String serverName = this.serverNamePrefix + String.format("%03d", serviceCounter.getAndIncrement());
 		final ComputeTemplate computeTemplate = this.cloud.getCloudCompute().getTemplates().get(this.cloudTemplateName);
-		return createServer(serverName, endTime, computeTemplate);
+
+		return createServer(serverName.toUpperCase(), endTime, computeTemplate);
 	}
 
 	protected MachineDetails createServer(String serverName, long endTime, ComputeTemplate template)

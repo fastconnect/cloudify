@@ -64,30 +64,39 @@ public class MicrosoftAzureCloudDriverTestIT extends BaseDriverTestIT {
 		this.startAndStopManagementMachine("ubuntu1410", new MachineDetailsAssertion() {
 			@Override
 			public void additionalAssertions(MachineDetails md) throws Exception {
-				Map<String, String> cloudProperties = AzureTestUtils.getCloudProperties();
-				String codeCountry = cloudProperties.get("codeCountry");
-				String codeEnvironment = cloudProperties.get("codeEnvironment");
-				String cloudServiceCode = cloudProperties.get("cloudServiceCode");
 
-				MicrosoftAzureRestClient client = AzureTestUtils.createMicrosoftAzureRestClient();
+				try {
 
-				// Check Cloud service name
-				String cloudServiceName = String.format("%s%s%s001", codeCountry, codeEnvironment, cloudServiceCode);
-				Deployment deployment = client.getDeploymentByName(cloudServiceName, cloudServiceName);
-				Assert.assertEquals("Cloud service name is not correct", cloudServiceName,
-						deployment.getHostedServiceName());
+					Map<String, String> cloudProperties = AzureTestUtils.getCloudProperties();
+					String codeCountry = cloudProperties.get("codeCountry");
+					String codeEnvironment = cloudProperties.get("codeEnvironment");
+					String cloudServiceCode = cloudProperties.get("cloudServiceCode");
 
-				// Check Cloudify management machine name
-				RoleInstanceList roleInstanceList = deployment.getRoleInstanceList();
-				String machineName = String.format("%s%s" + MicrosoftAzureCloudDriver.CLOUDIFY_MANAGER_NAME + "1",
-						codeCountry, codeEnvironment);
-				Assert.assertNotNull("Couldn't find VM " + machineName,
-						roleInstanceList.getRoleInstanceByRoleName(machineName));
+					MicrosoftAzureRestClient client = AzureTestUtils.createMicrosoftAzureRestClient();
 
-				// Check availabilitySet
-				String availabilitySet = deployment.getRoleList().getRoleByName(machineName).getAvailabilitySetName();
-				Assert.assertNotNull(availabilitySet);
-				Assert.assertTrue(availabilitySet.contains("AVITTEST"));
+					// Check Cloud service name
+					String cloudServiceName =
+							String.format("%s%s%s001", codeCountry, codeEnvironment, cloudServiceCode);
+					Deployment deployment = client.getDeploymentByName(cloudServiceName, cloudServiceName);
+					Assert.assertEquals("Cloud service name is not correct", cloudServiceName,
+							deployment.getHostedServiceName());
+
+					// Check Cloudify management machine name
+					RoleInstanceList roleInstanceList = deployment.getRoleInstanceList();
+					String machineName = (String.format("%s%s" + MicrosoftAzureCloudDriver.CLOUDIFY_MANAGER_NAME + "1",
+							codeCountry, codeEnvironment)).toUpperCase();
+					Assert.assertNotNull("Couldn't find VM " + machineName,
+							roleInstanceList.getRoleInstanceByRoleName(machineName));
+
+					// Check availabilitySet
+					String availabilitySet =
+							deployment.getRoleList().getRoleByName(machineName).getAvailabilitySetName();
+					Assert.assertNotNull(availabilitySet);
+					Assert.assertTrue(availabilitySet.contains("AVITTEST"));
+
+				} catch (Exception e) {
+					Assert.fail("Fail name conventions :" + e.getMessage());
+				}
 
 			}
 

@@ -7,8 +7,8 @@ cloud {
 
 		// Mandatory - Azure IaaS cloud driver.
 		className "org.cloudifysource.esc.driver.provisioning.azure.MicrosoftAzureCloudDriver"
-    storageClassName "org.cloudifysource.esc.driver.provisioning.storage.azure.MicrosoftAzureStorageDriver"
-    azureStorageClassName "org.cloudifysource.esc.driver.provisioning.storage.azure.AzureStorageProvisioningDriverImpl"
+		storageClassName "org.cloudifysource.esc.driver.provisioning.storage.azure.MicrosoftAzureStorageDriver"
+		azureStorageClassName "org.cloudifysource.esc.driver.provisioning.storage.azure.AzureStorageProvisioningDriverImpl"
 
 		// Optional. The template name for the management machines. Defaults to the first template in the templates section below.
 		managementMachineTemplate "MEDIUM_WIN2012"
@@ -63,8 +63,10 @@ cloud {
 				deviceName "2" // LUN
 				deleteOnExit false
 				custom ([
-					"azure.storage.account" : [	"storagesmallblock1", "storagesmallblock2"] as List,
-          "azure.storage.hostcaching" : "None" // or ReadOnly or ReadWrite
+					"azure.storage.account" : [
+						"storagesmallblock1",
+						"storagesmallblock2"] as List,
+					"azure.storage.hostcaching" : "None" // or ReadOnly or ReadWrite
 				])
 				partitioningRequired true // If true, the driver will partition the disk (relevant with static storage)
 				path "/storage"           // Used to mount (relevant with static storage)
@@ -189,16 +191,19 @@ cloud {
 
 					// Endpoints definition
 					"azure.endpoints" : [
-						[name:"SSH", protocol:"TCP", localPort: "22", port:"22"]
+						[
+							"basic" : [name:"SSH", protocol:"TCP", localPort: "22", port:"22"]
+						]
+
 					]
 
 					// Optional. each availability set represents a different fault domain.
 					// "azure.availability.set" : "ENTER_AVAILABILITY_SET",
 
-                    // Optional. If the property "azure.availability.set" is configured for this compute template.
-                    // The driver will create availability sets with a maximum of "azure.availability.set.max.members" members in it.
-                    // When the maximum members is reached in the availability set, the driver will create a new one.
-                    // "azure.availability.set.max.members" : 2,
+					// Optional. If the property "azure.availability.set" is configured for this compute template.
+					// The driver will create availability sets with a maximum of "azure.availability.set.max.members" members in it.
+					// When the maximum members is reached in the availability set, the driver will create a new one.
+					// "azure.availability.set.max.members" : 2,
 
 					// Optional. Cloud service. If not exist, it will create one.
 					//"azure.cloud.service" : "CLOUD_SERVICE_NAME",
@@ -251,24 +256,31 @@ cloud {
 
 					// Password that was used to create the certificate
 					"azure.pfx.password" : pfxPassword,
-					
-					// auto generate cfy endpoints (webui, rest)
-					"azure.generate.endpoints" : true,
 
 					// Endpoints definition
 					"azure.endpoints" : [
-						[name:"REMOTE_DESKTOP", protocol:"TCP", localPort:"3389", port:"3389"],
-						[name:"CIFS_SMB", protocol:"TCP", localPort:"445", port:"445"],
-						[name:"WINRM", protocol:"TCP", localPort:"5985", port:"5985"],
-						[name:"WINRM_SSL", protocol:"TCP", localPort:"5986", port:"5986"],
-						[name:"HTTP", protocol:"TCP", localPort:"80", port:"80"]
-					],
+						[
+							"basic": [name:"CIFS_SMB", protocol:"TCP", localPort : "445", port:"445"]
+						],
+						[
+							"basic": [name:"WINRM", protocol:"TCP", localPort : "5985", port:"5985"],
+						],
+						[
+							"basic": [name:"WINRM_SSL", protocol:"TCP", localPort : "5986", port:"5986"],
+						],
+						[
+							"basic": [name:"HTTP", protocol:"TCP", localPort:"80", port:"80"],
+						],
+						[
+							"basic":[name:"REMOTE_DESKTOP", protocol:"TCP", localPort:"3389", port:"3389"],
+						]
+					]
 
 					// Optional. Firewall port to open
 					"azure.firewall.ports" : [
 						[name:"EVENTS", protocol:"TCP", port:"8081"]
 					]
-					
+
 
 					// Optional. each availability set represents a different fault domain.
 					// "azure.availability.set" : "ENTER_AVAILABILITY_SET",
@@ -293,7 +305,7 @@ cloud {
 					 userName:"DOMAIN_USER",  // ex: administrateur
 					 password: "DOMAIN_USER_PASSWORD",  // ex: Azerty@01
 					 joinDomain: "DOMAIN", // ex: victor.local
-                     machineObjectOU: "MEMBER_OU"
+					 machineObjectOU: "MEMBER_OU"
 					 ]
 					 */
 

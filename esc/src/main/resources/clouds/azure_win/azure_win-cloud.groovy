@@ -274,7 +274,7 @@ cloud {
 						[
 							"basic":[name:"REMOTE_DESKTOP", protocol:"TCP", localPort:"3389", port:"3389"],
 						]
-					]
+					],
 
 					// Optional. Firewall port to open
 					"azure.firewall.ports" : [

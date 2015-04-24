@@ -59,7 +59,6 @@ import com.sun.jersey.core.util.Base64;
 public class MicrosoftAzureRequestBodyBuilder {
 
 	private static final String UTF_8 = "UTF-8";
-	private static final int UUID_LENGTH = 8;
 
 	private final static String EXTENSION_NAME_KEY = "name";
 
@@ -77,14 +76,11 @@ public class MicrosoftAzureRequestBodyBuilder {
 	private final static String EXTENSION_CUSTOM_SCRIPT_FILES_KEY = "files";
 	private final static String EXTENSION_CUSTOM_SCRIPT_ARGUMENTS = "arguments";
 
-	private String affinityPrefix;
 	private String cloudServicePrefix;
 	private String storagePrefix;
 	private AtomicInteger cloudServiceAtomicInteger = new AtomicInteger(001);
 
-	public MicrosoftAzureRequestBodyBuilder(final String affinityPrefix,
-			final String cloudServicePrefix, final String storagePrefix) {
-		this.affinityPrefix = affinityPrefix;
+	public MicrosoftAzureRequestBodyBuilder(final String cloudServicePrefix, final String storagePrefix) {
 		this.cloudServicePrefix = cloudServicePrefix;
 		this.storagePrefix = storagePrefix;
 	}
@@ -100,17 +96,18 @@ public class MicrosoftAzureRequestBodyBuilder {
 	 *         Group</a>
 	 */
 
-	public CreateAffinityGroup buildCreateAffinity(final String name, final String location) {
+	public CreateAffinityGroup buildCreateAffinity(final String name, final String location)
+			throws MicrosoftAzureException {
 
 		CreateAffinityGroup affinityGroup = new CreateAffinityGroup();
 		affinityGroup.setName(name);
-		String affinityGroupName = affinityPrefix + generateRandomUUID(UUID_LENGTH);
 		try {
-			affinityGroup.setLabel(new String(Base64.encode(affinityGroupName), UTF_8));
-		} catch (UnsupportedEncodingException e) {
-			// ignore
+			affinityGroup.setLabel(new String(Base64.encode(name), UTF_8));
+		} catch (Exception e) {
+			throw new MicrosoftAzureException("Error while building affinity group request body", e);
 		}
 		affinityGroup.setLocation(location);
+		affinityGroup.setDescription(name);
 
 		return affinityGroup;
 	}

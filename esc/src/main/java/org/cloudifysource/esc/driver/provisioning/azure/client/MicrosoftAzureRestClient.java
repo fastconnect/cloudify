@@ -207,8 +207,7 @@ public class MicrosoftAzureRestClient {
 			this.sslHelper = new MicrosoftAzureSSLHelper(pathToPfx, pfxPassword);
 			this.client = createClient(sslHelper.createSSLContext());
 			this.resource = client.resource(CORE_MANAGEMENT_END_POINT);
-			this.requestBodyBuilder = new MicrosoftAzureRequestBodyBuilder(
-					affinityPrefix, cloudServicePrefix, storagePrefix);
+			this.requestBodyBuilder = new MicrosoftAzureRequestBodyBuilder(cloudServicePrefix, storagePrefix);
 		} catch (final Exception e) {
 			throw new RuntimeException(getThreadIdentity() + "Failed initializing rest client : " + e.getMessage(), e);
 		}
@@ -674,6 +673,7 @@ public class MicrosoftAzureRestClient {
 
 		CreateAffinityGroup createAffinityGroup = requestBodyBuilder
 				.buildCreateAffinity(affinityGroup, location);
+		System.out.println();
 
 		if (affinityExists(affinityGroup)) {
 			logger.info(getThreadIdentity() + "Using an already existing affinity group : " + affinityGroup);

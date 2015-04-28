@@ -1443,7 +1443,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 						}
 
 					} catch (Exception e) {
-						throw new MicrosoftAzureException("Failed processing endpoints, please chack template "
+						throw new MicrosoftAzureException("Failed processing endpoints, please check template "
 								+ cloudTemplateName, e);
 					}
 				}

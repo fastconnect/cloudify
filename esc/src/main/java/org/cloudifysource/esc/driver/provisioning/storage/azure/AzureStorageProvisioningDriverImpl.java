@@ -12,8 +12,12 @@ import org.cloudifysource.esc.driver.provisioning.ProvisioningContext;
 import org.cloudifysource.esc.driver.provisioning.azure.MicrosoftAzureCloudDriver;
 import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureException;
 import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureRestClient;
+import org.cloudifysource.esc.driver.provisioning.azure.client.UUIDHelper;
 import org.cloudifysource.esc.driver.provisioning.azure.model.DataVirtualHardDisk;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
+import org.cloudifysource.esc.driver.provisioning.azure.model.Disk;
+import org.cloudifysource.esc.driver.provisioning.azure.model.Disks;
+import org.cloudifysource.esc.driver.provisioning.azure.model.Role;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleInstance;
 import org.cloudifysource.esc.driver.provisioning.storage.AzureStorageProvisioningDriver;
 import org.cloudifysource.esc.driver.provisioning.storage.StorageProvisioningException;
@@ -129,16 +133,24 @@ public class AzureStorageProvisioningDriverImpl implements AzureStorageProvision
 			String deploymentName = context.getDeploymentName();
 			String cloudServiceName = context.getCloudServiceName();
 			Deployment deployment = azureClient.getDeploymentByName(cloudServiceName, deploymentName);
-			String roleName = null;
-			for (RoleInstance role : deployment.getRoleInstanceList().getRoleInstances()) {
-				if (role.getIpAddress().equals(ipAddress)) {
-					roleName = role.getRoleName();
-				}
-			}
-			if (roleName == null) {
+			RoleInstance roleInstance = deployment.getRoleInstanceList().getRoleInstanceByIpAddress(ipAddress);
+
+			if (roleInstance == null) {
 				throw new StorageProvisioningException(String.format(
 						"%sCouldn't find role with ip address %s (cloudService=%s, deploymentName=%s)",
 						getThreadId(), ipAddress, cloudServiceName, deploymentName));
+			}
+
+			String roleName = roleInstance.getInstanceName();
+			Role role = deployment.getRoleList().getRoleByName(roleName);
+			DataVirtualHardDisk attachedDisk = role.getAttachedDataDiskByLun(lun);
+
+			// a data disk is already attached with this LUN ?
+			if (attachedDisk != null) {
+				throw new StorageProvisioningException(
+						String.format(
+								"%sa datadisk at LUN %d is already attached to role %s with ip address %s (cloudService=%s, deploymentName=%s)",
+								getThreadId(), lun, roleName, ipAddress, cloudServiceName, deploymentName));
 			}
 
 			logger.info(String.format("%sCreating data disk in storage account %s for %s on lun %s", getThreadId(),
@@ -151,10 +163,34 @@ public class AzureStorageProvisioningDriverImpl implements AzureStorageProvision
 			vhdFilename.append(String.format("%02d", lun));
 
 			// Create a data disk
-			azureClient.addDataDiskToVM(cloudServiceName, deploymentName, roleName, storageAccountName,
-					vhdFilename.toString(), diskSize, lun, hostCaching, endTime);
-			DataVirtualHardDisk dataDisk = azureClient.getDataDisk(cloudServiceName, deploymentName, roleName, lun,
-					endTime);
+			StringBuilder dataMediaLinkBuilder = new StringBuilder();
+			dataMediaLinkBuilder.append("https://");
+			dataMediaLinkBuilder.append(storageAccountName);
+			dataMediaLinkBuilder.append(".blob.core.windows.net/vhds/");
+			dataMediaLinkBuilder.append(vhdFilename);
+			DataVirtualHardDisk dataVirtualHardDisk = new DataVirtualHardDisk();
+			dataVirtualHardDisk.setHostCaching(hostCaching);
+			dataVirtualHardDisk.setLogicalDiskSizeInGB(diskSize);
+			dataVirtualHardDisk.setMediaLink(dataMediaLinkBuilder.toString());
+			dataVirtualHardDisk.setDiskLabel("Data");
+			dataVirtualHardDisk.setLun(lun);
+
+			Disks disksList = getAzureClient().listDisks();
+
+			Disk dataDisk = disksList.getDiskByMediaLink(dataMediaLinkBuilder.toString());
+
+			if (disksList != null && dataDisk != null) {
+				logger.warning(String.format("The disk '%s' seems already has been created",
+						dataMediaLinkBuilder.toString()));
+			} else {
+
+				azureClient.addDataDiskToVM(cloudServiceName, deploymentName, roleName, storageAccountName,
+						vhdFilename.toString(), diskSize, lun, hostCaching, endTime);
+				dataDisk = azureClient.getDataDisk(cloudServiceName, deploymentName, roleName, lun,
+						endTime);
+
+			}
+
 			dataDiskName = dataDisk.getDiskName();
 
 		} catch (MicrosoftAzureException e) {
@@ -241,6 +277,70 @@ public class AzureStorageProvisioningDriverImpl implements AzureStorageProvision
 			Thread.currentThread().interrupt();
 			throw new StorageProvisioningException(e);
 		}
+	}
+
+	@Override
+	public void detachDataDisk(String diskName, String ipAddress, long duration, TimeUnit timeUnit)
+			throws StorageProvisioningException, TimeoutException {
+
+		long endTime = System.currentTimeMillis() + timeUnit.toMillis(duration);
+
+		MicrosoftAzureRestClient azureClient = getAzureClient();
+		AzureDeploymentContext context = getAzureContext();
+
+		String cloudServiceName = context.getCloudServiceName();
+		String deploymentName = context.getDeploymentName();
+		String roleName = null;
+		int lun = -1;
+
+		try {
+			// Get the deployment to retrieve the role name
+			Deployment deployment = azureClient.getDeploymentByName(cloudServiceName, deploymentName);
+			RoleInstance roleInstance = deployment.getRoleInstanceList().getRoleInstanceByIpAddress(ipAddress);
+			if (roleInstance == null) {
+				throw new StorageProvisioningException(String.format(
+						"%sCouldn't find role with ip address %s (cloudService=%s, deploymentName=%s)",
+						getThreadId(), ipAddress, cloudServiceName, deploymentName));
+
+			}
+
+			roleName = roleInstance.getInstanceName();
+			if (roleName == null) {
+				throw new StorageProvisioningException(String.format(
+						"%sCouldn't find role with ip address %s (cloudService=%s, deploymentName=%s)",
+						getThreadId(), ipAddress, cloudServiceName, deploymentName));
+			}
+
+			Role role = deployment.getRoleList().getRoleByName(roleName);
+
+			// Retrieve the LUN number from the data disk name
+			DataVirtualHardDisk attachedDisk = role.getAttachedDataDiskByName(diskName);
+			if (attachedDisk == null) {
+
+				throw new StorageProvisioningException(
+						String.format(
+								"%sCouldn't find Lun number for dataDisk %s for VM Role with IP address %s (cloudService=%s, deploymentName=%s)",
+								getThreadId(), diskName, ipAddress, cloudServiceName, deploymentName));
+
+			}
+
+			lun = attachedDisk.getLun();
+
+			// Detach the data disk from the VM
+			azureClient.removeDataDisk(cloudServiceName, deploymentName, roleName, lun, endTime);
+
+			// set a new label name for the detached disk
+			String newLabel = "unattached-data-disk" + UUIDHelper.generateRandomUUID(4);
+
+			azureClient.updateDataDiskLabel(diskName, newLabel, endTime);
+
+		} catch (MicrosoftAzureException e) {
+			throw new StorageProvisioningException(e);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new StorageProvisioningException(e);
+		}
+
 	}
 
 }

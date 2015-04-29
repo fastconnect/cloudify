@@ -2332,6 +2332,19 @@ public class MicrosoftAzureRestClient {
 
 		if (lockAcquired) {
 			try {
+
+				Deployment deployment = this.getDeploymentByName(cloudServiceName, deploymentName);
+				Role role = deployment.getRoleList().getRoleByName(roleName);
+
+				if (role == null) {
+
+				}
+
+				DataVirtualHardDisk attachedDisk = role.getAttachedDataDiskByLun(lun);
+				if (attachedDisk != null) {
+
+				}
+
 				// Create and attach a data disk to the first role of the deployment
 				// /!\ We use this trick to create a data disk in Microsoft Azure as it appear that no API is provided
 				// to create a data disk with no attach /!\
@@ -2395,12 +2408,13 @@ public class MicrosoftAzureRestClient {
 		dataVirtualHardDisk.setDiskLabel("Data");
 		dataVirtualHardDisk.setLun(lun);
 
-		Disks disksList = listDisks();
-		if (disksList.getDiskByMediaLink(dataMediaLinkBuilder.toString()) != null) {
-			logger.info(String.format("The disk '%s' seems already has been created", dataMediaLinkBuilder.toString()));
-			// this.addExistingDataDiskToVM(serviceName, deploymentName, roleName, vhdFilename, lun, endTime);
-			return;
-		}
+		// Disks disksList = listDisks();
+		// if (disksList.getDiskByMediaLink(dataMediaLinkBuilder.toString()) != null) {
+		// logger.info(String.format("The disk '%s' seems already has been created", dataMediaLinkBuilder.toString()));
+		//
+		// this.addExistingDataDiskToVM(serviceName, deploymentName, roleName, vhdFilename, lun, endTime);
+		// return;
+		// }
 
 		String xmlRequest = MicrosoftAzureModelUtils.marshall(dataVirtualHardDisk, false);
 		String url = String.format("/services/hostedservices/%s/deployments/%s/roles/%s/DataDisks",
@@ -2490,6 +2504,7 @@ public class MicrosoftAzureRestClient {
 	 */
 	public void addExistingDataDiskToVM(String serviceName, String deploymentName, String roleName, String diskName,
 			int lun, long endTime) throws MicrosoftAzureException, TimeoutException, InterruptedException {
+
 		DataVirtualHardDisk dataVirtualHardDisk = new DataVirtualHardDisk();
 		dataVirtualHardDisk.setDiskName(diskName);
 		dataVirtualHardDisk.setLun(lun);
@@ -2564,10 +2579,26 @@ public class MicrosoftAzureRestClient {
 			long endTime) throws MicrosoftAzureException, TimeoutException, InterruptedException {
 		String url = String.format("/services/hostedservices/%s/deployments/%s/roles/%s/DataDisks/%d", serviceName,
 				deploymentName, roleName, lun);
+
+		DataVirtualHardDisk dataDisk = null;
 		ClientResponse response = doGet(url);
-		String responseBody = response.getEntity(String.class);
-		checkForError(response);
-		return (DataVirtualHardDisk) MicrosoftAzureModelUtils.unmarshall(responseBody);
+
+		if (response.getStatus() != HTTP_NOT_FOUND) {
+
+			String requestId = extractRequestId(response);
+			checkForError(response);
+			this.waitForRequestToFinish(requestId, endTime);
+			String responseBody = response.getEntity(String.class);
+			dataDisk = (DataVirtualHardDisk) MicrosoftAzureModelUtils.unmarshall(responseBody);
+
+			// no gateway found (404)
+		} else {
+			logger.finest(getThreadIdentity()
+					+ String.format("Can't find disk [at lun %d] for role '%s' in deployment '%' (cloud service '%').",
+							lun, roleName, deploymentName, serviceName));
+		}
+
+		return dataDisk;
 	}
 
 	private Role getRoleByIpAddress(String ipAddress, Deployment deployment)

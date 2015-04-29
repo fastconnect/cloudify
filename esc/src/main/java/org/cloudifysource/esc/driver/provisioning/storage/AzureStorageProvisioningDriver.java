@@ -77,4 +77,7 @@ public interface AzureStorageProvisioningDriver {
 
 	void attachDataDisk(String diskName, String ipAddress, int lun, long duration, TimeUnit timeUnit)
 			throws StorageProvisioningException, TimeoutException;
+
+	void detachDataDisk(String diskName, String ipAddress, long duration, TimeUnit timeUnit)
+			throws StorageProvisioningException, TimeoutException;
 }

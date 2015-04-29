@@ -132,7 +132,26 @@ public class Role {
 		}
 
 		return isContains;
+	}
 
+	public DataVirtualHardDisk getAttachedDataDiskByName(String diskName) {
+
+		for (DataVirtualHardDisk disk : this.dataVirtualHardDisks) {
+
+			if (disk.getDiskName().equals(diskName)) {
+				return disk;
+			}
+		}
+		return null;
+	}
+
+	public DataVirtualHardDisk getAttachedDataDiskByLun(int lun) {
+
+		DataVirtualHardDisk disk = null;
+		if (this.dataVirtualHardDisks != null) {
+			disk = this.dataVirtualHardDisks.getDataDiskByLun(lun);
+		}
+		return disk;
 	}
 
 }

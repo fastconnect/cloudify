@@ -39,6 +39,17 @@ public class DataVirtualHardDisks implements Iterable<DataVirtualHardDisk> {
 		return null;
 	}
 
+	public DataVirtualHardDisk getDataDiskByLun(int lun) {
+
+		for (DataVirtualHardDisk disk : this.dataVirtualHardDisks) {
+
+			if (disk.getLun() == lun) {
+				return disk;
+			}
+		}
+		return null;
+	}
+
 	public boolean isContainsDataDisk(String diskName) {
 
 		for (DataVirtualHardDisk disk : this.dataVirtualHardDisks) {

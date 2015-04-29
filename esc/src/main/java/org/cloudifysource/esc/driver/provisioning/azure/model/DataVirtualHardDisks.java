@@ -28,4 +28,26 @@ public class DataVirtualHardDisks implements Iterable<DataVirtualHardDisk> {
 		this.dataVirtualHardDisks = dataVirtualHardDisks;
 	}
 
+	public DataVirtualHardDisk getDataDiskByName(String diskName) {
+
+		for (DataVirtualHardDisk disk : this.dataVirtualHardDisks) {
+
+			if (disk.getDiskName().equals(diskName)) {
+				return disk;
+			}
+		}
+		return null;
+	}
+
+	public boolean isContainsDataDisk(String diskName) {
+
+		for (DataVirtualHardDisk disk : this.dataVirtualHardDisks) {
+
+			if (disk.getDiskName().equals(diskName)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 }

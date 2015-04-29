@@ -257,7 +257,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 	}
 
 	public AzureDeploymentContext getAzureContext() {
-		return azureDeploymentContext;
+		return this.azureDeploymentContext;
 	}
 
 	private synchronized void initRestClient(
@@ -739,12 +739,12 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			machineDetails.setOpenFilesLimit(this.template.getOpenFilesLimit());
 
 			// For storage driver
-			if (azureDeploymentContext == null) {
+			if (this.azureDeploymentContext == null) {
 				String cloudServiceName = roleAddressDetails.getCloudServiceName();
 				String deploymentName = roleAddressDetails.getDeploymentName();
 				logger.info(String.format("Create AzureDeploymentContext(%s,%s)/%s", cloudServiceName,
 						deploymentName, serverName));
-				this.azureDeploymentContext = new AzureDeploymentContext(cloudServiceName, deploymentName, azureClient);
+				this.setAzureDeploymentContext(new AzureDeploymentContext(cloudServiceName, deploymentName, azureClient));
 			}
 			return machineDetails;
 		} catch (final Exception e) {
@@ -1640,6 +1640,10 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 			}
 		}
 		return domainJoin;
+	}
+
+	public void setAzureDeploymentContext(AzureDeploymentContext azureDeploymentContext) {
+		this.azureDeploymentContext = azureDeploymentContext;
 	}
 
 }

@@ -19,7 +19,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 public class Disks implements Iterable<Disk> {
 
 	private List<Disk> disks = new ArrayList<Disk>();
-	
+
 	@XmlElement(name = "Disk")
 	public List<Disk> getDisks() {
 		return disks;
@@ -29,26 +29,50 @@ public class Disks implements Iterable<Disk> {
 		this.disks = disks;
 	}
 
-	/* (non-Javadoc)
+	/*
+	 * (non-Javadoc)
+	 * 
 	 * @see java.lang.Iterable#iterator()
 	 */
 	@Override
 	public Iterator<Disk> iterator() {
 		return disks.iterator();
 	}
-	
+
 	/**
 	 * 
-	 * @param storageServiceName .
+	 * @param storageServiceName
+	 *            .
 	 * @return .
 	 */
 	public boolean contains(final String diskName) {
-		
-		for (Disk disk: disks) {
+
+		for (Disk disk : disks) {
 			if (disk.getName().equals(diskName)) {
 				return true;
 			}
 		}
 		return false;
 	}
+
+	public Disk getDiskByMediaLink(String diskMedialink) {
+		for (Disk disk : disks) {
+			if (disk.getMediaLink().equals(diskMedialink)) {
+				return disk;
+			}
+		}
+
+		return null;
+	}
+
+	public Disk getDiskByName(String diskName) {
+		for (Disk disk : disks) {
+			if (disk.getName().equals(diskName)) {
+				return disk;
+			}
+		}
+
+		return null;
+	}
+
 }

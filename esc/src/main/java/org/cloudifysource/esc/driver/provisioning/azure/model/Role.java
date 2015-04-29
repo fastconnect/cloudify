@@ -124,4 +124,15 @@ public class Role {
 		return null;
 	}
 
+	public boolean isDiskAttached(String diskName) {
+
+		boolean isContains = false;
+		if (this.dataVirtualHardDisks != null) {
+			isContains = this.dataVirtualHardDisks.isContainsDataDisk(diskName);
+		}
+
+		return isContains;
+
+	}
+
 }

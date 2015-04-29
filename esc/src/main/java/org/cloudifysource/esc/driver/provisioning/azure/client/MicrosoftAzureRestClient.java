@@ -208,6 +208,7 @@ public class MicrosoftAzureRestClient {
 			this.client = createClient(sslHelper.createSSLContext());
 			this.resource = client.resource(CORE_MANAGEMENT_END_POINT);
 			this.requestBodyBuilder = new MicrosoftAzureRequestBodyBuilder(cloudServicePrefix, storagePrefix);
+
 		} catch (final Exception e) {
 			throw new RuntimeException(getThreadIdentity() + "Failed initializing rest client : " + e.getMessage(), e);
 		}
@@ -673,7 +674,6 @@ public class MicrosoftAzureRestClient {
 
 		CreateAffinityGroup createAffinityGroup = requestBodyBuilder
 				.buildCreateAffinity(affinityGroup, location);
-		System.out.println();
 
 		if (affinityExists(affinityGroup)) {
 			logger.info(getThreadIdentity() + "Using an already existing affinity group : " + affinityGroup);
@@ -2394,6 +2394,13 @@ public class MicrosoftAzureRestClient {
 		dataVirtualHardDisk.setMediaLink(dataMediaLinkBuilder.toString());
 		dataVirtualHardDisk.setDiskLabel("Data");
 		dataVirtualHardDisk.setLun(lun);
+
+		Disks disksList = listDisks();
+		if (disksList.getDiskByMediaLink(dataMediaLinkBuilder.toString()) != null) {
+			logger.info(String.format("The disk '%s' seems already has been created", dataMediaLinkBuilder.toString()));
+			// this.addExistingDataDiskToVM(serviceName, deploymentName, roleName, vhdFilename, lun, endTime);
+			return;
+		}
 
 		String xmlRequest = MicrosoftAzureModelUtils.marshall(dataVirtualHardDisk, false);
 		String url = String.format("/services/hostedservices/%s/deployments/%s/roles/%s/DataDisks",

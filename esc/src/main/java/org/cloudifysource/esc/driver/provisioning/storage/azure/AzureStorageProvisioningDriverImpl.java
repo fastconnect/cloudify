@@ -16,7 +16,6 @@ import org.cloudifysource.esc.driver.provisioning.azure.client.UUIDHelper;
 import org.cloudifysource.esc.driver.provisioning.azure.model.DataVirtualHardDisk;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Disk;
-import org.cloudifysource.esc.driver.provisioning.azure.model.Disks;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Role;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleInstance;
 import org.cloudifysource.esc.driver.provisioning.storage.AzureStorageProvisioningDriver;
@@ -133,11 +132,11 @@ public class AzureStorageProvisioningDriverImpl implements AzureStorageProvision
 			String deploymentName = context.getDeploymentName();
 			String cloudServiceName = context.getCloudServiceName();
 			Deployment deployment = azureClient.getDeploymentByName(cloudServiceName, deploymentName);
-			RoleInstance roleInstance = deployment.getRoleInstanceList().getRoleInstanceByIpAddress(ipAddress);
 
+			RoleInstance roleInstance = deployment.getRoleInstanceList().getRoleInstanceByIpAddress(ipAddress);
 			if (roleInstance == null) {
 				throw new StorageProvisioningException(String.format(
-						"%sCouldn't find role with ip address %s (cloudService=%s, deploymentName=%s)",
+						"%sCouldn't find a role in (ip=%s, cloudService=%s, deploymentName=%s)",
 						getThreadId(), ipAddress, cloudServiceName, deploymentName));
 			}
 
@@ -149,7 +148,7 @@ public class AzureStorageProvisioningDriverImpl implements AzureStorageProvision
 			if (attachedDisk != null) {
 				throw new StorageProvisioningException(
 						String.format(
-								"%sa datadisk at LUN %d is already attached to role %s with ip address %s (cloudService=%s, deploymentName=%s)",
+								"%sa datadisk at LUN %d is already attached to role %s (ip=%s, cloudService=%s, deploymentName=%s)",
 								getThreadId(), lun, roleName, ipAddress, cloudServiceName, deploymentName));
 			}
 
@@ -162,36 +161,12 @@ public class AzureStorageProvisioningDriverImpl implements AzureStorageProvision
 			vhdFilename.append("_data");
 			vhdFilename.append(String.format("%02d", lun));
 
-			// Create a data disk
-			StringBuilder dataMediaLinkBuilder = new StringBuilder();
-			dataMediaLinkBuilder.append("https://");
-			dataMediaLinkBuilder.append(storageAccountName);
-			dataMediaLinkBuilder.append(".blob.core.windows.net/vhds/");
-			dataMediaLinkBuilder.append(vhdFilename);
-			DataVirtualHardDisk dataVirtualHardDisk = new DataVirtualHardDisk();
-			dataVirtualHardDisk.setHostCaching(hostCaching);
-			dataVirtualHardDisk.setLogicalDiskSizeInGB(diskSize);
-			dataVirtualHardDisk.setMediaLink(dataMediaLinkBuilder.toString());
-			dataVirtualHardDisk.setDiskLabel("Data");
-			dataVirtualHardDisk.setLun(lun);
+			azureClient.addDataDiskToVM(cloudServiceName, deploymentName, roleName, storageAccountName,
+					vhdFilename.toString(), diskSize, lun, hostCaching, endTime);
+			attachedDisk = azureClient.getDataDisk(cloudServiceName, deploymentName, roleName,
+					lun, endTime);
 
-			Disks disksList = getAzureClient().listDisks();
-
-			Disk dataDisk = disksList.getDiskByMediaLink(dataMediaLinkBuilder.toString());
-
-			if (disksList != null && dataDisk != null) {
-				logger.warning(String.format("The disk '%s' seems already has been created",
-						dataMediaLinkBuilder.toString()));
-			} else {
-
-				azureClient.addDataDiskToVM(cloudServiceName, deploymentName, roleName, storageAccountName,
-						vhdFilename.toString(), diskSize, lun, hostCaching, endTime);
-				dataDisk = azureClient.getDataDisk(cloudServiceName, deploymentName, roleName, lun,
-						endTime);
-
-			}
-
-			dataDiskName = dataDisk.getDiskName();
+			dataDiskName = attachedDisk.getDiskName();
 
 		} catch (MicrosoftAzureException e) {
 			throw new StorageProvisioningException(e);
@@ -199,6 +174,7 @@ public class AzureStorageProvisioningDriverImpl implements AzureStorageProvision
 			Thread.currentThread().interrupt();
 			throw new StorageProvisioningException(e);
 		}
+
 		return dataDiskName;
 	}
 

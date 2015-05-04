@@ -2408,13 +2408,17 @@ public class MicrosoftAzureRestClient {
 		dataVirtualHardDisk.setDiskLabel("Data");
 		dataVirtualHardDisk.setLun(lun);
 
-		// Disks disksList = listDisks();
-		// if (disksList.getDiskByMediaLink(dataMediaLinkBuilder.toString()) != null) {
-		// logger.info(String.format("The disk '%s' seems already has been created", dataMediaLinkBuilder.toString()));
-		//
-		// this.addExistingDataDiskToVM(serviceName, deploymentName, roleName, vhdFilename, lun, endTime);
-		// return;
-		// }
+		Disk dataDisk = this.getDiskByMediaLink(dataMediaLinkBuilder.toString());
+		if (dataDisk != null) {
+			String diskName = dataDisk.getName();
+			logger.warning(String.format(
+					"The disk '%s' with VHD '%s' seems already created, attaching it may fail.",
+					dataDisk.getName(), dataMediaLinkBuilder.toString()));
+
+			this.addExistingDataDiskToVM(serviceName, deploymentName, roleName, diskName, lun, endTime);
+
+			return;
+		}
 
 		String xmlRequest = MicrosoftAzureModelUtils.marshall(dataVirtualHardDisk, false);
 		String url = String.format("/services/hostedservices/%s/deployments/%s/roles/%s/DataDisks",
@@ -2599,6 +2603,19 @@ public class MicrosoftAzureRestClient {
 		}
 
 		return dataDisk;
+	}
+
+	public Disk getDiskByMediaLink(String mediaLink) throws MicrosoftAzureException, TimeoutException {
+
+		Disk disk = null;
+
+		Disks disksList = this.listDisks();
+
+		if (disksList != null) {
+			disk = disksList.getDiskByMediaLink(mediaLink);
+		}
+
+		return disk;
 	}
 
 	private Role getRoleByIpAddress(String ipAddress, Deployment deployment)

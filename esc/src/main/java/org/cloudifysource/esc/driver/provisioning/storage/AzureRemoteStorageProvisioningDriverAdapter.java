@@ -145,4 +145,20 @@ public class AzureRemoteStorageProvisioningDriverAdapter implements AzureRemoteS
 		}
 	}
 
+	@Override
+	public void detachDataDisk(String diskName, String ipAddress) throws RemoteStorageOperationException {
+		detachDataDisk(diskName, ipAddress, DEFAULT_STORAGE_OPERATION_TIMEOUT);
+	}
+
+	@Override
+	public void detachDataDisk(String diskName, String ipAddress, long timeoutInMillis)
+			throws RemoteStorageOperationException {
+
+		try {
+			storageProvisioningDriver.detachDataDisk(diskName, ipAddress, timeoutInMillis, TimeUnit.MILLISECONDS);
+		} catch (final Exception e) {
+			logSevereAndThrow(e.getMessage(), e);
+		}
+	}
+
 }

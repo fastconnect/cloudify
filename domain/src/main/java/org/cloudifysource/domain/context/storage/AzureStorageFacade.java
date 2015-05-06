@@ -27,4 +27,10 @@ public interface AzureStorageFacade {
 	void attachDataDisk(String diskName, String ipAddress, int lun, long timeoutInMillis)
 			throws RemoteStorageOperationException, LocalStorageOperationException;
 
+	void detachDataDisk(String diskName, String ipAddress)
+			throws RemoteStorageOperationException, LocalStorageOperationException;
+
+	void detachDataDisk(String diskName, String ipAddress, long timeoutInMillis)
+			throws RemoteStorageOperationException, LocalStorageOperationException;
+
 }

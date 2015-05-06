@@ -30,4 +30,9 @@ public interface AzureRemoteStorageProvisioningDriver extends Remote {
 
 	void attachDataDisk(String diskName, String ipAddress, int lun, long timeoutInMillis)
 			throws RemoteStorageOperationException;
+
+	void detachDataDisk(String diskName, String ipAddress, long timeoutInMillis)
+			throws RemoteStorageOperationException;
+
+	void detachDataDisk(String diskName, String ipAddress) throws RemoteStorageOperationException;
 }

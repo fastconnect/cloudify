@@ -82,4 +82,26 @@ public class AzureStorageFacadeImpl implements AzureStorageFacade {
 				serviceContext.getServiceName(), ipAddress, timeoutInMillis));
 		remoteStorageApi.attachDataDisk(diskName, ipAddress, lun, timeoutInMillis);
 	}
+
+	@Override
+	public void detachDataDisk(String diskName, String ipAddress, long timeoutInMillis) throws RemoteStorageOperationException,
+			LocalStorageOperationException {
+
+		logger.info(String.format("Detaching data disk %s for service %s (%s) (timeout=%s)", diskName,
+				serviceContext.getServiceName(), ipAddress, timeoutInMillis));
+
+		remoteStorageApi.detachDataDisk(diskName, ipAddress, timeoutInMillis);
+
+	}
+
+	@Override
+	public void detachDataDisk(String diskName, String ipAddress) throws RemoteStorageOperationException,
+			LocalStorageOperationException {
+
+		logger.info(String.format("Detaching data disk %s for service %s (%s) (timeout=%s)", diskName,
+				serviceContext.getServiceName(), ipAddress));
+
+		remoteStorageApi.detachDataDisk(diskName, ipAddress);
+
+	}
 }

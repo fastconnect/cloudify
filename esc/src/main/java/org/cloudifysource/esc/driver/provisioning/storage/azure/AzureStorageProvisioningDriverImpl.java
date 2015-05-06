@@ -15,7 +15,6 @@ import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureRes
 import org.cloudifysource.esc.driver.provisioning.azure.client.UUIDHelper;
 import org.cloudifysource.esc.driver.provisioning.azure.model.DataVirtualHardDisk;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Deployment;
-import org.cloudifysource.esc.driver.provisioning.azure.model.Disk;
 import org.cloudifysource.esc.driver.provisioning.azure.model.Role;
 import org.cloudifysource.esc.driver.provisioning.azure.model.RoleInstance;
 import org.cloudifysource.esc.driver.provisioning.storage.AzureStorageProvisioningDriver;
@@ -29,6 +28,8 @@ public class AzureStorageProvisioningDriverImpl implements AzureStorageProvision
 	private static final String HOSTCACHING_READ_WRITE = "ReadWrite";
 	private static final String HOSTCACHING_READ_ONLY = "ReadOnly";
 	private static final long STORAGE_CREATION_SLEEP_TIMEOUT = 30000L;
+	private static final int LUN_MIN = 1;
+	private static final int LUN_MAX = 15;
 
 	private MicrosoftAzureCloudDriver computeDriver;
 
@@ -179,7 +180,14 @@ public class AzureStorageProvisioningDriverImpl implements AzureStorageProvision
 	}
 
 	private void validateLun(int lun) throws StorageProvisioningException {
-		// TODO
+		if (lun < LUN_MIN || lun > LUN_MAX) {
+			String invalidLun =
+					String.format("The Lun number '%d' is invalid, it should be between %d and %d", lun, LUN_MIN,
+							LUN_MAX);
+			logger.severe(invalidLun);
+			throw new StorageProvisioningException(invalidLun);
+		}
+
 	}
 
 	private String handleHostCachingValue(String hostCaching) {
@@ -316,7 +324,6 @@ public class AzureStorageProvisioningDriverImpl implements AzureStorageProvision
 			Thread.currentThread().interrupt();
 			throw new StorageProvisioningException(e);
 		}
-
 	}
 
 }

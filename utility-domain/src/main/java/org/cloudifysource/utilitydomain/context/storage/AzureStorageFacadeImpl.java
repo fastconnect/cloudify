@@ -104,4 +104,19 @@ public class AzureStorageFacadeImpl implements AzureStorageFacade {
 		remoteStorageApi.detachDataDisk(diskName, ipAddress);
 
 	}
+
+	@Override
+	public void deleteStorageAccount(String name, long timeoutInMillis) throws RemoteStorageOperationException,
+			LocalStorageOperationException {
+		logger.info(String.format("Deleting storage account %s", name ));
+		remoteStorageApi.deleteStorageAccount(name, timeoutInMillis);
+
+	}
+
+	@Override
+	public void deleteStorageAccount(String name) throws RemoteStorageOperationException, LocalStorageOperationException {
+		logger.info(String.format("Deleting storage account %s", name));
+		remoteStorageApi.deleteStorageAccount(name);
+
+	}
 }

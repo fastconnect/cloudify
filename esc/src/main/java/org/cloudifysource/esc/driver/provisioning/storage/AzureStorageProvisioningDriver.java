@@ -69,6 +69,9 @@ public interface AzureStorageProvisioningDriver {
 	void createStorageAccount(String name, long duration, TimeUnit timeUnit) throws StorageProvisioningException,
 			TimeoutException;
 
+	void deleteStorageAccount(String name, long duration, TimeUnit timeUnit) throws StorageProvisioningException,
+			TimeoutException;
+
 	String createDataDisk(String storageAccountName, String ipAddress, int size, int lun, String hostCaching,
 			long duration, TimeUnit timeUnit) throws StorageProvisioningException, TimeoutException;
 

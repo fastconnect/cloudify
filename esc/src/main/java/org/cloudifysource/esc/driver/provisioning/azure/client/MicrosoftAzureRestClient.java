@@ -359,7 +359,8 @@ public class MicrosoftAzureRestClient {
 				String xmlRequest = MicrosoftAzureModelUtils.marshall(createStorageServiceInput, false);
 				response = doPost("/services/storageservices", xmlRequest);
 
-				logger.info(getThreadIdentity() + "Created a storage account : " + storageAccountName);
+				logger.info(getThreadIdentity() + "Storage account creation request done for storage account : "
+						+ storageAccountName);
 
 			} finally {
 				pendingStorageAccountRequest.unlock();
@@ -2002,12 +2003,12 @@ public class MicrosoftAzureRestClient {
 		return false;
 	}
 
-	private boolean storageExists(final String storageAccouhtName) throws MicrosoftAzureException, TimeoutException {
+	public boolean storageExists(final String storageAccountName) throws MicrosoftAzureException, TimeoutException {
 		StorageServices storageServices = listStorageServices();
 
 		boolean isContain = false;
 		if (storageServices != null) {
-			isContain = storageServices.contains(storageAccouhtName);
+			isContain = storageServices.contains(storageAccountName);
 		}
 		return isContain;
 	}
@@ -2558,7 +2559,7 @@ public class MicrosoftAzureRestClient {
 		String requestId = extractRequestId(response);
 		waitForRequestToFinish(requestId, endTime);
 		waitForDiskToDetach(dataDisk.getDiskName(), roleName, endTime);
-		logger.fine(getThreadIdentity() + "Removed data disk from role " + roleName);
+		logger.fine(getThreadIdentity() + "detached data disk from role " + roleName);
 	}
 
 	/**

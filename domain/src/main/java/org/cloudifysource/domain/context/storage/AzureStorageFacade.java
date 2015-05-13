@@ -10,6 +10,12 @@ public interface AzureStorageFacade {
 	void createStorageAccount(String name, long timeoutInMillis) throws RemoteStorageOperationException,
 			LocalStorageOperationException;
 
+	void deleteStorageAccount(String name, long timeoutInMillis) throws RemoteStorageOperationException,
+			LocalStorageOperationException;
+
+	void deleteStorageAccount(String name) throws RemoteStorageOperationException,
+			LocalStorageOperationException;
+
 	String createDataDisk(String storageAccountName, String ipAddress, int size, int lun, String hostCaching)
 			throws RemoteStorageOperationException, LocalStorageOperationException;
 

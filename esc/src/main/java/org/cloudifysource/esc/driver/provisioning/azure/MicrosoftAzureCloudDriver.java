@@ -102,7 +102,7 @@ public class MicrosoftAzureCloudDriver extends BaseProvisioningDriver {
 
 	private Lock driverPendingRequest = new ReentrantLock(true);
 
-	protected static final String CLOUDIFY_MANAGER_NAME = "cfym";
+	public static final String CLOUDIFY_MANAGER_NAME = "cfym";
 	private static final String STRING_SEPERATOR = ",";
 
 	private static final String CLOUDIFY_AFFINITY_PREFIX = "cloudifyaffinity";

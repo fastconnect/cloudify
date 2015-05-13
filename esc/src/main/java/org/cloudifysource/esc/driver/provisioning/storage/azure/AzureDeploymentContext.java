@@ -6,22 +6,18 @@ import org.cloudifysource.esc.driver.provisioning.azure.client.MicrosoftAzureRes
 
 public class AzureDeploymentContext {
 
-	private final String cloudServiceName;
-	private final String deploymentName;
+	private String cloudServiceName;
+	private String deploymentName;
 	private MicrosoftAzureRestClient azureClient;
 
 	public AzureDeploymentContext(String cloudServiceName, String deploymentName, MicrosoftAzureRestClient azureClient) {
-		this.cloudServiceName = cloudServiceName;
+		this.setCloudServiceName(cloudServiceName);
 		this.deploymentName = deploymentName;
 		this.azureClient = azureClient;
 	}
 
 	public String getCloudServiceName() {
 		return cloudServiceName;
-	}
-
-	public String getDeploymentName() {
-		return deploymentName;
 	}
 
 	public MicrosoftAzureRestClient getAzureClient() {
@@ -31,6 +27,18 @@ public class AzureDeploymentContext {
 	@Override
 	public String toString() {
 		return ToStringBuilder.reflectionToString(this, ToStringStyle.SHORT_PREFIX_STYLE);
+	}
+
+	public String getDeploymentName() {
+		return deploymentName;
+	}
+
+	public void setDeploymentName(String deploymentName) {
+		this.deploymentName = deploymentName;
+	}
+
+	public void setCloudServiceName(String cloudServiceName) {
+		this.cloudServiceName = cloudServiceName;
 	}
 
 }

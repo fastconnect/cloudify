@@ -98,6 +98,21 @@ public class AzureRemoteStorageProvisioningDriverAdapter implements AzureRemoteS
 	}
 
 	@Override
+	public void deleteStorageAccount(String name, long timeoutInMillis) throws RemoteStorageOperationException {
+		try {
+			storageProvisioningDriver.deleteStorageAccount(name, timeoutInMillis, TimeUnit.MILLISECONDS);
+		} catch (final Exception e) {
+			logSevereAndThrow(e.getMessage(), e);
+		}
+	}
+
+	@Override
+	public void deleteStorageAccount(String name) throws RemoteStorageOperationException {
+		this.deleteStorageAccount(name, DEFAULT_STORAGE_OPERATION_TIMEOUT);
+
+	}
+
+	@Override
 	public String createDataDisk(String storageAccountName, String ipAddress, int size, int lun, String hostCaching)
 			throws RemoteStorageOperationException {
 		return createDataDisk(storageAccountName, ipAddress, size, lun, hostCaching, DEFAULT_STORAGE_OPERATION_TIMEOUT);

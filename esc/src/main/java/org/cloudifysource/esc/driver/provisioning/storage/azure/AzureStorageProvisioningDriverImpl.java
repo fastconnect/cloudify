@@ -27,7 +27,7 @@ public class AzureStorageProvisioningDriverImpl implements AzureStorageProvision
 	private static final String HOSTCACHING_NONE = "None";
 	private static final String HOSTCACHING_READ_WRITE = "ReadWrite";
 	private static final String HOSTCACHING_READ_ONLY = "ReadOnly";
-	private static final long STORAGE_CREATION_SLEEP_TIMEOUT = 30000L;
+	private static final long STORAGE_SLEEP_TIMEOUT = 30000L;
 	private static final int LUN_MIN = 1;
 	private static final int LUN_MAX = 15;
 
@@ -100,9 +100,9 @@ public class AzureStorageProvisioningDriverImpl implements AzureStorageProvision
 			} catch (Exception e) {
 				try {
 					logger.log(Level.WARNING, getThreadId() + "Error creating the storage account '"
-							+ storageAccountName + "'. Sleeping " + STORAGE_CREATION_SLEEP_TIMEOUT
+							+ storageAccountName + "'. Sleeping " + STORAGE_SLEEP_TIMEOUT
 							+ " ms before reattempt", e.getMessage());
-					Thread.sleep(STORAGE_CREATION_SLEEP_TIMEOUT);
+					Thread.sleep(STORAGE_SLEEP_TIMEOUT);
 				} catch (InterruptedException e1) {
 					Thread.currentThread().interrupt();
 					logger.warning(getThreadId() + "Sleep interrupted");
@@ -324,6 +324,36 @@ public class AzureStorageProvisioningDriverImpl implements AzureStorageProvision
 			Thread.currentThread().interrupt();
 			throw new StorageProvisioningException(e);
 		}
+	}
+
+	@Override
+	public void deleteStorageAccount(String storageAccountName, long duration, TimeUnit timeUnit)
+			throws StorageProvisioningException, TimeoutException {
+
+		long endTime = System.currentTimeMillis() + timeUnit.toMillis(duration);
+
+		boolean deleted = false;
+		while (!deleted) {
+			if (System.currentTimeMillis() > endTime) {
+				throw new TimeoutException(getThreadId() + "Timeout creating the storage account " + storageAccountName);
+			}
+			try {
+				getAzureClient().deleteStorageAccount(storageAccountName, endTime);
+				deleted = true;
+
+			} catch (Exception e) {
+				try {
+					logger.log(Level.WARNING, getThreadId() + "Error deleting the storage account '"
+							+ storageAccountName + "'. Sleeping " + STORAGE_SLEEP_TIMEOUT
+							+ " ms before reattempt", e.getMessage());
+					Thread.sleep(STORAGE_SLEEP_TIMEOUT);
+				} catch (InterruptedException e1) {
+					Thread.currentThread().interrupt();
+					logger.warning(getThreadId() + "Sleep interrupted");
+				}
+			}
+		}
+
 	}
 
 }

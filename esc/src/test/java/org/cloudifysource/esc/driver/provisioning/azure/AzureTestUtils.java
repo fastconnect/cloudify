@@ -113,6 +113,15 @@ public class AzureTestUtils {
 	}
 
 	public static MicrosoftAzureRestClient createMicrosoftAzureRestClient(String cloudServicePrefix,
+			String affinityPrefix, String virtualNetwork) throws MalformedURLException {
+
+		MicrosoftAzureRestClient azureClient = createMicrosoftAzureRestClient(cloudServicePrefix, affinityPrefix);
+		azureClient.setVirtualNetwork(virtualNetwork);
+
+		return azureClient;
+	}
+
+	public static MicrosoftAzureRestClient createMicrosoftAzureRestClient(String cloudServicePrefix,
 			String affinityPrefix) throws MalformedURLException {
 		File configFile = new File(getCredentialsFolder(), getCredentialsFilename());
 		ConfigObject config = new ConfigSlurper().parse(configFile.toURI().toURL());
